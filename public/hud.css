@@ -176,3 +176,47 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
   padding: 3px 9px; background: rgba(53, 214, 237, 0.06);
 }
 #hb-chip { font-size: 10px; letter-spacing: 2px; color: var(--cyan-dim); opacity: 0.7; }
+
+/* ── viewport tabs, devices, files ───────────────────────────────── */
+.vp-tabs { display: flex; gap: 4px; margin-right: 10px; }
+.vp-tab {
+  background: transparent; border: 1px solid var(--cyan-dim); color: var(--cyan-dim);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 2px; padding: 3px 10px; cursor: pointer;
+}
+.vp-tab.active { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
+#files-count { color: var(--amber); margin-left: 5px; }
+
+.vp-devices { display: inline-flex; gap: 3px; }
+.ctl.dev { padding: 3px 7px; font-size: 10px; }
+.ctl.dev.active { border-color: var(--cyan); color: var(--cyan); }
+.vp-dims { font-size: 10px; color: var(--cyan-dim); letter-spacing: 1px; min-width: 74px; }
+
+#preview-frame { transition: width 0.18s ease; margin: 0 auto; display: block; }
+
+#files-stage { display: none; flex: 1; min-height: 0; }
+#hud.files-mode #files-stage { display: flex; }
+#hud.files-mode #preview-stage, #hud.files-mode #preview-hint { display: none; }
+
+#files-list {
+  width: 230px; overflow-y: auto; border-right: 1px solid var(--cyan-dim);
+  padding-right: 6px; flex-shrink: 0;
+}
+.file-row {
+  padding: 6px 8px; cursor: pointer; border-left: 2px solid transparent;
+  font-size: 11px; line-height: 1.45;
+}
+.file-row:hover { background: rgba(53,214,237,0.06); }
+.file-row.active { border-left-color: var(--cyan); background: rgba(53,214,237,0.09); }
+.file-row .fn { color: var(--cyan); display: block; }
+.file-row .fp { color: var(--cyan-dim); font-size: 9.5px; display: block; word-break: break-all; }
+.file-row .fs { font-size: 9.5px; }
+.file-row .add { color: #5ddc8c; }
+.file-row .del { color: var(--red); }
+
+#files-diff { flex: 1; overflow: auto; padding: 4px 12px; font-size: 11.5px; line-height: 1.55; }
+#files-diff pre { white-space: pre; font-family: var(--mono); }
+#files-diff .l-add { color: #5ddc8c; }
+#files-diff .l-del { color: var(--red); }
+#files-diff .l-ctx { color: var(--cyan-dim); }
+#files-diff .l-hdr { color: var(--amber); }
+.files-empty { color: var(--cyan-dim); font-size: 11px; }

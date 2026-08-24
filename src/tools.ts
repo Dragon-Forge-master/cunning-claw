@@ -10,6 +10,7 @@ import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
 import * as http from "./http.js";
 import * as mcp from "./mcp.js";
+import { snapshot, record } from "./filewatch.js";
 import { readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
 import { expandHome, isSensitivePath } from "./paths.js";
@@ -622,9 +623,12 @@ async function writeFileTool(
     input.content.slice(0, 2000) + (input.content.length > 2000 ? "\n…(truncated preview)" : ""),
   );
   if (!ok) return "The user declined the file write.";
+  const before = snapshot(p);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   if (input.append) fs.appendFileSync(p, input.content);
   else fs.writeFileSync(p, input.content);
+  const change = record(p, input.append ? "append" : "write", before);
+  if (change) ctx.emit("file_change", change);
   return `Wrote ${input.content.length} chars to ${p}.`;
 }
 
@@ -749,12 +753,16 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         if (!plan.ok) return plan.error;
         const ok = await ctx.requestApproval(`Edit ${plan.path}`, plan.preview);
         if (!ok) return "The user declined the edit.";
-        return commitEdit({
+        const beforeEdit = snapshot(plan.path);
+        const editResult = commitEdit({
           path: String(input.path ?? ""),
           oldString: String(input.oldString ?? ""),
           newString: String(input.newString ?? ""),
           replaceAll: Boolean(input.replaceAll),
         });
+        const editChange = record(plan.path, "edit", beforeEdit);
+        if (editChange) ctx.emit("file_change", editChange);
+        return editResult;
       }
       case "grep": return grepFiles({
         pattern: String(input.pattern ?? ""),

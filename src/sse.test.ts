@@ -42,7 +42,7 @@ test("every HUD listener corresponds to an event the server emits", () => {
 
 test("safety-relevant events are rendered, not silently dropped", () => {
   const hud = hudEvents();
-  for (const required of ["brain_guard", "approval_request", "approval_resolved"]) {
+  for (const required of ["brain_guard", "approval_request", "approval_resolved", "file_change"]) {
     assert.ok(hud.has(required), `HUD must render "${required}" — it is how the operator sees the safety layer`);
   }
 });

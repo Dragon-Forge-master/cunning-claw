@@ -84,6 +84,21 @@ function settleApproval(id: string, approved: boolean, timedOut = false): boolea
   return true;
 }
 
+/**
+ * Deny everything currently awaiting a click.
+ *
+ * A turn parked on an approval holds the agent. If the user is right there
+ * typing a new instruction, that instruction is the answer — waiting out the
+ * timeout serves nobody. Denying is the safe resolution: the stalled tool does
+ * not run, and its turn unwinds.
+ */
+function cancelPendingApprovals(reason: string): number {
+  const ids = [...pendingApprovals.keys()];
+  for (const id of ids) settleApproval(id, false);
+  if (ids.length) broadcast("notice", { message: `${ids.length} pending approval(s) cancelled — ${reason}` });
+  return ids.length;
+}
+
 function requestApproval(summary: string, detail: string): Promise<boolean> {
   return new Promise((resolve) => {
     const id = crypto.randomUUID();
@@ -115,6 +130,8 @@ app.post("/api/approve", (req, res) => {
 const agentEvents: AgentEvents = { emit: broadcast, requestApproval };
 
 app.post("/api/chat", (req, res) => {
+  // A new instruction outranks a turn parked on an unanswered approval.
+  if (pendingApprovals.size > 0) cancelPendingApprovals("superseded by a new instruction");
   const message = String(req.body?.message ?? "").trim();
   if (!message) return res.status(400).json({ error: "Empty message" });
   const brainReply = applyBrainCommand(message);

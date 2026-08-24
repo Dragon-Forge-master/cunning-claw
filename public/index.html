@@ -51,18 +51,30 @@
 
       <section id="preview-panel">
         <div class="preview-chrome">
-          <span class="panel-title preview-ttl">VIEWPORT</span>
+          <div class="vp-tabs">
+            <button type="button" class="vp-tab active" data-tab="live">LIVE</button>
+            <button type="button" class="vp-tab" data-tab="files">FILES<span id="files-count"></span></button>
+          </div>
           <form id="preview-bar">
             <input id="preview-url" type="text" spellcheck="false" placeholder="http://127.0.0.1:…">
             <button type="submit" class="ctl" title="Load">GO</button>
             <button type="button" id="preview-reload" class="ctl" title="Reload">RELOAD</button>
-            <button type="button" id="preview-width" class="ctl" title="Toggle phone width">WIDE</button>
+            <span class="vp-devices">
+              <button type="button" class="ctl dev" data-w="390" title="iPhone width">390</button>
+              <button type="button" class="ctl dev" data-w="768" title="Tablet width">768</button>
+              <button type="button" class="ctl dev active" data-w="0" title="Full width">FULL</button>
+            </span>
+            <span id="vp-dims" class="vp-dims"></span>
             <button type="button" id="preview-pop" class="ctl" title="Open in a real browser tab">POP</button>
             <button type="button" id="preview-close" class="ctl" title="Close viewport">CLOSE</button>
           </form>
         </div>
         <div id="preview-stage">
           <iframe id="preview-frame" title="JARVIS viewport" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"></iframe>
+        </div>
+        <div id="files-stage">
+          <div id="files-list"></div>
+          <div id="files-diff"><span class="files-empty">Select a file to see what changed.</span></div>
         </div>
         <div id="preview-hint">If this pane is blank, the app refused to be framed. POP opens it in a tab.</div>
       </section>

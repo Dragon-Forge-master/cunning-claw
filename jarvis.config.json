@@ -30,7 +30,7 @@
       "chmod\\s+777\\s+/"
     ],
     "timeoutMs": 30000,
-    "approvalTimeoutMs": 120000
+    "approvalTimeoutMs": 180000
   },
   "server": {
     "port": 3900,

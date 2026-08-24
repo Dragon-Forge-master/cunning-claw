@@ -276,6 +276,91 @@ es.addEventListener("preview", (e) => {
   applyPreview(sseData(e));
 });
 
+/* ── viewport: files tab ─────────────────────────────────────────── */
+
+const fileChanges = [];
+let selectedFile = null;
+
+function renderFileList() {
+  const list = $("files-list");
+  list.innerHTML = "";
+  for (const c of fileChanges) {
+    const row = document.createElement("div");
+    row.className = "file-row" + (c.path === selectedFile ? " active" : "");
+    const stat = c.action === "write"
+      ? `<span class="fs add">new · +${c.added}</span>`
+      : `<span class="fs"><span class="add">+${c.added}</span> <span class="del">−${c.removed}</span></span>`;
+    row.innerHTML = `<span class="fn">${c.name}</span><span class="fp">${c.path}</span>${stat}`;
+    row.onclick = () => { selectedFile = c.path; renderFileList(); renderDiff(c); };
+    list.appendChild(row);
+  }
+  const count = fileChanges.length;
+  $("files-count").textContent = count ? ` ${count}` : "";
+}
+
+function renderDiff(change) {
+  const pane = $("files-diff");
+  if (!change) {
+    pane.innerHTML = '<span class="files-empty">Select a file to see what changed.</span>';
+    return;
+  }
+  const pre = document.createElement("pre");
+  for (const line of (change.diff || "").split("\n")) {
+    const span = document.createElement("span");
+    span.className = line.startsWith("+") ? "l-add"
+      : line.startsWith("-") ? "l-del"
+      : line.startsWith("@@") ? "l-hdr" : "l-ctx";
+    span.textContent = line + "\n";
+    pre.appendChild(span);
+  }
+  pane.innerHTML = "";
+  pane.appendChild(pre);
+}
+
+es.addEventListener("file_change", (e) => {
+  const change = sseData(e);
+  if (!change || !change.path) return;
+  const i = fileChanges.findIndex((c) => c.path === change.path);
+  if (i >= 0) fileChanges.splice(i, 1);
+  fileChanges.unshift(change);
+  // Writing a file is the interesting moment — surface the panel for it.
+  $("hud").classList.add("previewing");
+  $("preview-toggle").classList.add("active");
+  setTab("files");
+  selectedFile = change.path;
+  renderFileList();
+  renderDiff(change);
+  addChip(`✎ ${change.name}  +${change.added}${change.removed ? " −" + change.removed : ""}`);
+});
+
+function setTab(name) {
+  for (const tab of document.querySelectorAll(".vp-tab")) {
+    tab.classList.toggle("active", tab.dataset.tab === name);
+  }
+  $("hud").classList.toggle("files-mode", name === "files");
+}
+
+for (const tab of document.querySelectorAll(".vp-tab")) {
+  tab.addEventListener("click", () => setTab(tab.dataset.tab));
+}
+
+/* ── viewport: device widths ─────────────────────────────────────── */
+
+function setDeviceWidth(w) {
+  const frame = $("preview-frame");
+  frame.style.width = w ? `${w}px` : "100%";
+  for (const b of document.querySelectorAll(".ctl.dev")) {
+    b.classList.toggle("active", Number(b.dataset.w) === w);
+  }
+  $("vp-dims").textContent = w
+    ? `${w} × ${frame.clientHeight || "—"}`
+    : `${frame.clientWidth || "—"} × ${frame.clientHeight || "—"}`;
+}
+
+for (const b of document.querySelectorAll(".ctl.dev")) {
+  b.addEventListener("click", () => setDeviceWidth(Number(b.dataset.w)));
+}
+
 es.onerror = () => {
   $("conn-dot").classList.remove("online");
 };
@@ -413,13 +498,6 @@ $("preview-close").addEventListener("click", () => postPreview({ action: "close"
 $("preview-pop").addEventListener("click", () => {
   if (previewUrl) window.open(previewUrl, "_blank", "noopener");
 });
-$("preview-width").addEventListener("click", (e) => {
-  previewPhone = !previewPhone;
-  $("preview-panel").classList.toggle("phone", previewPhone);
-  e.target.textContent = previewPhone ? "PHONE" : "WIDE";
-  e.target.classList.toggle("active", previewPhone);
-});
-
 // ---------------------------------------------------------------------------
 // System telemetry + history restore
 // ---------------------------------------------------------------------------

@@ -82,6 +82,60 @@ function saveHistory(messages: Msg[]): void {
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(redactDeep(messages), null, 2));
 }
 
+/**
+ * Guarantee every tool_use is answered.
+ *
+ * The API rejects a conversation where a tool_use has no tool_result in the
+ * next message, with a 400 — and once such a pair is in history, *every*
+ * subsequent turn fails the same way. An assistant that bricks itself until
+ * someone manually clears its history is not an assistant, so this runs before
+ * every request rather than trusting the rollback path to have been perfect.
+ *
+ * Missing results are synthesised rather than dropped: losing the assistant's
+ * turn loses its reasoning, whereas an explicit "interrupted" result keeps the
+ * thread readable and tells the model what happened.
+ */
+export function repairHistory(messages: Msg[]): Msg[] {
+  const out: Msg[] = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i];
+    out.push(m);
+    if (m.role !== "assistant" || !Array.isArray(m.content)) continue;
+
+    const uses = (m.content as any[]).filter((b) => b?.type === "tool_use");
+    if (uses.length === 0) continue;
+
+    const next = messages[i + 1];
+    const answered = new Set(
+      next && Array.isArray(next.content)
+        ? (next.content as any[])
+            .filter((b) => b?.type === "tool_result")
+            .map((b) => b.tool_use_id)
+        : [],
+    );
+
+    const missing = uses.filter((u) => !answered.has(u.id));
+    if (missing.length === 0) continue;
+
+    const patch = missing.map((u) => ({
+      type: "tool_result" as const,
+      tool_use_id: u.id,
+      content: "[interrupted — this tool never returned a result]",
+      is_error: true,
+    }));
+
+    if (next && next.role === "user" && Array.isArray(next.content)) {
+      // Fold the synthesised results into the existing reply.
+      messages[i + 1] = { ...next, content: [...patch, ...(next.content as any[])] };
+    } else {
+      out.push({ role: "user", content: patch });
+    }
+  }
+
+  return out;
+}
+
 /** Trim from the front, but only to a boundary where the first message is a
  *  plain-text user turn (never orphan a tool_result from its tool_use). */
 function trimHistory(messages: Msg[]): Msg[] {
@@ -166,7 +220,7 @@ async function callBrain(
       { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
     ],
     tools: buildTools(spec),
-    messages: trimHistory(history),
+    messages: repairHistory(trimHistory(history)),
     stream: true,
   };
   if (spec.thinking !== false) {
