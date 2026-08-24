@@ -389,7 +389,34 @@ export const toolDefinitions: Anthropic.Tool[] = [
 
 type Verdict = "auto" | "approve" | "deny";
 
+/**
+ * Hard floor, deliberately NOT configurable.
+ *
+ * Everything else about the command policy is config-driven, which is right —
+ * but a purely config-driven denylist is only as good as the config file. An
+ * empty `denyPatterns`, or an `autoApprovePatterns` of [".*"], would otherwise
+ * let `rm -rf /` through without so much as a prompt. These patterns are
+ * checked first, in code, and cannot be switched off by editing JSON.
+ */
+const HARD_DENY: RegExp[] = [
+  /\brm\s+(-[a-zA-Z]*\s+)*-[a-zA-Z]*[rR][a-zA-Z]*f|\brm\s+-[a-zA-Z]*f[a-zA-Z]*[rR]/, // rm -rf in any flag order
+  /\bmkfs(\.|\s)/,                       // filesystem creation
+  /\bdd\s+.*\bof=\s*\/dev\//,          // raw writes to block devices
+  />\s*\/dev\/(sd|nvme|hd|vd)/,          // redirect onto a disk
+  /:\s*\(\s*\)\s*\{.*\}\s*;\s*:/,      // fork bomb
+  /\bshutdown\b|\breboot\b|\bpoweroff\b|\bhalt\b/,
+  /\b(chmod|chown)\s+(-[a-zA-Z]+\s+)*[^\s]*\s+\/(\s|$)/, // recursive perms on /
+  /\bcurl\b[^|]*\|\s*(sudo\s+)?(ba)?sh/, // curl | sh
+  /\bwget\b[^|]*\|\s*(sudo\s+)?(ba)?sh/,
+  /\bhistory\s+-c\b|\bshred\b/,
+  /\/etc\/(shadow|sudoers)/,
+];
+
 export function classifyCommand(command: string): Verdict {
+  // Code-level floor first — config cannot weaken this.
+  for (const re of HARD_DENY) {
+    if (re.test(command)) return "deny";
+  }
   for (const p of config.commandPolicy.denyPatterns) {
     if (new RegExp(p, "i").test(command)) return "deny";
   }
