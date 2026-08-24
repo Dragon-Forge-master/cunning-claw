@@ -5,6 +5,11 @@ description: Build a complete multi-tenant business platform on Cloudflare — a
 
 # Build a business platform
 
+> **Cloudflare is the worked example here, not a requirement.** The pattern — tenant-scoped
+> schema, an API layer, object storage, a static front end, webhooks for payments — maps
+> onto Vercel + Postgres + S3, Fly, Railway, or a plain VPS. Read the stack the user
+> already has and translate the shape; only the binding names change.
+
 Chris has already shipped one of these. **Read `Dragon-Forge-master/estimatic` before you
 start** — it is the reference implementation, not a hypothetical: multi-tenant SaaS on
 Workers, D1 for data, R2 for photos, vanilla front end with no build step, AI vision for the
