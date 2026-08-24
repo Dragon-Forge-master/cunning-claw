@@ -426,6 +426,14 @@ export function classifyCommand(command: string): Verdict {
   return "approve";
 }
 
+/** Paths the model must not read or write, even via dedicated file tools. */
+const SENSITIVE_PATH = /\/etc\/(shadow|sudoers)|\.ssh\/.*(id_|authorized_keys)|\/root\//i;
+
+export function isSensitivePath(p: string): boolean {
+  const expanded = expandHome(p);
+  return SENSITIVE_PATH.test(expanded);
+}
+
 // ---------------------------------------------------------------------------
 // Executors
 // ---------------------------------------------------------------------------
@@ -460,6 +468,9 @@ async function runCommand(input: { command: string; cwd?: string }, ctx: ToolCon
 }
 
 async function readFileTool(input: { path: string }): Promise<string> {
+  if (isSensitivePath(input.path)) {
+    return "BLOCKED: that path is on the sensitive-file denylist and will never be read.";
+  }
   const p = expandHome(input.path);
   const stat = fs.statSync(p);
   if (stat.size > 100 * 1024) return `File is ${(stat.size / 1024).toFixed(0)}KB — too large. Use run_command with head/grep instead.`;
@@ -471,6 +482,9 @@ async function writeFileTool(
   ctx: ToolContext,
 ): Promise<string> {
   const p = expandHome(input.path);
+  if (isSensitivePath(p)) {
+    return "BLOCKED: that path is on the sensitive-file denylist and will never be written.";
+  }
   const action = input.append ? "Append to" : "Write";
   const ok = await ctx.requestApproval(
     `${action} file ${p}`,

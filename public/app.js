@@ -17,7 +17,7 @@ let serverVoiceAvailable = false;
 const BOOT_LINES = [
   "J.A.R.V.I.S. v0.1 — boot sequence initiated",
   "loading cognitive core .............. claude-opus-5",
-  "mounting tool interface ............. 10 tools + web search",
+  "mounting tool interface ............. 25 tools + web search",
   "restoring long-term memory .......... ok",
   "establishing event stream ........... ok",
   "",
@@ -225,11 +225,15 @@ es.addEventListener("turn_done", (e) => {
   speak(text);
 });
 
-es.addEventListener("error", (e) => {
+es.addEventListener("agent_error", (e) => {
   const { message } = JSON.parse(e.data);
   addMsg("system", `⚠ ${message}`);
   setState("STANDBY");
 });
+
+es.onerror = () => {
+  $("conn-dot").classList.remove("online");
+};
 
 es.addEventListener("timer_fired", (e) => {
   const { label } = JSON.parse(e.data);

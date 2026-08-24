@@ -117,3 +117,13 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
 
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
+
+@media (max-width: 900px) {
+  body { height: auto; min-height: 100dvh; overflow: auto; }
+  #hud { height: auto; min-height: 100dvh; }
+  main { flex-direction: column; }
+  #sys-panel { width: 100%; max-height: 160px; }
+  #center { flex: 0 0 auto; width: 100%; }
+  #reactor { width: 220px; height: 220px; }
+  .brand .sub { display: none; }
+}

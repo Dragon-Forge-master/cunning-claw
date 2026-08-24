@@ -145,3 +145,10 @@ data/            Runtime state (history, memory) — gitignored
 ```
 
 The server binds to `127.0.0.1` only — it is not exposed to your network.
+
+## Tests
+
+```bash
+npm test    # command-policy denylist + sensitive-path checks
+npm run check
+```

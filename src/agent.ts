@@ -105,7 +105,7 @@ function buildTools(): Anthropic.ToolUnion[] {
 
 export async function runTurn(userMessage: string, events: AgentEvents): Promise<void> {
   if (busy) {
-    events.emit("error", { message: "Still working on the previous request, sir." });
+    events.emit("agent_error", { message: "Still working on the previous request, sir." });
     return;
   }
   busy = true;
@@ -233,7 +233,7 @@ export async function runTurn(userMessage: string, events: AgentEvents): Promise
         ? "I have no API credentials, sir. Copy .env.example to .env, add your ANTHROPIC_API_KEY, and restart me."
         : err.message;
     }
-    events.emit("error", { message: msg });
+    events.emit("agent_error", { message: msg });
   } finally {
     busy = false;
   }

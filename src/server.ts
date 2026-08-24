@@ -33,7 +33,7 @@ function broadcast(event: string, data: unknown): void {
   else if (event === "timer_fired") void voice.speak(`Sir, a reminder: ${d?.label ?? ""}`);
   else if (event === "approval_request") void voice.speak("Requesting authorisation, sir.");
   else if (event === "turn_start") voice.cancel();
-  else if (event === "error" && d?.message) void voice.speak(d.message);
+  else if (event === "agent_error" && d?.message) void voice.speak(d.message);
 }
 
 app.get("/api/events", (req, res) => {

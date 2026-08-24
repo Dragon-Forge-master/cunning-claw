@@ -9,9 +9,15 @@ export const ROOT = path.resolve(here, "..");
 // constructed at module import time, so this must happen first).
 const envPath = path.join(ROOT, ".env");
 if (fs.existsSync(envPath)) {
-  for (const line of fs.readFileSync(envPath, "utf-8").split("\n")) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+  for (const raw of fs.readFileSync(envPath, "utf-8").split("\n")) {
+    const line = raw.trim().replace(/^export\s+/, "");
+    if (!line || line.startsWith("#")) continue;
+    const m = line.match(/^([A-Z0-9_]+)\s*=\s*(.*)$/);
+    if (!m || process.env[m[1]]) continue;
+    let value = m[2];
+    const quoted = value.startsWith('"') || value.startsWith("'");
+    if (!quoted) value = value.replace(/\s+#.*$/, "");
+    process.env[m[1]] = value.replace(/^["']|["']$/g, "");
   }
 }
 export const DATA_DIR = path.join(ROOT, "data");
