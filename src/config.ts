@@ -73,6 +73,7 @@ export interface JarvisConfig {
   http: { allowlist: string[]; timeoutMs: number; maxResponseChars: number };
   homeAssistant: { enabled: boolean; baseUrl: string; tokenEnv: string };
   coherence: { ouroborosLimit: number; maxIterations: number };
+  heartbeat: { enabled: boolean; intervalMinutes: number };
   server: { port: number; host: string };
 }
 

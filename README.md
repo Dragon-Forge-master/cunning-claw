@@ -5,9 +5,12 @@ A Claude-powered personal assistant that controls your machine. Voice in, voice 
 ## Features
 
 - **Brain** — Claude Opus 5 with adaptive thinking, streaming responses, prompt-cached persona
+- **Workspace** — OpenClaw/Hermes-compatible `SOUL.md`, `USER.md`, `HEARTBEAT.md`, `MEMORY.md`, plus [agentskills.io](https://agentskills.io) skill folders
+- **Heartbeat** — quiet always-on loop; replies `HEARTBEAT_OK` and stays out of the transcript when nothing is due
+- **Field map** — curated tracker of Jarvis-class systems in `docs/LANDSCAPE.md` (OpenClaw, Hermes, Stanford OpenJarvis, …)
 - **System control** — runs shell commands, reads/writes files, launches apps and URLs, controls volume, reads live telemetry
-- **Safety** — config-driven command policy: safe commands run instantly, risky ones raise an approval card in the HUD, destructive ones are hard-blocked
-- **Memory** — long-term facts persist across sessions (`data/memory.json`)
+- **Safety** — config-driven command policy: safe commands run instantly, risky ones raise an approval card in the HUD, destructive ones are hard-blocked even if config is emptied
+- **Memory** — long-term facts persist across sessions (`data/memory.json` and `workspace/MEMORY.md`)
 - **Web search** — Anthropic server-side web search for current events
 - **Browser control** — drives its own Chrome via the DevTools Protocol: open pages, read them, list tabs, click and type (approval-gated)
 - **Email** — reads and searches Gmail through that browser session, no credentials handled
@@ -133,18 +136,24 @@ Everything tunable lives in `jarvis.config.json`:
 
 ```
 public/          HUD frontend (vanilla JS, canvas arc reactor, SSE client)
-src/server.ts    Express + SSE event bus + approval flow
+src/server.ts    Express + SSE event bus + approval flow + heartbeat
 src/agent.ts     Streaming manual agent loop (Anthropic SDK)
 src/tools.ts     Tool definitions + executors + command policy
+src/workspace.ts SOUL / HEARTBEAT / agentskills.io loader
+src/landscape.ts Curated field map of competing Jarvis systems
 src/voice.ts     Server-side TTS (Piper neural, espeak fallback)
 src/browser.ts   Chrome control via DevTools Protocol + Gmail reading
 src/desktop.ts   Screen capture (vision), window control, input, clipboard
 src/memory.ts    Long-term memory store
 src/config.ts    Config loader
+workspace/       Operator-editable soul, heartbeat, skills
+docs/            LANDSCAPE.md — what we track, steal, and refuse
 data/            Runtime state (history, memory) — gitignored
 ```
 
 The server binds to `127.0.0.1` only — it is not exposed to your network.
+
+The mission versus OpenClaw and Hermes is in [`docs/LANDSCAPE.md`](docs/LANDSCAPE.md). We take their workspace files and heartbeat. We refuse being a kitchen-sink gateway. JARVIS stays a butler on the glass.
 
 ## Tests
 

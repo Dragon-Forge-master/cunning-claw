@@ -9,6 +9,8 @@ import { remember, forget } from "./memory.js";
 import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
 import * as http from "./http.js";
+import { readSkill, writeSkill } from "./workspace.js";
+import { landscapeSummary } from "./landscape.js";
 
 const execAsync = promisify(exec);
 
@@ -381,6 +383,38 @@ export const toolDefinitions: Anthropic.Tool[] = [
     },
     strict: true,
   },
+  {
+    name: "skill_read",
+    description:
+      "Load the full SKILL.md for a named skill (agentskills.io). Use when the skill index says it matches the request.",
+    input_schema: {
+      type: "object",
+      properties: { name: { type: "string", description: "Skill name or folder" } },
+      required: ["name"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "skill_write",
+    description:
+      "Create or overwrite a portable skill under workspace/skills/<name>/SKILL.md. Use after a novel multi-step success so JARVIS does not forget how. Requires approval.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "kebab-case skill name" },
+        description: { type: "string", description: "When to use this skill" },
+        body: { type: "string", description: "Markdown instructions below the frontmatter" },
+      },
+      required: ["name", "description", "body"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "landscape",
+    description:
+      "Return the curated field map of Jarvis-class systems (OpenClaw, Hermes, Open Interpreter, …). Use when asked what is out there or how we compare.",
+    input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -673,6 +707,16 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         }
         return await http.haStates(input.filter);
       case "set_timer": return setTimer(input, ctx);
+      case "skill_read": return readSkill(String(input.name ?? ""));
+      case "skill_write": {
+        const ok = await ctx.requestApproval(
+          "Write a JARVIS skill",
+          `${input.name}\n${input.description}\n\n${String(input.body ?? "").slice(0, 1500)}`,
+        );
+        if (!ok) return "The user declined to write the skill.";
+        return writeSkill(String(input.name), String(input.description), String(input.body));
+      }
+      case "landscape": return landscapeSummary();
       default: return `Unknown tool: ${name}`;
     }
   } catch (err: any) {

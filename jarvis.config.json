@@ -97,5 +97,9 @@
   "coherence": {
     "ouroborosLimit": 2,
     "maxIterations": 25
+  },
+  "heartbeat": {
+    "enabled": true,
+    "intervalMinutes": 30
   }
 }

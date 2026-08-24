@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR } from "./config.js";
+import { appendMemoryMarkdown } from "./workspace.js";
 
 const MEMORY_FILE = path.join(DATA_DIR, "memory.json");
 
@@ -26,6 +27,9 @@ export function remember(key: string, value: string): string {
   const entries = load().filter((e) => e.key !== key);
   entries.push({ key, value, savedAt: new Date().toISOString() });
   save(entries);
+  try {
+    appendMemoryMarkdown(key, value);
+  } catch { /* workspace file is best-effort */ }
   return `Stored memory "${key}".`;
 }
 

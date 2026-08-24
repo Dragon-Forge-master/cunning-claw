@@ -5,6 +5,9 @@ import { config, ROOT } from "./config.js";
 import { getHistory, resetHistory, runTurn, type AgentEvents } from "./agent.js";
 import { systemStatusText } from "./tools.js";
 import * as voice from "./voice.js";
+import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
+import { listSkills } from "./workspace.js";
+import { loadLandscape } from "./landscape.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -34,6 +37,7 @@ function broadcast(event: string, data: unknown): void {
   else if (event === "approval_request") void voice.speak("Requesting authorisation, sir.");
   else if (event === "turn_start") voice.cancel();
   else if (event === "agent_error" && d?.message) void voice.speak(d.message);
+  // heartbeat_ok is silent on purpose — OpenClaw-style.
 }
 
 app.get("/api/events", (req, res) => {
@@ -95,13 +99,15 @@ app.get("/api/history", (_req, res) => {
   const display: { role: string; text: string }[] = [];
   for (const m of getHistory()) {
     if (m.role === "user" && typeof m.content === "string") {
-      display.push({ role: "user", text: m.content.replace(/^\[context[\s\S]*?\]\n\n/, "") });
+      const text = m.content.replace(/^\[context[\s\S]*?\]\n\n/, "");
+      if (text.startsWith("[heartbeat]")) continue;
+      display.push({ role: "user", text });
     } else if (m.role === "assistant" && Array.isArray(m.content)) {
       const text = m.content
         .filter((b: any) => b.type === "text")
         .map((b: any) => b.text)
         .join("");
-      if (text) display.push({ role: "assistant", text });
+      if (text && text.trim() !== "HEARTBEAT_OK") display.push({ role: "assistant", text });
     }
   }
   res.json(display);
@@ -113,6 +119,8 @@ app.post("/api/reset", (_req, res) => {
 });
 
 app.get("/api/status", async (_req, res) => {
+  const hb = heartbeatStatus();
+  const landscape = loadLandscape();
   res.json({
     text: await systemStatusText(),
     online: Boolean(process.env.ANTHROPIC_API_KEY),
@@ -120,7 +128,15 @@ app.get("/api/status", async (_req, res) => {
     serverVoiceAvailable: await voice.isAvailable(),
     voiceEngine: (await voice.detect()).engine,
     voiceDetail: (await voice.detect()).detail,
+    skills: listSkills().length,
+    heartbeat: hb,
+    landscapeUpdated: landscape.updated,
+    landscapeCount: landscape.systems.length,
   });
+});
+
+app.get("/api/landscape", (_req, res) => {
+  res.json(loadLandscape());
 });
 
 // --- Voice control ----------------------------------------------------------
@@ -153,6 +169,7 @@ app.listen(port, host, () => {
       ? "  ⚠ No TTS engine found — install speech-dispatcher, or run the Piper setup."
       : `  Voice: ${engine} (${detail})`);
   });
+  startHeartbeat(agentEvents);
   if (!process.env.ANTHROPIC_API_KEY) {
     console.warn("  ⚠ ANTHROPIC_API_KEY not set — copy .env.example to .env and add your key.\n");
   }

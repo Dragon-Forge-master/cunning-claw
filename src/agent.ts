@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { config, DATA_DIR } from "./config.js";
 import { memorySnapshot } from "./memory.js";
 import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
+import { skillIndex, workspaceSnapshot } from "./workspace.js";
 
 const HISTORY_FILE = path.join(DATA_DIR, "history.json");
 
@@ -26,7 +27,10 @@ Operating principles:
 - You may chain tools freely. Check system state before guessing at it.
 - Risky shell commands and file writes trigger a human approval prompt automatically — you don't need to ask permission in prose first; just call the tool and the system handles consent.
 - Never run genuinely destructive commands. The denylist blocks some, but exercise your own judgment too.
-- Use memory_save for durable facts about the user, their machine, or standing preferences ("always", "remember", "from now on"). Saved memories appear in your context each turn.
+- Use memory_save for durable facts about the user, their machine, or standing preferences ("always", "remember", "from now on"). Saved memories appear in your context each turn and in workspace/MEMORY.md.
+- Skills live in workspace/skills as agentskills.io SKILL.md files. The skill index is in your context. When a skill matches, call skill_read before improvising. After a novel multi-step success, offer to skill_write so the next session does not re-learn it.
+- Heartbeat turns are tagged [heartbeat]. If nothing in HEARTBEAT.md is due, reply with exactly HEARTBEAT_OK and nothing else.
+- When asked what other Jarvis systems exist, call the landscape tool (or skill_read landscape-watch). Do not invent star counts.
 - Use web_search when asked about current events or anything beyond your knowledge.
 - A modest amount of dry wit is welcome. Obsequiousness is not.
 
@@ -103,7 +107,11 @@ function buildTools(): Anthropic.ToolUnion[] {
   return tools;
 }
 
-export async function runTurn(userMessage: string, events: AgentEvents): Promise<void> {
+export async function runTurn(
+  userMessage: string,
+  events: AgentEvents,
+  opts?: { kind?: "user" | "heartbeat" },
+): Promise<void> {
   if (busy) {
     events.emit("agent_error", { message: "Still working on the previous request, sir." });
     return;
@@ -113,7 +121,10 @@ export async function runTurn(userMessage: string, events: AgentEvents): Promise
 
   const now = new Date().toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" });
   const contextBlock =
-    `[context — current time: ${now}\nlong-term memory:\n${memorySnapshot()}]\n\n`;
+    `[context — current time: ${now}\n` +
+    `long-term memory:\n${memorySnapshot()}\n\n` +
+    `skills:\n${skillIndex()}\n\n` +
+    `workspace:\n${workspaceSnapshot()}]\n\n`;
 
   history.push({ role: "user", content: contextBlock + userMessage });
 
@@ -209,7 +220,11 @@ export async function runTurn(userMessage: string, events: AgentEvents): Promise
 
     history = trimHistory(history);
     saveHistory(history);
-    events.emit("turn_done", { text: finalText });
+    if (opts?.kind === "heartbeat" && finalText.trim() === "HEARTBEAT_OK") {
+      events.emit("heartbeat_ok", { at: new Date().toISOString() });
+    } else {
+      events.emit("turn_done", { text: finalText });
+    }
   } catch (err) {
     // Roll back the failed turn so history stays consistent.
     while (history.length > 0 && !(

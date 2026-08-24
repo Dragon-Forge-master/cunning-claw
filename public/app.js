@@ -17,7 +17,8 @@ let serverVoiceAvailable = false;
 const BOOT_LINES = [
   "J.A.R.V.I.S. v0.1 — boot sequence initiated",
   "loading cognitive core .............. claude-opus-5",
-  "mounting tool interface ............. 25 tools + web search",
+  "mounting tool interface ............. 28 tools + web search + skills",
+  "loading workspace ................... SOUL / HEARTBEAT / skills",
   "restoring long-term memory .......... ok",
   "establishing event stream ........... ok",
   "",
@@ -231,6 +232,10 @@ es.addEventListener("agent_error", (e) => {
   setState("STANDBY");
 });
 
+es.addEventListener("heartbeat_ok", () => {
+  setState("STANDBY");
+});
+
 es.onerror = () => {
   $("conn-dot").classList.remove("online");
 };
@@ -319,8 +324,16 @@ $("reset-btn").addEventListener("click", async () => {
 async function pollStatus() {
   try {
     const res = await fetch("/api/status");
-    const { text, online, serverVoice: sv, serverVoiceAvailable: sva } = await res.json();
-    $("sys-status").textContent = text;
+    const {
+      text, online, serverVoice: sv, serverVoiceAvailable: sva,
+      skills, heartbeat, landscapeCount, landscapeUpdated,
+    } = await res.json();
+    const extra = [
+      "",
+      `Skills: ${skills ?? 0}  ·  Heartbeat: ${heartbeat?.enabled ? `every ${heartbeat.intervalMinutes}m` : "off"}${heartbeat?.lastAt ? ` (last ${heartbeat.lastAt.slice(11, 16)}Z)` : ""}`,
+      `Field map: ${landscapeCount ?? 0} systems  (${landscapeUpdated ?? "?"})`,
+    ].join("\n");
+    $("sys-status").textContent = text + extra;
     $("conn-dot").classList.toggle("online", online);
     serverVoice = Boolean(sv);
     serverVoiceAvailable = Boolean(sva);
