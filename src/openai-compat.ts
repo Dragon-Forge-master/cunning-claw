@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { config } from "./config.js";
-import { openAiBrain } from "./brain.js";
+import { openAiEndpoint, type BrainSpec } from "./brain.js";
 import { toolDefinitions } from "./tools.js";
 
 export type OpenAiChatMessage = {
@@ -90,11 +90,12 @@ export type OpenAiCompletion = {
 };
 
 export async function completeOpenAi(opts: {
+  spec: BrainSpec;
   system: string;
   history: Anthropic.MessageParam[];
   onText: (delta: string) => void;
 }): Promise<OpenAiCompletion> {
-  const brain = openAiBrain();
+  const brain = openAiEndpoint(opts.spec);
   const key = process.env[brain.apiKeyEnv];
   if (!key) {
     throw new Error(`Missing ${brain.apiKeyEnv} for the OpenAI-compatible provider.`);
@@ -102,7 +103,7 @@ export async function completeOpenAi(opts: {
 
   const payload = {
     model: brain.model,
-    max_tokens: config.maxTokens,
+    max_tokens: opts.spec.maxTokens ?? config.maxTokens,
     tools: openAiToolSchema(),
     messages: toOpenAiMessages(opts.system, opts.history),
   };

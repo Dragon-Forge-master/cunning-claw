@@ -74,6 +74,26 @@ export interface JarvisConfig {
   homeAssistant: { enabled: boolean; baseUrl: string; tokenEnv: string };
   coherence: { ouroborosLimit: number; maxIterations: number };
   heartbeat: { enabled: boolean; intervalMinutes: number };
+  /**
+   * Named brains that all share the same tools. One butler, several models.
+   * Legacy `model` / `brain.provider` still work if `catalog` is omitted.
+   */
+  brains?: {
+    default?: string;
+    heartbeat?: string;
+    fallbacks?: string[];
+    catalog?: Array<{
+      id: string;
+      label?: string;
+      provider?: "anthropic" | "openai";
+      model: string;
+      effort?: "low" | "medium" | "high" | "xhigh" | "max";
+      maxTokens?: number;
+      thinking?: boolean;
+      baseUrl?: string;
+      apiKeyEnv?: string;
+    }>;
+  };
   brain?: {
     provider?: "anthropic" | "openai";
     openai?: { baseUrl?: string; model?: string; apiKeyEnv?: string };

@@ -2,11 +2,11 @@
 
 A personal assistant that controls your Linux machine. Voice in, voice out, real system control, persistent memory — wrapped in an arc-reactor HUD.
 
-Not OpenClaw. Not Hermes. We take their workspace files, heartbeat, skills, one messenger, and a cheaper brain. We refuse being a kitchen-sink gateway. JARVIS stays a butler on the glass.
+Not OpenClaw. Not Hermes. We take their workspace files, heartbeat, skills, one messenger, and their model routing. We refuse being a kitchen-sink gateway. JARVIS stays a butler on the glass: **one pair of hands, several brains.**
 
 ## Features
 
-- **Brain** — Anthropic (Claude Opus, adaptive thinking, prompt-cached persona) by default. Flip `brain.provider` to `"openai"` for OpenAI, OpenRouter, LocalAI, vLLM, or anything else that speaks `/v1/chat/completions`
+- **Brains** — a named roster, not a sub-agent org chart. `core` (Claude Opus) talks. `pulse` (Haiku) does the quiet heartbeat. `cheap` is any OpenAI-compatible endpoint (OpenAI, OpenRouter, LocalAI, Ollama). Same tools on every brain. Pin one from the HUD or `/brain`. If a provider 429s or falls over, the next brain in `fallbacks` takes the turn — unless you pinned, in which case it fails visibly.
 - **Telegram** — one messenger, allowlisted chat ids only. Token without a chat id is ignored. `/whoami` tells you the id. Approvals land as EXECUTE / DENY buttons on the phone, so you do not need the HUD open
 - **Workspace** — OpenClaw/Hermes-compatible `SOUL.md`, `USER.md`, `HEARTBEAT.md`, `MEMORY.md`, plus [agentskills.io](https://agentskills.io) skill folders
 - **Heartbeat** — quiet always-on loop; replies `HEARTBEAT_OK` and stays out of the transcript when nothing is due
@@ -33,22 +33,32 @@ cp .env.example .env   # ANTHROPIC_API_KEY, or OPENAI_API_KEY if you switch brai
 npm run dev            # → http://127.0.0.1:3900
 ```
 
-### Model routing
+### Several brains, one pair of hands
 
-Default is Anthropic. To use an OpenAI-compatible endpoint, in `jarvis.config.json`:
+OpenClaw's useful trick is not twenty agents. It is this: the same tool loop, different models for different stakes.
+
+`jarvis.config.json`:
 
 ```json
-"brain": {
-  "provider": "openai",
-  "openai": {
-    "baseUrl": "https://api.openai.com/v1",
-    "model": "gpt-4o-mini",
-    "apiKeyEnv": "OPENAI_API_KEY"
-  }
+"brains": {
+  "default": "core",
+  "heartbeat": "pulse",
+  "fallbacks": ["pulse", "cheap"],
+  "catalog": [
+    { "id": "core",  "provider": "anthropic", "model": "claude-opus-5", "thinking": true },
+    { "id": "pulse", "provider": "anthropic", "model": "claude-haiku-4-5", "thinking": false, "maxTokens": 2048 },
+    { "id": "cheap", "provider": "openai", "model": "gpt-4o-mini", "baseUrl": "https://api.openai.com/v1", "apiKeyEnv": "OPENAI_API_KEY" }
+  ]
 }
 ```
 
-`OPENAI_BASE_URL` in `.env` overrides `baseUrl` (handy for OpenRouter: `https://openrouter.ai/api/v1`, or a local server). If the server rejects streaming+tools, JARVIS retries once without streaming.
+- Heartbeat always uses `pulse`, even if you pinned `core` for chat. That is how the bill stays sane.
+- `/brain cheap` (HUD buttons, Telegram, or the transcript) pins conversation to that model. Fallbacks will not silently swap it.
+- `/brain auto` clears the pin.
+- Add a local brain by copying `cheap` and pointing `baseUrl` at Ollama / vLLM (`http://127.0.0.1:11434/v1`).
+- If the OpenAI-compatible server rejects streaming+tools, JARVIS retries once without streaming.
+
+Legacy `brain.provider` still works if `brains.catalog` is omitted.
 
 ### Telegram
 
@@ -155,9 +165,9 @@ Three ideas here are ported from Chris's own prior work rather than invented:
 
 Everything tunable lives in `jarvis.config.json`:
 
-- `brain.provider` — `"anthropic"` or `"openai"`
-- `brain.openai` — base URL, model, env var that holds the key
-- `model`, `effort`, `maxTokens` — Anthropic brain
+- `brains.catalog` — named models. Same tools on all of them
+- `brains.default` / `brains.heartbeat` / `brains.fallbacks` — who thinks, who watches, who catches
+- `model`, `effort`, `maxTokens` — legacy Anthropic defaults if catalog is omitted
 - `persona` — name, how it addresses you
 - `commandPolicy.autoApprovePatterns` — regexes for commands that run without asking
 - `commandPolicy.denyPatterns` — regexes for commands that are never run
@@ -170,7 +180,7 @@ Everything tunable lives in `jarvis.config.json`:
 public/              HUD frontend (vanilla JS, canvas arc reactor, SSE client)
 src/server.ts        Express + SSE event bus + approval flow + heartbeat + Telegram
 src/agent.ts         Streaming agent loop (Anthropic or OpenAI-compatible)
-src/brain.ts         Provider selection
+src/brain.ts         Named roster, pins, heartbeat vs chat, failover
 src/openai-compat.ts Anthropic history → OpenAI messages + streaming tools
 src/telegram.ts      Allowlisted getUpdates poll + approval buttons
 src/journal.ts       Daily conversation log + search

@@ -6,7 +6,7 @@ There are hundreds of student “JARVIS” clones. Almost none of them are assis
 
 | System | Role | What we take | What we refuse |
 | --- | --- | --- | --- |
-| **OpenClaw** | Always-on daemon in your chats | `SOUL.md` / `HEARTBEAT.md` / skills folders; quiet heartbeat | Internet-exposed gateways, plugin sprawl, token furnaces |
+| **OpenClaw** | Always-on daemon in your chats | `SOUL.md` / `HEARTBEAT.md` / skills folders; quiet heartbeat; named brains with a cheap heartbeat model and a fallback chain | Internet-exposed gateways, plugin sprawl, token furnaces, sub-agent org charts |
 | **Hermes Agent** (Nous) | Self-improving runtime | `agentskills.io` SKILL.md, skills from experience, MEMORY/USER files | Framework-not-product. No HUD, no machine soul |
 | **Open Interpreter** | Supervised local code | Approval before shell | Not persistent. Not JARVIS |
 | **Stanford OpenJarvis** | On-device research stack | Local-first, cost as a metric | Research scaffolding |

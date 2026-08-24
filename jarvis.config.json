@@ -102,6 +102,38 @@
     "enabled": true,
     "intervalMinutes": 30
   },
+  "brains": {
+    "default": "core",
+    "heartbeat": "pulse",
+    "fallbacks": ["pulse", "cheap"],
+    "catalog": [
+      {
+        "id": "core",
+        "label": "Core",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "effort": "high",
+        "thinking": true
+      },
+      {
+        "id": "pulse",
+        "label": "Pulse",
+        "provider": "anthropic",
+        "model": "claude-haiku-4-5",
+        "effort": "low",
+        "maxTokens": 2048,
+        "thinking": false
+      },
+      {
+        "id": "cheap",
+        "label": "Cheap",
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+        "baseUrl": "https://api.openai.com/v1",
+        "apiKeyEnv": "OPENAI_API_KEY"
+      }
+    ]
+  },
   "brain": {
     "provider": "anthropic",
     "openai": {

@@ -3,7 +3,7 @@ import test from "node:test";
 import { toOpenAiMessages, openAiToolSchema } from "./openai-compat.js";
 import { activeProvider } from "./brain.js";
 
-test("defaults to the Anthropic brain", () => {
+test("conversation default is Anthropic core", () => {
   assert.equal(activeProvider(), "anthropic");
 });
 

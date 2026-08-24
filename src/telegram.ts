@@ -2,7 +2,7 @@ import { config } from "./config.js";
 import type { AgentEvents } from "./agent.js";
 import { runTurn } from "./agent.js";
 import { systemStatusText } from "./tools.js";
-import { activeProvider, brainLabel, brainReady } from "./brain.js";
+import { applyBrainCommand, catalogStatus, formatCatalog } from "./brain.js";
 
 const API = "https://api.telegram.org";
 
@@ -157,7 +157,8 @@ async function handleMessage(msg: any, events: AgentEvents): Promise<void> {
       chatId,
       "Dragon Forge JARVIS.\n" +
         "/help — this\n" +
-        "/status — machine + brain\n" +
+        "/status — machine + brains\n" +
+        "/brain — list / pin a model (same tools)\n" +
         "/whoami — this chat id\n\n" +
         "Anything else is a turn. Risky tools still need EXECUTE on this chat or the HUD.",
     );
@@ -166,10 +167,19 @@ async function handleMessage(msg: any, events: AgentEvents): Promise<void> {
 
   if (text === "/status") {
     const body = await systemStatusText();
+    const brains = catalogStatus();
+    const a = brains.active;
     await send(
       chatId,
-      `Brain: ${activeProvider()} / ${brainLabel()} (${brainReady() ? "key present" : "NO KEY"})\n${body}`,
+      `Brain: ${a.id} / ${a.model} (${a.source}${a.ready ? "" : ", NO KEY"})\n` +
+        `${formatCatalog()}\n\n${body}`,
     );
+    return;
+  }
+
+  const brainReply = applyBrainCommand(text);
+  if (brainReply !== null) {
+    await send(chatId, brainReply);
     return;
   }
 

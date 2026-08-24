@@ -38,7 +38,11 @@ header {
 }
 .brand { color: var(--cyan); font-size: 20px; letter-spacing: 4px; text-shadow: 0 0 12px var(--cyan-glow); }
 .brand .sub { font-size: 10px; letter-spacing: 1px; color: var(--cyan-dim); margin-left: 10px; }
-.header-controls { display: flex; gap: 8px; align-items: center; }
+.header-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+
+.brain-picker { display: flex; gap: 4px; align-items: center; }
+.brain-btn { letter-spacing: 1px; padding: 4px 8px; font-size: 10px; }
+.brain-btn.offline { opacity: 0.4; }
 
 .ctl {
   background: transparent; border: 1px solid var(--cyan-dim); color: var(--cyan-dim);

@@ -8,7 +8,7 @@ import * as voice from "./voice.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
 import { listSkills } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
-import { brainLabel, brainReady, activeProvider } from "./brain.js";
+import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, missingKeyHint } from "./brain.js";
 import { startTelegram, sendApprovalCard, approvalSettled, telegramStatus } from "./telegram.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
@@ -100,6 +100,13 @@ const agentEvents: AgentEvents = { emit: broadcast, requestApproval };
 app.post("/api/chat", (req, res) => {
   const message = String(req.body?.message ?? "").trim();
   if (!message) return res.status(400).json({ error: "Empty message" });
+  const brainReply = applyBrainCommand(message);
+  if (brainReply !== null) {
+    res.json({ ok: true, command: true });
+    broadcast("notice", { message: brainReply });
+    broadcast("brain", catalogStatus());
+    return;
+  }
   res.json({ ok: true });
   void runTurn(message, agentEvents);
 });
@@ -135,6 +142,7 @@ app.get("/api/status", async (_req, res) => {
     text: await systemStatusText(),
     online: brainReady(),
     brain: { provider: activeProvider(), model: brainLabel() },
+    brains: catalogStatus(),
     serverVoice: (await voice.isAvailable()) && voice.isEnabled(),
     serverVoiceAvailable: await voice.isAvailable(),
     voiceEngine: (await voice.detect()).engine,
@@ -146,6 +154,16 @@ app.get("/api/status", async (_req, res) => {
     telegram: telegramStatus(),
     toolCount: toolDefinitions.length,
   });
+});
+
+app.post("/api/brain", (req, res) => {
+  const id = req.body?.id;
+  const reply = id == null || id === "" || id === "auto"
+    ? applyBrainCommand("/brain auto")
+    : applyBrainCommand(`/brain ${String(id)}`);
+  broadcast("notice", { message: reply });
+  broadcast("brain", catalogStatus());
+  res.json({ ok: true, message: reply, brains: catalogStatus() });
 });
 
 app.get("/api/landscape", (_req, res) => {
@@ -184,7 +202,8 @@ app.listen(port, host, () => {
   });
   startHeartbeat(agentEvents);
   startTelegram(agentEvents, { resolveApproval: settleApproval });
+  for (const line of bootBrainLines()) console.log(line);
   if (!brainReady()) {
-    console.warn(`  ⚠ Brain (${activeProvider()} / ${brainLabel()}) has no API key.\n`);
+    console.warn(`  ⚠ No brain has an API key. ${missingKeyHint()}\n`);
   }
 });
