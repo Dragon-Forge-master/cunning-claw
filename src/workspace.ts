@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ROOT } from "./config.js";
+import { redact } from "./redact.js";
 
 export const WORKSPACE = path.join(ROOT, "workspace");
 
@@ -126,7 +127,7 @@ export function writeSkill(name: string, description: string, body: string): str
   const md =
     `---\nname: ${slug}\ndescription: ${description.trim().slice(0, 1024)}\n` +
     `author: jarvis\nwritten: ${new Date().toISOString().slice(0, 10)}\n---\n\n${body.trim()}\n`;
-  fs.writeFileSync(path.join(dir, "SKILL.md"), md);
+  fs.writeFileSync(path.join(dir, "SKILL.md"), redact(md));
   return `Wrote skill "${slug}" to workspace/skills/${slug}/SKILL.md`;
 }
 
@@ -139,5 +140,5 @@ export function appendMemoryMarkdown(key: string, value: string): void {
     .split("\n")
     .filter((row) => !row.startsWith(`- ${key}:`))
     .join("\n");
-  fs.writeFileSync(file, `${stripped}\n${line}\n`);
+  fs.writeFileSync(file, redact(`${stripped}\n${line}\n`));
 }

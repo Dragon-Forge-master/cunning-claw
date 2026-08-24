@@ -108,6 +108,21 @@ once and the session persists. Jarvis never sees, stores, or types your password
 Tools: `browser_open`, `browser_read`, `browser_tabs` (read-only, run freely), `browser_click`,
 `browser_type` (always approval-gated), `check_email`, `read_email`.
 
+### Secret redaction
+
+Everything JARVIS persists (`data/history.json`, `data/journal/`, `workspace/MEMORY.md`,
+written skills) and everything it broadcasts over SSE passes through `src/redact.ts` first.
+Secrets reach that path in ordinary use — a pasted key, a config file read by `read_file`,
+an `env` in shell output, an `Authorization` header in an HTTP response.
+
+Known shapes are matched directly (Anthropic, OpenAI, OpenRouter, GitHub, Google OAuth and
+API keys, AWS, Slack, Stripe, Telegram, JWTs, PEM private keys). Unfamiliar providers are
+still caught by generic rules for `*_KEY=`/`*_TOKEN=` assignments, JSON credential fields,
+and `Authorization: Bearer`. A short prefix survives (`[github-token:ghp_…REDACTED]`) so a
+transcript stays readable.
+
+This reduces damage; it is not a reason to hand JARVIS credentials. Put keys in `.env`.
+
 ### Prompt-injection defence
 
 Web pages and emails are written by strangers, and some contain text crafted to look like orders

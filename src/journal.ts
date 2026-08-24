@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { redact } from "./redact.js";
 import { DATA_DIR } from "./config.js";
 import { WORKSPACE, defuse, wrapRecorded } from "./workspace.js";
 
@@ -9,7 +10,7 @@ export function appendJournal(role: "operator" | "jarvis", text: string): void {
   const day = new Date().toISOString().slice(0, 10);
   fs.mkdirSync(JOURNAL_DIR, { recursive: true });
   const line = `- ${new Date().toISOString().slice(11, 19)} ${role}: ${defuse(text).replace(/\s+/g, " ").slice(0, 400)}\n`;
-  fs.appendFileSync(path.join(JOURNAL_DIR, `${day}.md`), line);
+  fs.appendFileSync(path.join(JOURNAL_DIR, `${day}.md`), redact(line));
 }
 
 /** Last lines of today's log, for the per-turn context block. */

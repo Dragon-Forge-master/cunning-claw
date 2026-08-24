@@ -5,6 +5,7 @@ import { config, ROOT } from "./config.js";
 import { getHistory, resetHistory, runTurn, type AgentEvents } from "./agent.js";
 import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
+import { redactDeep } from "./redact.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
 import { listSkills } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
@@ -29,7 +30,9 @@ app.use(express.static(path.join(ROOT, "public")));
 const sseClients = new Set<express.Response>();
 
 function broadcast(event: string, data: unknown): void {
-  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  // Single choke point for everything the HUD, Telegram and the voice see.
+  // Redacting here covers every event without each emitter having to remember.
+  const payload = `event: ${event}\ndata: ${JSON.stringify(redactDeep(data))}\n\n`;
   for (const res of sseClients) res.write(payload);
 
   // Server-side voice: the server runs on the user's machine, so speaking

@@ -6,6 +6,7 @@ import { config, DATA_DIR } from "./config.js";
 import { memorySnapshot } from "./memory.js";
 import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
 import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted } from "./routing.js";
+import { containsSecret, redactDeep } from "./redact.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
 import { pickBrain, nextBrain, isFailoverError, describeBrain, missingKeyHint, brainHasKey, catalog, type BrainSpec } from "./brain.js";
 import { completeOpenAi } from "./openai-compat.js";
@@ -74,7 +75,10 @@ function loadHistory(): Msg[] {
 
 function saveHistory(messages: Msg[]): void {
   if (!config.history.persist) return;
-  fs.writeFileSync(HISTORY_FILE, JSON.stringify(messages, null, 2));
+  // Secrets reach the transcript constantly — pasted by the user, or returned
+  // by a tool that read a config file or an HTTP response. history.json is
+  // plain text on disk, so redact before it lands rather than after.
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(redactDeep(messages), null, 2));
 }
 
 /** Trim from the front, but only to a boundary where the first message is a
