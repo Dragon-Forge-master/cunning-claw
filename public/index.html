@@ -16,6 +16,7 @@
       <div class="brand">J.A.R.V.I.S. <span class="sub">Just A Rather Very Intelligent System</span></div>
       <div class="header-controls">
         <div id="brain-picker" class="brain-picker" title="Which model thinks. Same tools on every brain."></div>
+        <button id="preview-toggle" class="ctl" title="In-HUD browser viewport">VIEWPORT</button>
         <button id="tts-toggle" class="ctl active" title="Voice output">VOICE</button>
         <button id="wake-toggle" class="ctl" title="Always listening for 'Jarvis'">WAKE</button>
         <button id="reset-btn" class="ctl" title="Clear conversation">RESET</button>
@@ -43,6 +44,24 @@
           <input id="msg-input" type="text" placeholder="At your service, sir…" autocomplete="off">
           <button type="submit" id="send-btn">SEND</button>
         </form>
+      </section>
+
+      <section id="preview-panel">
+        <div class="preview-chrome">
+          <span class="panel-title preview-ttl">VIEWPORT</span>
+          <form id="preview-bar">
+            <input id="preview-url" type="text" spellcheck="false" placeholder="http://127.0.0.1:…">
+            <button type="submit" class="ctl" title="Load">GO</button>
+            <button type="button" id="preview-reload" class="ctl" title="Reload">RELOAD</button>
+            <button type="button" id="preview-width" class="ctl" title="Toggle phone width">WIDE</button>
+            <button type="button" id="preview-pop" class="ctl" title="Open in a real browser tab">POP</button>
+            <button type="button" id="preview-close" class="ctl" title="Close viewport">CLOSE</button>
+          </form>
+        </div>
+        <div id="preview-stage">
+          <iframe id="preview-frame" title="JARVIS viewport" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"></iframe>
+        </div>
+        <div id="preview-hint">If this pane is blank, the app refused to be framed. POP opens it in a tab.</div>
       </section>
     </main>
   </div>

@@ -10,6 +10,7 @@ import { listSkills } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
 import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, missingKeyHint } from "./brain.js";
 import { startTelegram, sendApprovalCard, approvalSettled, telegramStatus } from "./telegram.js";
+import { openPreview, closePreview, reloadPreview, previewState } from "./preview.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -39,6 +40,7 @@ function broadcast(event: string, data: unknown): void {
   else if (event === "approval_request") void voice.speak("Requesting authorisation, sir.");
   else if (event === "turn_start") voice.cancel();
   else if (event === "agent_error" && d?.message) void voice.speak(d.message);
+  else if (event === "preview" && d?.action === "open") void voice.speak("Preview on the glass, sir.");
   // heartbeat_ok is silent on purpose — OpenClaw-style.
 }
 
@@ -153,7 +155,26 @@ app.get("/api/status", async (_req, res) => {
     landscapeCount: landscape.systems.length,
     telegram: telegramStatus(),
     toolCount: toolDefinitions.length,
+    preview: previewState(),
   });
+});
+
+app.post("/api/preview", (req, res) => {
+  const action = String(req.body?.action ?? "open");
+  if (action === "close") {
+    const st = closePreview();
+    broadcast("preview", { action: "close", ...st });
+    return res.json({ ok: true, ...st });
+  }
+  if (action === "reload") {
+    const st = reloadPreview();
+    broadcast("preview", { action: "reload", ...st });
+    return res.json({ ok: true, ...st });
+  }
+  const opened = openPreview(String(req.body?.url ?? ""));
+  if (!opened.ok) return res.status(400).json({ error: opened.error });
+  broadcast("preview", { action: "open", open: true, url: opened.url });
+  res.json({ ok: true, open: true, url: opened.url });
 });
 
 app.post("/api/brain", (req, res) => {

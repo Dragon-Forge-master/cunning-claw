@@ -11,6 +11,11 @@ import * as desktop from "./desktop.js";
 import * as http from "./http.js";
 import { readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
+import { expandHome, isSensitivePath } from "./paths.js";
+import { grepFiles, globFiles, planEdit, commitEdit, readTodos, writeTodos, formatTodos, numberLines, resolveWorkPath } from "./coding.js";
+import { openPreview, closePreview, reloadPreview } from "./preview.js";
+
+export { isSensitivePath } from "./paths.js";
 
 const execAsync = promisify(exec);
 
@@ -54,11 +59,15 @@ export const toolDefinitions: Anthropic.Tool[] = [
   },
   {
     name: "read_file",
-    description: "Read a text file from the user's machine (up to 100KB).",
+    description:
+      "Read a text file from the user's machine (up to 100KB). Returns numbered lines. " +
+      "path may be absolute, ~/ , or relative to coding.root.",
     input_schema: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Absolute path, or ~/ relative to home" },
+        path: { type: "string" },
+        offset: { type: "number", description: "1-based start line (optional)" },
+        limit: { type: "number", description: "Max lines to return (optional)" },
       },
       required: ["path"],
       additionalProperties: false,
@@ -67,7 +76,8 @@ export const toolDefinitions: Anthropic.Tool[] = [
   {
     name: "write_file",
     description:
-      "Write or append to a text file on the user's machine. Always requires user approval.",
+      "Write or append to a text file on the user's machine. Always requires user approval. " +
+      "Prefer edit_file for surgical changes to an existing file.",
     input_schema: {
       type: "object",
       properties: {
@@ -79,6 +89,92 @@ export const toolDefinitions: Anthropic.Tool[] = [
       additionalProperties: false,
     },
     strict: true,
+  },
+  {
+    name: "edit_file",
+    description:
+      "Surgically replace unique text in an existing file (Claude Code-style). " +
+      "oldString must match exactly once unless replaceAll is true. Always requires approval.",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Absolute, ~/ , or relative to coding.root" },
+        oldString: { type: "string", description: "Exact text to find" },
+        newString: { type: "string", description: "Replacement text" },
+        replaceAll: { type: "boolean", description: "Replace every match (default false)" },
+      },
+      required: ["path", "oldString", "newString"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    name: "grep",
+    description:
+      "Search file contents under coding.root (or a given path). Read-only. Use this before guessing where code lives.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "JavaScript regular expression" },
+        path: { type: "string", description: "File or directory to search (default: coding.root)" },
+        glob: { type: "string", description: "Only files matching this glob, e.g. **/*.ts" },
+      },
+      required: ["pattern"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "glob",
+    description: "Find files by glob pattern under coding.root. Read-only. Skips node_modules, .git, dist.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "e.g. **/*.ts or src/**/*.json" },
+        path: { type: "string", description: "Directory to search from" },
+      },
+      required: ["pattern"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "todo",
+    description:
+      "Set or read the in-progress work list. For multi-step jobs, write the list first, mark one in_progress, complete as you go.",
+    input_schema: {
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          description: "Replace the list. Omit to only read.",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              content: { type: "string" },
+              status: { type: "string", enum: ["pending", "in_progress", "completed"] },
+            },
+            required: ["content", "status"],
+            additionalProperties: false,
+          },
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "preview",
+    description:
+      "Open, reload, or close the in-HUD browser panel (Claude Code-style viewport). " +
+      "Call this when a local web server is up or UI work is ready to look at. " +
+      "url is required to open (http/https; 0.0.0.0 is rewritten to 127.0.0.1).",
+    input_schema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["open", "close", "reload"], description: "Default open" },
+        url: { type: "string", description: "Page to show, e.g. http://127.0.0.1:5173" },
+      },
+      additionalProperties: false,
+    },
   },
   {
     name: "open",
@@ -471,22 +567,6 @@ export function classifyCommand(command: string): Verdict {
   return "approve";
 }
 
-/** Paths the model must not read or write, even via dedicated file tools. */
-const SENSITIVE_PATH = /\/etc\/(shadow|sudoers)|\.ssh\/.*(id_|authorized_keys)|\/root\//i;
-
-export function isSensitivePath(p: string): boolean {
-  const expanded = expandHome(p);
-  return SENSITIVE_PATH.test(expanded);
-}
-
-// ---------------------------------------------------------------------------
-// Executors
-// ---------------------------------------------------------------------------
-
-function expandHome(p: string): string {
-  return p.startsWith("~/") ? path.join(os.homedir(), p.slice(2)) : p;
-}
-
 async function runCommand(input: { command: string; cwd?: string }, ctx: ToolContext): Promise<string> {
   const verdict = classifyCommand(input.command);
   if (verdict === "deny") {
@@ -512,21 +592,26 @@ async function runCommand(input: { command: string; cwd?: string }, ctx: ToolCon
   }
 }
 
-async function readFileTool(input: { path: string }): Promise<string> {
-  if (isSensitivePath(input.path)) {
+async function readFileTool(input: { path: string; offset?: number; limit?: number }): Promise<string> {
+  const p = resolveWorkPath(input.path);
+  if (isSensitivePath(p)) {
     return "BLOCKED: that path is on the sensitive-file denylist and will never be read.";
   }
-  const p = expandHome(input.path);
   const stat = fs.statSync(p);
-  if (stat.size > 100 * 1024) return `File is ${(stat.size / 1024).toFixed(0)}KB — too large. Use run_command with head/grep instead.`;
-  return fs.readFileSync(p, "utf-8");
+  if (stat.size > 100 * 1024) return `File is ${(stat.size / 1024).toFixed(0)}KB — too large. Use grep, or run_command with head.`;
+  const raw = fs.readFileSync(p, "utf-8");
+  const lines = raw.split("\n");
+  const start = Math.max(1, Math.floor(input.offset ?? 1));
+  const count = Math.max(1, Math.floor(input.limit ?? lines.length));
+  const slice = lines.slice(start - 1, start - 1 + count);
+  return numberLines(slice.join("\n"), start);
 }
 
 async function writeFileTool(
   input: { path: string; content: string; append?: boolean },
   ctx: ToolContext,
 ): Promise<string> {
-  const p = expandHome(input.path);
+  const p = resolveWorkPath(input.path);
   if (isSensitivePath(p)) {
     return "BLOCKED: that path is on the sensitive-file denylist and will never be written.";
   }
@@ -653,6 +738,54 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "run_command": return await runCommand(input, ctx);
       case "read_file": return await readFileTool(input);
       case "write_file": return await writeFileTool(input, ctx);
+      case "edit_file": {
+        const plan = planEdit({
+          path: String(input.path ?? ""),
+          oldString: String(input.oldString ?? ""),
+          newString: String(input.newString ?? ""),
+          replaceAll: Boolean(input.replaceAll),
+        });
+        if (!plan.ok) return plan.error;
+        const ok = await ctx.requestApproval(`Edit ${plan.path}`, plan.preview);
+        if (!ok) return "The user declined the edit.";
+        return commitEdit({
+          path: String(input.path ?? ""),
+          oldString: String(input.oldString ?? ""),
+          newString: String(input.newString ?? ""),
+          replaceAll: Boolean(input.replaceAll),
+        });
+      }
+      case "grep": return grepFiles({
+        pattern: String(input.pattern ?? ""),
+        path: input.path,
+        glob: input.glob,
+      });
+      case "glob": return globFiles(String(input.pattern ?? ""), input.path);
+      case "todo": {
+        if (Array.isArray(input.items)) {
+          const next = writeTodos(input.items);
+          ctx.emit("todos", { items: next });
+          return formatTodos(next);
+        }
+        return formatTodos();
+      }
+      case "preview": {
+        const action = String(input.action ?? "open");
+        if (action === "close") {
+          const st = closePreview();
+          ctx.emit("preview", { action: "close", ...st });
+          return "Viewport closed.";
+        }
+        if (action === "reload") {
+          const st = reloadPreview();
+          ctx.emit("preview", { action: "reload", ...st });
+          return st.url ? `Reloading ${st.url}` : "Nothing on the glass to reload.";
+        }
+        const opened = openPreview(String(input.url ?? ""));
+        if (!opened.ok) return opened.error;
+        ctx.emit("preview", { action: "open", open: true, url: opened.url });
+        return `Viewport open: ${opened.url}`;
+      }
       case "open": return await openTool(input);
       case "system_status": return await systemStatusText();
       case "set_volume": return await setVolume(input);

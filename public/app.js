@@ -247,6 +247,10 @@ es.addEventListener("brain", (e) => {
   renderBrainPicker(JSON.parse(e.data));
 });
 
+es.addEventListener("preview", (e) => {
+  applyPreview(JSON.parse(e.data));
+});
+
 es.onerror = () => {
   $("conn-dot").classList.remove("online");
 };
@@ -330,6 +334,68 @@ $("reset-btn").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// In-HUD viewport (Claude Code-style preview pane)
+// ---------------------------------------------------------------------------
+let previewUrl = "";
+let previewPhone = false;
+
+function applyPreview(data) {
+  if (!data) return;
+  if (data.action === "close" || data.open === false) {
+    $("hud").classList.remove("previewing");
+    $("preview-toggle").classList.remove("active");
+    return;
+  }
+  const url = data.url;
+  if (!url) return;
+  previewUrl = url;
+  $("preview-url").value = url;
+  const frame = $("preview-frame");
+  if (data.action === "reload") {
+    frame.src = url;
+  } else if (frame.src !== url) {
+    frame.src = url;
+  }
+  $("hud").classList.add("previewing");
+  $("preview-toggle").classList.add("active");
+}
+
+async function postPreview(body) {
+  await fetch("/api/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+$("preview-toggle").addEventListener("click", () => {
+  if ($("hud").classList.contains("previewing")) {
+    postPreview({ action: "close" });
+    return;
+  }
+  const url = $("preview-url").value.trim() || previewUrl || `${location.origin}/viewport.html`;
+  postPreview({ action: "open", url });
+});
+
+$("preview-bar").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const url = $("preview-url").value.trim();
+  if (url) postPreview({ action: "open", url });
+});
+
+$("preview-reload").addEventListener("click", () => postPreview({ action: "reload" }));
+$("preview-close").addEventListener("click", () => postPreview({ action: "close" }));
+$("preview-pop").addEventListener("click", () => {
+  if (previewUrl) window.open(previewUrl, "_blank", "noopener");
+});
+$("preview-width").addEventListener("click", (e) => {
+  previewPhone = !previewPhone;
+  $("preview-panel").classList.toggle("phone", previewPhone);
+  e.target.textContent = previewPhone ? "PHONE" : "WIDE";
+  e.target.classList.toggle("active", previewPhone);
+});
+
+// ---------------------------------------------------------------------------
 // System telemetry + history restore
 // ---------------------------------------------------------------------------
 function renderBrainPicker(payload) {
@@ -380,9 +446,13 @@ async function pollStatus() {
     const {
       text, online, serverVoice: sv, serverVoiceAvailable: sva,
       skills, heartbeat, landscapeCount, landscapeUpdated,
-      brain, brains, telegram, toolCount,
+      brain, brains, telegram, toolCount, preview,
     } = await res.json();
     renderBrainPicker(brains);
+    if (preview?.open && preview.url) {
+      const showing = $("hud").classList.contains("previewing") && previewUrl === preview.url;
+      if (!showing) applyPreview({ action: "open", url: preview.url, open: true });
+    }
     const active = brains?.active;
     const extra = [
       "",

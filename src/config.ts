@@ -98,6 +98,7 @@ export interface JarvisConfig {
     provider?: "anthropic" | "openai";
     openai?: { baseUrl?: string; model?: string; apiKeyEnv?: string };
   };
+  coding?: { root?: string; skip?: string[] };
   server: { port: number; host: string };
 }
 
