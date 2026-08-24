@@ -89,6 +89,18 @@ export type OpenAiCompletion = {
   toolUses: { id: string; name: string; input: unknown }[];
 };
 
+/** Loopback and private-range hosts are treated as local: no key required. */
+export function isLocalEndpoint(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false;
+  try {
+    const h = new URL(baseUrl).hostname.toLowerCase();
+    return h === "localhost" || h === "127.0.0.1" || h === "::1" ||
+      h.endsWith(".local") || /^192\.168\./.test(h) || /^10\./.test(h);
+  } catch {
+    return false;
+  }
+}
+
 export async function completeOpenAi(opts: {
   spec: BrainSpec;
   system: string;
@@ -97,7 +109,9 @@ export async function completeOpenAi(opts: {
 }): Promise<OpenAiCompletion> {
   const brain = openAiEndpoint(opts.spec);
   const key = process.env[brain.apiKeyEnv];
-  if (!key) {
+  // A local runtime (Ollama, llama.cpp, LM Studio) serves the same API with no
+  // auth. Demanding a key there would block offline use for no reason.
+  if (!key && !isLocalEndpoint(brain.baseUrl)) {
     throw new Error(`Missing ${brain.apiKeyEnv} for the OpenAI-compatible provider.`);
   }
 
@@ -109,7 +123,7 @@ export async function completeOpenAi(opts: {
   };
 
   const headers = {
-    Authorization: `Bearer ${key}`,
+    ...(key ? { Authorization: `Bearer ${key}` } : {}),
     "Content-Type": "application/json",
   };
 

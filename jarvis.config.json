@@ -134,6 +134,16 @@
         "model": "gpt-4o-mini",
         "baseUrl": "https://api.openai.com/v1",
         "apiKeyEnv": "OPENAI_API_KEY"
+      },
+      {
+        "id": "local",
+        "label": "Local",
+        "provider": "openai",
+        "model": "llama3.1:8b",
+        "baseUrl": "http://localhost:11434/v1",
+        "apiKeyEnv": "OLLAMA_API_KEY",
+        "effort": "low",
+        "thinking": false
       }
     ]
   },
@@ -153,6 +163,12 @@
   },
   "coding": {
     "root": "~",
-    "skip": ["node_modules", ".git", "dist", ".venv", "voices"]
+    "skip": [
+      "node_modules",
+      ".git",
+      "dist",
+      ".venv",
+      "voices"
+    ]
   }
 }

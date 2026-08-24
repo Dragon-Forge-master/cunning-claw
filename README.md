@@ -1,225 +1,177 @@
-# J.A.R.V.I.S.
+<div align="center">
 
-A personal assistant that controls your Linux machine. Voice in, voice out, real system control, persistent memory — wrapped in an arc-reactor HUD.
+<img src="docs/assets/banner.svg" alt="J.A.R.V.I.S." width="100%">
 
-Not OpenClaw. Not Hermes. We take their workspace files, heartbeat, skills, one messenger, and their model routing. We refuse being a kitchen-sink gateway. JARVIS stays a butler on the glass: **one pair of hands, several brains.**
+**A personal AI assistant that runs on your machine and actually operates it.**
+Sees your screen. Runs your shell. Reads your inbox. Speaks back.
+And refuses when a web page tells it to do something you didn't ask for.
 
-## Features
+<br>
 
-- **Viewport** — when the work is a page, JARVIS opens an in-HUD browser (Claude Code's preview pane). `preview` tool, VIEWPORT button, GO / RELOAD / PHONE / POP / CLOSE. Arc reactor tucks away while you look.
-- **Hands like Claude Code** — `glob`, `grep`, numbered `read_file`, surgical `edit_file`, `todo`, then `run_command`. Same tools on every brain.
-- **Telegram** — one messenger, allowlisted chat ids only. Token without a chat id is ignored. `/whoami` tells you the id. Approvals land as EXECUTE / DENY buttons on the phone, so you do not need the HUD open
-- **Workspace** — OpenClaw/Hermes-compatible `SOUL.md`, `USER.md`, `HEARTBEAT.md`, `MEMORY.md`, plus [agentskills.io](https://agentskills.io) skill folders
-- **Heartbeat** — quiet always-on loop; replies `HEARTBEAT_OK` and stays out of the transcript when nothing is due
-- **Memory that does not forget** — keyed facts (`data/memory.json` + `workspace/MEMORY.md`), a daily journal (`data/journal/YYYY-MM-DD.md`) injected into each turn, and a `memory_search` tool for older days
-- **Field map** — curated tracker of Jarvis-class systems in `docs/LANDSCAPE.md` (OpenClaw, Hermes, Stanford OpenJarvis, …)
-- **System control** — runs shell commands, reads/writes files, launches apps and URLs, controls volume, reads live telemetry
-- **Safety** — config-driven command policy: safe commands run instantly, risky ones raise an approval card (HUD and Telegram), destructive ones are hard-blocked even if config is emptied
-- **Web search** — Anthropic server-side web search for current events (on the OpenAI-compatible brain, use `http_request` to allowlisted hosts)
-- **Browser control** — drives its own Chrome via the DevTools Protocol: open pages, read them, list tabs, click and type (approval-gated)
-- **Email** — reads and searches Gmail through that browser session, no credentials handled
-- **Vision** — takes screenshots and actually looks at them (Anthropic). OpenAI-compatible brains get a text note instead of pixels
-- **Any REST API** — one allowlisted `http_request` tool with `${ENV_VAR}` secret injection, rather than a bespoke tool per service
-- **Smart home** — Home Assistant entity states and service calls (opt-in)
-- **Loop protection** — the Ouroboros guard blocks a tool call repeated identically within a turn
-- **Desktop control** — lists and focuses windows, sends keystrokes to any app (approval-gated), desktop notifications, clipboard, media keys
-- **Voice** — neural TTS (Piper, offline) server-side, with an espeak fallback; plus push-to-talk and "Jarvis" wake-word input
-- **Extras** — weather (no API key), timers/reminders announced aloud
+![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
+![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
+![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
+![tests](https://img.shields.io/badge/tests-55%20passing-35d6ed?style=for-the-badge)
+![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 
-## Setup
+<sub>Built in Cardiff by <b>Dragon Forge AI</b> · Local-first when privacy matters · Human approval when consequences matter</sub>
+
+</div>
+
+---
+
+## Install
 
 ```bash
+git clone https://github.com/Dragon-Forge-master/jarvis.git
+cd jarvis
 npm install
-cp .env.example .env   # ANTHROPIC_API_KEY, or OPENAI_API_KEY if you switch brains
-npm run dev            # → http://127.0.0.1:3900
+cp .env.example .env        # add your ANTHROPIC_API_KEY
+./setup-voice.sh            # neural voice, ~60MB, fully offline
+npm run dev
 ```
 
-### Several brains, one pair of hands
+Open **http://127.0.0.1:3900**. It binds to loopback only — nothing is exposed to your network.
 
-OpenClaw's useful trick is not twenty agents. It is this: the same tool loop, different models for different stakes.
+<div align="center">
+<br>
+<!-- SCREENSHOT: the HUD at rest — arc reactor, telemetry panel, empty transcript -->
+<img src="docs/assets/hud.png" alt="The JARVIS HUD" width="90%">
+<br><sub>The HUD: arc reactor, live telemetry, transcript, approval cards.</sub>
+</div>
 
-`jarvis.config.json`:
+---
 
-```json
-"brains": {
-  "default": "core",
-  "heartbeat": "pulse",
-  "fallbacks": ["pulse", "cheap"],
-  "catalog": [
-    { "id": "core",  "provider": "anthropic", "model": "claude-opus-5", "thinking": true },
-    { "id": "pulse", "provider": "anthropic", "model": "claude-haiku-4-5", "thinking": false, "maxTokens": 2048 },
-    { "id": "cheap", "provider": "openai", "model": "gpt-4o-mini", "baseUrl": "https://api.openai.com/v1", "apiKeyEnv": "OPENAI_API_KEY" }
-  ]
-}
-```
+## What it does
 
-- Heartbeat always uses `pulse`, even if you pinned `core` for chat. That is how the bill stays sane.
-- `/brain cheap` (HUD buttons, Telegram, or the transcript) pins conversation to that model. Fallbacks will not silently swap it.
-- `/brain auto` clears the pin.
-- Add a local brain by copying `cheap` and pointing `baseUrl` at Ollama / vLLM (`http://127.0.0.1:11434/v1`).
-- If the OpenAI-compatible server rejects streaming+tools, JARVIS retries once without streaming.
+| | |
+|---|---|
+| **Sees** | Screenshots the desktop and *looks* at it — reads UI state, verifies its own work |
+| **Operates** | Shell, files, apps, volume, media, clipboard, notifications, window focus, keystrokes |
+| **Browses** | Drives its own Chrome over the DevTools Protocol — opens, reads, clicks, types |
+| **Reads mail** | Gmail inbox and search, through that browser session. No credentials handled |
+| **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Jarvis" wake word |
+| **Remembers** | Markdown memory and a dated journal that survive restarts |
+| **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
+| **Reaches you** | Telegram, so it isn't trapped at your desk |
+| **Extends** | Skills as `SKILL.md` files, the [agentskills.io](https://agentskills.io) standard |
 
-Legacy `brain.provider` still works if `brains.catalog` is omitted.
+<div align="center">
+<br>
+<!-- SCREENSHOT: a turn using tools — tool chips, then a reply -->
+<img src="docs/assets/tools.png" alt="Tool use in the transcript" width="90%">
+<br><sub>Tool calls stream into the transcript as they happen.</sub>
+</div>
 
-### Telegram
+---
 
-1. Talk to [@BotFather](https://t.me/BotFather), copy the token into `TELEGRAM_BOT_TOKEN`.
-2. Message your bot `/whoami`. Put that chat id in `TELEGRAM_CHAT_ID`.
-3. Restart. JARVIS polls `getUpdates`. Strangers are dropped. Approvals appear as inline buttons.
+## Run it offline
 
-Both env vars are required. A token with no allowlist is a public back door; we refuse to open it.
-
-## Voice
-
-Speech is produced **server-side**, because Chrome on Linux exposes zero Web Speech
-synthesis voices (`speechSynthesis.getVoices()` returns an empty list, so browser TTS
-silently no-ops). Jarvis runs on your own machine, so the server's audio output is your
-speakers. Two engines, auto-detected in order:
-
-1. **Piper** (default) — neural TTS, fully offline, genuinely natural. Streams raw audio
-   straight into `paplay`, so speech begins before synthesis finishes.
-2. **speech-dispatcher / espeak-ng** — fallback. Always intelligible, distinctly robotic.
-
-Piper lives entirely inside the project (`.venv/` and `voices/`, both gitignored):
+Every brain is swappable. Point one at a local runtime and nothing leaves the machine —
+no API key, no account, no network.
 
 ```bash
-./setup-voice.sh
+ollama pull llama3.1:8b
 ```
 
-To hear other voices before committing to one:
-
-```bash
-./audition-voices.sh
+```jsonc
+// jarvis.config.json — this brain ships already configured
+{ "id": "local", "provider": "openai", "model": "llama3.1:8b",
+  "baseUrl": "http://localhost:11434/v1" }
 ```
 
-Then set `voice.piper.model` (and `sampleRate`, if it differs) in `jarvis.config.json`.
-Tuning knobs under `voice.piper`: `lengthScale` (higher = slower), `noiseScale`,
-`sentenceSilence`, `volume`. The **VOICE** button in the HUD mutes it live.
+Then `/brain local` in the HUD. Ollama, llama.cpp, LM Studio and vLLM all serve the same
+API; loopback and private-range hosts skip the key check entirely.
 
-## Browser & email
+> **One caveat, stated plainly.** Resisting a prompt injection is model *behaviour*, not a
+> code guarantee, and small models are measurably worse at it. So turns that can see
+> untrusted content are forced onto a trusted brain — see below. Offline is for privacy and
+> cost, not for handing your inbox to a 7B model.
 
-Jarvis drives **its own Chrome profile** (`~/.config/jarvis/chrome-profile`), launched on demand
-with the DevTools Protocol on port 9222. A separate profile is deliberate: it keeps Jarvis out of
-your main browser's cookies, history and saved passwords, and stops it fighting your running Chrome.
+---
 
-**One-time setup:** the first time you ask for email, a Chrome window opens at Gmail. Sign in there
-once and the session persists. Jarvis never sees, stores, or types your password.
+## Safety
 
-Tools: `browser_open`, `browser_read`, `browser_tabs` (read-only, run freely), `browser_click`,
-`browser_type` (always approval-gated), `check_email`, `read_email`.
+Most assistants in this category will run whatever the model emits. This one is built on the
+assumption that the model will eventually be lied to.
 
-### Secret redaction
+**Enforced in code — holds on any model, cannot be weakened by config:**
 
-Everything JARVIS persists (`data/history.json`, `data/journal/`, `workspace/MEMORY.md`,
-written skills) and everything it broadcasts over SSE passes through `src/redact.ts` first.
-Secrets reach that path in ordinary use — a pasted key, a config file read by `read_file`,
-an `env` in shell output, an `Authorization` header in an HTTP response.
+- A **hard denylist floor**. `rm -rf`, `mkfs`, `dd` to a block device, fork bombs, `curl | sh`,
+  reads of `/etc/shadow`. Config can add to it, never subtract.
+- **Approval gates** on everything that changes the world — shell, file writes, clicks,
+  keystrokes, purchases, device control.
+- A **host allowlist** for HTTP. Blocked hosts are reported, never silently dropped.
+- **Credential redaction** on every disk write and every event, so a pasted key never lands
+  in the transcript.
+- An **Ouroboros guard** that blocks a tool call repeated identically within a turn.
 
-Known shapes are matched directly (Anthropic, OpenAI, OpenRouter, GitHub, Google OAuth and
-API keys, AWS, Slack, Stripe, Telegram, JWTs, PEM private keys). Unfamiliar providers are
-still caught by generic rules for `*_KEY=`/`*_TOKEN=` assignments, JSON credential fields,
-and `Authorization: Bearer`. A short prefix survives (`[github-token:ghp_…REDACTED]`) so a
-transcript stays readable.
+**Enforced by design:**
 
-This reduces damage; it is not a reason to hand JARVIS credentials. Put keys in `.env`.
+- Everything read from the web or your inbox is **fenced as untrusted data**, with fence
+  tokens stripped so a page can't close the fence and impersonate you.
+- **Agent-written files are separated from human-written ones.** A note JARVIS recorded is a
+  recollection, never an instruction — so a poisoned memory can't become a standing order.
+- Turns that can see hostile text are **pinned to a trusted brain**, and taint is *sticky*:
+  an email read three turns ago is still in the context window now.
 
-### Prompt-injection defence
-
-Web pages and emails are written by strangers, and some contain text crafted to look like orders
-from you. Three layers guard against this:
-
-1. Everything read from a page or mailbox is returned inside `<untrusted>` fencing, with the
-   fence tokens stripped from the content so a page cannot close the fence and impersonate Jarvis.
-2. The system prompt states that untrusted content is data and never instructions — regardless of
-   claimed authority, urgency, or prior authorisation.
-3. Every state-changing action (clicking, typing, sending, shell commands, file writes) requires
-   your explicit approval in the HUD or on Telegram.
-
-Verified against a live attack: a planted page instructing Jarvis to read `~/.ssh/id_rsa`, POST it
-to a remote host, and hide the fact. Jarvis summarised the real content, refused, called zero
+Tested against a live attack — a page instructing it to read `~/.ssh/id_rsa`, POST it to a
+remote host, and hide the fact. It summarised the real content, refused, called zero
 forbidden tools, and reported the attempt.
 
-**This is defence in depth, not a guarantee.** Treat the approval prompts as the real boundary —
-read them before approving.
+<div align="center">
+<br>
+<!-- SCREENSHOT: an approval card mid-flight -->
+<img src="docs/assets/approval.png" alt="An approval card" width="90%">
+<br><sub>The approval card is the real security boundary. Read it before you click.</sub>
+</div>
 
-## Vision & desktop
+> **This is defence in depth, not a guarantee.** It runs shell commands on your machine.
+> Treat the approval prompts as the boundary they are.
 
-On X11, Jarvis can capture the screen (`gnome-screenshot`, falling back to `ffmpeg -f x11grab`),
-downscale it, and pass it back as an image block — so Claude genuinely sees the pixels rather than
-guessing. Use it to read UI state or verify an action landed.
+---
 
-Desktop tools: `take_screenshot`, `list_windows`, `focus_window`, `notify`, `clipboard`,
-`media_control` (free), plus `press_keys` and `type_on_desktop` (approval-gated — they go to
-whatever window has focus, which could be anything).
-
-Optional extra: `sudo apt install playerctl` gives proper media control; without it Jarvis
-synthesises `XF86Audio*` keypresses instead.
-
-> **Note on tool count.** The API allows at most 20 tools marked `strict`. Jarvis ships more than
-> twenty tools, so `strict` is reserved for those with enums or numeric fields where mis-typing
-> matters.
-
-## Lineage
-
-Three ideas here are ported from Chris's own prior work rather than invented:
-
-- **Ouroboros guard + coherence protocol** — from
-  [`quantum-coherence-kernel`](https://github.com/Dragon-Forge-AI/quantum-coherence-kernel)
-  ("an AI agent immune system"). An identical tool call repeated past
-  `coherence.ouroborosLimit` within a turn is refused and the model is told to change
-  approach or ask. The system prompt carries the matching rule, so it usually
-  self-corrects before the hard guard is needed.
-- **Allowlisted HTTP tool** — from `dragon-claw-os`'s `config/skills.toml`, where ~50
-  capabilities fall out of one `http` tool plus a host allowlist instead of 50
-  hand-written integrations. Blocked hosts are reported, never silently dropped, and
-  secrets are injected from the environment via `${ENV_VAR}` so they never enter the
-  model's context. Responses are untrusted-fenced and secret-redacted.
-- **Operating doctrine** — from `forgewarden-ai`: local-first when privacy matters,
-  human approval when consequences matter, scoped credentials only, logs before cleverness.
-
-## Configuration
-
-Everything tunable lives in `jarvis.config.json`:
-
-- `brains.catalog` — named models. Same tools on all of them
-- `brains.default` / `brains.heartbeat` / `brains.fallbacks` — who thinks, who watches, who catches
-- `model`, `effort`, `maxTokens` — legacy Anthropic defaults if catalog is omitted
-- `persona` — name, how it addresses you
-- `commandPolicy.autoApprovePatterns` — regexes for commands that run without asking
-- `commandPolicy.denyPatterns` — regexes for commands that are never run
-- `heartbeat` — quiet always-on loop
-- `webSearch`, `history`, `server` — the rest
-
-## Architecture
+## How it's built
 
 ```
-public/              HUD frontend (vanilla JS, canvas arc reactor, SSE client)
-src/server.ts        Express + SSE event bus + approval flow + heartbeat + Telegram
-src/agent.ts         Streaming agent loop (Anthropic or OpenAI-compatible)
-src/brain.ts         Named roster, pins, heartbeat vs chat, failover
-src/openai-compat.ts Anthropic history → OpenAI messages + streaming tools
-src/telegram.ts      Allowlisted getUpdates poll + approval buttons
-src/journal.ts       Daily conversation log + search
-src/tools.ts         Tool definitions + executors + command policy
-src/workspace.ts     SOUL / HEARTBEAT / agentskills.io loader
-src/landscape.ts     Curated field map of competing Jarvis systems
-src/voice.ts         Server-side TTS (Piper neural, espeak fallback)
-src/browser.ts       Chrome control via DevTools Protocol + Gmail reading
-src/desktop.ts       Screen capture (vision), window control, input, clipboard
-src/memory.ts        Long-term keyed memory
-src/config.ts        Config loader
-workspace/           Operator-editable soul, heartbeat, skills
-docs/                LANDSCAPE.md — what we track, steal, and refuse
-data/                Runtime state (history, memory, journal) — gitignored
+public/          HUD — vanilla JS, canvas arc reactor, SSE client
+src/agent.ts     Streaming agent loop, Ouroboros guard
+src/brain.ts     Brain catalogue, failover, /brain pinning
+src/routing.ts   Trusted-brain guard, sticky taint
+src/tools.ts     36 tools + the command policy
+src/browser.ts   Chrome via DevTools Protocol + Gmail
+src/desktop.ts   Screen capture, windows, input, clipboard
+src/voice.ts     Piper neural TTS, espeak fallback
+src/redact.ts    Credential redaction
+src/workspace.ts SOUL.md / USER.md / MEMORY.md / skills
 ```
 
-The server binds to `127.0.0.1` only — it is not exposed to your network. Telegram is outbound polling, not an inbound webhook.
-
-The mission versus OpenClaw and Hermes is in [`docs/LANDSCAPE.md`](docs/LANDSCAPE.md).
-
-## Tests
+**4,500 lines. Two runtime dependencies.** Most of what it does comes from composing things
+your machine already has — `xdotool`, `wmctrl`, `pactl`, Chrome's debug protocol — rather
+than dragging in frameworks.
 
 ```bash
-npm test    # denylist, paths, workspace, field map, OpenAI conversion, journal, Telegram allowlist
-npm run check
+npm test        # 55 tests
+npm run check   # tsc --noEmit
 ```
+
+---
+
+## Where it sits
+
+**OpenClaw** is a gateway — it reaches you anywhere, owns no machine.
+**Hermes** is a framework — a kit you assemble.
+**Open Interpreter** dies when you close the terminal.
+
+This one owns the glass *and* the hands: it lives on your desk, sees your screen, and has a
+threat model. `docs/LANDSCAPE.md` tracks the field and is meant to be edited as it moves.
+
+---
+
+<div align="center">
+<sub>
+
+**Dragon Forge AI** · Cardiff, Wales 🏴󠁧󠁢󠁷󠁬󠁳󠁿
+*Local-first when privacy matters · Edge-first when scale matters · Human approval when consequences matter*
+
+</sub></div>

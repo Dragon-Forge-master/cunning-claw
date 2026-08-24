@@ -79,3 +79,14 @@ test("redactDeep reaches strings inside message content blocks", () => {
 test("containsSecret flags a pasted credential", () => {
   assert.equal(containsSecret(`my key is ${SAMPLES[0][1]}`), true);
 });
+
+test("local endpoints are recognised so offline models need no key", async () => {
+  const { isLocalEndpoint } = await import("./openai-compat.js");
+  for (const local of ["http://localhost:11434/v1", "http://127.0.0.1:8080/v1",
+                       "http://192.168.1.50:11434/v1", "http://box.local:1234/v1"]) {
+    assert.equal(isLocalEndpoint(local), true, local);
+  }
+  for (const remote of ["https://api.openai.com/v1", "https://openrouter.ai/api/v1"]) {
+    assert.equal(isLocalEndpoint(remote), false, remote);
+  }
+});

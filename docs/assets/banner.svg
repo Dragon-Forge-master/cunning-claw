@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 340" width="1200" height="340" role="img" aria-label="J.A.R.V.I.S. — the local-machine agent with a threat model">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#0d1c2e"/>
+      <stop offset="70%" stop-color="#04080f"/>
+      <stop offset="100%" stop-color="#02050a"/>
+    </radialGradient>
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#dffaff" stop-opacity="1"/>
+      <stop offset="30%" stop-color="#35d6ed" stop-opacity="0.95"/>
+      <stop offset="70%" stop-color="#35d6ed" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#35d6ed" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="340" fill="url(#bg)"/>
+
+  <!-- arc reactor -->
+  <g transform="translate(190,170)">
+    <circle r="128" fill="url(#core)" opacity="0.5"/>
+    <circle r="26" fill="#dffaff" filter="url(#glow)" opacity="0.95"/>
+    <circle r="44" fill="none" stroke="#35d6ed" stroke-width="2" opacity="0.55"/>
+    <g fill="none" stroke="#35d6ed" filter="url(#glow)">
+      <g stroke-width="6" opacity="0.9">
+        <path d="M 0 -66 A 66 66 0 0 1 57 33"/>
+        <path d="M -57 33 A 66 66 0 0 1 -33 -57"/>
+      </g>
+      <g stroke-width="2.5" opacity="0.65">
+        <path d="M 0 -92 A 92 92 0 0 1 80 46"/>
+        <path d="M -80 46 A 92 92 0 0 1 -46 -80"/>
+      </g>
+      <g stroke-width="7" opacity="0.45">
+        <path d="M 30 -110 A 114 114 0 0 1 110 30"/>
+        <path d="M -110 -30 A 114 114 0 0 1 -30 -110"/>
+        <path d="M -30 110 A 114 114 0 0 1 -110 30"/>
+      </g>
+      <circle r="132" stroke-width="1" opacity="0.3" stroke-dasharray="3 9"/>
+    </g>
+  </g>
+
+  <!-- wordmark -->
+  <g font-family="'JetBrains Mono','Fira Code',ui-monospace,monospace">
+    <text x="400" y="150" fill="#35d6ed" font-size="72" letter-spacing="13" filter="url(#glow)">J.A.R.V.I.S.</text>
+    <text x="404" y="192" fill="#7fc4d4" font-size="17" letter-spacing="4.2">THE LOCAL-MACHINE AGENT WITH A THREAT MODEL</text>
+    <g font-size="14" letter-spacing="2.4" fill="#4f8fa0">
+      <text x="404" y="242">SEES YOUR SCREEN  ·  RUNS YOUR SHELL  ·  READS YOUR INBOX</text>
+      <text x="404" y="268">SPEAKS  ·  REMEMBERS  ·  REFUSES</text>
+    </g>
+    <text x="404" y="304" fill="#2f6675" font-size="12" letter-spacing="3">DRAGON FORGE AI · CARDIFF, WALES</text>
+  </g>
+
+  <rect x="0" y="336" width="1200" height="4" fill="#35d6ed" opacity="0.55"/>
+</svg>
