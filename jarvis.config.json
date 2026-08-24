@@ -105,7 +105,10 @@
   "brains": {
     "default": "core",
     "heartbeat": "pulse",
-    "fallbacks": ["pulse", "cheap"],
+    "fallbacks": [
+      "pulse",
+      "cheap"
+    ],
     "catalog": [
       {
         "id": "core",
@@ -141,5 +144,11 @@
       "model": "gpt-4o-mini",
       "apiKeyEnv": "OPENAI_API_KEY"
     }
+  },
+  "routing": {
+    "enforceTrustedBrain": true,
+    "trustedBrains": [
+      "core"
+    ]
   }
 }

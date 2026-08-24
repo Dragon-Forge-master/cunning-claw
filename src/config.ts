@@ -98,6 +98,12 @@ export interface JarvisConfig {
     provider?: "anthropic" | "openai";
     openai?: { baseUrl?: string; model?: string; apiKeyEnv?: string };
   };
+  routing?: {
+    /** Force a trusted brain on turns that can see attacker-controlled text. */
+    enforceTrustedBrain?: boolean;
+    /** Brain ids cleared to handle hostile input. Defaults to brains.default. */
+    trustedBrains?: string[];
+  };
   server: { port: number; host: string };
 }
 

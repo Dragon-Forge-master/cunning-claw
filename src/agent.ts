@@ -5,7 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { config, DATA_DIR } from "./config.js";
 import { memorySnapshot } from "./memory.js";
 import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
-import { decideTier, estimateCost, providerFor, historyIsTainted } from "./routing.js";
+import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted } from "./routing.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
 import { pickBrain, nextBrain, isFailoverError, describeBrain, missingKeyHint, brainHasKey, catalog, type BrainSpec } from "./brain.js";
 import { completeOpenAi } from "./openai-compat.js";
@@ -193,7 +193,23 @@ export async function runTurn(
 
   const kind = opts?.kind === "heartbeat" ? "heartbeat" as const : "user" as const;
   let spec = pickBrain(kind);
-  events.emit("brain", { id: spec.id, label: spec.label, provider: spec.provider, model: spec.model, kind });
+
+  // Safety gate over brain choice. A pin, a config default, or a failover
+  // firing on a rate limit could otherwise put the cheapest model in front of
+  // attacker-controlled text — the one turn where model quality is a security
+  // property rather than a cost question.
+  const guard = requiresTrustedBrain(userMessage, history);
+  const guarded = enforceGuard(spec, guard);
+  spec = guarded.spec;
+  if (guarded.overridden) {
+    events.emit("brain_guard", { forcedTo: spec.id, reason: guard.reason });
+  }
+
+  events.emit("brain", {
+    id: spec.id, label: spec.label, provider: spec.provider, model: spec.model, kind,
+    trusted: !guard.required || !guarded.overridden ? undefined : true,
+    guardReason: guarded.overridden ? guard.reason : undefined,
+  });
 
   const now = new Date().toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" });
   const contextBlock =
@@ -244,7 +260,23 @@ export async function runTurn(
           }
           break;
         } catch (err) {
-          const nxt = isFailoverError(err) ? nextBrain(spec, kind) : null;
+          let nxt = isFailoverError(err) ? nextBrain(spec, kind) : null;
+
+          // Failover must not quietly demote a guarded turn. If hostile text is
+          // in play, walk the chain for another trusted brain; if there is none,
+          // fail loudly rather than finish the turn on a weaker model.
+          if (nxt && requiresTrustedBrain(userMessage, history).required) {
+            while (nxt && !isTrustedBrain(nxt)) nxt = nextBrain(nxt, kind);
+            if (!nxt) {
+              events.emit("notice", {
+                message:
+                  `Brain ${spec.id} failed and no other trusted brain is available. ` +
+                  `This turn is reading untrusted content, so I will not fail over to a weaker model.`,
+              });
+              throw err;
+            }
+          }
+
           if (!nxt) throw err;
           const reason = err instanceof Error ? err.message : String(err);
           events.emit("notice", {
