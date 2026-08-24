@@ -169,3 +169,10 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
 #route-chip { color: var(--cyan-dim); min-height: 13px; }
 #route-chip.cheap { color: var(--amber); }
 #spend-chip { color: var(--cyan-dim); opacity: 0.75; }
+
+.guard-chip {
+  align-self: flex-start; font-size: 11px; color: var(--cyan);
+  border: 1px solid var(--cyan-dim); border-left: 3px solid var(--cyan);
+  padding: 3px 9px; background: rgba(53, 214, 237, 0.06);
+}
+#hb-chip { font-size: 10px; letter-spacing: 2px; color: var(--cyan-dim); opacity: 0.7; }

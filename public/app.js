@@ -202,67 +202,78 @@ function startWakeLoop() {
 // ---------------------------------------------------------------------------
 const es = new EventSource("/api/events");
 
+/** Parse an SSE payload without letting one bad frame kill the listener. */
+function sseData(e) {
+  try {
+    return e.data ? sseData(e) : {};
+  } catch {
+    return {};
+  }
+}
+
 es.addEventListener("turn_start", () => {
   setState("THINKING");
   currentBubble = null;
 });
 
 es.addEventListener("text", (e) => {
-  const { delta } = JSON.parse(e.data);
+  const { delta } = sseData(e);
   if (!currentBubble) currentBubble = addMsg("jarvis", "");
   currentBubble.textContent += delta;
   chatLog.scrollTop = chatLog.scrollHeight;
 });
 
 es.addEventListener("tool_start", (e) => {
-  const { name, input } = JSON.parse(e.data);
+  const { name, input } = sseData(e);
   const summary = name === "run_command" ? input.command : JSON.stringify(input);
   addChip(`▸ ${name}: ${String(summary).slice(0, 90)}`);
   currentBubble = null; // next text goes in a fresh bubble
 });
 
 es.addEventListener("tool_result", (e) => {
-  const { name } = JSON.parse(e.data);
+  const { name } = sseData(e);
   addChip(`✓ ${name} complete`);
 });
 
-es.addEventListener("route", (e) => {
-  const { tier, model, reason } = JSON.parse(e.data);
-  const chip = $("route-chip");
-  chip.textContent = `${tier.toUpperCase()} · ${model}`;
-  chip.title = reason;
-  chip.classList.toggle("cheap", tier === "cheap");
+es.addEventListener("brain_guard", (e) => {
+  const { forcedTo, reason } = sseData(e);
+  const div = document.createElement("div");
+  div.className = "guard-chip";
+  div.textContent = `\u26e8 guarded \u2192 ${forcedTo} · ${reason}`;
+  div.title = "This turn can see untrusted content, so a trusted brain was required.";
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
 });
 
-es.addEventListener("spend", (e) => {
-  const s = JSON.parse(e.data);
-  $("spend-chip").textContent =
-    `$${s.usd.toFixed(4)} · ${s.turns} turns (${s.cheapTurns} cheap)${s.tainted ? " · TAINTED" : ""}`;
+es.addEventListener("heartbeat_ok", (e) => {
+  const { at } = sseData(e);
+  const chip = $("hb-chip");
+  if (chip && at) chip.textContent = `\u2661 ${new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
 });
 
 es.addEventListener("turn_done", (e) => {
-  const { text } = JSON.parse(e.data);
+  const { text } = sseData(e);
   setState("STANDBY");
   speak(text);
 });
 
 es.addEventListener("agent_error", (e) => {
-  const { message } = JSON.parse(e.data);
+  const { message } = sseData(e);
   addMsg("system", `⚠ ${message}`);
   setState("STANDBY");
 });
 
 es.addEventListener("notice", (e) => {
-  const { message } = JSON.parse(e.data);
+  const { message } = sseData(e);
   addMsg("system", message);
 });
 
 es.addEventListener("brain", (e) => {
-  renderBrainPicker(JSON.parse(e.data));
+  renderBrainPicker(sseData(e));
 });
 
 es.addEventListener("preview", (e) => {
-  applyPreview(JSON.parse(e.data));
+  applyPreview(sseData(e));
 });
 
 es.onerror = () => {
@@ -270,13 +281,13 @@ es.onerror = () => {
 };
 
 es.addEventListener("timer_fired", (e) => {
-  const { label } = JSON.parse(e.data);
+  const { label } = sseData(e);
   addMsg("system", `⏰ ${label}`);
   speak(`Sir, a reminder: ${label}`);
 });
 
 es.addEventListener("approval_request", (e) => {
-  const { id, summary, detail } = JSON.parse(e.data);
+  const { id, summary, detail } = sseData(e);
   const card = document.createElement("div");
   card.className = "approval-card";
   card.id = `approval-${id}`;
@@ -295,7 +306,7 @@ es.addEventListener("approval_request", (e) => {
 });
 
 es.addEventListener("approval_resolved", (e) => {
-  const { id } = JSON.parse(e.data);
+  const { id } = sseData(e);
   document.getElementById(`approval-${id}`)?.remove();
 });
 
