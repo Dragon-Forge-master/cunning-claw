@@ -7,6 +7,7 @@ import { memorySnapshot } from "./memory.js";
 import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
 import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted } from "./routing.js";
 import { containsSecret, redactDeep } from "./redact.js";
+import { toolDefinitions as mcpToolDefinitions } from "./mcp.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
 import { pickBrain, nextBrain, isFailoverError, describeBrain, missingKeyHint, brainHasKey, catalog, type BrainSpec } from "./brain.js";
 import { completeOpenAi } from "./openai-compat.js";
@@ -116,7 +117,9 @@ export function resetHistory(): void {
 }
 
 function buildTools(spec: BrainSpec): Anthropic.ToolUnion[] {
-  const tools: Anthropic.ToolUnion[] = [...toolDefinitions];
+  // Tools discovered from MCP servers are ordinary tools to the model; the
+  // difference is that their results come back untrusted-fenced.
+  const tools: Anthropic.ToolUnion[] = [...toolDefinitions, ...mcpToolDefinitions()];
   if (spec.provider === "anthropic" && config.webSearch.enabled) {
     tools.push({
       type: "web_search_20260209",

@@ -113,6 +113,35 @@ API; loopback and private-range hosts skip the key check entirely.
 
 ---
 
+## MCP
+
+Any [MCP](https://modelcontextprotocol.io) server becomes JARVIS tools — GitHub, Postgres,
+Slack, Puppeteer, Blender, your own. Add it to `jarvis.config.json`:
+
+```jsonc
+"mcp": {
+  "enabled": true,
+  "servers": [
+    { "id": "github", "transport": "stdio",
+      "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" } },
+    { "id": "vendor", "transport": "http", "url": "https://example.com/mcp" }
+  ]
+}
+```
+
+Tools arrive namespaced (`mcp__github__create_issue`) so a server cannot shadow a built-in.
+The client is hand-rolled — MCP is JSON-RPC, and the official SDK brings ten dependencies
+into a project that has two.
+
+**Connecting to a server is a trust decision, so servers come from config only, never
+discovery.** A stdio server is a subprocess you spawn — that is arbitrary code execution.
+Three consequences are handled for you: tool *descriptions* are written by the server and
+reach the system prompt, so they are sanitised and length-capped; tool *results* are
+attacker-controlled and come back `<untrusted>`-fenced; and any MCP call taints the turn,
+so it can never be handled by a cheap brain. Writes are approval-gated unless you list them
+as read-only.
+
 ## Safety
 
 Most assistants in this category will run whatever the model emits. This one is built on the

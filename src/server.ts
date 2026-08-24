@@ -7,6 +7,7 @@ import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
 import { redactDeep } from "./redact.js";
 import { banner } from "./banner.js";
+import { connectAll as connectMcp, listMcpTools, shutdown as shutdownMcp } from "./mcp.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
 import { listSkills } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
@@ -17,6 +18,7 @@ import { openPreview, closePreview, reloadPreview, previewState } from "./previe
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
+process.on("exit", () => shutdownMcp());
 process.on("uncaughtException", (err) => {
   console.error("[jarvis] uncaught exception:", err);
 });
@@ -240,6 +242,10 @@ app.listen(port, host, async () => {
     heartbeat: hb.enabled ? `every ${hb.intervalMinutes}m` : "off",
     tools: toolDefinitions.length,
   }));
+
+  await connectMcp((line) => console.log(line));
+  const mcpCount = listMcpTools().length;
+  if (mcpCount) console.log(`  MCP: ${mcpCount} tool(s) registered\n`);
 
   startHeartbeat(agentEvents);
   startTelegram(agentEvents, { resolveApproval: settleApproval });

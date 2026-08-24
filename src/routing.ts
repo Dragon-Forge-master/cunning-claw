@@ -26,6 +26,14 @@ export const UNTRUSTED_TOOLS = new Set([
   "http_request", "web_search", "clipboard", "read_file", "landscape",
 ]);
 
+/**
+ * Any tool from a third-party MCP server returns bytes that server controls,
+ * so every one of them taints the turn — the guard cannot know which are safe.
+ */
+function isUntrustedToolName(name: string): boolean {
+  return UNTRUSTED_TOOLS.has(name) || name.startsWith("mcp__");
+}
+
 /** Phrases whose turn will reach outside before it finishes. */
 const REACHES_OUT = [
   /email|inbox|gmail|mail/i,
@@ -60,7 +68,7 @@ export function historyIsTainted(messages: Anthropic.MessageParam[]): boolean {
       continue;
     }
     for (const block of m.content as any[]) {
-      if (block.type === "tool_use" && UNTRUSTED_TOOLS.has(block.name)) return true;
+      if (block.type === "tool_use" && isUntrustedToolName(block.name)) return true;
       if (block.type === "image") return true; // vision needs a capable brain anyway
       if (block.type === "tool_result") {
         const body = typeof block.content === "string"

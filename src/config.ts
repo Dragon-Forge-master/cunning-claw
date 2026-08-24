@@ -105,6 +105,22 @@ export interface JarvisConfig {
     trustedBrains?: string[];
   };
   coding?: { root?: string; skip?: string[] };
+  mcp?: {
+    enabled: boolean;
+    timeoutMs: number;
+    maxToolsPerServer: number;
+    maxResultChars: number;
+    servers: {
+      id: string;
+      transport: "stdio" | "http";
+      command?: string;
+      args?: string[];
+      url?: string;
+      env?: Record<string, string>;
+      allow?: string[];
+      writeTools?: string[];
+    }[];
+  };
   server: { port: number; host: string };
 }
 

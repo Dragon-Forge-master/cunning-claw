@@ -9,6 +9,7 @@ import { remember, forget, searchMemory } from "./memory.js";
 import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
 import * as http from "./http.js";
+import * as mcp from "./mcp.js";
 import { readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
 import { expandHome, isSensitivePath } from "./paths.js";
@@ -862,7 +863,18 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         return writeSkill(String(input.name), String(input.description), String(input.body));
       }
       case "landscape": return landscapeSummary();
-      default: return `Unknown tool: ${name}`;
+      default:
+        if (mcp.isMcpTool(name)) {
+          if (mcp.needsApproval(name)) {
+            const ok = await ctx.requestApproval(
+              `MCP tool: ${name}`,
+              JSON.stringify(input, null, 2).slice(0, 1500),
+            );
+            if (!ok) return "The user declined the MCP call.";
+          }
+          return await mcp.callTool(name, input);
+        }
+        return `Unknown tool: ${name}`;
     }
   } catch (err: any) {
     return `Tool error: ${err.message}`;
