@@ -150,5 +150,9 @@
     "trustedBrains": [
       "core"
     ]
+  },
+  "coding": {
+    "root": "~",
+    "skip": ["node_modules", ".git", "dist", ".venv", "voices"]
   }
 }

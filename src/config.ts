@@ -104,6 +104,7 @@ export interface JarvisConfig {
     /** Brain ids cleared to handle hostile input. Defaults to brains.default. */
     trustedBrains?: string[];
   };
+  coding?: { root?: string; skip?: string[] };
   server: { port: number; host: string };
 }
 

@@ -6,7 +6,8 @@ Not OpenClaw. Not Hermes. We take their workspace files, heartbeat, skills, one 
 
 ## Features
 
-- **Brains** — a named roster, not a sub-agent org chart. `core` (Claude Opus) talks. `pulse` (Haiku) does the quiet heartbeat. `cheap` is any OpenAI-compatible endpoint (OpenAI, OpenRouter, LocalAI, Ollama). Same tools on every brain. Pin one from the HUD or `/brain`. If a provider 429s or falls over, the next brain in `fallbacks` takes the turn — unless you pinned, in which case it fails visibly.
+- **Viewport** — when the work is a page, JARVIS opens an in-HUD browser (Claude Code's preview pane). `preview` tool, VIEWPORT button, GO / RELOAD / PHONE / POP / CLOSE. Arc reactor tucks away while you look.
+- **Hands like Claude Code** — `glob`, `grep`, numbered `read_file`, surgical `edit_file`, `todo`, then `run_command`. Same tools on every brain.
 - **Telegram** — one messenger, allowlisted chat ids only. Token without a chat id is ignored. `/whoami` tells you the id. Approvals land as EXECUTE / DENY buttons on the phone, so you do not need the HUD open
 - **Workspace** — OpenClaw/Hermes-compatible `SOUL.md`, `USER.md`, `HEARTBEAT.md`, `MEMORY.md`, plus [agentskills.io](https://agentskills.io) skill folders
 - **Heartbeat** — quiet always-on loop; replies `HEARTBEAT_OK` and stays out of the transcript when nothing is due
