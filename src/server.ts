@@ -6,10 +6,12 @@ import { getHistory, resetHistory, runTurn, type AgentEvents } from "./agent.js"
 import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
 import { redactDeep } from "./redact.js";
+import { banner } from "./banner.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
 import { listSkills } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
 import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, missingKeyHint } from "./brain.js";
+import { createRequire } from "node:module";
 import { startTelegram, sendApprovalCard, approvalSettled, telegramStatus } from "./telegram.js";
 import { openPreview, closePreview, reloadPreview, previewState } from "./preview.js";
 
@@ -21,6 +23,14 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (err) => {
   console.error("[jarvis] unhandled rejection:", err);
 });
+
+const VERSION: string = (() => {
+  try {
+    return createRequire(import.meta.url)("../package.json").version ?? "0.1.0";
+  } catch {
+    return "0.1.0";
+  }
+})();
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
@@ -217,13 +227,20 @@ app.post("/api/voice/sample", async (req, res) => {
 
 // --- Boot -------------------------------------------------------------------
 const { port, host } = config.server;
-app.listen(port, host, () => {
-  console.log(`\n  J.A.R.V.I.S. online → http://${host}:${port}\n`);
-  void voice.detect().then(({ engine, detail }) => {
-    console.log(engine === "none"
-      ? "  ⚠ No TTS engine found — install speech-dispatcher, or run the Piper setup."
-      : `  Voice: ${engine} (${detail})`);
-  });
+app.listen(port, host, async () => {
+  const hb = heartbeatStatus();
+  const v = await voice.detect();
+  const active = catalogStatus();
+
+  console.log(banner({
+    version: VERSION,
+    url: `http://${host}:${port}`,
+    brain: `${active.default} · ${brainLabel()}`,
+    voice: v.engine === "none" ? "none — run ./setup-voice.sh" : `${v.engine} · ${v.detail}`,
+    heartbeat: hb.enabled ? `every ${hb.intervalMinutes}m` : "off",
+    tools: toolDefinitions.length,
+  }));
+
   startHeartbeat(agentEvents);
   startTelegram(agentEvents, { resolveApproval: settleApproval });
   for (const line of bootBrainLines()) console.log(line);

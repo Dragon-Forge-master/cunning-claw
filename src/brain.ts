@@ -122,8 +122,29 @@ export function pinBrain(id: string | null): string {
   return `Pinned to ${spec.label} (${spec.provider} / ${spec.model}). Heartbeat still uses ${heartbeatBrainId()}. Fallbacks will not fire while pinned.`;
 }
 
+/**
+ * Loopback and private-range hosts are local runtimes (Ollama, llama.cpp,
+ * LM Studio) that serve the OpenAI API with no auth. Lives here rather than in
+ * openai-compat.ts because that module already imports from this one, and the
+ * reverse direction would make the cycle.
+ */
+export function isLocalEndpoint(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false;
+  try {
+    const h = new URL(baseUrl).hostname.toLowerCase();
+    return h === "localhost" || h === "127.0.0.1" || h === "::1" ||
+      h.endsWith(".local") || /^192\.168\./.test(h) || /^10\./.test(h);
+  } catch {
+    return false;
+  }
+}
+
 export function brainHasKey(spec: BrainSpec): boolean {
   if (spec.provider === "openai") {
+    // A local runtime serves the same API with no auth, so it is ready
+    // whenever it is reachable — reporting NO KEY would hide it from
+    // pickBrain and make an offline setup silently unselectable.
+    if (isLocalEndpoint(spec.baseUrl)) return true;
     return Boolean(process.env[spec.apiKeyEnv ?? "OPENAI_API_KEY"]);
   }
   return Boolean(process.env.ANTHROPIC_API_KEY);

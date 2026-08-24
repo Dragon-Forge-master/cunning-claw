@@ -33,6 +33,29 @@ npm run dev
 
 Open **http://127.0.0.1:3900**. It binds to loopback only — nothing is exposed to your network.
 
+```
+
+      ▄▄████▄▄      
+    ▄██▀▀  ▀▀██▄         ██╗ █████╗ ██████╗ ██╗   ██╗██╗███████╗
+   ██▀  ▄██▄  ▀██        ██║██╔══██╗██╔══██╗██║   ██║██║██╔════╝
+  ██   ██▀▀██   ██       ██║███████║██████╔╝██║   ██║██║███████╗
+  ██   ██▄▄██   ██  ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║
+   ██▄  ▀██▀  ▄██   ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║
+    ▀██▄▄  ▄▄██▀     ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝
+      ▀▀████▀▀      
+
+  ──────────────────────────────────────────────────────────────
+  JUST A RATHER VERY INTELLIGENT SYSTEM  ·  v0.1.0
+
+  ▸ online   http://127.0.0.1:3900
+  ▸ brain    core · claude-opus-5 (anthropic)
+  ▸ voice    piper · en_GB-alan-medium
+  ▸ pulse    every 30m
+  ▸ tools    36 available
+
+  At your service, sir.
+```
+
 <div align="center">
 <br>
 <!-- SCREENSHOT: the HUD at rest — arc reactor, telemetry panel, empty transcript -->

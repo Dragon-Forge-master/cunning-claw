@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { config } from "./config.js";
-import { openAiEndpoint, type BrainSpec } from "./brain.js";
+import { openAiEndpoint, isLocalEndpoint, type BrainSpec } from "./brain.js";
 import { toolDefinitions } from "./tools.js";
 
 export type OpenAiChatMessage = {
@@ -88,18 +88,6 @@ export type OpenAiCompletion = {
   blocks: Anthropic.ContentBlock[];
   toolUses: { id: string; name: string; input: unknown }[];
 };
-
-/** Loopback and private-range hosts are treated as local: no key required. */
-export function isLocalEndpoint(baseUrl: string | undefined): boolean {
-  if (!baseUrl) return false;
-  try {
-    const h = new URL(baseUrl).hostname.toLowerCase();
-    return h === "localhost" || h === "127.0.0.1" || h === "::1" ||
-      h.endsWith(".local") || /^192\.168\./.test(h) || /^10\./.test(h);
-  } catch {
-    return false;
-  }
-}
 
 export async function completeOpenAi(opts: {
   spec: BrainSpec;
