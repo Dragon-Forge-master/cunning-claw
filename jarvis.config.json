@@ -84,7 +84,11 @@
       "geocoding-api.open-meteo.com",
       "*.googleapis.com",
       "127.0.0.1",
-      "localhost"
+      "localhost",
+      "api.cloudflare.com",
+      "*.workers.dev",
+      "*.pages.dev",
+      "registry.npmjs.org"
     ],
     "timeoutMs": 20000,
     "maxResponseChars": 12000

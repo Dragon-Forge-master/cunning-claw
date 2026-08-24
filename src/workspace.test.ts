@@ -8,8 +8,12 @@ test("ships OpenClaw/Hermes workspace files", () => {
 });
 
 test("ships agentskills.io skills", () => {
-  const names = listSkills().map((s) => s.name).sort();
-  assert.deepEqual(names, ["cardiff-briefing", "forge-doctrine", "landscape-watch"]);
+  const names = listSkills().map((s) => s.name);
+  // Skills are meant to be added, so assert the shipped set is present rather
+  // than pinning an exclusive list.
+  for (const required of ["cardiff-briefing", "forge-doctrine", "landscape-watch"]) {
+    assert.ok(names.includes(required), `missing skill: ${required}`);
+  }
   assert.match(readSkill("landscape-watch"), /OpenClaw/);
 });
 
