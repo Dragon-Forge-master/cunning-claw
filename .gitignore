@@ -5,3 +5,4 @@ dist/
 voices/*.onnx
 data/history.json
 data/memory.json
+data/journal/

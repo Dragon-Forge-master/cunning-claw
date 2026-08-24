@@ -101,5 +101,13 @@
   "heartbeat": {
     "enabled": true,
     "intervalMinutes": 30
+  },
+  "brain": {
+    "provider": "anthropic",
+    "openai": {
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "apiKeyEnv": "OPENAI_API_KEY"
+    }
   }
 }

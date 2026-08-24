@@ -14,17 +14,22 @@ let serverVoiceAvailable = false;
 // ---------------------------------------------------------------------------
 // Boot sequence
 // ---------------------------------------------------------------------------
-const BOOT_LINES = [
-  "J.A.R.V.I.S. v0.1 — boot sequence initiated",
-  "loading cognitive core .............. claude-opus-5",
-  "mounting tool interface ............. 28 tools + web search + skills",
-  "loading workspace ................... SOUL / HEARTBEAT / skills",
-  "restoring long-term memory .......... ok",
-  "establishing event stream ........... ok",
-  "",
-  "All systems nominal. Good day, sir.",
-];
 (async () => {
+  let brain = "claude-opus-5";
+  try {
+    const s = await (await fetch("/api/status")).json();
+    if (s.brain?.model) brain = `${s.brain.provider} / ${s.brain.model}`;
+  } catch { /* boot copy is cosmetic */ }
+  const BOOT_LINES = [
+    "J.A.R.V.I.S. v0.2 — boot sequence initiated",
+    `loading cognitive core .............. ${brain}`,
+    "mounting tool interface ............. tools + search + skills",
+    "loading workspace ................... SOUL / HEARTBEAT / skills",
+    "restoring long-term memory .......... journal + MEMORY.md",
+    "establishing event stream ........... ok",
+    "",
+    "All systems nominal. Good day, sir.",
+  ];
   const el = $("boot-text");
   for (const line of BOOT_LINES) {
     el.textContent += line + "\n";
@@ -327,11 +332,14 @@ async function pollStatus() {
     const {
       text, online, serverVoice: sv, serverVoiceAvailable: sva,
       skills, heartbeat, landscapeCount, landscapeUpdated,
+      brain, telegram, toolCount,
     } = await res.json();
     const extra = [
       "",
-      `Skills: ${skills ?? 0}  ·  Heartbeat: ${heartbeat?.enabled ? `every ${heartbeat.intervalMinutes}m` : "off"}${heartbeat?.lastAt ? ` (last ${heartbeat.lastAt.slice(11, 16)}Z)` : ""}`,
+      `Brain: ${brain?.provider ?? "?"} / ${brain?.model ?? "?"}`,
+      `Skills: ${skills ?? 0}  ·  Tools: ${toolCount ?? "?"}  ·  Heartbeat: ${heartbeat?.enabled ? `every ${heartbeat.intervalMinutes}m` : "off"}${heartbeat?.lastAt ? ` (last ${heartbeat.lastAt.slice(11, 16)}Z)` : ""}`,
       `Field map: ${landscapeCount ?? 0} systems  (${landscapeUpdated ?? "?"})`,
+      `Telegram: ${telegram?.enabled ? `on (${(telegram.chats || []).join(", ")})` : "off"}`,
     ].join("\n");
     $("sys-status").textContent = text + extra;
     $("conn-dot").classList.toggle("online", online);

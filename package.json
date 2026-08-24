@@ -1,7 +1,7 @@
 {
   "name": "jarvis",
   "version": "0.1.0",
-  "description": "J.A.R.V.I.S. — a Claude-powered personal assistant that controls your machine",
+  "description": "J.A.R.V.I.S. — a local personal assistant with a HUD, denylist, and a brain you can swap",
   "type": "module",
   "scripts": {
     "dev": "tsx src/server.ts",

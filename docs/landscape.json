@@ -7,7 +7,7 @@
       "name": "OpenClaw",
       "url": "https://github.com/openclaw/openclaw",
       "class": "always-on messaging daemon",
-      "take": "Workspace files (SOUL.md, HEARTBEAT.md, USER.md), skills folders, heartbeat that stays quiet when idle, multi-channel reach as a later layer.",
+      "take": "Workspace files (SOUL.md, HEARTBEAT.md, USER.md), skills folders, heartbeat that stays quiet when idle, one messenger (Telegram) rather than twenty.",
       "refuse": "Curl-pipe installers, unauthenticated internet exposure, kitchen-sink plugin sprawl, defaulting every thought to Opus."
     },
     {

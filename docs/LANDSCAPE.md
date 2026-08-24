@@ -20,7 +20,7 @@ There are hundreds of student “JARVIS” clones. Almost none of them are assis
 
 OpenClaw reviews in 2026 say the same three things: the *paradigm* (an agent that texts you first) is real; the *bill* is shocking if every thought is Opus; the *memory* still forgets; the *security* is only as good as the operator. Hermes is praised as the learning loop and criticised as a kit, not a companion. Open Interpreter is loved for “do this on my machine now” and abandoned the moment you close the terminal.
 
-**JARVIS wins by being the thing those reviews still want:** a presence on the glass, a denylist that config cannot weaken, untrusted-web fencing, approval cards you actually read, a heartbeat that stays quiet, and skills that are files you can open-source.
+**JARVIS wins by being the thing those reviews still want:** a presence on the glass, a denylist that config cannot weaken, untrusted-web fencing, approval cards you actually read (HUD and Telegram), a heartbeat that stays quiet, a brain you can make cheap, and skills that are files you can open-source.
 
 ## Doctrine
 

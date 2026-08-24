@@ -3,11 +3,13 @@ import path from "node:path";
 import express from "express";
 import { config, ROOT } from "./config.js";
 import { getHistory, resetHistory, runTurn, type AgentEvents } from "./agent.js";
-import { systemStatusText } from "./tools.js";
+import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
 import { listSkills } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
+import { brainLabel, brainReady, activeProvider } from "./brain.js";
+import { startTelegram, sendApprovalCard, approvalSettled, telegramStatus } from "./telegram.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -56,31 +58,39 @@ app.get("/api/events", (req, res) => {
 });
 
 // --- Approval flow ----------------------------------------------------------
-const pendingApprovals = new Map<string, (approved: boolean) => void>();
+const pendingApprovals = new Map<string, (approved: boolean, timedOut?: boolean) => void>();
+
+function settleApproval(id: string, approved: boolean, timedOut = false): boolean {
+  const resolver = pendingApprovals.get(id);
+  if (!resolver) return false;
+  resolver(approved, timedOut);
+  return true;
+}
 
 function requestApproval(summary: string, detail: string): Promise<boolean> {
   return new Promise((resolve) => {
     const id = crypto.randomUUID();
-    const timer = setTimeout(() => {
+    let timer: NodeJS.Timeout;
+    const finish = (approved: boolean, timedOut = false) => {
+      if (!pendingApprovals.has(id)) return;
       pendingApprovals.delete(id);
-      broadcast("approval_resolved", { id, approved: false, timedOut: true });
-      resolve(false);
-    }, config.commandPolicy.approvalTimeoutMs);
-    pendingApprovals.set(id, (approved) => {
       clearTimeout(timer);
-      pendingApprovals.delete(id);
-      broadcast("approval_resolved", { id, approved });
+      broadcast("approval_resolved", { id, approved, timedOut });
+      approvalSettled(id, approved);
       resolve(approved);
-    });
+    };
+    timer = setTimeout(() => finish(false, true), config.commandPolicy.approvalTimeoutMs);
+    pendingApprovals.set(id, finish);
     broadcast("approval_request", { id, summary, detail });
+    void sendApprovalCard(id, summary, detail);
   });
 }
 
 app.post("/api/approve", (req, res) => {
   const { id, approved } = req.body ?? {};
-  const resolver = pendingApprovals.get(id);
-  if (!resolver) return res.status(404).json({ error: "No such pending approval" });
-  resolver(Boolean(approved));
+  if (!settleApproval(id, Boolean(approved))) {
+    return res.status(404).json({ error: "No such pending approval" });
+  }
   res.json({ ok: true });
 });
 
@@ -123,7 +133,8 @@ app.get("/api/status", async (_req, res) => {
   const landscape = loadLandscape();
   res.json({
     text: await systemStatusText(),
-    online: Boolean(process.env.ANTHROPIC_API_KEY),
+    online: brainReady(),
+    brain: { provider: activeProvider(), model: brainLabel() },
     serverVoice: (await voice.isAvailable()) && voice.isEnabled(),
     serverVoiceAvailable: await voice.isAvailable(),
     voiceEngine: (await voice.detect()).engine,
@@ -132,6 +143,8 @@ app.get("/api/status", async (_req, res) => {
     heartbeat: hb,
     landscapeUpdated: landscape.updated,
     landscapeCount: landscape.systems.length,
+    telegram: telegramStatus(),
+    toolCount: toolDefinitions.length,
   });
 });
 
@@ -170,7 +183,8 @@ app.listen(port, host, () => {
       : `  Voice: ${engine} (${detail})`);
   });
   startHeartbeat(agentEvents);
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn("  ⚠ ANTHROPIC_API_KEY not set — copy .env.example to .env and add your key.\n");
+  startTelegram(agentEvents, { resolveApproval: settleApproval });
+  if (!brainReady()) {
+    console.warn(`  ⚠ Brain (${activeProvider()} / ${brainLabel()}) has no API key.\n`);
   }
 });
