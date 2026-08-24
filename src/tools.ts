@@ -7,8 +7,17 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { config } from "./config.js";
 import { remember, forget } from "./memory.js";
 import * as browser from "./browser.js";
+import * as desktop from "./desktop.js";
 
 const execAsync = promisify(exec);
+
+/**
+ * A tool may return plain text, or rich blocks (e.g. a screenshot image).
+ * Narrowed to exactly what `tool_result.content` accepts — the full
+ * ContentBlockParam union includes thinking/tool_use blocks, which are invalid here.
+ */
+export type ToolResultContent = Anthropic.TextBlockParam | Anthropic.ImageBlockParam;
+export type ToolOutput = string | ToolResultContent[];
 
 /** Context the agent loop provides to tool executors. */
 export interface ToolContext {
@@ -51,7 +60,6 @@ export const toolDefinitions: Anthropic.Tool[] = [
       required: ["path"],
       additionalProperties: false,
     },
-    strict: true,
   },
   {
     name: "write_file",
@@ -82,14 +90,12 @@ export const toolDefinitions: Anthropic.Tool[] = [
       required: ["target"],
       additionalProperties: false,
     },
-    strict: true,
   },
   {
     name: "system_status",
     description:
       "Get live system telemetry: CPU load, memory, disk usage, uptime, and top processes.",
     input_schema: { type: "object", properties: {}, additionalProperties: false },
-    strict: true,
   },
   {
     name: "set_volume",
@@ -143,7 +149,6 @@ export const toolDefinitions: Anthropic.Tool[] = [
       required: ["key"],
       additionalProperties: false,
     },
-    strict: true,
   },
   {
     name: "browser_open",
@@ -177,7 +182,6 @@ export const toolDefinitions: Anthropic.Tool[] = [
     name: "browser_tabs",
     description: "List the open tabs in Jarvis's browser with their indices, titles and URLs.",
     input_schema: { type: "object", properties: {}, additionalProperties: false },
-    strict: true,
   },
   {
     name: "browser_click",
@@ -234,6 +238,93 @@ export const toolDefinitions: Anthropic.Tool[] = [
       type: "object",
       properties: { index: { type: "number" } },
       required: ["index"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    name: "take_screenshot",
+    description:
+      "Capture the screen (or a specific window) and look at it. Use this whenever you need to " +
+      "see what is actually on screen — to check state, read a UI, or verify something worked.",
+    input_schema: {
+      type: "object",
+      properties: {
+        target: { type: "string", enum: ["screen", "window"], description: "Whole screen or one window" },
+        windowName: { type: "string", description: "Part of the window title, when target is 'window'" },
+      },
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    name: "list_windows",
+    description: "List the titles of all open desktop windows.",
+    input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "focus_window",
+    description: "Bring a desktop window to the front, matched on part of its title.",
+    input_schema: {
+      type: "object",
+      properties: { name: { type: "string" } },
+      required: ["name"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "press_keys",
+    description:
+      "Send keystrokes to the focused window, e.g. 'ctrl+s', 'alt+Tab', 'Return'. " +
+      "Space-separate a sequence. Requires user approval.",
+    input_schema: {
+      type: "object",
+      properties: { keys: { type: "string" } },
+      required: ["keys"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "type_on_desktop",
+    description: "Type text into whatever window currently has focus. Requires user approval.",
+    input_schema: {
+      type: "object",
+      properties: { text: { type: "string" } },
+      required: ["text"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "notify",
+    description: "Show a desktop notification popup.",
+    input_schema: {
+      type: "object",
+      properties: { title: { type: "string" }, body: { type: "string" } },
+      required: ["title", "body"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "clipboard",
+    description: "Read the system clipboard, or write text to it.",
+    input_schema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["read", "write"] },
+        text: { type: "string", description: "Text to copy, when action is 'write'" },
+      },
+      required: ["action"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    name: "media_control",
+    description: "Control media playback: play, pause, next, previous, stop.",
+    input_schema: {
+      type: "object",
+      properties: { action: { type: "string", enum: ["play", "pause", "playpause", "next", "previous", "stop"] } },
+      required: ["action"],
       additionalProperties: false,
     },
     strict: true,
@@ -433,7 +524,7 @@ function setTimer(input: { seconds: number; label: string }, ctx: ToolContext): 
 // Dispatcher
 // ---------------------------------------------------------------------------
 
-export async function executeTool(name: string, input: any, ctx: ToolContext): Promise<string> {
+export async function executeTool(name: string, input: any, ctx: ToolContext): Promise<ToolOutput> {
   try {
     switch (name) {
       case "run_command": return await runCommand(input, ctx);
@@ -463,6 +554,25 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       }
       case "check_email": return await browser.checkEmail(input.query);
       case "read_email": return await browser.readEmail(input.index);
+      case "take_screenshot": return await desktop.screenshot(input.target ?? "screen", input.windowName);
+      case "list_windows": return await desktop.listWindows();
+      case "focus_window": return await desktop.focusWindow(input.name);
+      case "press_keys": {
+        const ok = await ctx.requestApproval("Send keystrokes to the desktop", input.keys);
+        if (!ok) return "The user declined the keystrokes.";
+        return await desktop.pressKeys(input.keys);
+      }
+      case "type_on_desktop": {
+        const ok = await ctx.requestApproval("Type into the focused window", input.text);
+        if (!ok) return "The user declined the input.";
+        return await desktop.typeOnDesktop(input.text);
+      }
+      case "notify": return await desktop.notify(input.title, input.body);
+      case "clipboard":
+        return input.action === "write"
+          ? await desktop.clipboardWrite(String(input.text ?? ""))
+          : await desktop.clipboardRead();
+      case "media_control": return await desktop.media(input.action);
       case "set_timer": return setTimer(input, ctx);
       default: return `Unknown tool: ${name}`;
     }

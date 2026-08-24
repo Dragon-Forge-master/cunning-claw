@@ -59,6 +59,11 @@ export interface JarvisConfig {
     extraFlags: string[];
     requireApprovalFor: string[];
   };
+  desktop: {
+    enabled: boolean;
+    maxImageWidth: number;
+    requireApprovalFor: string[];
+  };
   server: { port: number; host: string };
 }
 

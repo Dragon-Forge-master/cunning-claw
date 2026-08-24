@@ -68,5 +68,13 @@
       "browser_click",
       "browser_type"
     ]
+  },
+  "desktop": {
+    "enabled": true,
+    "maxImageWidth": 1400,
+    "requireApprovalFor": [
+      "press_keys",
+      "type_on_desktop"
+    ]
   }
 }

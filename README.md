@@ -11,6 +11,8 @@ A Claude-powered personal assistant that controls your machine. Voice in, voice 
 - **Web search** — Anthropic server-side web search for current events
 - **Browser control** — drives its own Chrome via the DevTools Protocol: open pages, read them, list tabs, click and type (approval-gated)
 - **Email** — reads and searches Gmail through that browser session, no credentials handled
+- **Vision** — takes screenshots and actually looks at them, so it can read your screen and verify its own work
+- **Desktop control** — lists and focuses windows, sends keystrokes to any app (approval-gated), desktop notifications, clipboard, media keys
 - **Voice** — neural TTS (Piper, offline) server-side, with an espeak fallback; plus push-to-talk and "Jarvis" wake-word input
 - **Extras** — weather (no API key), timers/reminders announced aloud
 
@@ -80,6 +82,22 @@ forbidden tools, and reported the attempt.
 **This is defence in depth, not a guarantee.** Treat the approval prompts as the real boundary —
 read them before approving.
 
+## Vision & desktop
+
+On X11, Jarvis can capture the screen (`gnome-screenshot`, falling back to `ffmpeg -f x11grab`),
+downscale it, and pass it back as an image block — so Claude genuinely sees the pixels rather than
+guessing. Use it to read UI state or verify an action landed.
+
+Desktop tools: `take_screenshot`, `list_windows`, `focus_window`, `notify`, `clipboard`,
+`media_control` (free), plus `press_keys` and `type_on_desktop` (approval-gated — they go to
+whatever window has focus, which could be anything).
+
+Optional extra: `sudo apt install playerctl` gives proper media control; without it Jarvis
+synthesises `XF86Audio*` keypresses instead.
+
+> **Note on tool count.** The API allows at most 20 tools marked `strict`. Jarvis ships 25 tools,
+> so `strict` is reserved for those with enums or numeric fields where mis-typing matters.
+
 ## Configuration
 
 Everything tunable lives in `jarvis.config.json`:
@@ -99,6 +117,7 @@ src/agent.ts     Streaming manual agent loop (Anthropic SDK)
 src/tools.ts     Tool definitions + executors + command policy
 src/voice.ts     Server-side TTS (Piper neural, espeak fallback)
 src/browser.ts   Chrome control via DevTools Protocol + Gmail reading
+src/desktop.ts   Screen capture (vision), window control, input, clipboard
 src/memory.ts    Long-term memory store
 src/config.ts    Config loader
 data/            Runtime state (history, memory) — gitignored
