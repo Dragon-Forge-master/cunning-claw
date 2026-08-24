@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>J.A.R.V.I.S.</title>
+  <link rel="stylesheet" href="hud.css">
+</head>
+<body>
+  <div id="boot-overlay">
+    <pre id="boot-text"></pre>
+  </div>
+
+  <div id="hud">
+    <header>
+      <div class="brand">J.A.R.V.I.S. <span class="sub">Just A Rather Very Intelligent System</span></div>
+      <div class="header-controls">
+        <button id="tts-toggle" class="ctl active" title="Voice output">VOICE</button>
+        <button id="wake-toggle" class="ctl" title="Always listening for 'Jarvis'">WAKE</button>
+        <button id="reset-btn" class="ctl" title="Clear conversation">RESET</button>
+        <span id="conn-dot" class="dot"></span>
+      </div>
+    </header>
+
+    <main>
+      <aside id="sys-panel">
+        <div class="panel-title">SYSTEM TELEMETRY</div>
+        <pre id="sys-status">initialising…</pre>
+      </aside>
+
+      <section id="center">
+        <canvas id="reactor" width="360" height="360"></canvas>
+        <div id="state-label">STANDBY</div>
+      </section>
+
+      <section id="chat-panel">
+        <div class="panel-title">TRANSCRIPT</div>
+        <div id="chat-log"></div>
+        <div id="approval-area"></div>
+        <form id="input-bar">
+          <button type="button" id="mic-btn" title="Hold or click to speak">◉</button>
+          <input id="msg-input" type="text" placeholder="At your service, sir…" autocomplete="off">
+          <button type="submit" id="send-btn">SEND</button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

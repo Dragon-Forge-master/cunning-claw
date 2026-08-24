@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.venv/
+voices/*.onnx
+data/history.json
+data/memory.json
