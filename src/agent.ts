@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { config, DATA_DIR } from "./config.js";
 import { memorySnapshot } from "./memory.js";
 import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
+import { decideTier, estimateCost, providerFor, historyIsTainted } from "./routing.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
 
 const HISTORY_FILE = path.join(DATA_DIR, "history.json");
@@ -87,6 +88,13 @@ function trimHistory(messages: Msg[]): Msg[] {
 let history: Msg[] = loadHistory();
 let busy = false;
 
+/** Running spend for this process, surfaced in the HUD. */
+const spend = { usd: 0, turns: 0, cheapTurns: 0, inputTokens: 0, outputTokens: 0 };
+
+export function spendSummary() {
+  return { ...spend, tainted: historyIsTainted(history) };
+}
+
 export function getHistory(): Msg[] {
   return history;
 }
@@ -144,39 +152,51 @@ export async function runTurn(
     let finalText = "";
     // Manual agentic loop: stream each iteration, execute tools between them.
     for (let iteration = 0; iteration < config.coherence.maxIterations; iteration++) {
-      const stream = client.messages.stream({
-        model: config.model,
-        max_tokens: config.maxTokens,
-        thinking: { type: "adaptive" },
-        output_config: { effort: config.effort },
-        system: [
-          { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-        ],
-        tools: buildTools(),
-        messages: trimHistory(history),
-      });
+      const decision = decideTier(userMessage, history, opts?.kind ?? "user");
+      const provider = providerFor(decision.tier);
+      if (iteration === 0) {
+        events.emit("route", {
+          tier: decision.tier,
+          reason: decision.reason,
+          model: provider.model,
+        });
+      }
 
-      stream.on("text", (delta) => {
-        finalText += delta;
-        events.emit("text", { delta });
-      });
+      const message = await provider.run(
+        {
+          system: SYSTEM_PROMPT,
+          messages: trimHistory(history),
+          // Server-side Anthropic tools only exist on the Anthropic provider.
+          tools: provider.id.startsWith("anthropic") ? buildTools() : toolDefinitions,
+          maxTokens: config.maxTokens,
+        },
+        (delta) => {
+          finalText += delta;
+          events.emit("text", { delta });
+        },
+      );
 
-      const message = await stream.finalMessage();
+      spend.turns++;
+      if (decision.tier === "cheap") spend.cheapTurns++;
+      spend.inputTokens += message.usage.inputTokens;
+      spend.outputTokens += message.usage.outputTokens;
+      spend.usd += estimateCost(message.model, message.usage.inputTokens, message.usage.outputTokens);
+      events.emit("spend", spendSummary());
 
-      if (message.stop_reason === "pause_turn") {
+      if (message.stopReason === "pause_turn") {
         // Server-side tool paused mid-turn; append and resume.
         history.push({ role: "assistant", content: message.content });
         continue;
       }
 
       const toolUses = message.content.filter(
-        (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
+        (b): b is Anthropic.ToolUseBlockParam => b.type === "tool_use",
       );
 
       history.push({ role: "assistant", content: message.content });
 
-      if (message.stop_reason !== "tool_use" || toolUses.length === 0) {
-        if (message.stop_reason === "refusal") {
+      if (message.stopReason !== "tool_use" || toolUses.length === 0) {
+        if (message.stopReason === "refusal") {
           events.emit("text", { delta: "I'm afraid I must decline that one, sir." });
         }
         break;

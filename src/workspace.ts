@@ -5,6 +5,18 @@ import { ROOT } from "./config.js";
 export const WORKSPACE = path.join(ROOT, "workspace");
 
 /**
+ * The pristine MEMORY.md. Routing compares against this to tell "nothing has
+ * been recorded yet" from "something has been recorded" — an exact comparison
+ * rather than a format heuristic, so planted text cannot evade it by simply
+ * not being a bullet point.
+ */
+export const DEFAULT_MEMORY_BODY = [
+  "# MEMORY",
+  "Durable facts. `memory_save` appends here. Keep this file short.",
+  "- (none yet)",
+];
+
+/**
  * Provenance matters more than content here.
  *
  * AUTHORED_FILES are written by the human. They carry instruction authority and

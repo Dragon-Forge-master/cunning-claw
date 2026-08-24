@@ -74,6 +74,22 @@ export interface JarvisConfig {
   homeAssistant: { enabled: boolean; baseUrl: string; tokenEnv: string };
   coherence: { ouroborosLimit: number; maxIterations: number };
   heartbeat: { enabled: boolean; intervalMinutes: number };
+  routing: {
+    enabled: boolean;
+    timeoutMs: number;
+    cheapMaxChars: number;
+    cheap: {
+      enabled: boolean;
+      provider: "anthropic" | "openai-compat";
+      model: string;
+      baseUrl: string;
+      apiKeyEnv: string;
+      effort?: string;
+    };
+    cheapPatterns: string[];
+    strongPatterns: string[];
+    pricePerMTok: Record<string, { in: number; out: number }>;
+  };
   server: { port: number; host: string };
 }
 

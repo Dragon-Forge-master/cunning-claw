@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import express from "express";
 import { config, ROOT } from "./config.js";
-import { getHistory, resetHistory, runTurn, type AgentEvents } from "./agent.js";
+import { getHistory, resetHistory, runTurn, spendSummary, type AgentEvents } from "./agent.js";
 import { systemStatusText } from "./tools.js";
 import * as voice from "./voice.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
@@ -124,6 +124,7 @@ app.get("/api/status", async (_req, res) => {
   res.json({
     text: await systemStatusText(),
     online: Boolean(process.env.ANTHROPIC_API_KEY),
+    spend: spendSummary(),
     serverVoice: (await voice.isAvailable()) && voice.isEnabled(),
     serverVoiceAvailable: await voice.isAvailable(),
     voiceEngine: (await voice.detect()).engine,

@@ -127,3 +127,10 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
   #reactor { width: 220px; height: 220px; }
   .brand .sub { display: none; }
 }
+
+#route-chip, #spend-chip {
+  font-size: 10px; letter-spacing: 2px; margin-top: 2px; text-align: center;
+}
+#route-chip { color: var(--cyan-dim); min-height: 13px; }
+#route-chip.cheap { color: var(--amber); }
+#spend-chip { color: var(--cyan-dim); opacity: 0.75; }

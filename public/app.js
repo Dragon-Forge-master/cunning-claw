@@ -220,6 +220,20 @@ es.addEventListener("tool_result", (e) => {
   addChip(`✓ ${name} complete`);
 });
 
+es.addEventListener("route", (e) => {
+  const { tier, model, reason } = JSON.parse(e.data);
+  const chip = $("route-chip");
+  chip.textContent = `${tier.toUpperCase()} · ${model}`;
+  chip.title = reason;
+  chip.classList.toggle("cheap", tier === "cheap");
+});
+
+es.addEventListener("spend", (e) => {
+  const s = JSON.parse(e.data);
+  $("spend-chip").textContent =
+    `$${s.usd.toFixed(4)} · ${s.turns} turns (${s.cheapTurns} cheap)${s.tainted ? " · TAINTED" : ""}`;
+});
+
 es.addEventListener("turn_done", (e) => {
   const { text } = JSON.parse(e.data);
   setState("STANDBY");
