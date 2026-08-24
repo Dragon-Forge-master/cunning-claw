@@ -12,6 +12,9 @@ A Claude-powered personal assistant that controls your machine. Voice in, voice 
 - **Browser control** — drives its own Chrome via the DevTools Protocol: open pages, read them, list tabs, click and type (approval-gated)
 - **Email** — reads and searches Gmail through that browser session, no credentials handled
 - **Vision** — takes screenshots and actually looks at them, so it can read your screen and verify its own work
+- **Any REST API** — one allowlisted `http_request` tool with `${ENV_VAR}` secret injection, rather than a bespoke tool per service
+- **Smart home** — Home Assistant entity states and service calls (opt-in)
+- **Loop protection** — the Ouroboros guard blocks a tool call repeated identically within a turn
 - **Desktop control** — lists and focuses windows, sends keystrokes to any app (approval-gated), desktop notifications, clipboard, media keys
 - **Voice** — neural TTS (Piper, offline) server-side, with an espeak fallback; plus push-to-talk and "Jarvis" wake-word input
 - **Extras** — weather (no API key), timers/reminders announced aloud
@@ -97,6 +100,24 @@ synthesises `XF86Audio*` keypresses instead.
 
 > **Note on tool count.** The API allows at most 20 tools marked `strict`. Jarvis ships 25 tools,
 > so `strict` is reserved for those with enums or numeric fields where mis-typing matters.
+
+## Lineage
+
+Three ideas here are ported from Chris's own prior work rather than invented:
+
+- **Ouroboros guard + coherence protocol** — from
+  [`quantum-coherence-kernel`](https://github.com/Dragon-Forge-AI/quantum-coherence-kernel)
+  ("an AI agent immune system"). An identical tool call repeated past
+  `coherence.ouroborosLimit` within a turn is refused and the model is told to change
+  approach or ask. The system prompt carries the matching rule, so it usually
+  self-corrects before the hard guard is needed.
+- **Allowlisted HTTP tool** — from `dragon-claw-os`'s `config/skills.toml`, where ~50
+  capabilities fall out of one `http` tool plus a host allowlist instead of 50
+  hand-written integrations. Blocked hosts are reported, never silently dropped, and
+  secrets are injected from the environment via `${ENV_VAR}` so they never enter the
+  model's context. Responses are untrusted-fenced and secret-redacted.
+- **Operating doctrine** — from `forgewarden-ai`: local-first when privacy matters,
+  human approval when consequences matter, scoped credentials only, logs before cleverness.
 
 ## Configuration
 

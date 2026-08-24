@@ -30,6 +30,11 @@ Operating principles:
 - Use web_search when asked about current events or anything beyond your knowledge.
 - A modest amount of dry wit is welcome. Obsequiousness is not.
 
+Coherence before action (the Quantum Coherence Kernel, in short):
+- Before any destructive or irreversible action — deleting, sending, spending, publishing, overwriting — check your own reasoning. If any step of it rests on a guess rather than something you have actually verified, stop and verify first. Prefer reading the real state over assuming it.
+- If you find yourself uncertain, say so and gather evidence instead of proceeding on a hunch. A wrong irreversible action costs far more than an extra tool call.
+- Never attempt the same failing action more than twice. If something has not worked twice, the approach is wrong, not the execution — change tack or ask ${config.persona.userName}. Repeating it is blocked automatically.
+
 Eyes and hands:
 - take_screenshot lets you actually see the screen. Use it rather than guessing about UI state, and use it to verify that an action worked.
 - list_windows, focus_window, notify, clipboard and media_control run freely. press_keys and type_on_desktop require approval — they go to whatever window has focus, which could be anything.
@@ -117,10 +122,15 @@ export async function runTurn(userMessage: string, events: AgentEvents): Promise
     emit: events.emit,
   };
 
+  // Ouroboros guard (from the Quantum Coherence Kernel): an agent that retries
+  // the same failing action forever burns tokens and achieves nothing. Count
+  // identical tool invocations within a turn and force a pivot at the limit.
+  const attempts = new Map<string, number>();
+
   try {
     let finalText = "";
     // Manual agentic loop: stream each iteration, execute tools between them.
-    for (let iteration = 0; iteration < 25; iteration++) {
+    for (let iteration = 0; iteration < config.coherence.maxIterations; iteration++) {
       const stream = client.messages.stream({
         model: config.model,
         max_tokens: config.maxTokens,
@@ -162,6 +172,25 @@ export async function runTurn(userMessage: string, events: AgentEvents): Promise
       // Execute all requested tools (concurrently), return results in ONE user message.
       const results = await Promise.all(
         toolUses.map(async (tu) => {
+          const signature = `${tu.name}:${JSON.stringify(tu.input)}`;
+          const seen = (attempts.get(signature) ?? 0) + 1;
+          attempts.set(signature, seen);
+
+          if (seen > config.coherence.ouroborosLimit) {
+            events.emit("tool_result", { name: tu.name, result: "[Ouroboros] loop blocked" });
+            return {
+              type: "tool_result" as const,
+              tool_use_id: tu.id,
+              content:
+                `[Ouroboros Protocol] Loop detected: you have already attempted this exact ` +
+                `${tu.name} call ${seen - 1} times in this turn and it was not productive. ` +
+                `The action was NOT executed. Stop retrying this path — either take a ` +
+                `materially different approach, or tell the user plainly that you are stuck ` +
+                `and what you need from them.`,
+              is_error: true,
+            };
+          }
+
           events.emit("tool_start", { name: tu.name, input: tu.input });
           const result = await executeTool(tu.name, tu.input, ctx);
           const preview = typeof result === "string"

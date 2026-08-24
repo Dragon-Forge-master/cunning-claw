@@ -76,5 +76,26 @@
       "press_keys",
       "type_on_desktop"
     ]
+  },
+  "http": {
+    "allowlist": [
+      "api.github.com",
+      "api.open-meteo.com",
+      "geocoding-api.open-meteo.com",
+      "*.googleapis.com",
+      "127.0.0.1",
+      "localhost"
+    ],
+    "timeoutMs": 20000,
+    "maxResponseChars": 12000
+  },
+  "homeAssistant": {
+    "enabled": false,
+    "baseUrl": "http://homeassistant.local:8123",
+    "tokenEnv": "HA_TOKEN"
+  },
+  "coherence": {
+    "ouroborosLimit": 2,
+    "maxIterations": 25
   }
 }

@@ -8,6 +8,7 @@ import { config } from "./config.js";
 import { remember, forget } from "./memory.js";
 import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
+import * as http from "./http.js";
 
 const execAsync = promisify(exec);
 
@@ -330,6 +331,42 @@ export const toolDefinitions: Anthropic.Tool[] = [
     strict: true,
   },
   {
+    name: "http_request",
+    description:
+      "Make an HTTP request to an allowlisted host. This is the general-purpose key to any REST API — " +
+      "use ${ENV_VAR} inside header values to inject secrets from the environment without ever seeing them. " +
+      "Non-GET requests require user approval. Blocked hosts are reported, not silently dropped.",
+    input_schema: {
+      type: "object",
+      properties: {
+        url: { type: "string" },
+        method: { type: "string", enum: ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+        headers: { type: "object", additionalProperties: { type: "string" } },
+        body: { type: "string", description: "Request body, usually JSON" },
+      },
+      required: ["url"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "home_assistant",
+    description:
+      "Control the smart home through Home Assistant: list entity states, or call a service " +
+      "(e.g. domain 'light', service 'turn_on', entity 'light.kitchen').",
+    input_schema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["states", "call"] },
+        filter: { type: "string", description: "Substring filter, when action is 'states'" },
+        domain: { type: "string" },
+        service: { type: "string" },
+        entityId: { type: "string" },
+      },
+      required: ["action"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "set_timer",
     description:
       "Set a timer/reminder. When it fires, the UI announces it aloud. Returns immediately.",
@@ -573,6 +610,27 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
           ? await desktop.clipboardWrite(String(input.text ?? ""))
           : await desktop.clipboardRead();
       case "media_control": return await desktop.media(input.action);
+      case "http_request": {
+        const method = (input.method ?? "GET").toUpperCase();
+        if (method !== "GET" && method !== "HEAD") {
+          const ok = await ctx.requestApproval(
+            `HTTP ${method} request`,
+            `${input.url}\n\n${String(input.body ?? "").slice(0, 1000)}`,
+          );
+          if (!ok) return "The user declined the request.";
+        }
+        return await http.request(input);
+      }
+      case "home_assistant":
+        if (input.action === "call") {
+          const ok = await ctx.requestApproval(
+            "Control a smart-home device",
+            `${input.domain}.${input.service} → ${input.entityId}`,
+          );
+          if (!ok) return "The user declined the device control.";
+          return await http.haCall(input.domain, input.service, input.entityId);
+        }
+        return await http.haStates(input.filter);
       case "set_timer": return setTimer(input, ctx);
       default: return `Unknown tool: ${name}`;
     }

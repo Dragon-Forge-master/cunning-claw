@@ -64,6 +64,9 @@ export interface JarvisConfig {
     maxImageWidth: number;
     requireApprovalFor: string[];
   };
+  http: { allowlist: string[]; timeoutMs: number; maxResponseChars: number };
+  homeAssistant: { enabled: boolean; baseUrl: string; tokenEnv: string };
+  coherence: { ouroborosLimit: number; maxIterations: number };
   server: { port: number; host: string };
 }
 
