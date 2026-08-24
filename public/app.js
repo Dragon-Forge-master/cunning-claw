@@ -14,17 +14,23 @@ let serverVoiceAvailable = false;
 // ---------------------------------------------------------------------------
 // Boot sequence
 // ---------------------------------------------------------------------------
-const BOOT_LINES = [
-  "J.A.R.V.I.S. v0.1 — boot sequence initiated",
-  "loading cognitive core .............. claude-opus-5",
-  "mounting tool interface ............. 28 tools + web search + skills",
-  "loading workspace ................... SOUL / HEARTBEAT / skills",
-  "restoring long-term memory .......... ok",
-  "establishing event stream ........... ok",
-  "",
-  "All systems nominal. Good day, sir.",
-];
 (async () => {
+  let brain = "claude-opus-5";
+  try {
+    const s = await (await fetch("/api/status")).json();
+    if (s.brains?.active) brain = `${s.brains.active.id} / ${s.brains.active.model}`;
+    else if (s.brain?.model) brain = `${s.brain.provider} / ${s.brain.model}`;
+  } catch { /* boot copy is cosmetic */ }
+  const BOOT_LINES = [
+    "J.A.R.V.I.S. v0.3 — boot sequence initiated",
+    `loading cognitive cores ............. ${brain}`,
+    "mounting tool interface ............. tools + search + skills",
+    "loading workspace ................... SOUL / HEARTBEAT / skills",
+    "restoring long-term memory .......... journal + MEMORY.md",
+    "establishing event stream ........... ok",
+    "",
+    "All systems nominal. Good day, sir.",
+  ];
   const el = $("boot-text");
   for (const line of BOOT_LINES) {
     el.textContent += line + "\n";
@@ -246,8 +252,13 @@ es.addEventListener("agent_error", (e) => {
   setState("STANDBY");
 });
 
-es.addEventListener("heartbeat_ok", () => {
-  setState("STANDBY");
+es.addEventListener("notice", (e) => {
+  const { message } = JSON.parse(e.data);
+  addMsg("system", message);
+});
+
+es.addEventListener("brain", (e) => {
+  renderBrainPicker(JSON.parse(e.data));
 });
 
 es.onerror = () => {
@@ -335,17 +346,66 @@ $("reset-btn").addEventListener("click", async () => {
 // ---------------------------------------------------------------------------
 // System telemetry + history restore
 // ---------------------------------------------------------------------------
+function renderBrainPicker(payload) {
+  const el = $("brain-picker");
+  if (!el) return;
+  const data = payload?.catalog ? payload : payload?.brains ? payload.brains : null;
+  const catalog = data?.catalog ?? payload?.catalog;
+  if (!catalog) return;
+  const pin = data.pin ?? null;
+  const activeId = data.active?.id;
+  el.innerHTML = "";
+  const make = (label, title, active, offline, onClick) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "ctl brain-btn" + (active ? " active" : "") + (offline ? " offline" : "");
+    btn.textContent = label;
+    btn.title = title;
+    btn.onclick = onClick;
+    el.appendChild(btn);
+  };
+  make("AUTO", "Automatic routing (default + fallbacks)", !pin, false, () => {
+    fetch("/api/brain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: "auto" }),
+    });
+  });
+  for (const b of catalog) {
+    make(
+      b.label.toUpperCase(),
+      `${b.provider} / ${b.model}${b.ready ? "" : " — no API key"}`,
+      pin ? pin === b.id : activeId === b.id,
+      !b.ready,
+      () => {
+        fetch("/api/brain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: b.id }),
+        });
+      },
+    );
+  }
+}
+
 async function pollStatus() {
   try {
     const res = await fetch("/api/status");
     const {
       text, online, serverVoice: sv, serverVoiceAvailable: sva,
       skills, heartbeat, landscapeCount, landscapeUpdated,
+      brain, brains, telegram, toolCount,
     } = await res.json();
+    renderBrainPicker(brains);
+    const active = brains?.active;
     const extra = [
       "",
-      `Skills: ${skills ?? 0}  ·  Heartbeat: ${heartbeat?.enabled ? `every ${heartbeat.intervalMinutes}m` : "off"}${heartbeat?.lastAt ? ` (last ${heartbeat.lastAt.slice(11, 16)}Z)` : ""}`,
+      `Brain: ${active ? `${active.id} / ${active.model} (${active.source})` : `${brain?.provider ?? "?"} / ${brain?.model ?? "?"}`}`,
+      `Roster: ${(brains?.catalog || []).map((b) => `${b.id}${b.ready ? "" : "*"}`).join(" · ") || "—"}  (* = no key)`,
+      `Heartbeat brain: ${brains?.heartbeat ?? "—"}  ·  Fallbacks: ${(brains?.fallbacks || []).join(" → ") || "none"}`,
+      `Skills: ${skills ?? 0}  ·  Tools: ${toolCount ?? "?"}  ·  Heartbeat: ${heartbeat?.enabled ? `every ${heartbeat.intervalMinutes}m` : "off"}${heartbeat?.lastAt ? ` (last ${heartbeat.lastAt.slice(11, 16)}Z)` : ""}`,
       `Field map: ${landscapeCount ?? 0} systems  (${landscapeUpdated ?? "?"})`,
+      `Telegram: ${telegram?.enabled ? `on (${(telegram.chats || []).join(", ")})` : "off"}`,
     ].join("\n");
     $("sys-status").textContent = text + extra;
     $("conn-dot").classList.toggle("online", online);

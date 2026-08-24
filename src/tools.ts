@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import type Anthropic from "@anthropic-ai/sdk";
 import { config } from "./config.js";
-import { remember, forget } from "./memory.js";
+import { remember, forget, searchMemory } from "./memory.js";
 import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
 import * as http from "./http.js";
@@ -150,6 +150,17 @@ export const toolDefinitions: Anthropic.Tool[] = [
       type: "object",
       properties: { key: { type: "string" } },
       required: ["key"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "memory_search",
+    description:
+      "Search long-term memory, MEMORY.md, and the daily journal. Use when the operator says 'what did I tell you' or you need a fact from a prior day.",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string" } },
+      required: ["query"],
       additionalProperties: false,
     },
   },
@@ -648,6 +659,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "get_weather": return await getWeather(input);
       case "memory_save": return remember(input.key, input.value);
       case "memory_forget": return forget(input.key);
+      case "memory_search": return searchMemory(String(input.query ?? ""));
       case "browser_open": return await browser.openUrl(input.url, Boolean(input.newTab));
       case "browser_read": return await browser.readPage(input.tab);
       case "browser_tabs": return await browser.tabs();

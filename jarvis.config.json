@@ -102,53 +102,44 @@
     "enabled": true,
     "intervalMinutes": 30
   },
-  "routing": {
-    "enabled": true,
-    "timeoutMs": 120000,
-    "cheapMaxChars": 200,
-    "cheap": {
-      "enabled": false,
-      "provider": "openai-compat",
-      "model": "google/gemini-2.5-flash",
-      "baseUrl": "https://openrouter.ai/api/v1",
-      "apiKeyEnv": "OPENROUTER_API_KEY",
-      "effort": "low"
-    },
-    "cheapPatterns": [
-      "^(what('s| is) the )?time",
-      "^(what('s| is) the )?date",
-      "volume",
-      "^(set|start) a? ?timer",
-      "^(system )?(status|telemetry|cpu|memory|disk|uptime)",
-      "^(mute|unmute|pause|play|next track|previous track)",
-      "^(hello|hi|hey|good (morning|evening|afternoon))",
-      "^(thanks|thank you|cheers)"
-    ],
-    "strongPatterns": [
-      "email|inbox|gmail|mail",
-      "browse|website|web|url|http|search|look up|google",
-      "run |execute|command|shell|terminal|install|delete|remove",
-      "screenshot|screen|look at|see ",
-      "write |create |edit |file",
-      "buy|pay|send|post|publish|tweet"
-    ],
-    "pricePerMTok": {
-      "default": {
-        "in": 5.0,
-        "out": 25.0
+  "brains": {
+    "default": "core",
+    "heartbeat": "pulse",
+    "fallbacks": ["pulse", "cheap"],
+    "catalog": [
+      {
+        "id": "core",
+        "label": "Core",
+        "provider": "anthropic",
+        "model": "claude-opus-5",
+        "effort": "high",
+        "thinking": true
       },
-      "claude-opus-5": {
-        "in": 5.0,
-        "out": 25.0
+      {
+        "id": "pulse",
+        "label": "Pulse",
+        "provider": "anthropic",
+        "model": "claude-haiku-4-5",
+        "effort": "low",
+        "maxTokens": 2048,
+        "thinking": false
       },
-      "claude-haiku-4-5": {
-        "in": 1.0,
-        "out": 5.0
-      },
-      "google/gemini-2.5-flash": {
-        "in": 0.3,
-        "out": 2.5
+      {
+        "id": "cheap",
+        "label": "Cheap",
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+        "baseUrl": "https://api.openai.com/v1",
+        "apiKeyEnv": "OPENAI_API_KEY"
       }
+    ]
+  },
+  "brain": {
+    "provider": "anthropic",
+    "openai": {
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "apiKeyEnv": "OPENAI_API_KEY"
     }
   }
 }
