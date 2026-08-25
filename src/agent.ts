@@ -9,7 +9,7 @@ import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted } 
 import { containsSecret, redactDeep } from "./redact.js";
 import { toolDefinitions as mcpToolDefinitions } from "./mcp.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
-import { pickBrain, nextBrain, isFailoverError, describeBrain, missingKeyHint, brainHasKey, catalog, type BrainSpec } from "./brain.js";
+import { pickBrain, nextBrain, isFailoverError, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
 import { completeOpenAi } from "./openai-compat.js";
 import { appendJournal, todayJournalSnippet } from "./journal.js";
 
@@ -193,6 +193,7 @@ async function callBrain(
   toolUses: { id: string; name: string; input: unknown }[];
   stopReason: string;
   refusal: boolean;
+  usage: { inputTokens: number; outputTokens: number };
 }> {
   if (!brainHasKey(spec)) {
     throw new Error(`Missing key for brain ${spec.id}. ${missingKeyHint()}`);
@@ -210,6 +211,7 @@ async function callBrain(
       toolUses: completion.toolUses,
       stopReason: completion.toolUses.length ? "tool_use" : "end",
       refusal: false,
+      usage: completion.usage ?? { inputTokens: 0, outputTokens: 0 },
     };
   }
 
@@ -239,6 +241,10 @@ async function callBrain(
     toolUses,
     stopReason: message.stop_reason ?? "",
     refusal: message.stop_reason === "refusal",
+    usage: {
+      inputTokens: message.usage?.input_tokens ?? 0,
+      outputTokens: message.usage?.output_tokens ?? 0,
+    },
   };
 }
 
@@ -317,6 +323,7 @@ export async function runTurn(
           });
           toolUses = step.toolUses;
           stopReason = step.stopReason;
+          recordUsage(spec, step.usage);
           history.push({ role: "assistant", content: step.content as any });
           if (step.refusal) {
             events.emit("text", { delta: "I'm afraid I must decline that one, sir." });

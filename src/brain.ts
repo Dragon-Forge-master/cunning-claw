@@ -314,6 +314,85 @@ export function missingKeyHint(): string {
   }).join("; ") + ". Copy .env.example to .env.";
 }
 
+// ---------------------------------------------------------------------------
+// Cost accounting. Other modules read this; the HUD is wired separately.
+// ---------------------------------------------------------------------------
+
+export type TokenUsage = { inputTokens: number; outputTokens: number };
+
+export type TurnCost = {
+  brainId: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  usd: number;
+  unpriced: boolean;
+};
+
+export type SessionSpend = {
+  turns: number;
+  inputTokens: number;
+  outputTokens: number;
+  usd: number;
+};
+
+let lastCost: TurnCost | null = null;
+let session: SessionSpend = { turns: 0, inputTokens: 0, outputTokens: 0, usd: 0 };
+
+/** Longest prefix wins so `claude-haiku-4-5-20251001` hits `claude-haiku-4-5`. */
+export function priceForModel(model: string): { inputPerMillion: number; outputPerMillion: number } | null {
+  const table = config.pricing?.models ?? {};
+  if (table[model]) return table[model];
+  let best: string | null = null;
+  for (const key of Object.keys(table)) {
+    if (model.startsWith(key) && (!best || key.length > best.length)) best = key;
+  }
+  return best ? table[best] : null;
+}
+
+export function recordUsage(spec: BrainSpec, usage: TokenUsage): TurnCost {
+  const price = priceForModel(spec.model);
+  const inputUsd = price ? (usage.inputTokens / 1_000_000) * price.inputPerMillion : 0;
+  const outputUsd = price ? (usage.outputTokens / 1_000_000) * price.outputPerMillion : 0;
+  const cost: TurnCost = {
+    brainId: spec.id,
+    model: spec.model,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    usd: inputUsd + outputUsd,
+    unpriced: !price,
+  };
+  lastCost = cost;
+  session = {
+    turns: session.turns + 1,
+    inputTokens: session.inputTokens + usage.inputTokens,
+    outputTokens: session.outputTokens + usage.outputTokens,
+    usd: session.usd + cost.usd,
+  };
+  return cost;
+}
+
+export function lastTurnCost(): TurnCost | null {
+  return lastCost;
+}
+
+export function sessionSpend(): SessionSpend {
+  return { ...session };
+}
+
+export function formatCost(cost: TurnCost): string {
+  const tokens = `${cost.inputTokens} in / ${cost.outputTokens} out`;
+  if (cost.unpriced) {
+    return `${cost.model}: ${tokens} (unpriced — add pricing.models in jarvis.config.json)`;
+  }
+  return `${cost.model}: ${tokens} · $${cost.usd.toFixed(4)}`;
+}
+
+export function resetSpendForTests(): void {
+  lastCost = null;
+  session = { turns: 0, inputTokens: 0, outputTokens: 0, usd: 0 };
+}
+
 /** @deprecated use openAiEndpoint(spec) */
 export function openAiBrain() {
   const spec = catalog().find((b) => b.provider === "openai") ?? pickBrain("user");

@@ -124,6 +124,14 @@ export interface JarvisConfig {
     }[];
   };
   server: { port: number; host: string };
+  /**
+   * USD per million tokens, keyed by model id (prefix match allowed).
+   * Unknown models record tokens and mark the turn unpriced rather than guessing.
+   */
+  pricing?: {
+    currency?: string;
+    models?: Record<string, { inputPerMillion: number; outputPerMillion: number }>;
+  };
 }
 
 export const config: JarvisConfig = JSON.parse(

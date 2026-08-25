@@ -184,5 +184,14 @@
     "maxToolsPerServer": 12,
     "maxResultChars": 12000,
     "servers": []
+  },
+  "pricing": {
+    "currency": "USD",
+    "models": {
+      "claude-opus-5": { "inputPerMillion": 15, "outputPerMillion": 75 },
+      "claude-haiku-4-5": { "inputPerMillion": 1, "outputPerMillion": 5 },
+      "gpt-4o-mini": { "inputPerMillion": 0.15, "outputPerMillion": 0.6 },
+      "llama3.1:8b": { "inputPerMillion": 0, "outputPerMillion": 0 }
+    }
   }
 }

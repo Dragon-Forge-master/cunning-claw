@@ -87,6 +87,7 @@ export type OpenAiCompletion = {
   text: string;
   blocks: Anthropic.ContentBlock[];
   toolUses: { id: string; name: string; input: unknown }[];
+  usage?: { inputTokens: number; outputTokens: number };
 };
 
 export async function completeOpenAi(opts: {
@@ -148,6 +149,7 @@ export async function completeOpenAi(opts: {
   let buffer = "";
   let text = "";
   const calls = new Map<number, { id: string; name: string; arguments: string }>();
+  let usage: { inputTokens: number; outputTokens: number } | undefined;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -179,6 +181,7 @@ export async function completeOpenAi(opts: {
         if (part.function?.arguments) cur.arguments += part.function.arguments;
         calls.set(idx, cur);
       }
+      if (json.usage) usage = parseUsage(json.usage);
     }
   }
 
@@ -186,7 +189,7 @@ export async function completeOpenAi(opts: {
     id: c.id || `call_${i}`,
     name: c.name,
     arguments: c.arguments,
-  })));
+  })), usage);
 }
 
 function parseToolArgs(raw: string): unknown {
@@ -197,9 +200,17 @@ function parseToolArgs(raw: string): unknown {
   }
 }
 
+function parseUsage(raw: any): { inputTokens: number; outputTokens: number } | undefined {
+  const input = Number(raw?.prompt_tokens ?? raw?.input_tokens ?? 0);
+  const output = Number(raw?.completion_tokens ?? raw?.output_tokens ?? 0);
+  if (!input && !output) return undefined;
+  return { inputTokens: input, outputTokens: output };
+}
+
 function assemble(
   text: string,
   calls: { id: string; name: string; arguments: string }[],
+  usage?: { inputTokens: number; outputTokens: number },
 ): OpenAiCompletion {
   const toolUses = calls
     .filter((c) => c.name)
@@ -213,7 +224,7 @@ function assemble(
   for (const tu of toolUses) {
     blocks.push({ type: "tool_use", id: tu.id, name: tu.name, input: tu.input });
   }
-  return { text, blocks, toolUses };
+  return { text, blocks, toolUses, usage };
 }
 
 function fromNonStream(json: any, onText: (delta: string) => void): OpenAiCompletion {
@@ -225,5 +236,5 @@ function fromNonStream(json: any, onText: (delta: string) => void): OpenAiComple
     name: c.function?.name ?? "",
     arguments: c.function?.arguments ?? "",
   }));
-  return assemble(text, calls);
+  return assemble(text, calls, parseUsage(json.usage));
 }
