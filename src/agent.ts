@@ -164,6 +164,35 @@ function trimHistory(messages: Msg[]): Msg[] {
 
 let history: Msg[] = loadHistory();
 let busy = false;
+let turnStartedAt = 0;
+let turnKind: "user" | "heartbeat" = "user";
+/** Set when the operator asks to stop, or when the watchdog gives up on a turn. */
+let abortTurn: AbortController | null = null;
+
+/** How long a single turn may run before it is treated as wedged. */
+function maxTurnMs(): number {
+  return (config.agent?.maxTurnMinutes ?? 10) * 60_000;
+}
+
+export function turnInFlight(): { busy: boolean; forMs: number; kind: string } {
+  return { busy, forMs: busy ? Date.now() - turnStartedAt : 0, kind: turnKind };
+}
+
+/**
+ * Abandon the current turn.
+ *
+ * A turn is a chain of awaits — an API stream, a tool, a browser call. Any one
+ * of them stalling with no timeout leaves `busy` true forever, and every later
+ * message is answered with "still working on the previous request". That is
+ * indistinguishable, from the outside, from the assistant being dead.
+ */
+export function cancelTurn(reason: string): boolean {
+  if (!busy) return false;
+  abortTurn?.abort(new Error(reason));
+  busy = false;
+  abortTurn = null;
+  return true;
+}
 
 /** Running spend for this process, surfaced in the HUD. */
 const spend = { usd: 0, turns: 0, cheapTurns: 0, inputTokens: 0, outputTokens: 0 };
@@ -265,10 +294,40 @@ export async function runTurn(
   opts?: { kind?: "user" | "heartbeat" },
 ): Promise<string | null> {
   if (busy) {
-    events.emit("agent_error", { message: "Still working on the previous request, sir." });
-    return null;
+    const forMs = Date.now() - turnStartedAt;
+    // A turn that has outrun its budget is wedged, not busy. Take it out and
+    // let the new instruction through rather than refusing work indefinitely.
+    if (forMs > maxTurnMs()) {
+      cancelTurn(`turn exceeded ${Math.round(maxTurnMs() / 60000)} minutes`);
+      events.emit("notice", {
+        message: `The previous request had been running ${Math.round(forMs / 60000)} minutes with no result, so I abandoned it.`,
+      });
+    } else {
+      const secs = Math.round(forMs / 1000);
+      events.emit("agent_error", {
+        message: secs > 90
+          ? `Still working on the previous request, sir — ${Math.round(secs / 60)} minutes so far. Say "stop" if you want me to abandon it.`
+          : `Still working on the previous request, sir (${secs}s).`,
+      });
+      return null;
+    }
   }
   busy = true;
+  turnStartedAt = Date.now();
+  turnKind = opts?.kind === "heartbeat" ? "heartbeat" : "user";
+  abortTurn = new AbortController();
+
+  // Belt and braces: even if nothing else notices, release the flag so the
+  // next instruction is not refused.
+  const watchdog = setTimeout(() => {
+    if (busy && Date.now() - turnStartedAt >= maxTurnMs()) {
+      cancelTurn("watchdog");
+      events.emit("agent_error", {
+        message: "That request stalled and has been abandoned. Nothing was left half-done that I can see — try again.",
+      });
+    }
+  }, maxTurnMs() + 1000);
+  watchdog.unref?.();
   // A grant covers one errand, not the rest of the session.
   clearTaskGrant();
   events.emit("turn_start", {});
@@ -453,6 +512,8 @@ export async function runTurn(
     events.emit("agent_error", { message: msg });
     return null;
   } finally {
+    clearTimeout(watchdog);
     busy = false;
+    abortTurn = null;
   }
 }

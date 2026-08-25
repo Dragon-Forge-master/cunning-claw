@@ -90,6 +90,8 @@ drawReactor();
 function setState(s) {
   state = s;
   stateLabel.textContent = s;
+  const stop = $("stop-btn");
+  if (stop) stop.style.display = s === "THINKING" ? "" : "none";
 }
 
 // ---------------------------------------------------------------------------
@@ -649,6 +651,12 @@ $("wake-toggle").addEventListener("click", (e) => {
   e.target.classList.toggle("active", wakeEnabled);
   if (wakeEnabled) startWakeLoop();
   else wakeRecognizer?.stop();
+});
+
+$("stop-btn")?.addEventListener("click", async () => {
+  const r = await fetch("/api/cancel", { method: "POST" }).then((x) => x.json()).catch(() => ({}));
+  addMsg("system", r.stopped ? "Request abandoned." : "Nothing was running.");
+  setState("STANDBY");
 });
 
 $("reset-btn").addEventListener("click", async () => {

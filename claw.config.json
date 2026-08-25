@@ -207,5 +207,8 @@
         "outputPerMillion": 0
       }
     }
+  },
+  "agent": {
+    "maxTurnMinutes": 10
   }
 }

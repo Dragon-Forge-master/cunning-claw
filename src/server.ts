@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import express from "express";
 import { config, ROOT } from "./config.js";
-import { getHistory, resetHistory, runTurn, CONTEXT_END, type AgentEvents } from "./agent.js";
+import { getHistory, resetHistory, runTurn, cancelTurn, turnInFlight, CONTEXT_END, type AgentEvents } from "./agent.js";
 import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
 import { redactDeep } from "./redact.js";
@@ -149,11 +149,36 @@ app.post("/api/approve", (req, res) => {
 // --- Chat -------------------------------------------------------------------
 const agentEvents: AgentEvents = { emit: broadcast, requestApproval };
 
+app.post("/api/cancel", (_req, res) => {
+  const { forMs } = turnInFlight();
+  const stopped = cancelTurn("operator asked to stop");
+  if (stopped) {
+    broadcast("notice", { message: `Abandoned the request after ${Math.round(forMs / 1000)}s.` });
+    broadcast("turn_done", { text: "" });
+  }
+  res.json({ ok: true, stopped });
+});
+
+/** Said out loud or typed, "stop" should stop him — not queue behind the thing it wants stopped. */
+const STOP_WORDS = /^\s*(stop|cancel|abort|halt|never ?mind|forget it|leave it)\b[\s.!]*$/i;
+
 app.post("/api/chat", (req, res) => {
   // A new instruction outranks a turn parked on an unanswered approval.
   if (pendingApprovals.size > 0) cancelPendingApprovals("superseded by a new instruction");
   const message = String(req.body?.message ?? "").trim();
   if (!message) return res.status(400).json({ error: "Empty message" });
+
+  if (STOP_WORDS.test(message)) {
+    const { forMs } = turnInFlight();
+    const stopped = cancelTurn("operator said stop");
+    broadcast("notice", {
+      message: stopped
+        ? `Stopped, sir — abandoned after ${Math.round(forMs / 1000)}s.`
+        : "Nothing was running, sir.",
+    });
+    broadcast("turn_done", { text: "" });
+    return res.json({ ok: true, stopped });
+  }
   const brainReply = applyBrainCommand(message);
   if (brainReply !== null) {
     res.json({ ok: true, command: true });
@@ -215,6 +240,7 @@ app.get("/api/status", async (_req, res) => {
     telegram: telegramStatus(),
     toolCount: toolDefinitions.length,
     spend: sessionSpend(),
+    turn: turnInFlight(),
     lastTurn: lastTurnCost(),
     preview: previewState(),
   });

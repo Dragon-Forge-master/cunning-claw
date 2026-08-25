@@ -127,6 +127,7 @@ export interface ClawConfig {
       writeTools?: string[];
     }[];
   };
+  agent?: { maxTurnMinutes?: number };
   server: { port: number; host: string };
   /**
    * USD per million tokens, keyed by model id (prefix match allowed).
