@@ -11,7 +11,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-55%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-81%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 
 <sub>Built in Cardiff by <b>Dragon Forge AI</b> · Local-first when privacy matters · Human approval when consequences matter</sub>
@@ -32,6 +32,8 @@ npm run dev
 ```
 
 Open **http://127.0.0.1:3900**. It binds to loopback only — nothing is exposed to your network.
+
+Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and **macOS** (`screencapture`, `osascript`, `pbcopy`, `afplay` or `say`). Missing tools return a message that names what to install — they never silently no-op.
 
 ```
 
@@ -213,18 +215,20 @@ src/brain.ts     Brain catalogue, failover, /brain pinning
 src/routing.ts   Trusted-brain guard, sticky taint
 src/tools.ts     36 tools + the command policy
 src/browser.ts   Chrome via DevTools Protocol + Gmail
-src/desktop.ts   Screen capture, windows, input, clipboard
-src/voice.ts     Piper neural TTS, espeak fallback
+src/platform.ts  OS adapter — Linux / macOS table, missing-tool copy
+src/desktop.ts   Screen capture, windows, input, clipboard, volume
+src/voice.ts     Piper neural TTS, espeak / macOS `say` fallback
 src/redact.ts    Credential redaction
 src/workspace.ts SOUL.md / USER.md / MEMORY.md / skills
 ```
 
 **4,500 lines. Two runtime dependencies.** Most of what it does comes from composing things
-your machine already has — `xdotool`, `wmctrl`, `pactl`, Chrome's debug protocol — rather
+your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, `pactl` /
+`afplay`, Chrome's debug protocol — rather
 than dragging in frameworks.
 
 ```bash
-npm test        # 55 tests
+npm test        # 81 tests
 npm run check   # tsc --noEmit
 ```
 

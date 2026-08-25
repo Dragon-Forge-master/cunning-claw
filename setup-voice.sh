@@ -20,10 +20,36 @@ mkdir -p voices
 [ -f "voices/$VOICE.onnx" ]      || curl -L --fail --progress-bar -o "voices/$VOICE.onnx"      "$BASE/$VOICE.onnx"
 [ -f "voices/$VOICE.onnx.json" ] || curl -L --fail --progress-bar -o "voices/$VOICE.onnx.json" "$BASE/$VOICE.onnx.json"
 
+play_raw() {
+  if command -v paplay >/dev/null 2>&1; then
+    paplay --raw --rate=22050 --format=s16le --channels=1
+    return
+  fi
+  if command -v afplay >/dev/null 2>&1; then
+    local wav
+    wav="$(mktemp "${TMPDIR:-/tmp}/jarvis-voice.XXXXXX").wav"
+    python3 - "$wav" <<'PY'
+import sys, wave
+path = sys.argv[1]
+raw = sys.stdin.buffer.read()
+with wave.open(path, "wb") as w:
+    w.setnchannels(1)
+    w.setsampwidth(2)
+    w.setframerate(22050)
+    w.writeframes(raw)
+PY
+    afplay "$wav"
+    rm -f "$wav"
+    return
+  fi
+  echo "No audio player found (paplay on Linux, afplay on macOS). The model is installed; playback needs a player." >&2
+  cat >/dev/null
+}
+
 echo "▸ Testing…"
 echo "Good evening, sir. All systems are nominal." \
   | .venv/bin/piper -m "voices/$VOICE.onnx" --output-raw \
-  | paplay --raw --rate=22050 --format=s16le --channels=1
+  | play_raw
 
 echo
 echo "✓ Done. Set voice.piper.model to \"voices/$VOICE.onnx\" in jarvis.config.json."
