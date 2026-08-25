@@ -40,6 +40,9 @@
     "enabled": true,
     "engine": "auto",
     "maxChars": 1200,
+    "say": {
+      "voice": "Daniel"
+    },
     "piper": {
       "model": "voices/en_GB-alan-medium.onnx",
       "player": "paplay",

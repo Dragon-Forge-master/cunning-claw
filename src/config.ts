@@ -37,8 +37,10 @@ export interface JarvisConfig {
   };
   voice: {
     enabled: boolean;
-    engine: "auto" | "piper" | "spd-say";
+    engine: "auto" | "piper" | "spd-say" | "say";
     maxChars: number;
+    /** macOS `say` voice. Daniel is the closest built-in to a butler. */
+    say?: { voice?: string };
     piper: {
       model: string;
       player: string;

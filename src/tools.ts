@@ -200,7 +200,7 @@ export const toolDefinitions: Anthropic.Tool[] = [
   },
   {
     name: "set_volume",
-    description: "Set, adjust, or mute the system audio volume via PulseAudio.",
+    description: "Set, adjust, or mute the system audio volume.",
     input_schema: {
       type: "object",
       properties: {
@@ -667,29 +667,6 @@ export async function systemStatusText(): Promise<string> {
   ].filter(Boolean).join("\n");
 }
 
-async function setVolume(input: { level?: number; adjust?: number; mute?: boolean }): Promise<string> {
-  try {
-    if (typeof input.mute === "boolean") {
-      await execAsync(`pactl set-sink-mute @DEFAULT_SINK@ ${input.mute ? 1 : 0}`);
-      return input.mute ? "Muted." : "Unmuted.";
-    }
-    if (typeof input.level === "number") {
-      const lvl = Math.max(0, Math.min(150, input.level));
-      await execAsync(`pactl set-sink-volume @DEFAULT_SINK@ ${lvl}%`);
-      return `Volume set to ${lvl}%.`;
-    }
-    if (typeof input.adjust === "number") {
-      const sign = input.adjust >= 0 ? "+" : "-";
-      await execAsync(`pactl set-sink-volume @DEFAULT_SINK@ ${sign}${Math.abs(input.adjust)}%`);
-      return `Volume adjusted by ${input.adjust}%.`;
-    }
-    const { stdout } = await execAsync("pactl get-sink-volume @DEFAULT_SINK@");
-    return stdout.trim();
-  } catch (err: any) {
-    return `Volume control failed: ${err.message}`;
-  }
-}
-
 const WEATHER_CODES: Record<number, string> = {
   0: "clear sky", 1: "mainly clear", 2: "partly cloudy", 3: "overcast",
   45: "fog", 48: "rime fog", 51: "light drizzle", 53: "drizzle", 55: "heavy drizzle",
@@ -797,7 +774,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       }
       case "open": return await openTool(input);
       case "system_status": return await systemStatusText();
-      case "set_volume": return await setVolume(input);
+      case "set_volume": return await desktop.setVolume(input);
       case "get_weather": return await getWeather(input);
       case "memory_save": return remember(input.key, input.value);
       case "memory_forget": return forget(input.key);
