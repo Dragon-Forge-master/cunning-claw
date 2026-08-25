@@ -22,16 +22,38 @@ And refuses when a web page tells it to do something you didn't ask for.
 
 ## Install
 
+One command from a clean clone:
+
 ```bash
 git clone https://github.com/Dragon-Forge-master/jarvis.git
 cd jarvis
+./install.sh
+```
+
+That checks Node 22+, runs `npm install`, creates `.env` from the example, asks for an Anthropic key, offers the offline voice, runs `npm run doctor`, and prints how to start.
+
+Then `npm run dev` and open **http://127.0.0.1:3900**. It binds to loopback only — nothing is exposed to your network.
+
+### Autostart (Linux)
+
+JARVIS is meant to survive a closed terminal. `install.sh` can drop a **systemd --user** unit (not a system unit — it needs your session for X11, audio and Chrome):
+
+```bash
+systemctl --user enable --now jarvis
+loginctl enable-linger $USER    # still running after logout
+```
+
+The template lives at `packaging/jarvis.service`. macOS: keep `npm run dev` in a Terminal at login, or a LaunchAgent if you add one later.
+
+### By hand
+
+```bash
 npm install
 cp .env.example .env        # add your ANTHROPIC_API_KEY
 ./setup-voice.sh            # neural voice, ~60MB, fully offline
+npm run doctor
 npm run dev
 ```
-
-Open **http://127.0.0.1:3900**. It binds to loopback only — nothing is exposed to your network.
 
 Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and **macOS** (`screencapture`, `osascript`, `pbcopy`, `afplay` or `say`). Missing tools return a message that names what to install — they never silently no-op.
 
@@ -215,7 +237,9 @@ src/brain.ts     Brain catalogue, failover, /brain pinning
 src/routing.ts   Trusted-brain guard, sticky taint
 src/tools.ts     36 tools + the command policy
 src/browser.ts   Chrome via DevTools Protocol + Gmail
-src/platform.ts  OS adapter — Linux / macOS table, missing-tool copy
+src/doctor.ts    `npm run doctor` — one line per check, every failure names the fix
+packaging/       systemd --user unit (session, not system)
+install.sh       clean-clone setup
 src/desktop.ts   Screen capture, windows, input, clipboard, volume
 src/voice.ts     Piper neural TTS, espeak / macOS `say` fallback
 src/redact.ts    Credential redaction

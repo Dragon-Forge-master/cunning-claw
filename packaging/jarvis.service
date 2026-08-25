@@ -1,0 +1,20 @@
+[Unit]
+Description=JARVIS local assistant
+Documentation=https://github.com/Dragon-Forge-master/jarvis
+# User service, not system: needs this session for DISPLAY, Pulse/PipeWire, and Chrome.
+After=default.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory="@@ROOT@@"
+ExecStart="@@NPM@@" run dev
+Restart=on-failure
+RestartSec=5
+Environment=PATH="@@PATH@@"
+# Inherit the graphical session when systemd started us at login.
+Environment=DISPLAY=:0
+PassEnvironment=DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS PULSE_SERVER
+
+[Install]
+WantedBy=default.target
