@@ -1,7 +1,7 @@
 {
-  "name": "jarvis",
+  "name": "cunningclaw",
   "version": "0.1.0",
-  "description": "J.A.R.V.I.S. — a local personal assistant with a HUD, denylist, and a brain you can swap",
+  "description": "C.U.N.N.I.N.G. C.L.A.W. — a local personal assistant with a HUD, denylist, and a brain you can swap",
   "type": "module",
   "scripts": {
     "dev": "tsx src/boot.ts",

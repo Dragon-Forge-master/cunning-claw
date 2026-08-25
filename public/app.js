@@ -1,4 +1,4 @@
-/* J.A.R.V.I.S. HUD client */
+/* C.U.N.N.I.N.G. C.L.A.W. HUD client */
 
 const $ = (id) => document.getElementById(id);
 const chatLog = $("chat-log");
@@ -22,7 +22,7 @@ let serverVoiceAvailable = false;
     else if (s.brain?.model) brain = `${s.brain.provider} / ${s.brain.model}`;
   } catch { /* boot copy is cosmetic */ }
   const BOOT_LINES = [
-    "J.A.R.V.I.S. v0.3 — boot sequence initiated",
+    "C.U.N.N.I.N.G. C.L.A.W. v0.3 — boot sequence initiated",
     `loading cognitive cores ............. ${brain}`,
     "mounting tool interface ............. tools + search + skills",
     "loading workspace ................... SOUL / HEARTBEAT / skills",
@@ -115,10 +115,10 @@ function addChip(text) {
 // ---------------------------------------------------------------------------
 // Text-to-speech
 // ---------------------------------------------------------------------------
-let jarvisVoice = null;
+let cunningclawVoice = null;
 function pickVoice() {
   const voices = speechSynthesis.getVoices();
-  jarvisVoice =
+  cunningclawVoice =
     voices.find((v) => /en-GB/i.test(v.lang) && /male|daniel|arthur/i.test(v.name)) ||
     voices.find((v) => /en-GB/i.test(v.lang)) ||
     voices.find((v) => /^en/i.test(v.lang)) || null;
@@ -135,7 +135,7 @@ function speak(text) {
   // Strip markdown-ish noise for cleaner speech
   const clean = text.replace(/[*_`#]/g, "").replace(/\[.*?\]\(.*?\)/g, "");
   const utter = new SpeechSynthesisUtterance(clean);
-  if (jarvisVoice) utter.voice = jarvisVoice;
+  if (cunningclawVoice) utter.voice = cunningclawVoice;
   utter.rate = 1.05;
   utter.pitch = 0.9;
   utter.onstart = () => setState("SPEAKING");
@@ -185,7 +185,7 @@ function startWakeLoop() {
   wakeRecognizer.interimResults = false;
   wakeRecognizer.onresult = (e) => {
     const text = e.results[e.results.length - 1][0].transcript.trim();
-    const m = text.match(/jarvis[,.]?\s*(.*)/i);
+    const m = text.match(/cunningclaw[,.]?\s*(.*)/i);
     if (m) {
       const cmd = m[1].trim();
       if (cmd) sendMessage(cmd);
@@ -218,7 +218,7 @@ es.addEventListener("turn_start", () => {
 
 es.addEventListener("text", (e) => {
   const { delta } = sseData(e);
-  if (!currentBubble) currentBubble = addMsg("jarvis", "");
+  if (!currentBubble) currentBubble = addMsg("cunningclaw", "");
   currentBubble.textContent += delta;
   chatLog.scrollTop = chatLog.scrollHeight;
 });
@@ -376,7 +376,7 @@ let sseConnected = false;
 
 function paintConnection() {
   $("conn-dot").classList.toggle("online", sseConnected);
-  $("conn-dot").title = sseConnected ? "Connected to JARVIS" : "Disconnected — retrying";
+  $("conn-dot").title = sseConnected ? "Connected to CUNNING CLAW" : "Disconnected — retrying";
 }
 
 es.addEventListener("hello", () => { sseConnected = true; paintConnection(); });
@@ -436,7 +436,7 @@ async function resolveApproval(id, approved) {
     });
     if (!res.ok) addMsg("system", `⚠ Could not send that decision (HTTP ${res.status}).`);
   } catch (err) {
-    addMsg("system", `⚠ Could not reach JARVIS to answer the approval: ${err.message}`);
+    addMsg("system", `⚠ Could not reach CUNNING CLAW to answer the approval: ${err.message}`);
   }
 }
 
@@ -458,7 +458,7 @@ async function sendMessage(text) {
       setState("STANDBY");
     }
   } catch (err) {
-    addMsg("system", `⚠ JARVIS is not reachable: ${err.message}`);
+    addMsg("system", `⚠ CUNNING CLAW is not reachable: ${err.message}`);
     setState("STANDBY");
   }
 }
@@ -623,7 +623,7 @@ async function pollStatus() {
     ].join("\n");
     $("sys-status").textContent = text + extra;
     // The dot is connection state, owned by the SSE socket. Brain readiness is
-    // a separate fact — showing it here made a keyless-but-connected JARVIS
+    // a separate fact — showing it here made a keyless-but-connected CUNNING CLAW
     // look disconnected, and painted over real drops every five seconds.
     $("conn-dot").classList.toggle("nobrain", !online);
     if (spend) {
@@ -654,6 +654,6 @@ setInterval(pollStatus, 5000);
 (async () => {
   try {
     const history = await (await fetch("/api/history")).json();
-    for (const m of history) addMsg(m.role === "user" ? "user" : "jarvis", m.text);
+    for (const m of history) addMsg(m.role === "user" ? "user" : "cunningclaw", m.text);
   } catch { /* fresh start */ }
 })();

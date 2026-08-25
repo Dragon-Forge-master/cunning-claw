@@ -24,11 +24,11 @@ test("Node 22 is the floor", () => {
 });
 
 test("placeholder keys do not count as present", () => {
-  process.env.JARVIS_DOCTOR_TEST_KEY = "sk-ant-...";
-  assert.equal(envLooksSet("JARVIS_DOCTOR_TEST_KEY"), false);
-  process.env.JARVIS_DOCTOR_TEST_KEY = "sk-ant-api03-realishvaluewithenoughchars";
-  assert.equal(envLooksSet("JARVIS_DOCTOR_TEST_KEY"), true);
-  delete process.env.JARVIS_DOCTOR_TEST_KEY;
+  process.env.CLAW_DOCTOR_TEST_KEY = "sk-ant-...";
+  assert.equal(envLooksSet("CLAW_DOCTOR_TEST_KEY"), false);
+  process.env.CLAW_DOCTOR_TEST_KEY = "sk-ant-api03-realishvaluewithenoughchars";
+  assert.equal(envLooksSet("CLAW_DOCTOR_TEST_KEY"), true);
+  delete process.env.CLAW_DOCTOR_TEST_KEY;
 });
 
 test("no-key guide names the file, the env var, and where to get a key", () => {
@@ -81,7 +81,7 @@ test("every failed or warned line names a fix", async () => {
     if (c.status === "ok") continue;
     assert.match(
       c.line,
-      /install|cp |\.env|setup-voice|ollama|nodejs\.org|delete it|jarvis\.config|https:\/\//i,
+      /install|cp |\.env|setup-voice|ollama|nodejs\.org|delete it|claw\.config|https:\/\//i,
       `failure must name a fix: ${c.line}`,
     );
   }

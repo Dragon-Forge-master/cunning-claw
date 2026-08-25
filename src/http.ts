@@ -43,12 +43,12 @@ export async function request(input: {
     return (
       `BLOCKED: "${host}" is not on the HTTP allowlist, so I did not send the request.\n` +
       `Currently allowed: ${config.http.allowlist.join(", ") || "(nothing)"}\n` +
-      `To permit it, add the host to http.allowlist in jarvis.config.json.`
+      `To permit it, add the host to http.allowlist in claw.config.json.`
     );
   }
 
   // Expand ${ENV_VAR} in headers so tokens live in .env, never in the model's context.
-  const headers: Record<string, string> = { "User-Agent": "JARVIS/1.0" };
+  const headers: Record<string, string> = { "User-Agent": "CUNNING CLAW/1.0" };
   for (const [k, v] of Object.entries(input.headers ?? {})) {
     headers[k] = String(v).replace(/\$\{([A-Z0-9_]+)\}/g, (_m, name) => process.env[name] ?? "");
   }
@@ -85,7 +85,7 @@ function haHeaders(): Record<string, string> | null {
 export async function haStates(filter?: string): Promise<string> {
   const h = haHeaders();
   if (!config.homeAssistant.enabled || !h) {
-    return `Home Assistant is not configured. Set homeAssistant.enabled and baseUrl in jarvis.config.json, and put a long-lived access token in .env as ${config.homeAssistant.tokenEnv}.`;
+    return `Home Assistant is not configured. Set homeAssistant.enabled and baseUrl in claw.config.json, and put a long-lived access token in .env as ${config.homeAssistant.tokenEnv}.`;
   }
   try {
     const res = await fetch(`${config.homeAssistant.baseUrl}/api/states`, {

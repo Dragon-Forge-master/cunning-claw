@@ -20,7 +20,7 @@ test("ships agentskills.io skills", () => {
 test("field map tracks the systems that actually moved 2026", () => {
   const data = loadLandscape();
   const ids = data.systems.map((s) => s.id);
-  for (const need of ["openclaw", "hermes-agent", "open-interpreter", "stanford-openjarvis"]) {
+  for (const need of ["openclaw", "hermes-agent", "open-interpreter", "stanford-openclaw"]) {
     assert.ok(ids.includes(need), `missing ${need}`);
   }
   assert.ok(data.systems.length >= 8);

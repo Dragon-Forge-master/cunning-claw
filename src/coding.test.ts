@@ -18,7 +18,7 @@ test("preview URLs rewrite 0.0.0.0 and reject script/file schemes", () => {
 });
 
 test("edit_file requires a unique snippet unless replaceAll", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "jarvis-edit-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cunningclaw-edit-"));
   const file = path.join(dir, "a.ts");
   fs.writeFileSync(file, "const a = 1;\nconst b = 1;\n");
   const amb = planEdit({ path: file, oldString: " = 1", newString: " = 2" });
@@ -32,7 +32,7 @@ test("edit_file requires a unique snippet unless replaceAll", () => {
 });
 
 test("grep and glob find a file without shelling out", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "jarvis-grep-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cunningclaw-grep-"));
   fs.writeFileSync(path.join(dir, "hit.ts"), "export const cardiff = true;\n");
   fs.writeFileSync(path.join(dir, "miss.md"), "nothing here\n");
   const g = globFiles("**/*.ts", dir);

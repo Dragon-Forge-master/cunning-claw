@@ -12,7 +12,7 @@ test("parseChatAllowlist splits and trims ids", () => {
 test("journal search finds a day file and ignores misses", () => {
   fs.mkdirSync(JOURNAL_DIR, { recursive: true });
   const file = path.join(JOURNAL_DIR, "2099-12-31.md");
-  const token = "zz-jarvis-journal-probe";
+  const token = "zz-cunningclaw-journal-probe";
   fs.writeFileSync(file, `- 12:00:00 operator: ${token} about the Cardiff brief\n`);
   try {
     const hits = searchJournal(token);

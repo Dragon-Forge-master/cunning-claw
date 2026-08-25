@@ -93,7 +93,7 @@ export function startTelegram(events: AgentEvents, hooks: { resolveApproval: Res
   allowed = parseChatAllowlist(allow);
   resolveApproval = hooks.resolveApproval;
   console.log(`  Telegram: polling (allow ${[...allowed].join(", ")})`);
-  void send([...allowed][0], `JARVIS online. HUD at http://${config.server.host}:${config.server.port}`).catch(() => {});
+  void send([...allowed][0], `CUNNING CLAW online. HUD at http://${config.server.host}:${config.server.port}`).catch(() => {});
   void loop(events);
 }
 
@@ -143,7 +143,7 @@ async function handleMessage(msg: any, events: AgentEvents): Promise<void> {
 
   // /whoami works from unknown chats so the operator can learn their id.
   if (text === "/whoami" || (text === "/start" && !allowed.has(chatId))) {
-    await send(chatId, `Your Telegram chat id is ${chatId}. Put it in TELEGRAM_CHAT_ID and restart JARVIS.`);
+    await send(chatId, `Your Telegram chat id is ${chatId}. Put it in TELEGRAM_CHAT_ID and restart CUNNING CLAW.`);
     return;
   }
 
@@ -155,7 +155,7 @@ async function handleMessage(msg: any, events: AgentEvents): Promise<void> {
   if (text === "/start" || text === "/help") {
     await send(
       chatId,
-      "Dragon Forge JARVIS.\n" +
+      "Dragon Forge CUNNING CLAW.\n" +
         "/help — this\n" +
         "/status — machine + brains\n" +
         "/brain — list / pin a model (same tools)\n" +

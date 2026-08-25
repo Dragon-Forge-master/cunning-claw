@@ -7,7 +7,7 @@ import { ROOT } from "./config.js";
 /**
  * Local API authentication.
  *
- * Binding to loopback keeps JARVIS off the network, but it does not keep it
+ * Binding to loopback keeps CUNNING CLAW off the network, but it does not keep it
  * away from *this* machine: any process running as this user — a postinstall
  * script, a rogue dependency, a page in a browser — could POST to /api/chat and
  * get a shell, a file write, or the contents of an inbox. Loopback is not a
@@ -22,22 +22,22 @@ import { ROOT } from "./config.js";
  */
 
 const ENV_FILE = path.join(ROOT, ".env");
-export const COOKIE = "jarvis_session";
+export const COOKIE = "cunningclaw_session";
 
 let token = "";
 
 /** Read the token, generating and persisting one on first run. */
 export function ensureToken(): { token: string; generated: boolean } {
-  const existing = process.env.JARVIS_TOKEN?.trim();
+  const existing = process.env.CLAW_TOKEN?.trim();
   if (existing) {
     token = existing;
     return { token, generated: false };
   }
 
   token = crypto.randomBytes(32).toString("base64url");
-  process.env.JARVIS_TOKEN = token;
+  process.env.CLAW_TOKEN = token;
   try {
-    const line = `\nJARVIS_TOKEN=${token}\n`;
+    const line = `\nCLAW_TOKEN=${token}\n`;
     fs.appendFileSync(ENV_FILE, line, { mode: 0o600 });
     fs.chmodSync(ENV_FILE, 0o600);
   } catch {
@@ -71,7 +71,7 @@ function readCookie(header: string | undefined, name: string): string | undefine
 function presentedToken(req: Request): string | undefined {
   const auth = req.headers.authorization;
   if (auth?.startsWith("Bearer ")) return auth.slice(7).trim();
-  const header = req.headers["x-jarvis-token"];
+  const header = req.headers["x-cunningclaw-token"];
   if (typeof header === "string") return header.trim();
   return readCookie(req.headers.cookie, COOKIE);
 }
@@ -96,7 +96,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!tokenMatches(presentedToken(req))) {
     res.status(401).json({
-      error: "Unauthorised. Send Authorization: Bearer $JARVIS_TOKEN, or open the HUD in a browser.",
+      error: "Unauthorised. Send Authorization: Bearer $CLAW_TOKEN, or open the HUD in a browser.",
     });
     return;
   }

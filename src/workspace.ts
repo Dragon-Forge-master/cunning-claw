@@ -21,8 +21,8 @@ export const DEFAULT_MEMORY_BODY = [
  * Provenance matters more than content here.
  *
  * AUTHORED_FILES are written by the human. They carry instruction authority and
- * are rendered as such. AGENT_FILES are written by JARVIS at runtime — and
- * JARVIS reads untrusted email and web pages, so anything it records may have
+ * are rendered as such. AGENT_FILES are written by CUNNING CLAW at runtime — and
+ * CUNNING CLAW reads untrusted email and web pages, so anything it records may have
  * originated with an attacker. Rendering those as plain workspace text would
  * turn a one-shot injection into a permanent one that survives every restart.
  * They are fenced as data instead.
@@ -126,7 +126,7 @@ export function writeSkill(name: string, description: string, body: string): str
   fs.mkdirSync(dir, { recursive: true });
   const md =
     `---\nname: ${slug}\ndescription: ${description.trim().slice(0, 1024)}\n` +
-    `author: jarvis\nwritten: ${new Date().toISOString().slice(0, 10)}\n---\n\n${body.trim()}\n`;
+    `author: cunningclaw\nwritten: ${new Date().toISOString().slice(0, 10)}\n---\n\n${body.trim()}\n`;
   fs.writeFileSync(path.join(dir, "SKILL.md"), redact(md));
   return `Wrote skill "${slug}" to workspace/skills/${slug}/SKILL.md`;
 }

@@ -51,7 +51,7 @@ test("flattens vision blocks instead of forwarding them to OpenAI-compatible bra
   assert.match(String(msgs[1].content), /not forwarded/);
 });
 
-test("OpenAI tool schema wraps every JARVIS tool as a function", () => {
+test("OpenAI tool schema wraps every CUNNING CLAW tool as a function", () => {
   const schema = openAiToolSchema();
   assert.ok(schema.length >= 25);
   assert.equal(schema[0].type, "function");

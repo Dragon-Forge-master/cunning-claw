@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "jarvis",
+      "name": "cunningclaw",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["tsx", "src/server.ts"],
       "port": 3900

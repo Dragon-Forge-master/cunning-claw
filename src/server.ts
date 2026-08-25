@@ -21,10 +21,10 @@ import { openPreview, closePreview, reloadPreview, previewState } from "./previe
 // socket error. Log loudly, keep serving.
 process.on("exit", () => shutdownMcp());
 process.on("uncaughtException", (err) => {
-  console.error("[jarvis] uncaught exception:", err);
+  console.error("[cunningclaw] uncaught exception:", err);
 });
 process.on("unhandledRejection", (err) => {
-  console.error("[jarvis] unhandled rejection:", err);
+  console.error("[cunningclaw] unhandled rejection:", err);
 });
 
 const VERSION: string = (() => {
@@ -288,8 +288,8 @@ app.listen(port, host, async () => {
   if (mcpCount) console.log(`  MCP: ${mcpCount} tool(s) registered\n`);
 
   if (tokenGenerated) {
-    console.log("  A JARVIS_TOKEN was generated and written to .env (mode 600).");
-    console.log("  Scripts authenticate with:  Authorization: Bearer $JARVIS_TOKEN\n");
+    console.log("  A CLAW_TOKEN was generated and written to .env (mode 600).");
+    console.log("  Scripts authenticate with:  Authorization: Bearer $CLAW_TOKEN\n");
   }
 
   startHeartbeat(agentEvents);

@@ -84,7 +84,7 @@ class McpConnection {
     await this.rpc("initialize", {
       protocolVersion: "2025-06-18",
       capabilities: {},
-      clientInfo: { name: "jarvis", version: "0.1.0" },
+      clientInfo: { name: "cunningclaw", version: "0.1.0" },
     });
     this.notify("notifications/initialized", {});
   }

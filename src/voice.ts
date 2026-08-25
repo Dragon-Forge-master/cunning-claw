@@ -263,7 +263,7 @@ function speakWithPiperFile(text: string, model: string, player: string): void {
       console.error("Voice: Piper produced no audio. Check the model file and ./setup-voice.sh.");
       return;
     }
-    const wav = path.join(os.tmpdir(), `jarvis-tts-${process.pid}-${Date.now()}.wav`);
+    const wav = path.join(os.tmpdir(), `cunningclaw-tts-${process.pid}-${Date.now()}.wav`);
     try {
       fs.writeFileSync(wav, wrapPcmToWav(pcm, piper.sampleRate));
     } catch (err) {

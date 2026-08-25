@@ -6,24 +6,25 @@
  * escape codes into a log file.
  */
 
-const REACTOR = [
-  "    ▄▄████▄▄    ",
-  "  ▄██▀▀  ▀▀██▄  ",
-  " ██▀  ▄██▄  ▀██ ",
-  "██   ██▀▀██   ██",
-  "██   ██▄▄██   ██",
-  " ██▄  ▀██▀  ▄██ ",
-  "  ▀██▄▄  ▄▄██▀  ",
-  "    ▀▀████▀▀    ",
+/** Three talons closing on a point — ours, rather than a borrowed reactor. */
+const MARK = [
+  "  ▟█▙   ▟█▙   ▟█▙  ",
+  "  ▜██▙ ▟███▙ ▟██▛  ",
+  "   ▜██▄███████▄██▛ ",
+  "    ▀████▀ ▀████▀  ",
+  "      ▜██▄▄▄██▛    ",
+  "        ▜███▛      ",
+  "         ▜▛        ",
+  "          ▀        ",
 ];
 
 const WORDMARK = [
-  "     ██╗ █████╗ ██████╗ ██╗   ██╗██╗███████╗",
-  "     ██║██╔══██╗██╔══██╗██║   ██║██║██╔════╝",
-  "     ██║███████║██████╔╝██║   ██║██║███████╗",
-  "██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║",
-  "╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║",
-  " ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝",
+  " ██████╗██╗      █████╗ ██╗    ██╗",
+  "██╔════╝██║     ██╔══██╗██║    ██║",
+  "██║     ██║     ███████║██║ █╗ ██║",
+  "██║     ██║     ██╔══██║██║███╗██║",
+  "╚██████╗███████╗██║  ██║╚███╔███╔╝",
+  " ╚═════╝╚══════╝╚═╝  ╚═╝ ╚══╝╚══╝ ",
 ];
 
 /** Cyan ramp, dim at the edges and bright at the core. */
@@ -52,20 +53,20 @@ export function banner(info: BannerInfo): string {
   const c = useColour();
   const out: string[] = [""];
 
-  // Reactor rows are brightest in the middle, so the core appears to glow.
-  const height = Math.max(REACTOR.length, WORDMARK.length);
+  // Brightest through the middle, so the talons appear to catch the light.
+  const height = Math.max(MARK.length, WORDMARK.length);
   const padTop = Math.floor((height - WORDMARK.length) / 2);
 
   for (let i = 0; i < height; i++) {
-    const distance = Math.abs(i - (REACTOR.length - 1) / 2);
-    const reactorColour = RAMP[Math.max(0, RAMP.length - 1 - Math.round(distance * 1.6))];
-    const left = REACTOR[i] ?? " ".repeat(16);
+    const distance = Math.abs(i - (MARK.length - 1) / 2);
+    const markColour = RAMP[Math.max(0, RAMP.length - 1 - Math.round(distance * 1.6))];
+    const left = MARK[i] ?? " ".repeat(19);
 
     const wordIndex = i - padTop;
     const right = WORDMARK[wordIndex] ?? "";
     const wordColour = RAMP[Math.min(RAMP.length - 1, 3 + wordIndex)] ?? 51;
 
-    out.push("  " + paint(left, reactorColour, c) + "  " + paint(right, wordColour, c));
+    out.push("  " + paint(left, markColour, c) + "  " + paint(right, wordColour, c));
   }
 
   const dim = (s: string) => paint(s, 24, c);
@@ -73,7 +74,7 @@ export function banner(info: BannerInfo): string {
 
   out.push("");
   out.push("  " + dim("──────────────────────────────────────────────────────────────"));
-  out.push("  " + dim("JUST A RATHER VERY INTELLIGENT SYSTEM") + dim("  ·  v") + dim(info.version));
+  out.push("  " + dim("THE FORGE MASTER'S AGENT") + dim("  ·  v") + dim(info.version));
   out.push("");
   out.push("  " + lit("▸") + " online   " + lit(info.url));
   if (info.brain) out.push("  " + dim("▸") + " brain    " + info.brain);

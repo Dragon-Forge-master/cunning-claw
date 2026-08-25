@@ -383,7 +383,7 @@ export function sessionSpend(): SessionSpend {
 export function formatCost(cost: TurnCost): string {
   const tokens = `${cost.inputTokens} in / ${cost.outputTokens} out`;
   if (cost.unpriced) {
-    return `${cost.model}: ${tokens} (unpriced — add pricing.models in jarvis.config.json)`;
+    return `${cost.model}: ${tokens} (unpriced — add pricing.models in claw.config.json)`;
   }
   return `${cost.model}: ${tokens} · $${cost.usd.toFixed(4)}`;
 }

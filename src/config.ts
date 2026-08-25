@@ -22,7 +22,7 @@ if (fs.existsSync(envPath)) {
 }
 export const DATA_DIR = path.join(ROOT, "data");
 
-export interface JarvisConfig {
+export interface ClawConfig {
   model: string;
   effort: "low" | "medium" | "high" | "xhigh" | "max";
   maxTokens: number;
@@ -134,8 +134,8 @@ export interface JarvisConfig {
   };
 }
 
-export const config: JarvisConfig = JSON.parse(
-  fs.readFileSync(path.join(ROOT, "jarvis.config.json"), "utf-8"),
+export const config: ClawConfig = JSON.parse(
+  fs.readFileSync(path.join(ROOT, "claw.config.json"), "utf-8"),
 );
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });

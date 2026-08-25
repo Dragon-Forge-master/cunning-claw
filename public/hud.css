@@ -111,7 +111,7 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
 
 .msg { max-width: 92%; padding: 8px 12px; font-size: 13px; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
 .msg.user { align-self: flex-end; border: 1px solid var(--cyan-dim); color: var(--cyan); background: rgba(53,214,237,0.06); }
-.msg.jarvis { align-self: flex-start; border-left: 2px solid var(--cyan); background: rgba(53,214,237,0.04); }
+.msg.cunningclaw { align-self: flex-start; border-left: 2px solid var(--cyan); background: rgba(53,214,237,0.04); }
 .msg.system { align-self: center; color: var(--amber); font-size: 11px; border: none; }
 
 .action-chip {

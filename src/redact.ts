@@ -1,7 +1,7 @@
 /**
  * Credential redaction.
  *
- * JARVIS writes every turn to data/history.json and broadcasts it over SSE.
+ * CUNNING CLAW writes every turn to data/history.json and broadcasts it over SSE.
  * Anything a user types, or that a tool returns, lands in both. Secrets reach
  * that path constantly in ordinary use — a pasted key, a config file read, an
  * `env` in a shell result, an Authorization header in an HTTP response.

@@ -12,7 +12,7 @@ export type CheckStatus = "ok" | "fail" | "warn";
 export interface DoctorCheck {
   id: string;
   status: CheckStatus;
-  /** Essential failures make `jarvis doctor` exit non-zero. */
+  /** Essential failures make `cunningclaw doctor` exit non-zero. */
   essential: boolean;
   line: string;
 }
@@ -39,7 +39,7 @@ export function nodeMajor(version = process.versions.node): number {
  */
 export function noKeyGuide(): string {
   return [
-    "JARVIS has no usable API key, so starting the server would give you a dead assistant.",
+    "CUNNING CLAW has no usable API key, so starting the server would give you a dead assistant.",
     "",
     "Copy the example if you have not already:",
     "  cp .env.example .env",
@@ -270,7 +270,7 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
       "port",
       "fail",
       true,
-      `Port ${port} on ${listenHost} is in use — stop the other process or change server.port in jarvis.config.json`,
+      `Port ${port} on ${listenHost} is in use — stop the other process or change server.port in claw.config.json`,
     ));
 
   const historyFile = path.join(DATA_DIR, "history.json");
@@ -293,7 +293,7 @@ export function hasEssentialFailure(checks: DoctorCheck[]): boolean {
 }
 
 export async function main(): Promise<number> {
-  console.log(`JARVIS doctor  ·  ${host()}  ·  ${ROOT}\n`);
+  console.log(`CUNNING CLAW doctor  ·  ${host()}  ·  ${ROOT}\n`);
   const checks = await runDoctor();
   for (const c of checks) console.log(c.line);
   const failed = hasEssentialFailure(checks);

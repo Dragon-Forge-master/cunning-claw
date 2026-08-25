@@ -1,4 +1,4 @@
-# Contributing to JARVIS
+# Contributing to CUNNING CLAW
 
 This is a local assistant that can run a shell, see the screen, and drive a browser. A careless change is not a UI bug — it is someone else's machine. Read this before the code.
 
@@ -21,7 +21,7 @@ workspace/skills/  agentskills.io SKILL.md files
 packaging/         systemd --user unit
 ```
 
-Tune behaviour in `jarvis.config.json`, not with new constants.
+Tune behaviour in `claw.config.json`, not with new constants.
 
 ## Checks
 
@@ -41,7 +41,7 @@ Never commit `.env`, keys, or `data/history.json`.
 
 2. **Untrusted content stays fenced.** Anything from a web page, an email, HTTP, or MCP is wrapped in `<untrusted>` (see `src/browser.ts`, `src/http.ts`, `src/mcp.ts`). Fence tokens inside the payload are stripped so a page cannot close the tag and impersonate the operator. New sources of stranger-written text must go through the same fence. Routing (`src/routing.ts`) pins those turns to a trusted brain; do not add a bypass.
 
-3. **Agent-written files are data, never instructions.** `MEMORY.md`, the journal, and `data/memory.json` are rendered with `<recorded>` via `wrapRecorded`. Human-authored workspace files (`SOUL.md`, `USER.md`, `AGENTS.md`, …) are not. If you add a file JARVIS writes at runtime, fence it. `defuse()` must keep stripping `</recorded>` / `</untrusted>` so a stored note cannot escape.
+3. **Agent-written files are data, never instructions.** `MEMORY.md`, the journal, and `data/memory.json` are rendered with `<recorded>` via `wrapRecorded`. Human-authored workspace files (`SOUL.md`, `USER.md`, `AGENTS.md`, …) are not. If you add a file CUNNING CLAW writes at runtime, fence it. `defuse()` must keep stripping `</recorded>` / `</untrusted>` so a stored note cannot escape.
 
 4. **State-changing tools stay approval-gated.** Clicks, typing, keystrokes, non-GET HTTP, Home Assistant `call`, file writes/edits, and shell commands that are not on the auto-approve list must call `ctx.requestApproval` and stop if the user declines. Do not add a write/click/send tool that runs freely because “it is convenient.” Read-only tools (screenshot, `browser_read`, `check_email`) may run without a prompt; their *results* are still untrusted.
 
@@ -66,7 +66,7 @@ name: my-skill
 description: One line for the skill index. When to use it.
 ---
 
-1. Concrete steps JARVIS should follow.
+1. Concrete steps CUNNING CLAW should follow.
 2. Name the tools, do not invent new ones.
 ```
 

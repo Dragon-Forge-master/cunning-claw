@@ -30,6 +30,6 @@ for entry in "${CANDIDATES[@]}"; do
 done
 
 echo
-echo "Pick one, then set it in jarvis.config.json:"
+echo "Pick one, then set it in claw.config.json:"
 echo '  "piper": { "model": "voices/<name>.onnx", "sampleRate": <rate>, ... }'
 echo "and restart the server."

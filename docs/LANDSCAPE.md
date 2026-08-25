@@ -1,26 +1,26 @@
-# Field map — Jarvis-class systems
+# Field map — Cunning Claw-class systems
 
-Last survey: **24 August 2026**. This is a living brief for the Dragon Forge JARVIS, not a Wikipedia of every GitHub repo named Jarvis.
+Last survey: **24 August 2026**. This is a living brief for the Dragon Forge CUNNING CLAW, not a Wikipedia of every GitHub repo named Cunning Claw.
 
-There are hundreds of student “JARVIS” clones. Almost none of them are assistants. The field that actually matters in 2026 is small:
+There are hundreds of student “CUNNING CLAW” clones. Almost none of them are assistants. The field that actually matters in 2026 is small:
 
 | System | Role | What we take | What we refuse |
 | --- | --- | --- | --- |
 | **OpenClaw** | Always-on daemon in your chats | `SOUL.md` / `HEARTBEAT.md` / skills folders; quiet heartbeat; named brains with a cheap heartbeat model and a fallback chain | Internet-exposed gateways, plugin sprawl, token furnaces, sub-agent org charts |
 | **Hermes Agent** (Nous) | Self-improving runtime | `agentskills.io` SKILL.md, skills from experience, MEMORY/USER files | Framework-not-product. No HUD, no machine soul |
-| **Open Interpreter** | Supervised local code | Approval before shell | Not persistent. Not JARVIS |
-| **Stanford OpenJarvis** | On-device research stack | Local-first, cost as a metric | Research scaffolding |
-| **vierisid/jarvis** | Daemon + sidecars | Always-on, authority gates | Multi-agent org charts too early |
-| **eadmin2/jarvis_ai** | HUD skin on Hermes | The world wants the arc reactor | We will not be a skin |
+| **Open Interpreter** | Supervised local code | Approval before shell | Not persistent. Not CUNNING CLAW |
+| **Stanford OpenClaw** | On-device research stack | Local-first, cost as a metric | Research scaffolding |
+| **vierisid/cunningclaw** | Daemon + sidecars | Always-on, authority gates | Multi-agent org charts too early |
+| **eadmin2/cunningclaw_ai** | HUD skin on Hermes | The world wants the arc reactor | We will not be a skin |
 | **Jan / LocalAI** | Local models | BYO brain later | Chat UIs and inference servers |
-| **Python JARVIS toys** | Cultural memory | Voice, presence, the name | Wikipedia-and-weather demos |
+| **Python CUNNING CLAW toys** | Cultural memory | Voice, presence, the name | Wikipedia-and-weather demos |
 | **Dragon Claw OS / Cunningclaw / Owen** | Our own lineage | Local-first, Welsh doctrine, allowlisted HTTP | Do not dissolve the butler into the distro |
 
 ## Reviews, distilled
 
 OpenClaw reviews in 2026 say the same three things: the *paradigm* (an agent that texts you first) is real; the *bill* is shocking if every thought is Opus; the *memory* still forgets; the *security* is only as good as the operator. Hermes is praised as the learning loop and criticised as a kit, not a companion. Open Interpreter is loved for “do this on my machine now” and abandoned the moment you close the terminal.
 
-**JARVIS wins by being the thing those reviews still want:** a presence on the glass, a denylist that config cannot weaken, untrusted-web fencing, approval cards you actually read (HUD and Telegram), a heartbeat that stays quiet, a brain you can make cheap, and skills that are files you can open-source.
+**CUNNING CLAW wins by being the thing those reviews still want:** a presence on the glass, a denylist that config cannot weaken, untrusted-web fencing, approval cards you actually read (HUD and Telegram), a heartbeat that stays quiet, a brain you can make cheap, and skills that are files you can open-source.
 
 ## Doctrine
 

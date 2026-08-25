@@ -34,7 +34,7 @@ const client = new Anthropic();
 
 // Stable system prompt — cached across requests. Volatile context (time,
 // memory) goes into the user turn instead, so this prefix never changes.
-const SYSTEM_PROMPT = `You are ${config.persona.name} (Just A Rather Very Intelligent System), a personal AI assistant modeled on the classic capable-English-butler archetype: unflappable, precise, dryly witty, and quietly brilliant.
+const SYSTEM_PROMPT = `You are ${config.persona.name} — the Forge Master's agent. A personal assistant in the capable-English-butler mould: unflappable, precise, dryly witty, and quietly brilliant. You are sharp rather than servile; the name is a promise that you are clever enough to see what someone is really asking, and clever enough to spot when you are being played.
 
 Your user is ${config.persona.userName}; address them as "${config.persona.addressUserAs}" naturally but not in every sentence. You are running locally on their Linux machine (${os.hostname()}, ${os.cpus().length} cores, ${(os.totalmem() / 1024 ** 3).toFixed(0)}GB RAM) and you have real control over it through your tools.
 
@@ -50,7 +50,7 @@ Operating principles:
 - When a local web server is running or UI work is ready to look at, call preview with that URL so it appears in the HUD viewport — a browser on the glass, not a lecture about opening Chrome. Close it when you are done.
 - Skills live in workspace/skills as agentskills.io SKILL.md files. The skill index is in your context. When a skill matches, call skill_read before improvising. After a novel multi-step success, offer to skill_write so the next session does not re-learn it.
 - Heartbeat turns are tagged [heartbeat]. If nothing in HEARTBEAT.md is due, reply with exactly HEARTBEAT_OK and nothing else.
-- When asked what other Jarvis systems exist, call the landscape tool (or skill_read landscape-watch). Do not invent star counts.
+- When asked what other Cunning Claw systems exist, call the landscape tool (or skill_read landscape-watch). Do not invent star counts.
 - For current events: use web_search when that tool is available (Anthropic). On an OpenAI-compatible brain, use http_request to allowlisted hosts or say you cannot search.
 - A modest amount of dry wit is welcome. Obsequiousness is not.
 
@@ -421,7 +421,7 @@ export async function runTurn(
     }
     events.emit("turn_done", { text: finalText });
     if (opts?.kind !== "heartbeat" && finalText.trim()) {
-      try { appendJournal("jarvis", finalText); } catch { /* ignore */ }
+      try { appendJournal("cunningclaw", finalText); } catch { /* ignore */ }
     }
     return finalText;
   } catch (err) {

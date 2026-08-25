@@ -9,7 +9,7 @@ import { hasBin, host, missing, unsupportedDesktop } from "./platform.js";
 import type { ToolResultContent } from "./tools.js";
 
 const execFileAsync = promisify(execFile);
-const TMP = path.join(os.tmpdir(), "jarvis-shots");
+const TMP = path.join(os.tmpdir(), "cunningclaw-shots");
 
 async function runOsa(script: string): Promise<string> {
   if (!(await hasBin("osascript"))) throw new Error(missing("osascript"));
@@ -390,7 +390,7 @@ export async function notify(title: string, body: string): Promise<string> {
     }
   }
   if (!(await hasBin("notify-send"))) return missing("notify-send");
-  await execFileAsync("notify-send", ["-a", "JARVIS", "-i", "dialog-information", title, body]);
+  await execFileAsync("notify-send", ["-a", "CUNNING CLAW", "-i", "dialog-information", title, body]);
   return `Notification shown: ${title}`;
 }
 

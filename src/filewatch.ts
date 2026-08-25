@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 /**
- * Tracks what JARVIS writes during a session so the HUD can show the work, not
+ * Tracks what CUNNING CLAW writes during a session so the HUD can show the work, not
  * just the result. Watching a diff land is the difference between trusting the
  * agent and hoping.
  *

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install the Piper neural TTS engine + a voice model for JARVIS.
+# Install the Piper neural TTS engine + a voice model for CUNNING CLAW.
 # Safe to re-run. Everything lands inside this project (.venv/ and voices/).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -27,7 +27,7 @@ play_raw() {
   fi
   if command -v afplay >/dev/null 2>&1; then
     local wav
-    wav="$(mktemp "${TMPDIR:-/tmp}/jarvis-voice.XXXXXX").wav"
+    wav="$(mktemp "${TMPDIR:-/tmp}/cunningclaw-voice.XXXXXX").wav"
     python3 - "$wav" <<'PY'
 import sys, wave
 path = sys.argv[1]
@@ -52,4 +52,4 @@ echo "Good evening, sir. All systems are nominal." \
   | play_raw
 
 echo
-echo "✓ Done. Set voice.piper.model to \"voices/$VOICE.onnx\" in jarvis.config.json."
+echo "✓ Done. Set voice.piper.model to \"voices/$VOICE.onnx\" in claw.config.json."

@@ -6,7 +6,7 @@ import { WORKSPACE, defuse, wrapRecorded } from "./workspace.js";
 
 export const JOURNAL_DIR = path.join(DATA_DIR, "journal");
 
-export function appendJournal(role: "operator" | "jarvis", text: string): void {
+export function appendJournal(role: "operator" | "cunningclaw", text: string): void {
   const day = new Date().toISOString().slice(0, 10);
   fs.mkdirSync(JOURNAL_DIR, { recursive: true });
   const line = `- ${new Date().toISOString().slice(11, 19)} ${role}: ${defuse(text).replace(/\s+/g, " ").slice(0, 400)}\n`;

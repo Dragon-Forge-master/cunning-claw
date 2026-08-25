@@ -5,7 +5,7 @@ import test from "node:test";
 import { WORKSPACE, workspaceSnapshot, wrapRecorded } from "./workspace.js";
 
 /**
- * JARVIS reads untrusted email and web pages, and can write what it reads into
+ * CUNNING CLAW reads untrusted email and web pages, and can write what it reads into
  * MEMORY.md without approval. If that file were rendered as ordinary workspace
  * text, a single injection would become a permanent one. These tests pin the
  * boundary: human-authored files instruct, agent-written files are data.

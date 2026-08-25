@@ -7,18 +7,18 @@ video sits beside it.
 
 ```bash
 cd site
-npx wrangler pages deploy . --project-name=jarvis
+npx wrangler pages deploy . --project-name=cunningclaw
 ```
 
-Then in the Cloudflare dashboard: **Workers & Pages → jarvis → Custom domains**,
-add `jarvis.forgenet.cloud`. DNS is handled for you if forgenet.cloud is already
+Then in the Cloudflare dashboard: **Workers & Pages → cunningclaw → Custom domains**,
+add `cunningclaw.forgenet.cloud`. DNS is handled for you if forgenet.cloud is already
 on this Cloudflare account.
 
 ## Notes
 
 - `_headers` sets CSP, `X-Frame-Options: DENY` and `nosniff`. Pages applies it
   automatically; other hosts will ignore it, so re-do those headers if you move.
-- `jarvis-demo.mp4` is 11MB. Pages serves it fine. If it ever needs to be
+- `cunningclaw-demo.mp4` is 11MB. Pages serves it fine. If it ever needs to be
   smaller, re-encode at CRF 24 rather than dropping to 720p — the text in the
   frames is what suffers first.
 - The numbers on the page (4 brains, 36 tools, 111 tests, 2 dependencies) are

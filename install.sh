@@ -77,7 +77,7 @@ if [ -x ./setup-voice.sh ] && [ -t 0 ]; then
     y|Y|yes|YES)
       ./setup-voice.sh || say "Voice setup failed — you can run ./setup-voice.sh later."
       ;;
-    *) say "Skipped voice. Run ./setup-voice.sh when you want JARVIS to speak." ;;
+    *) say "Skipped voice. Run ./setup-voice.sh when you want CUNNING CLAW to speak." ;;
   esac
 fi
 
@@ -104,37 +104,37 @@ install_user_unit() {
   sed -e "s|@@ROOT@@|$root_esc|g" \
       -e "s|@@NPM@@|$npm_esc|g" \
       -e "s|@@PATH@@|$path_esc|g" \
-      packaging/jarvis.service > "$dest/jarvis.service"
+      packaging/cunningclaw.service > "$dest/cunningclaw.service"
   if command -v systemctl >/dev/null 2>&1; then
     systemctl --user daemon-reload 2>/dev/null || true
   fi
-  say "Installed $dest/jarvis.service"
+  say "Installed $dest/cunningclaw.service"
 }
 
 if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
   if [ -t 0 ]; then
-    printf "Install a systemd --user unit so JARVIS starts at login? [y/N] "
+    printf "Install a systemd --user unit so CUNNING CLAW starts at login? [y/N] "
     IFS= read -r UNIT_ANS || true
     case "$UNIT_ANS" in
       y|Y|yes|YES) install_user_unit ;;
       *) say "Skipped autostart." ;;
     esac
   else
-    say "systemd is available. To autostart: ./install.sh on a TTY, or copy packaging/jarvis.service yourself."
+    say "systemd is available. To autostart: ./install.sh on a TTY, or copy packaging/cunningclaw.service yourself."
   fi
 fi
 
 cat <<EOF
 
 ────────────────────────────────────────
-JARVIS is installed.
+CUNNING CLAW is installed.
 
 Start now:
   npm run dev
   then open http://127.0.0.1:3900
 
 Survive a closed terminal and a reboot (Linux, systemd --user):
-  systemctl --user enable --now jarvis
+  systemctl --user enable --now cunningclaw
   loginctl enable-linger \$USER     # so it comes back after logout
 
 The unit is a *user* service on purpose: it needs your session for

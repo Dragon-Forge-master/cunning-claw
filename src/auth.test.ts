@@ -4,7 +4,7 @@ import { ensureToken, currentToken, requireAuth, issueSession, COOKIE } from "./
 
 /**
  * Binding to loopback is not a permission boundary. Any process running as this
- * user could otherwise POST to /api/chat and get a shell through JARVIS.
+ * user could otherwise POST to /api/chat and get a shell through CUNNING CLAW.
  */
 
 ensureToken();
@@ -25,7 +25,7 @@ function call(headers: Record<string, string | undefined>, method = "POST") {
 
 test("a token is generated and is not guessable", () => {
   assert.ok(TOKEN.length >= 32, "token must be long");
-  assert.notEqual(TOKEN, "jarvis");
+  assert.notEqual(TOKEN, "cunningclaw");
 });
 
 test("an unauthenticated request is refused", () => {

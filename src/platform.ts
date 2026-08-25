@@ -94,7 +94,7 @@ const INSTALL: Record<string, Partial<Record<Host, string>>> = {
   afplay: { darwin: "afplay is part of macOS." },
   say: { darwin: "say is part of macOS." },
   "google-chrome": {
-    linux: "sudo apt install google-chrome-stable  (or set browser.binary in jarvis.config.json)",
+    linux: "sudo apt install google-chrome-stable  (or set browser.binary in claw.config.json)",
     darwin: "install Google Chrome, or: brew install --cask google-chrome",
     win32: "install Google Chrome, or: winget install Google.Chrome",
   },
@@ -112,7 +112,7 @@ export function installHint(tool: string, forHost: Host = host()): string | unde
 /** Message that names the missing tool *and* how to get it. Never a silent no-op. */
 export function missing(tool: string, forHost: Host = host()): string {
   if (forHost === "other") {
-    return `${tool} is not available on this OS. JARVIS desktop tools support Linux, macOS and Windows.`;
+    return `${tool} is not available on this OS. CUNNING CLAW desktop tools support Linux, macOS and Windows.`;
   }
   const hint = installHint(tool, forHost);
   if (hint) return `${tool} is not installed. ${hint}`;
@@ -120,5 +120,5 @@ export function missing(tool: string, forHost: Host = host()): string {
 }
 
 export function unsupportedDesktop(): string {
-  return "This desktop tool is not supported on this OS. JARVIS supports Linux, macOS and Windows.";
+  return "This desktop tool is not supported on this OS. CUNNING CLAW supports Linux, macOS and Windows.";
 }

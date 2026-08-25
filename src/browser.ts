@@ -7,7 +7,7 @@ import { config } from "./config.js";
 
 const execFileAsync = promisify(execFile);
 
-const PROFILE_DIR = path.join(os.homedir(), ".config", "jarvis", "chrome-profile");
+const PROFILE_DIR = path.join(os.homedir(), ".config", "cunningclaw", "chrome-profile");
 const PORT = config.browser.debugPort;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 
@@ -32,7 +32,7 @@ async function isUp(): Promise<boolean> {
   }
 }
 
-/** Launch Chrome with remote debugging on a Jarvis-owned profile. Idempotent. */
+/** Launch Chrome with remote debugging on a Cunning Claw-owned profile. Idempotent. */
 export async function ensureBrowser(): Promise<{ ok: boolean; message: string }> {
   if (await isUp()) return { ok: true, message: "Browser already running." };
 
@@ -136,7 +136,7 @@ async function activeTarget(index?: number): Promise<Target> {
 /**
  * Everything read out of a web page or mailbox is DATA, never instructions.
  * Fencing it makes that boundary explicit to the model, and stripping the
- * fence tokens stops a page from closing the fence and impersonating Jarvis.
+ * fence tokens stops a page from closing the fence and impersonating Cunning Claw.
  */
 function fence(source: string, body: string): string {
   const safe = body.replace(/<\/?untrusted[^>]*>/gi, "");
@@ -310,7 +310,7 @@ export async function checkEmail(query?: string): Promise<string> {
   if (!data?.ready) {
     const url = String(data?.url ?? "");
     if (/accounts\.google\.com|signin/.test(url)) {
-      return "Gmail is asking for sign-in. Jarvis uses its own Chrome profile — " +
+      return "Gmail is asking for sign-in. Cunning Claw uses its own Chrome profile — " +
         "please sign in once in the window that just opened, then ask me again. " +
         "I never see or handle your password.";
     }

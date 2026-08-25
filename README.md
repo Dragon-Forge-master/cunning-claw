@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/banner.svg" alt="J.A.R.V.I.S." width="100%">
+<img src="docs/assets/banner.svg" alt="CUNNING CLAW" width="100%">
 
 **A personal AI assistant that runs on your machine and actually operates it.**
 Sees your screen. Runs your shell. Reads your inbox. Speaks back.
@@ -26,8 +26,8 @@ And refuses when a web page tells it to do something you didn't ask for.
 One command from a clean clone:
 
 ```bash
-git clone https://github.com/Dragon-Forge-master/jarvis.git
-cd jarvis
+git clone https://github.com/Dragon-Forge-master/cunningclaw.git
+cd cunningclaw
 ./install.sh
 ```
 
@@ -37,14 +37,14 @@ Then `npm run dev` and open **http://127.0.0.1:3900**. It binds to loopback only
 
 ### Autostart (Linux)
 
-JARVIS is meant to survive a closed terminal. `install.sh` can drop a **systemd --user** unit (not a system unit — it needs your session for X11, audio and Chrome):
+CUNNING CLAW is meant to survive a closed terminal. `install.sh` can drop a **systemd --user** unit (not a system unit — it needs your session for X11, audio and Chrome):
 
 ```bash
-systemctl --user enable --now jarvis
+systemctl --user enable --now cunningclaw
 loginctl enable-linger $USER    # still running after logout
 ```
 
-The template lives at `packaging/jarvis.service`. macOS: keep `npm run dev` in a Terminal at login, or a LaunchAgent if you add one later.
+The template lives at `packaging/cunningclaw.service`. macOS: keep `npm run dev` in a Terminal at login, or a LaunchAgent if you add one later.
 
 ### By hand
 
@@ -84,7 +84,7 @@ Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and 
 <div align="center">
 <br>
 <!-- SCREENSHOT: the HUD at rest — arc reactor, telemetry panel, empty transcript -->
-<img src="docs/assets/hud.png" alt="The JARVIS HUD" width="90%">
+<img src="docs/assets/hud.png" alt="The CUNNING CLAW HUD" width="90%">
 <br><sub>The HUD: arc reactor, live telemetry, transcript, approval cards.</sub>
 </div>
 
@@ -98,7 +98,7 @@ Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and 
 | **Operates** | Shell, files, apps, volume, media, clipboard, notifications, window focus, keystrokes |
 | **Browses** | Drives its own Chrome over the DevTools Protocol — opens, reads, clicks, types |
 | **Reads mail** | Gmail inbox and search, through that browser session. No credentials handled |
-| **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Jarvis" wake word |
+| **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Cunning Claw" wake word |
 | **Remembers** | Markdown memory and a dated journal that survive restarts |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
 | **Reaches you** | Telegram, so it isn't trapped at your desk |
@@ -143,7 +143,7 @@ ollama pull llama3.1:8b
 ```
 
 ```jsonc
-// jarvis.config.json — this brain ships already configured
+// claw.config.json — this brain ships already configured
 { "id": "local", "provider": "openai", "model": "llama3.1:8b",
   "baseUrl": "http://localhost:11434/v1" }
 ```
@@ -160,8 +160,8 @@ API; loopback and private-range hosts skip the key check entirely.
 
 ## MCP
 
-Any [MCP](https://modelcontextprotocol.io) server becomes JARVIS tools — GitHub, Postgres,
-Slack, Puppeteer, Blender, your own. Add it to `jarvis.config.json`:
+Any [MCP](https://modelcontextprotocol.io) server becomes CUNNING CLAW tools — GitHub, Postgres,
+Slack, Puppeteer, Blender, your own. Add it to `claw.config.json`:
 
 ```jsonc
 "mcp": {
@@ -189,21 +189,21 @@ as read-only.
 
 ## Authentication
 
-Binding to loopback keeps JARVIS off your network. It does **not** keep it away from your
+Binding to loopback keeps CUNNING CLAW off your network. It does **not** keep it away from your
 machine — any process running as you could otherwise POST to `/api/chat` and get a shell,
 a file write, or your inbox. Loopback is not a permission boundary.
 
 A token is generated on first run and written to `.env` (mode 600). Three checks, because
 no single one covers every caller:
 
-- **Bearer token** for scripts: `Authorization: Bearer $JARVIS_TOKEN`
+- **Bearer token** for scripts: `Authorization: Bearer $CLAW_TOKEN`
 - **A session cookie** (`HttpOnly`, `SameSite=Strict`) issued when you load the HUD —
   `EventSource` cannot set headers, so the event stream has no other way to authenticate
 - **An Origin check** on state-changing requests, so a page you happen to be visiting
   cannot ride that cookie
 
 ```bash
-curl -H "Authorization: Bearer $JARVIS_TOKEN" http://127.0.0.1:3900/api/status
+curl -H "Authorization: Bearer $CLAW_TOKEN" http://127.0.0.1:3900/api/status
 ```
 
 Opening `http://127.0.0.1:3900` in a browser needs nothing — the cookie is issued on load.
@@ -228,7 +228,7 @@ assumption that the model will eventually be lied to.
 
 - Everything read from the web or your inbox is **fenced as untrusted data**, with fence
   tokens stripped so a page can't close the fence and impersonate you.
-- **Agent-written files are separated from human-written ones.** A note JARVIS recorded is a
+- **Agent-written files are separated from human-written ones.** A note CUNNING CLAW recorded is a
   recollection, never an instruction — so a poisoned memory can't become a standing order.
 - Turns that can see hostile text are **pinned to a trusted brain**, and taint is *sticky*:
   an email read three turns ago is still in the context window now.

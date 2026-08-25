@@ -1,11 +1,11 @@
-# JARVIS — task brief
+# CUNNING CLAW — task brief
 
-**Repo:** `~/Game Dev/jarvis` (note the space — *not* `~/jarvis/jarvis`)
+**Repo:** `~/Game Dev/cunningclaw` (note the space — *not* `~/cunningclaw/cunningclaw`)
 **Branch:** work on `main`, pull before you start, commit and push each task separately.
 
-JARVIS is a local AI assistant: 36 tools, 5,200 lines, 63 tests, 2 runtime deps.
+CUNNING CLAW is a local AI assistant: 36 tools, 5,200 lines, 63 tests, 2 runtime deps.
 It runs shell commands, sees the screen, drives Chrome, reads Gmail, speaks, and
-deploys sites. Read `README.md` first, then `jarvis.config.json`.
+deploys sites. Read `README.md` first, then `claw.config.json`.
 
 ## Coordination — read this before touching anything
 
@@ -27,13 +27,13 @@ If a task genuinely needs `server.ts`, stop and say so rather than editing it.
   by using it: a stream crash, an env load-order race, a keyless-local-model check,
   and a `tool_use` with no `tool_result` that bricked every later turn.
 - Never commit secrets. `.env` is gitignored; keep it that way.
-- Config-driven over hardcoded — Chris tunes behaviour in `jarvis.config.json`.
+- Config-driven over hardcoded — Chris tunes behaviour in `claw.config.json`.
 
 ---
 
 ## Task 1 — Make it run on macOS (biggest win)
 
-JARVIS is Linux-only today and silently degrades elsewhere. This is the single
+CUNNING CLAW is Linux-only today and silently degrades elsewhere. This is the single
 largest adoption blocker for an open-source release.
 
 Platform-specific code lives in `src/desktop.ts` and `src/voice.ts`:
@@ -57,7 +57,7 @@ succeeded and produced nothing.
 **Done when:** every desktop and voice tool either works on macOS or returns a
 message naming what to install, and the Linux paths still pass their tests.
 
-## Task 2 — `jarvis doctor`
+## Task 2 — `cunningclaw doctor`
 
 New file `src/doctor.ts`, plus `"doctor": "tsx src/doctor.ts"` in package.json.
 
@@ -76,11 +76,11 @@ fix (`sudo apt install xdotool`), never just report a problem.
 example and prompt for a key, offer `./setup-voice.sh`, run `npm run doctor`,
 then print how to start.
 
-`packaging/jarvis.service` — a **`systemd --user`** unit so JARVIS survives a
-closed terminal and starts at login. Document `systemctl --user enable --now jarvis`.
+`packaging/cunningclaw.service` — a **`systemd --user`** unit so CUNNING CLAW survives a
+closed terminal and starts at login. Document `systemctl --user enable --now cunningclaw`.
 User service, not system: it needs the user's session for X11, audio and Chrome.
 
-**Done when:** a clean clone reaches a running JARVIS with one command, and it
+**Done when:** a clean clone reaches a running CUNNING CLAW with one command, and it
 comes back after a reboot.
 
 ## Task 4 — First-run experience

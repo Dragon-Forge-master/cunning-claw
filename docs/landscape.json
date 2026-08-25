@@ -1,6 +1,6 @@
 {
   "updated": "2026-08-24",
-  "note": "Curated field map, not an exhaustive crawl of every GitHub toy named Jarvis. Stars drift; the architecture notes do not.",
+  "note": "Curated field map, not an exhaustive crawl of every GitHub toy named Cunning Claw. Stars drift; the architecture notes do not.",
   "systems": [
     {
       "id": "openclaw",
@@ -24,28 +24,28 @@
       "url": "https://github.com/OpenInterpreter/open-interpreter",
       "class": "supervised code executor",
       "take": "Human-in-the-loop for shell. Excellent for one-shot local work.",
-      "refuse": "It is a power tool, not a persistent JARVIS. No heartbeat, no channels, no soul files."
+      "refuse": "It is a power tool, not a persistent CUNNING CLAW. No heartbeat, no channels, no soul files."
     },
     {
-      "id": "stanford-openjarvis",
-      "name": "OpenJarvis (Stanford)",
-      "url": "https://github.com/open-jarvis/OpenJarvis",
+      "id": "stanford-openclaw",
+      "name": "OpenClaw (Stanford)",
+      "url": "https://github.com/open-cunningclaw/OpenClaw",
       "class": "on-device research stack",
       "take": "Local-first by default, cost/energy as first-class metrics, scheduled + continuous agents.",
       "refuse": "Research platform weight. We are a production butler on one Linux machine, not PyTorch-for-agents."
     },
     {
-      "id": "vierisid-jarvis",
-      "name": "vierisid/jarvis",
-      "url": "https://github.com/vierisid/jarvis",
+      "id": "vierisid-cunningclaw",
+      "name": "vierisid/cunningclaw",
+      "url": "https://github.com/vierisid/cunningclaw",
       "class": "daemon + desktop sidecars",
       "take": "Always-on daemon, authority gating, sidecar eyes on other machines.",
       "refuse": "Nine-agent hierarchy and n8n-style workflow builders until the single operator loop is flawless."
     },
     {
       "id": "eadmin2-hud",
-      "name": "eadmin2/jarvis_ai",
-      "url": "https://github.com/eadmin2/jarvis_ai",
+      "name": "eadmin2/cunningclaw_ai",
+      "url": "https://github.com/eadmin2/cunningclaw_ai",
       "class": "Hermes HUD skin",
       "take": "Proof the world wants an Iron Man HUD on a real agent, not a chatbot.",
       "refuse": "Being a skin on someone else's runtime. We own the brain and the glass."
@@ -67,11 +67,11 @@
       "refuse": "A model server is not an assistant."
     },
     {
-      "id": "python-jarvis-toys",
-      "name": "Classic Python JARVIS clones",
-      "url": "https://github.com/topics/jarvis-ai",
+      "id": "python-cunningclaw-toys",
+      "name": "Classic Python CUNNING CLAW clones",
+      "url": "https://github.com/topics/cunningclaw-ai",
       "class": "voice demo / student project",
-      "take": "Wake word, TTS, the cultural brief: it should feel like JARVIS.",
+      "take": "Wake word, TTS, the cultural brief: it should feel like CUNNING CLAW.",
       "refuse": "Speech-recognition-plus-wikipedia is not the product."
     },
     {
@@ -80,7 +80,7 @@
       "url": "https://github.com/Dragon-Forge-master/dragon-claw-os",
       "class": "Forge lineage — agent in a box",
       "take": "Local-first mini PC, voice, smart home, one-command install.",
-      "refuse": "Do not dissolve JARVIS into a distro. JARVIS is the mind; the OS is the house."
+      "refuse": "Do not dissolve CUNNING CLAW into a distro. CUNNING CLAW is the mind; the OS is the house."
     }
   ]
 }

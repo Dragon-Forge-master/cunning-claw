@@ -1,6 +1,6 @@
 [Unit]
-Description=JARVIS local assistant
-Documentation=https://github.com/Dragon-Forge-master/jarvis
+Description=CUNNING CLAW local assistant
+Documentation=https://github.com/Dragon-Forge-master/cunningclaw
 # User service, not system: needs this session for DISPLAY, Pulse/PipeWire, and Chrome.
 After=default.target
 PartOf=graphical-session.target
