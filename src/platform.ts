@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-export type Host = "linux" | "darwin" | "other";
+export type Host = "linux" | "darwin" | "win32" | "other";
 
 let hostOverride: Host | null = null;
 let hasBinOverride: ((bin: string) => boolean | Promise<boolean>) | null = null;
@@ -16,6 +16,7 @@ export function host(): Host {
   if (hostOverride) return hostOverride;
   if (process.platform === "linux") return "linux";
   if (process.platform === "darwin") return "darwin";
+  if (process.platform === "win32") return "win32";
   return "other";
 }
 
@@ -26,8 +27,34 @@ export function setHostForTests(value: Host | null): void {
 export async function hasBin(bin: string): Promise<boolean> {
   if (hasBinOverride) return Boolean(await hasBinOverride(bin));
   try {
-    await execFileAsync("which", [bin]);
+    // `which` is not a thing on Windows; `where` is.
+    await execFileAsync(host() === "win32" ? "where" : "which", [bin]);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Windows ships PowerShell, so most desktop work needs no install at all —
+ * screenshots, clipboard, windows, keystrokes and notifications are all
+ * built in. Callers run a script through here rather than hunting for a binary.
+ */
+export const POWERSHELL = "powershell";
+
+export function psArgs(script: string): string[] {
+  return ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script];
+}
+
+/**
+ * Under WSL, process.platform is "linux" but there is usually no X server,
+ * audio device or Chrome. Worth saying so plainly rather than failing oddly.
+ */
+export function isWsl(): boolean {
+  if (process.platform !== "linux") return false;
+  if (process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP) return true;
+  try {
+    return /microsoft|wsl/i.test(require("node:fs").readFileSync("/proc/version", "utf-8"));
   } catch {
     return false;
   }
@@ -69,7 +96,13 @@ const INSTALL: Record<string, Partial<Record<Host, string>>> = {
   "google-chrome": {
     linux: "sudo apt install google-chrome-stable  (or set browser.binary in jarvis.config.json)",
     darwin: "install Google Chrome, or: brew install --cask google-chrome",
+    win32: "install Google Chrome, or: winget install Google.Chrome",
   },
+  powershell: { win32: "PowerShell ships with Windows." },
+  nircmd: {
+    win32: "Windows has no volume CLI. Download nircmd from nirsoft.net and put it on PATH.",
+  },
+  ffplay: { win32: "winget install Gyan.FFmpeg" },
 };
 
 export function installHint(tool: string, forHost: Host = host()): string | undefined {
@@ -79,7 +112,7 @@ export function installHint(tool: string, forHost: Host = host()): string | unde
 /** Message that names the missing tool *and* how to get it. Never a silent no-op. */
 export function missing(tool: string, forHost: Host = host()): string {
   if (forHost === "other") {
-    return `${tool} is not available on this OS. JARVIS desktop tools currently support Linux and macOS.`;
+    return `${tool} is not available on this OS. JARVIS desktop tools support Linux, macOS and Windows.`;
   }
   const hint = installHint(tool, forHost);
   if (hint) return `${tool} is not installed. ${hint}`;
@@ -87,5 +120,5 @@ export function missing(tool: string, forHost: Host = host()): string {
 }
 
 export function unsupportedDesktop(): string {
-  return "This desktop tool is not supported on this OS. JARVIS currently supports Linux and macOS.";
+  return "This desktop tool is not supported on this OS. JARVIS supports Linux, macOS and Windows.";
 }

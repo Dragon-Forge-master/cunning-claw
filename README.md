@@ -13,6 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
 ![tests](https://img.shields.io/badge/tests-104%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
+![platforms](https://img.shields.io/badge/linux%20·%20macOS%20·%20windows-supported-35d6ed?style=for-the-badge)
 
 <sub>Built in Cardiff by <b>Dragon Forge AI</b> · Local-first when privacy matters · Human approval when consequences matter</sub>
 
@@ -111,6 +112,26 @@ Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and 
 </div>
 
 ---
+
+## Platforms
+
+| | Linux | macOS | Windows |
+|---|---|---|---|
+| Shell, files, browser, email, HTTP, MCP | ✅ | ✅ | ✅ |
+| Screenshots | `gnome-screenshot` / `ffmpeg` | `screencapture` | PowerShell + System.Drawing |
+| Windows, keystrokes | `wmctrl`, `xdotool` | `osascript` | PowerShell SendKeys |
+| Clipboard | `xclip` | `pbcopy` | `Get-/Set-Clipboard` |
+| Notifications | `notify-send` | `osascript` | balloon tip |
+| Voice | Piper → `paplay`, or espeak | Piper → `afplay`, or `say` | Piper → PowerShell, or Windows SAPI |
+| Volume | `pactl` | `osascript` | media keys (no absolute level) |
+
+Windows needs nothing installed for the desktop tools — PowerShell ships with the OS.
+Each platform's paths live in `src/platform.ts`, `src/windows.ts` and `src/desktop.ts`;
+a missing tool always produces a message naming the fix, never a silent no-op.
+
+> **Honesty about testing:** Linux is exercised daily. macOS and Windows are written
+> against the documented APIs with their pure logic unit-tested, but neither has been run
+> on real hardware yet. If you try one, please open an issue with what broke.
 
 ## Run it offline
 

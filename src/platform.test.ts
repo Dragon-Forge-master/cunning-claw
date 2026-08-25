@@ -63,9 +63,9 @@ test("macOS missing-tool copy names brew or a privacy setting, never apt", () =>
   assert.equal(installHint("wmctrl", "darwin"), undefined);
 });
 
-test("a third OS is a message, not a silent no-op", () => {
+test("an unsupported OS is a message, not a silent no-op", () => {
   setHostForTests("other");
-  assert.match(missing("xdotool"), /Linux and macOS/);
+  assert.match(missing("xdotool"), /Linux, macOS and Windows/);
 });
 
 test("Linux desktop tools name apt when the binary is missing", async () => {
@@ -109,10 +109,10 @@ test("macOS desktop tools name the Darwin binary when it is missing", async () =
 test("unsupported OS desktop tools refuse with a named message", async () => {
   setHostForTests("other");
   setHasBinForTests(() => false);
-  assert.match(await listWindows(), /Linux and macOS/);
-  assert.match(await pressKeys("Return"), /Linux and macOS/);
+  assert.match(await listWindows(), /Linux, macOS and Windows/);
+  assert.match(await pressKeys("Return"), /Linux, macOS and Windows/);
   const shot = await screenshot();
-  assert.match((shot[0] as { type: "text"; text: string }).text, /Linux and macOS/);
+  assert.match((shot[0] as { type: "text"; text: string }).text, /Linux, macOS and Windows/);
 });
 
 test("voice detect on Darwin falls back to say rather than claiming Piper", async () => {

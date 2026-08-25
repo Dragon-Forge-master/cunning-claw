@@ -3,13 +3,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { config, ROOT } from "./config.js";
-import { hasBin, host, missing } from "./platform.js";
+import { hasBin, host, missing, POWERSHELL, psArgs } from "./platform.js";
+import * as win from "./windows.js";
 
 let enabled = config.voice.enabled;
 /** Every process in the current speech pipeline (synth + playback). */
 let active: ChildProcess[] = [];
 
-export type VoiceEngine = "piper" | "spd-say" | "say" | "none";
+export type VoiceEngine = "piper" | "spd-say" | "say" | "sapi" | "none";
 let availability: { engine: VoiceEngine; detail: string; player?: string } | null = null;
 
 const PIPER_BIN = path.join(ROOT, ".venv", "bin", "piper");
@@ -32,10 +33,19 @@ async function resolvePiperPlayer(): Promise<string | null> {
   const configured = config.voice.piper.player;
   if (await hasBin(configured)) return configured;
   if (host() === "darwin" && (await hasBin("afplay"))) return "afplay";
+  // Windows has no paplay or afplay, but PowerShell can play a WAV file.
+  // The sentinel keeps the rest of the pipeline unchanged.
+  if (host() === "win32") return WINDOWS_PLAYER;
   return null;
 }
 
+/** Not a binary — a marker meaning "play through PowerShell". */
+export const WINDOWS_PLAYER = "__powershell__";
+
 function noneDetail(): string {
+  if (host() === "win32") {
+    return `no TTS engine found. ${missing("piper")}, or Windows' own speech synthesis will be used.`;
+  }
   if (host() === "darwin") {
     return `no TTS engine found. ${missing("piper")} (player: afplay), or use the built-in say command.`;
   }
@@ -106,6 +116,12 @@ export async function detect(): Promise<{ engine: VoiceEngine; detail: string; p
 
   if (host() === "darwin" && (await hasBin("say"))) {
     availability = { engine: "say", detail: sayVoice() };
+    return availability;
+  }
+
+  if (host() === "win32") {
+    // System.Speech is part of Windows, so there is always a voice available.
+    availability = { engine: "sapi", detail: "Windows speech synthesis" };
     return availability;
   }
 
@@ -316,11 +332,31 @@ export async function speak(text: string): Promise<void> {
     const model = resolveModel();
     if (engine === "piper" && model && player) speakWithPiper(clean, model, player);
     else if (engine === "say") speakWithSay(clean);
+    else if (engine === "sapi") speakWithSapi(clean);
     else if (engine === "spd-say") speakWithSpd(clean);
     else console.error(`Voice produced no audio: ${detail}`);
   } catch (err) {
     console.error(`Voice: engine vanished mid-run: ${(err as Error).message}`);
   }
+}
+
+/**
+ * Windows' built-in speech synthesis, the counterpart to `say` on macOS.
+ * Runs detached so it can be cancelled the same way as the other engines.
+ */
+function speakWithSapi(text: string): void {
+  const child = spawn(
+    POWERSHELL,
+    psArgs(
+      "Add-Type -AssemblyName System.Speech;" +
+      `$s=New-Object System.Speech.Synthesis.SpeechSynthesizer;$s.Speak(${win.psQuote(text)});`,
+    ),
+    { stdio: "ignore" },
+  );
+  child.on("error", () => {});
+  active = [child];
+  const clear = () => { active = active.filter((p) => p !== child); };
+  child.on("exit", clear);
 }
 
 /** Speak a sample with an explicit Piper model or spd/`say` voice — used by the auditioner. */

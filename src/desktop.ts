@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { config } from "./config.js";
+import * as win from "./windows.js";
 import { hasBin, host, missing, unsupportedDesktop } from "./platform.js";
 import type { ToolResultContent } from "./tools.js";
 
@@ -208,7 +209,13 @@ export async function screenshot(target: "screen" | "window" = "screen", windowN
   }
 
   let captured = false;
-  if (host() === "darwin") {
+  if (host() === "win32") {
+    try {
+      await win.screenshot(raw);
+      captured = fs.existsSync(raw);
+    } catch { /* fall through to the shared failure message */ }
+  }
+  if (!captured && host() === "darwin") {
     const result = await captureDarwin(raw);
     if (!result.ok) return [{ type: "text", text: result.error ?? missing("screencapture") }];
     captured = true;
@@ -279,6 +286,9 @@ end tell
 
 export async function listWindows(): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
+  if (host() === "win32") {
+    try { return await win.listWindows(); } catch (err) { return (err as Error).message; }
+  }
   if (host() === "darwin") {
     try {
       const stdout = await runOsa(LIST_WINDOWS_OSA);
@@ -299,6 +309,9 @@ export async function listWindows(): Promise<string> {
 
 export async function focusWindow(name: string): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
+  if (host() === "win32") {
+    try { return await win.focusWindow(name); } catch (err) { return (err as Error).message; }
+  }
   if (host() === "darwin") {
     try {
       await runOsa(focusWindowOsa(name));
@@ -324,6 +337,9 @@ export async function focusWindow(name: string): Promise<string> {
 
 export async function pressKeys(keys: string): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
+  if (host() === "win32") {
+    try { return await win.pressKeys(keys); } catch (err) { return (err as Error).message; }
+  }
   const chords = keys.trim().split(/\s+/).filter(Boolean);
   if (host() === "darwin") {
     try {
@@ -340,6 +356,9 @@ export async function pressKeys(keys: string): Promise<string> {
 
 export async function typeOnDesktop(text: string): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
+  if (host() === "win32") {
+    try { return await win.typeText(text); } catch (err) { return (err as Error).message; }
+  }
   if (host() === "darwin") {
     try {
       await runOsa(textToDarwinScript(text));
@@ -359,6 +378,9 @@ export async function typeOnDesktop(text: string): Promise<string> {
 
 export async function notify(title: string, body: string): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
+  if (host() === "win32") {
+    try { return await win.notify(title, body); } catch (err) { return (err as Error).message; }
+  }
   if (host() === "darwin") {
     try {
       await runOsa(`display notification ${appleString(body)} with title ${appleString(title)}`);
@@ -374,6 +396,9 @@ export async function notify(title: string, body: string): Promise<string> {
 
 export async function clipboardRead(): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
+  if (host() === "win32") {
+    try { return await win.clipboardRead(); } catch (err) { return (err as Error).message; }
+  }
   if (host() === "darwin") {
     if (!(await hasBin("pbpaste"))) return missing("pbpaste");
     try {
@@ -394,6 +419,9 @@ export async function clipboardRead(): Promise<string> {
 
 export async function clipboardWrite(text: string): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
+  if (host() === "win32") {
+    try { return await win.clipboardWrite(text); } catch (err) { return (err as Error).message; }
+  }
   const write = (bin: string, args: string[]) => new Promise<void>((resolve, reject) => {
     const child = execFile(bin, args, (err) => err ? reject(err) : resolve());
     child.stdin?.end(text);
@@ -424,6 +452,9 @@ const MEDIA_OSA: Record<string, string> = {
 
 export async function media(action: string): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
+  if (host() === "win32") {
+    try { return await win.media(action); } catch (err) { return (err as Error).message; }
+  }
   const key = MEDIA_KEYS[action.toLowerCase()];
   if (!key) return `Unknown media action "${action}".`;
 
@@ -470,6 +501,7 @@ return acted
 export async function setVolume(input: { level?: number; adjust?: number; mute?: boolean }): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
   if (host() === "darwin") return setVolumeDarwin(input);
+  if (host() === "win32") return setVolumeWindows(input);
   if (!(await hasBin("pactl"))) return missing("pactl");
   try {
     if (typeof input.mute === "boolean") {
@@ -490,6 +522,27 @@ export async function setVolume(input: { level?: number; adjust?: number; mute?:
     return stdout.trim();
   } catch (err: any) {
     return `Volume control failed: ${err.message}`;
+  }
+}
+
+/**
+ * Windows exposes no volume CLI, so this drives the media keys. An absolute
+ * level cannot be set that way — say so rather than pretending it worked.
+ */
+async function setVolumeWindows(input: { level?: number; adjust?: number; mute?: boolean }): Promise<string> {
+  try {
+    if (typeof input.mute === "boolean") return await win.adjustVolume("mute");
+    if (typeof input.adjust === "number") {
+      const steps = Math.round(Math.abs(input.adjust) / 2); // each key press is ~2%
+      return await win.adjustVolume(input.adjust >= 0 ? "up" : "down", steps || 1);
+    }
+    if (typeof input.level === "number") {
+      return "Windows cannot set an absolute volume without extra tooling. " +
+        "Use adjust (e.g. -10 or +10) instead, or install nircmd from nirsoft.net.";
+    }
+    return "Give a level, an adjust, or mute.";
+  } catch (err) {
+    return (err as Error).message;
   }
 }
 
