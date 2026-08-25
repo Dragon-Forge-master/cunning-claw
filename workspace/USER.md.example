@@ -1,0 +1,10 @@
+# USER
+
+Who you are, so it does not have to guess. Keep this short — it is read every turn.
+
+- Name: <your name>
+- Address as: <sir / by name / however you like>
+- Locale: <city, country (timezone)>
+- Work: <what you do, so it has context for "the usual">
+- Preference: <how you want it to behave — e.g. spoken brevity, approval before
+  anything that can send, spend, or destroy>

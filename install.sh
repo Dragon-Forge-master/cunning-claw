@@ -87,7 +87,16 @@ npm run doctor
 DOCTOR_EXIT=$?
 set -e
 if [ "$DOCTOR_EXIT" -ne 0 ]; then
-  say "Doctor reported essential problems (see ✗ lines). Fix those before starting."
+  
+# Personal workspace files are per-install, so seed them from the templates.
+for f in USER MEMORY; do
+  if [ ! -f "workspace/$f.md" ] && [ -f "workspace/$f.md.example" ]; then
+    cp "workspace/$f.md.example" "workspace/$f.md"
+    say "Created workspace/$f.md — edit it so it knows who you are."
+  fi
+done
+
+say "Doctor reported essential problems (see ✗ lines). Fix those before starting."
 fi
 
 install_user_unit() {
