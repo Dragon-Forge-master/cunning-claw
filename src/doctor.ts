@@ -1,0 +1,318 @@
+import fs from "node:fs";
+import net from "node:net";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { config, DATA_DIR, ROOT } from "./config.js";
+import { brainHasKey, catalog, envLooksSet, isLocalEndpoint } from "./brain.js";
+import { hasBin, host, missing } from "./platform.js";
+import { detect } from "./voice.js";
+
+export type CheckStatus = "ok" | "fail" | "warn";
+
+export interface DoctorCheck {
+  id: string;
+  status: CheckStatus;
+  /** Essential failures make `jarvis doctor` exit non-zero. */
+  essential: boolean;
+  line: string;
+}
+
+const ANTHROPIC_KEYS = "https://console.anthropic.com/settings/keys";
+
+function mark(status: CheckStatus): string {
+  if (status === "ok") return "✓";
+  if (status === "warn") return "!";
+  return "✗";
+}
+
+function row(id: string, status: CheckStatus, essential: boolean, text: string): DoctorCheck {
+  return { id, status, essential, line: `${mark(status)} ${text}` };
+}
+
+export function nodeMajor(version = process.versions.node): number {
+  return Number.parseInt(version.split(".")[0] ?? "0", 10) || 0;
+}
+
+/**
+ * Exact copy a first-run should print: where the key comes from, and which
+ * line to add. Shared by doctor and the boot path.
+ */
+export function noKeyGuide(): string {
+  return [
+    "JARVIS has no usable API key, so starting the server would give you a dead assistant.",
+    "",
+    "Copy the example if you have not already:",
+    "  cp .env.example .env",
+    "",
+    "Then add this line to .env:",
+    "  ANTHROPIC_API_KEY=sk-ant-...",
+    `Get a key: ${ANTHROPIC_KEYS}`,
+    "",
+    "Or point a catalog brain at a local runtime (Ollama on 11434 needs no key)",
+    "and pull a model:  ollama pull llama3.1:8b",
+    "",
+    "Then: npm run doctor && npm run dev",
+  ].join("\n");
+}
+
+export function checkHistoryJson(raw: string | null, file = "data/history.json"): DoctorCheck {
+  if (raw === null) {
+    return row("history", "ok", false, `${file} is absent (a fresh start is fine)`);
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return row(
+        "history",
+        "fail",
+        true,
+        `${file} is JSON but not an array — delete it or restore a transcript array`,
+      );
+    }
+    return row("history", "ok", false, `${file} is well-formed JSON (${parsed.length} messages)`);
+  } catch {
+    return row(
+      "history",
+      "fail",
+      true,
+      `${file} is not valid JSON — delete it or restore a backup so the next turn can persist`,
+    );
+  }
+}
+
+async function portFree(port: number, listenHost: string): Promise<boolean> {
+  return await new Promise((resolve) => {
+    const server = net.createServer();
+    server.once("error", () => resolve(false));
+    server.once("listening", () => {
+      server.close(() => resolve(true));
+    });
+    server.listen(port, listenHost);
+  });
+}
+
+const CHROME_CANDIDATES = [
+  "google-chrome",
+  "google-chrome-stable",
+  "chromium",
+  "chromium-browser",
+  "google-chrome-beta",
+];
+
+const CHROME_PATHS = [
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Chromium.app/Contents/MacOS/Chromium",
+];
+
+async function findChrome(): Promise<string | null> {
+  const configured = config.browser.binary?.trim();
+  if (configured && (fs.existsSync(configured) || (await hasBin(configured)))) return configured;
+  for (const bin of CHROME_CANDIDATES) {
+    if (await hasBin(bin)) return bin;
+  }
+  for (const p of CHROME_PATHS) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+async function ollamaUp(): Promise<boolean> {
+  try {
+    const res = await fetch("http://127.0.0.1:11434/api/tags", {
+      signal: AbortSignal.timeout(1500),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function runDoctor(): Promise<DoctorCheck[]> {
+  const out: DoctorCheck[] = [];
+  const h = host();
+
+  const major = nodeMajor();
+  if (major >= 22) {
+    out.push(row("node", "ok", true, `Node.js ${process.versions.node}`));
+  } else {
+    out.push(row(
+      "node",
+      "fail",
+      true,
+      `Node.js ${process.versions.node} is too old — install 22+ from https://nodejs.org`,
+    ));
+  }
+
+  const envPath = path.join(ROOT, ".env");
+  if (fs.existsSync(envPath)) {
+    out.push(row("env", "ok", true, `.env present`));
+  } else {
+    const anyKey = catalog().some(brainHasKey);
+    out.push(row(
+      "env",
+      anyKey ? "warn" : "fail",
+      !anyKey,
+      `.env is missing — cp .env.example .env and add ANTHROPIC_API_KEY (${ANTHROPIC_KEYS})`,
+    ));
+  }
+
+  const brains = catalog();
+  let anyBrain = false;
+  for (const b of brains) {
+    const ready = brainHasKey(b);
+    if (ready) anyBrain = true;
+    if (b.provider === "openai" && isLocalEndpoint(b.baseUrl)) {
+      out.push(row(
+        `brain-${b.id}`,
+        "ok",
+        false,
+        `Brain ${b.id} (${b.model}) is a local runtime — no API key required`,
+      ));
+      continue;
+    }
+    const envName = b.provider === "openai" ? (b.apiKeyEnv ?? "OPENAI_API_KEY") : "ANTHROPIC_API_KEY";
+    if (ready) {
+      out.push(row(`brain-${b.id}`, "ok", false, `Brain ${b.id} (${b.model}): ${envName} present`));
+    } else if (process.env[envName]?.trim() && !envLooksSet(envName)) {
+      out.push(row(
+        `brain-${b.id}`,
+        "warn",
+        false,
+        `Brain ${b.id}: ${envName} looks like a placeholder — put a real key in .env`,
+      ));
+    } else {
+      const where = envName === "ANTHROPIC_API_KEY"
+        ? `${ANTHROPIC_KEYS}`
+        : "https://platform.openai.com/api-keys";
+      out.push(row(
+        `brain-${b.id}`,
+        "warn",
+        false,
+        `Brain ${b.id} has no ${envName} — add ${envName}=... to .env (${where})`,
+      ));
+    }
+  }
+  if (!anyBrain) {
+    out.push(row("brains", "fail", true, noKeyGuide().split("\n")[0] + ` — ${ANTHROPIC_KEYS}`));
+  } else {
+    out.push(row("brains", "ok", true, "At least one brain can run"));
+  }
+
+  const piperBin = path.join(ROOT, ".venv", "bin", "piper");
+  const modelRel = config.voice.piper.model;
+  const modelAbs = path.isAbsolute(modelRel) ? modelRel : path.join(ROOT, modelRel);
+  const voice = await detect();
+  if (voice.engine === "none") {
+    out.push(row(
+      "voice",
+      "warn",
+      false,
+      `Voice engine: none — ${voice.detail}`,
+    ));
+  } else {
+    out.push(row("voice", "ok", false, `Voice engine: ${voice.engine} · ${voice.detail}`));
+  }
+  if (!fs.existsSync(piperBin)) {
+    out.push(row("piper", "warn", false, `Piper venv missing — run ./setup-voice.sh`));
+  } else if (!fs.existsSync(modelAbs)) {
+    out.push(row(
+      "piper-model",
+      "warn",
+      false,
+      `Piper model missing at ${modelRel} — run ./setup-voice.sh`,
+    ));
+  }
+  const player = h === "darwin" ? "afplay" : config.voice.piper.player;
+  if (!(await hasBin(player)) && voice.engine === "piper") {
+    out.push(row("player", "warn", false, missing(player)));
+  }
+
+  if (await ollamaUp()) {
+    out.push(row("ollama", "ok", false, "Ollama reachable on 11434"));
+  } else {
+    out.push(row(
+      "ollama",
+      "warn",
+      false,
+      "Ollama not reachable on 11434 — install from https://ollama.com and run: ollama serve",
+    ));
+  }
+
+  if (h === "darwin") {
+    out.push(await binCheck("screencapture", "screenshot", false));
+    out.push(await binCheck("osascript", "osascript", false));
+    out.push(await binCheck("pbcopy", "pbcopy", false));
+  } else if (h === "linux") {
+    const shot = (await hasBin("gnome-screenshot")) || (await hasBin("ffmpeg"));
+    out.push(shot
+      ? row("screenshot", "ok", false, "Screenshot tool present")
+      : row("screenshot", "warn", false, `${missing("gnome-screenshot")} (or ${missing("ffmpeg")})`));
+    out.push(await binCheck("xdotool", "xdotool", false));
+    out.push(await binCheck("wmctrl", "wmctrl", false));
+    out.push(await binCheck("xclip", "xclip", false));
+    out.push(await binCheck("pactl", "pactl", false));
+  } else {
+    out.push(row("desktop", "warn", false, "Desktop tools currently support Linux and macOS"));
+  }
+
+  const chrome = await findChrome();
+  if (chrome) {
+    out.push(row("chrome", "ok", false, `Chrome: ${chrome}`));
+  } else {
+    out.push(row("chrome", "warn", false, missing("google-chrome")));
+  }
+
+  const { port, host: listenHost } = config.server;
+  const free = await portFree(port, listenHost);
+  out.push(free
+    ? row("port", "ok", true, `Port ${port} on ${listenHost} is free`)
+    : row(
+      "port",
+      "fail",
+      true,
+      `Port ${port} on ${listenHost} is in use — stop the other process or change server.port in jarvis.config.json`,
+    ));
+
+  const historyFile = path.join(DATA_DIR, "history.json");
+  let raw: string | null = null;
+  if (fs.existsSync(historyFile)) {
+    try { raw = fs.readFileSync(historyFile, "utf-8"); } catch { raw = ""; }
+  }
+  out.push(checkHistoryJson(raw, "data/history.json"));
+
+  return out;
+}
+
+async function binCheck(bin: string, id: string, essential: boolean): Promise<DoctorCheck> {
+  if (await hasBin(bin)) return row(id, "ok", essential, `${bin} present`);
+  return row(id, essential ? "fail" : "warn", essential, missing(bin));
+}
+
+export function hasEssentialFailure(checks: DoctorCheck[]): boolean {
+  return checks.some((c) => c.essential && c.status === "fail");
+}
+
+export async function main(): Promise<number> {
+  console.log(`JARVIS doctor  ·  ${host()}  ·  ${ROOT}\n`);
+  const checks = await runDoctor();
+  for (const c of checks) console.log(c.line);
+  const failed = hasEssentialFailure(checks);
+  const warns = checks.filter((c) => c.status === "warn").length;
+  console.log("");
+  if (failed) {
+    console.log("Essential checks failed. Fix the ✗ lines above before npm run dev.");
+    return 1;
+  }
+  if (warns) console.log(`${warns} optional warning(s). The assistant can still start.`);
+  else console.log("All checks passed.");
+  return 0;
+}
+
+const thisFile = fileURLToPath(import.meta.url);
+const invoked = process.argv[1] && path.resolve(process.argv[1]) === thisFile;
+if (invoked) {
+  main().then((code) => process.exit(code), (err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

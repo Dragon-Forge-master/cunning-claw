@@ -139,15 +139,24 @@ export function isLocalEndpoint(baseUrl: string | undefined): boolean {
   }
 }
 
+export function envLooksSet(name: string): boolean {
+  const v = process.env[name]?.trim() ?? "";
+  if (!v) return false;
+  if (/your-?key|placeholder|changeme/i.test(v)) return false;
+  if (v === "sk-ant-..." || v === "sk-your-key-here") return false;
+  if (/\.\.\.$/.test(v) && v.length < 24) return false;
+  return true;
+}
+
 export function brainHasKey(spec: BrainSpec): boolean {
   if (spec.provider === "openai") {
     // A local runtime serves the same API with no auth, so it is ready
     // whenever it is reachable — reporting NO KEY would hide it from
     // pickBrain and make an offline setup silently unselectable.
     if (isLocalEndpoint(spec.baseUrl)) return true;
-    return Boolean(process.env[spec.apiKeyEnv ?? "OPENAI_API_KEY"]);
+    return envLooksSet(spec.apiKeyEnv ?? "OPENAI_API_KEY");
   }
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return envLooksSet("ANTHROPIC_API_KEY");
 }
 
 export function openAiEndpoint(spec: BrainSpec): { baseUrl: string; model: string; apiKeyEnv: string } {

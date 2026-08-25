@@ -66,6 +66,10 @@ const INSTALL: Record<string, Partial<Record<Host, string>>> = {
   pbpaste: { darwin: "pbpaste is part of macOS." },
   afplay: { darwin: "afplay is part of macOS." },
   say: { darwin: "say is part of macOS." },
+  "google-chrome": {
+    linux: "sudo apt install google-chrome-stable  (or set browser.binary in jarvis.config.json)",
+    darwin: "install Google Chrome, or: brew install --cask google-chrome",
+  },
 };
 
 export function installHint(tool: string, forHost: Host = host()): string | undefined {
