@@ -4,9 +4,9 @@
   "description": "J.A.R.V.I.S. — a local personal assistant with a HUD, denylist, and a brain you can swap",
   "type": "module",
   "scripts": {
-    "dev": "tsx src/server.ts",
+    "dev": "tsx src/boot.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/boot.js",
     "check": "tsc --noEmit",
     "test": "tsx --test src/*.test.ts",
     "doctor": "tsx src/doctor.ts"
