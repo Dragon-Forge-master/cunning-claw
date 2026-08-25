@@ -10,6 +10,7 @@ import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
 import * as http from "./http.js";
 import * as mcp from "./mcp.js";
+import { classifyBrowserAction, needsApproval as browserNeedsApproval } from "./consequence.js";
 import { snapshot, record } from "./filewatch.js";
 import { readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
@@ -783,16 +784,24 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "browser_read": return await browser.readPage(input.tab);
       case "browser_tabs": return await browser.tabs();
       case "browser_click": {
-        const ok = await ctx.requestApproval("Click in browser", `Element: ${input.query}`);
-        if (!ok) return "The user declined the click.";
+        // Clicking a contact changes nothing; clicking Send cannot be undone.
+        // Gating both identically taught the operator to click through the card.
+        if (browserNeedsApproval("click", String(input.query))) {
+          const { why } = classifyBrowserAction("click", String(input.query));
+          const ok = await ctx.requestApproval("Click in browser", `Element: ${input.query}\n\n(${why})`);
+          if (!ok) return "The user declined the click.";
+        }
         return await browser.click(input.query, input.tab);
       }
       case "browser_type": {
-        const ok = await ctx.requestApproval(
-          input.submit ? "Type into browser AND submit" : "Type into browser",
-          `Field: ${input.selector}\nText: ${input.text}`,
-        );
-        if (!ok) return "The user declined the input.";
+        // Text sitting in a box has not gone anywhere. Pressing Enter has.
+        if (browserNeedsApproval("type", String(input.selector), { submit: Boolean(input.submit) })) {
+          const ok = await ctx.requestApproval(
+            "Type into browser AND SEND",
+            `Field: ${input.selector}\nText: ${input.text}`,
+          );
+          if (!ok) return "The user declined the input.";
+        }
         return await browser.typeText(input.selector, input.text, Boolean(input.submit), input.tab);
       }
       case "check_email": return await browser.checkEmail(input.query);

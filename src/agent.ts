@@ -7,6 +7,7 @@ import { memorySnapshot } from "./memory.js";
 import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
 import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted } from "./routing.js";
 import { containsSecret, redactDeep } from "./redact.js";
+import { clearTaskGrant } from "./consequence.js";
 import { toolDefinitions as mcpToolDefinitions } from "./mcp.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
 import { pickBrain, nextBrain, isFailoverError, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
@@ -268,6 +269,8 @@ export async function runTurn(
     return null;
   }
   busy = true;
+  // A grant covers one errand, not the rest of the session.
+  clearTaskGrant();
   events.emit("turn_start", {});
 
   const kind = opts?.kind === "heartbeat" ? "heartbeat" as const : "user" as const;

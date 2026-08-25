@@ -7,6 +7,7 @@ import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
 import { redactDeep } from "./redact.js";
 import { banner } from "./banner.js";
+import { grantForTask } from "./consequence.js";
 import { ensureToken, currentToken, requireAuth, issueSession } from "./auth.js";
 import { connectAll as connectMcp, listMcpTools, shutdown as shutdownMcp } from "./mcp.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
@@ -135,6 +136,9 @@ function requestApproval(summary: string, detail: string): Promise<boolean> {
 }
 
 app.post("/api/approve", (req, res) => {
+  // "approve for this task" is an approval that also widens scope until the
+  // turn ends. It never covers an irreversible action.
+  if (req.body?.scope === "task") grantForTask();
   const { id, approved } = req.body ?? {};
   if (!settleApproval(id, Boolean(approved))) {
     return res.status(404).json({ error: "No such pending approval" });

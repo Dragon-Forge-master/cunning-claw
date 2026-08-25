@@ -66,6 +66,10 @@ export interface ClawConfig {
     timeoutMs: number;
     extraFlags: string[];
     requireApprovalFor: string[];
+    /** Gate every browser action, not just the irreversible ones. */
+    approveEveryAction?: boolean;
+    /** Extra regexes treated as irreversible. Adds to the code-level list. */
+    committingPatterns?: string[];
   };
   desktop: {
     enabled: boolean;

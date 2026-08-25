@@ -292,3 +292,9 @@ header { flex-wrap: wrap; row-gap: 6px; }
 
 /* Connected, but no brain has a key — amber ring rather than a false red. */
 .dot.nobrain { box-shadow: 0 0 0 2px var(--amber) inset; }
+
+.approval-card .task {
+  border: 1px solid var(--dim, #1a6c7a); color: var(--cyan-dim);
+  font-size: 10px; letter-spacing: 1.5px;
+}
+.approval-card .task:hover { border-color: var(--cyan); color: var(--cyan); }

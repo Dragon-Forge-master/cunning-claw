@@ -70,7 +70,9 @@
     "requireApprovalFor": [
       "browser_click",
       "browser_type"
-    ]
+    ],
+    "approveEveryAction": false,
+    "committingPatterns": []
   },
   "desktop": {
     "enabled": true,

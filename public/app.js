@@ -399,11 +399,15 @@ es.addEventListener("approval_request", (e) => {
     <pre></pre>
     <div class="btns">
       <button class="yes">EXECUTE</button>
+      <button class="task">ALLOW FOR THIS TASK</button>
       <button class="no">DENY</button>
     </div>`;
   card.querySelector(".ttl-what").textContent = summary;   // text, so & and < are safe
   card.querySelector("pre").textContent = detail;
   card.querySelector(".yes").onclick = () => resolveApproval(id, true);
+  // Covers the fiddly navigation for the rest of this errand. Never covers a
+  // send, a payment or a delete — those ask every time.
+  card.querySelector(".task").onclick = () => resolveApproval(id, true, "task");
   card.querySelector(".no").onclick = () => resolveApproval(id, false);
   $("approval-area").appendChild(card);
   speak("Requesting authorisation, sir.");
@@ -422,17 +426,17 @@ es.addEventListener("approval_resolved", (e) => {
  * added; the function was never written, so EXECUTE and DENY both threw a
  * ReferenceError and the card sat there until the server timed it out.
  */
-async function resolveApproval(id, approved) {
+async function resolveApproval(id, approved, scope) {
   const card = document.getElementById(`approval-${id}`);
   if (card) {
     for (const b of card.querySelectorAll("button")) b.disabled = true;
-    card.querySelector(".ttl").textContent = approved ? "▸ EXECUTING…" : "▸ DENIED";
+    card.querySelector(".ttl").textContent = approved ? (scope === "task" ? "▸ EXECUTING · allowed for this task" : "▸ EXECUTING…") : "▸ DENIED";
   }
   try {
     const res = await fetch("/api/approve", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, approved }),
+      body: JSON.stringify({ id, approved, scope }),
     });
     if (!res.ok) addMsg("system", `⚠ Could not send that decision (HTTP ${res.status}).`);
   } catch (err) {
