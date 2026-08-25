@@ -98,7 +98,7 @@ Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and 
 | **Operates** | Shell, files, apps, volume, media, clipboard, notifications, window focus, keystrokes |
 | **Browses** | Drives its own Chrome over the DevTools Protocol — opens, reads, clicks, types |
 | **Reads mail** | Gmail inbox and search, through that browser session. No credentials handled |
-| **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Cunning Claw" wake word |
+| **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Claw" wake word |
 | **Remembers** | Markdown memory and a dated journal that survive restarts |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
 | **Reaches you** | Telegram, so it isn't trapped at your desk |

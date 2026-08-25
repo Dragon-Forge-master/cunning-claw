@@ -74,7 +74,7 @@ export function banner(info: BannerInfo): string {
 
   out.push("");
   out.push("  " + dim("──────────────────────────────────────────────────────────────"));
-  out.push("  " + dim("THE FORGE MASTER'S AGENT") + dim("  ·  v") + dim(info.version));
+  out.push("  " + dim("CUNNING CLAW") + dim("  ·  dyn hysbys  ·  v") + dim(info.version));
   out.push("");
   out.push("  " + lit("▸") + " online   " + lit(info.url));
   if (info.brain) out.push("  " + dim("▸") + " brain    " + info.brain);

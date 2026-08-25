@@ -45,7 +45,7 @@
   <!-- wordmark -->
   <g font-family="'JetBrains Mono','Fira Code',ui-monospace,monospace">
     <text x="400" y="150" fill="#35d6ed" font-size="60" letter-spacing="8" filter="url(#glow)">CUNNING CLAW</text>
-    <text x="404" y="192" fill="#7fc4d4" font-size="17" letter-spacing="4.2">THE FORGE MASTER'S AGENT</text>
+    <text x="404" y="192" fill="#7fc4d4" font-size="17" letter-spacing="4.2">DYN HYSBYS · THE FORGE MASTER'S AGENT</text>
     <g font-size="14" letter-spacing="2.4" fill="#4f8fa0">
       <text x="404" y="242">SEES YOUR SCREEN  ·  RUNS YOUR SHELL  ·  READS YOUR INBOX</text>
       <text x="404" y="268">SPEAKS  ·  REMEMBERS  ·  REFUSES</text>
