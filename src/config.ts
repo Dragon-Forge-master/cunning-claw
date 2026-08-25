@@ -128,6 +128,7 @@ export interface ClawConfig {
     }[];
   };
   agent?: { maxTurnMinutes?: number };
+  board?: { githubOwner?: string; weatherPlace?: string; staleAfterDays?: number };
   server: { port: number; host: string };
   /**
    * USD per million tokens, keyed by model id (prefix match allowed).

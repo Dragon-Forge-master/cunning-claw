@@ -210,5 +210,10 @@
   },
   "agent": {
     "maxTurnMinutes": 10
+  },
+  "board": {
+    "githubOwner": "Dragon-Forge-master",
+    "weatherPlace": "Cardiff",
+    "staleAfterDays": 30
   }
 }

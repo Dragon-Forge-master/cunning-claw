@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Forge Board</title>
+<link rel="stylesheet" href="hud.css">
+<style>
+  body{overflow-y:auto;padding:0}
+  .board{max-width:1500px;margin:0 auto;padding:22px 26px 60px}
+  .bhead{display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:1px solid var(--cyan-dim);padding-bottom:12px;margin-bottom:22px;flex-wrap:wrap;gap:10px}
+  .bhead h1{color:var(--cyan);font-size:20px;letter-spacing:5px;text-shadow:0 0 12px var(--cyan-glow)}
+  .bhead .when{color:var(--cyan-dim);font-size:11px;letter-spacing:2px}
+  .bhead a{color:var(--cyan-dim);font-size:11px;letter-spacing:2px;text-decoration:none;
+    border:1px solid var(--cyan-dim);padding:4px 11px}
+  .bhead a:hover{color:var(--cyan);border-color:var(--cyan)}
+
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+  .panel{border:1px solid var(--cyan-dim);background:var(--panel);padding:14px 16px;min-height:120px}
+  .panel h2{color:var(--cyan-dim);font-size:10px;letter-spacing:3px;font-weight:400;
+    border-bottom:1px solid rgba(26,108,122,.35);padding-bottom:7px;margin-bottom:11px}
+  .panel.wide{grid-column:1/-1}
+
+  .big{color:var(--cyan);font-size:30px;line-height:1.15}
+  .sub{color:var(--text);font-size:12px;margin-top:5px}
+  .muted{color:var(--cyan-dim);font-size:11px}
+  .err{color:var(--amber);font-size:11px;line-height:1.5}
+
+  .row{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:12px;
+    border-bottom:1px solid rgba(26,108,122,.16)}
+  .row:last-child{border-bottom:none}
+  .row .k{color:var(--text)}
+  .row .v{color:var(--cyan-dim);white-space:nowrap}
+
+  .repo{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:12px;
+    border-bottom:1px solid rgba(26,108,122,.16)}
+  .repo:last-child{border-bottom:none}
+  .repo .n{color:var(--cyan)}
+  .repo .d{color:var(--cyan-dim);font-size:10.5px;display:block;margin-top:1px}
+  .repo .age{white-space:nowrap;font-size:11px}
+  .fresh{color:#5ddc8c}.warm{color:var(--cyan-dim)}.stale{color:var(--amber)}.cold{color:var(--red)}
+
+  .cm{font-size:11.5px;padding:4px 0;border-bottom:1px solid rgba(26,108,122,.14);line-height:1.45}
+  .cm:last-child{border-bottom:none}
+  .cm .h{color:var(--amber);margin-right:8px}
+  .cm .w{color:var(--cyan-dim);font-size:10px}
+
+  .jday{color:var(--cyan);font-size:11px;letter-spacing:2px;margin:10px 0 5px}
+  .jline{color:var(--text);font-size:11.5px;padding:2px 0 2px 12px;border-left:1px solid var(--cyan-dim);
+    margin-bottom:2px;line-height:1.45}
+  .dot2{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px}
+  .up{background:#5ddc8c}.down{background:var(--red)}
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="bhead">
+    <h1>THE FORGE BOARD</h1>
+    <span class="when" id="when">loading…</span>
+    <a href="/">← BACK TO THE CLAW</a>
+  </div>
+
+  <div class="grid">
+    <div class="panel"><h2>TODAY</h2><div id="today"></div></div>
+    <div class="panel"><h2>THE CLAW</h2><div id="claw"></div></div>
+    <div class="panel"><h2>THIS MACHINE</h2><div id="machine"></div></div>
+    <div class="panel"><h2>SPEND</h2><div id="spend"></div></div>
+    <div class="panel wide"><h2>THE FORGE — YOUR REPOSITORIES</h2><div id="repos"></div></div>
+    <div class="panel"><h2>THIS PROJECT</h2><div id="commits"></div></div>
+    <div class="panel"><h2>WHAT HE DID</h2><div id="journal"></div></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; };
+
+/** A failure must look like a failure, not like an empty panel. */
+function fail(el, msg) { el.innerHTML = `<div class="err">⚠ ${esc(msg)}</div>`; }
+
+function ageClass(d) { return d <= 2 ? "fresh" : d <= 14 ? "warm" : d <= 60 ? "stale" : "cold"; }
+function ageText(d)  { return d === 0 ? "today" : d === 1 ? "yesterday" : d < 60 ? `${d}d` : `${Math.floor(d/30)}mo`; }
+
+async function draw() {
+  // Status is fast; the board is slow. Draw each as it arrives.
+  fetch("/api/status").then(r => r.json()).then(s => {
+    const t = s.turn || {}, sp = s.spend || {};
+    $("claw").innerHTML =
+      `<div class="row"><span class="k"><span class="dot2 ${s.online ? "up" : "down"}"></span>${esc(s.brain?.model || "—")}</span>
+        <span class="v">${t.busy ? "working " + Math.round(t.forMs/1000) + "s" : "idle"}</span></div>` +
+      `<div class="row"><span class="k">voice</span><span class="v">${esc(s.voiceEngine || "—")}</span></div>` +
+      `<div class="row"><span class="k">heartbeat</span><span class="v">${s.heartbeat?.enabled ? "every " + s.heartbeat.intervalMinutes + "m" : "off"}</span></div>` +
+      `<div class="row"><span class="k">skills · tools</span><span class="v">${s.skills ?? 0} · ${s.toolCount ?? 0}</span></div>`;
+
+    $("machine").innerHTML = `<pre class="muted" style="white-space:pre-wrap;line-height:1.55">${esc((s.text||"").split("\n").slice(0,5).join("\n"))}</pre>`;
+
+    $("spend").innerHTML = sp.turns
+      ? `<div class="big">$${(sp.usd ?? 0).toFixed(3)}</div>
+         <div class="sub">${sp.turns} turn${sp.turns === 1 ? "" : "s"} this session</div>
+         <div class="muted" style="margin-top:8px">${((sp.usd ?? 0) / sp.turns).toFixed(4)} per turn average</div>`
+      : `<div class="big">$0.000</div><div class="sub">nothing spent yet</div>`;
+  }).catch(e => { fail($("claw"), e.message); fail($("machine"), e.message); fail($("spend"), e.message); });
+
+  fetch("/api/board").then(r => r.json()).then(b => {
+    $("when").textContent = new Date(b.at).toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" });
+
+    const w = b.weather || {};
+    $("today").innerHTML = w.error
+      ? `<div class="err">⚠ weather: ${esc(w.error)}</div>`
+      : `<div class="big">${esc(w.now || "—")}</div>
+         <div class="sub">${esc(w.place || "")} · ${esc(w.today || "")}</div>`;
+
+    const r = b.repos || {};
+    $("repos").innerHTML = r.error
+      ? `<div class="err">⚠ ${esc(r.error)}</div>`
+      : (r.items || []).slice(0, 18).map(x =>
+          `<div class="repo"><span><span class="n">${esc(x.name)}</span>${x.isPrivate ? '<span class="muted"> · private</span>' : ""}
+            <span class="d">${esc((x.description || "no description").slice(0, 78))}</span></span>
+           <span class="age ${ageClass(x.daysAgo)}">${ageText(x.daysAgo)}</span></div>`).join("")
+        || `<div class="muted">no repositories</div>`;
+
+    const c = b.commits || {};
+    $("commits").innerHTML = c.error
+      ? `<div class="err">⚠ ${esc(c.error)}</div>`
+      : (c.items || []).map(x =>
+          `<div class="cm"><span class="h">${esc(x.hash)}</span>${esc(x.subject)}<br><span class="w">${esc(x.when)}</span></div>`).join("");
+
+    const j = b.journal || [];
+    $("journal").innerHTML = j.length
+      ? j.map(d => `<div class="jday">${esc(d.day)}</div>` +
+          d.lines.map(l => `<div class="jline">${esc(l.slice(0, 150))}</div>`).join("")).join("")
+      : `<div class="muted">nothing recorded yet — he writes here as he works</div>`;
+  }).catch(e => {
+    for (const id of ["today","repos","commits","journal"]) fail($(id), e.message);
+  });
+}
+
+draw();
+setInterval(draw, 60_000);
+</script>
+</body>
+</html>

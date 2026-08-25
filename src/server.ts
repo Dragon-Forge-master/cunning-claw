@@ -7,6 +7,7 @@ import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
 import { redactDeep } from "./redact.js";
 import { banner } from "./banner.js";
+import { board } from "./board.js";
 import { grantForTask } from "./consequence.js";
 import { ensureToken, currentToken, requireAuth, issueSession } from "./auth.js";
 import { connectAll as connectMcp, listMcpTools, shutdown as shutdownMcp } from "./mcp.js";
@@ -45,6 +46,11 @@ app.use(express.json({ limit: "1mb" }));
 
 // Loading the HUD hands the browser its session, so EventSource — which cannot
 // set headers — can authenticate on the stream that follows.
+app.get(["/board", "/board.html"], (_req, res) => {
+  issueSession(res);
+  res.sendFile(path.join(ROOT, "public", "board.html"));
+});
+
 app.get(["/", "/index.html"], (_req, res) => {
   issueSession(res);
   res.sendFile(path.join(ROOT, "public", "index.html"));
@@ -218,6 +224,14 @@ app.get("/api/history", (_req, res) => {
 app.post("/api/reset", (_req, res) => {
   resetHistory();
   res.json({ ok: true });
+});
+
+app.get("/api/board", async (_req, res) => {
+  try {
+    res.json(await board());
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message ?? err) });
+  }
 });
 
 app.get("/api/status", async (_req, res) => {
