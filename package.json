@@ -1,7 +1,7 @@
 {
   "name": "cunningclaw",
   "version": "0.1.0",
-  "description": "C.U.N.N.I.N.G. C.L.A.W. — a local personal assistant with a HUD, denylist, and a brain you can swap",
+  "description": "C.U.N.N.I.N.G. C.L.A.W. \u2014 a local personal assistant with a HUD, denylist, and a brain you can swap",
   "type": "module",
   "scripts": {
     "dev": "tsx src/boot.ts",
@@ -20,5 +20,30 @@
     "@types/node": "^22.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
+  },
+  "license": "MIT",
+  "author": "Chris Jenkins <cjvehiclespecialist@gmail.com> (Dragon Forge AI)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dragon-Forge-master/cunningclaw.git"
+  },
+  "homepage": "https://github.com/Dragon-Forge-master/cunningclaw#readme",
+  "bugs": {
+    "url": "https://github.com/Dragon-Forge-master/cunningclaw/issues"
+  },
+  "keywords": [
+    "ai-agent",
+    "assistant",
+    "local-first",
+    "prompt-injection",
+    "mcp",
+    "anthropic",
+    "claude",
+    "ollama",
+    "llm",
+    "security"
+  ],
+  "engines": {
+    "node": ">=22"
   }
 }
