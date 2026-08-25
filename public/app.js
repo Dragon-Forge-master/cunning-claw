@@ -440,14 +440,169 @@ async function resolveApproval(id, approved) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Capabilities (skills) — click to arm, like Claude's skills list
+// ---------------------------------------------------------------------------
+const ARMED_KEY = "jarvis.armedSkills";
+let skillCatalog = [];
+let armedSkills = [];
+try {
+  armedSkills = JSON.parse(sessionStorage.getItem(ARMED_KEY) || "[]");
+  if (!Array.isArray(armedSkills)) armedSkills = [];
+} catch {
+  armedSkills = [];
+}
+
+function saveArmed() {
+  sessionStorage.setItem(ARMED_KEY, JSON.stringify(armedSkills));
+}
+
+function skillByName(name) {
+  return skillCatalog.find((s) => s.name === name);
+}
+
+function renderArmedRow() {
+  const row = $("armed-row");
+  if (!row) return;
+  row.innerHTML = "";
+  if (!armedSkills.length) {
+    row.hidden = true;
+    return;
+  }
+  row.hidden = false;
+  for (const name of armedSkills) {
+    const meta = skillByName(name);
+    const chip = document.createElement("span");
+    chip.className = "armed-chip";
+    const label = document.createElement("span");
+    label.textContent = meta?.label || name;
+    const x = document.createElement("button");
+    x.type = "button";
+    x.setAttribute("aria-label", `Disarm ${meta?.label || name}`);
+    x.textContent = "×";
+    x.onclick = () => toggleSkill(name, false);
+    chip.append(label, x);
+    row.appendChild(chip);
+  }
+}
+
+function setSkillsOpen(open) {
+  const overlay = $("skills-overlay");
+  const btn = $("skills-toggle");
+  if (!overlay || !btn) return;
+  overlay.hidden = !open;
+  btn.classList.toggle("active", open);
+  if (open) renderSkillsList();
+}
+
+function toggleSkill(name, force) {
+  const on = force ?? !armedSkills.includes(name);
+  armedSkills = armedSkills.filter((n) => n !== name);
+  if (on) armedSkills.push(name);
+  saveArmed();
+  renderArmedRow();
+  renderSkillsList();
+}
+
+function renderSkillsList() {
+  const root = $("skills-list");
+  if (!root) return;
+  root.innerHTML = "";
+  if (!skillCatalog.length) {
+    const empty = document.createElement("p");
+    empty.className = "skills-hint";
+    empty.textContent = "No skills installed. Drop a SKILL.md under workspace/skills.";
+    root.appendChild(empty);
+    return;
+  }
+  const groups = [];
+  for (const s of skillCatalog) {
+    let g = groups.find((x) => x.category === s.category);
+    if (!g) {
+      g = { category: s.category, label: s.categoryLabel || s.category, items: [] };
+      groups.push(g);
+    }
+    g.items.push(s);
+  }
+  for (const g of groups) {
+    const wrap = document.createElement("div");
+    wrap.className = "skill-group";
+    const title = document.createElement("div");
+    title.className = "skill-group-title";
+    title.textContent = g.label;
+    wrap.appendChild(title);
+    for (const s of g.items) {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "skill-card" + (armedSkills.includes(s.name) ? " armed" : "");
+      card.dataset.name = s.name;
+      const lab = document.createElement("span");
+      lab.className = "sk-label";
+      lab.textContent = s.label;
+      const desc = document.createElement("span");
+      desc.className = "sk-desc";
+      desc.textContent = s.description;
+      card.append(lab, desc);
+      card.onclick = async () => {
+        toggleSkill(s.name);
+        if (armedSkills.includes(s.name) && !card.querySelector(".sk-more")) {
+          try {
+            const res = await fetch(`/api/skills/${encodeURIComponent(s.name)}`);
+            if (!res.ok) return;
+            const detail = await res.json();
+            const more = document.createElement("div");
+            more.className = "sk-more";
+            const body = String(detail.body || "");
+            const cut = body.replace(/^---[\s\S]*?---\n*/, "");
+            more.textContent = cut.slice(0, 900) + (cut.length > 900 ? "\n…" : "");
+            card.appendChild(more);
+          } catch { /* body is optional colour */ }
+        }
+      };
+      wrap.appendChild(card);
+    }
+    root.appendChild(wrap);
+  }
+}
+
+async function loadSkills() {
+  try {
+    const res = await fetch("/api/skills");
+    if (!res.ok) return;
+    const data = await res.json();
+    skillCatalog = Array.isArray(data.skills) ? data.skills : [];
+    armedSkills = armedSkills.filter((n) => skillCatalog.some((s) => s.name === n));
+    saveArmed();
+    renderArmedRow();
+    if ($("skills-overlay") && !$("skills-overlay").hidden) renderSkillsList();
+  } catch { /* telemetry poll will retry */ }
+}
+
+$("skills-toggle")?.addEventListener("click", () => {
+  setSkillsOpen($("skills-overlay").hidden);
+});
+$("skills-close")?.addEventListener("click", () => setSkillsOpen(false));
+$("skills-overlay")?.addEventListener("click", (e) => {
+  if (e.target === $("skills-overlay")) setSkillsOpen(false);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("skills-overlay") && !$("skills-overlay").hidden) {
+    setSkillsOpen(false);
+  }
+});
+loadSkills();
+
 async function sendMessage(text) {
   addMsg("user", text);
   currentBubble = null;
+  const payload = armedSkills.length
+    ? `[Armed skills — call skill_read for each before improvising: ${armedSkills.join(", ")}]\n\n${text}`
+    : text;
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text }),
+      body: JSON.stringify({ message: payload }),
     });
     if (!res.ok) {
       // A silent failure here looks exactly like a slow reply. Say what happened.

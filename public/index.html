@@ -16,6 +16,7 @@
       <div class="brand">C.U.N.N.I.N.G. C.L.A.W. <span class="sub">Just A Rather Very Intelligent System</span></div>
       <div class="header-controls">
         <div id="brain-picker" class="brain-picker" title="Which model thinks. Same tools on every brain."></div>
+        <button id="skills-toggle" class="ctl" title="Capabilities — click to arm a skill">SKILLS</button>
         <button id="preview-toggle" class="ctl" title="In-HUD browser viewport">VIEWPORT</button>
         <button id="tts-toggle" class="ctl active" title="Voice output">VOICE</button>
         <button id="wake-toggle" class="ctl" title="Always listening for 'Cunning Claw'">WAKE</button>
@@ -42,6 +43,7 @@
         <div class="panel-title">TRANSCRIPT</div>
         <div id="chat-log"></div>
         <div id="approval-area"></div>
+        <div id="armed-row" hidden></div>
         <form id="input-bar">
           <button type="button" id="mic-btn" title="Click to speak, click again to stop">◉</button>
           <input id="msg-input" type="text" placeholder="At your service, sir…" autocomplete="off">
@@ -79,6 +81,19 @@
         <div id="preview-hint">If this pane is blank, the app refused to be framed. POP opens it in a tab.</div>
       </section>
     </main>
+  </div>
+
+  <div id="skills-overlay" hidden>
+    <div class="skills-sheet">
+      <div class="skills-head">
+        <div>
+          <div class="panel-title">CAPABILITIES</div>
+          <p class="skills-hint">Click a skill to arm it. Armed skills are loaded before the next thing you send — the same idea as Claude’s skills list.</p>
+        </div>
+        <button type="button" id="skills-close" class="ctl">CLOSE</button>
+      </div>
+      <div id="skills-list"></div>
+    </div>
   </div>
 
   <script src="app.js"></script>

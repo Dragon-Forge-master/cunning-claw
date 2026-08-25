@@ -63,6 +63,8 @@ Drop `workspace/skills/<slug>/SKILL.md`:
 ```markdown
 ---
 name: my-skill
+label: Short name on the HUD
+category: machine   # machine | forge | craft | general
 description: One line for the skill index. When to use it.
 ---
 
@@ -70,7 +72,7 @@ description: One line for the skill index. When to use it.
 2. Name the tools, do not invent new ones.
 ```
 
-`listSkills()` picks up any folder with valid frontmatter. No registry file to edit. After a novel multi-step success in a live session, `skill_write` is the same path.
+`listSkills()` picks up any folder with valid frontmatter. No registry file to edit. The HUD **SKILLS** button lists them; click to arm, and the next send tells JARVIS to `skill_read` them first. After a novel multi-step success in a live session, `skill_write` is the same path.
 
 ## Pull requests
 

@@ -1,5 +1,7 @@
 ---
 name: cardiff-briefing
+label: Cardiff briefing
+category: forge
 description: Cardiff / Wales morning or evening briefing — time, weather, open memory, machine status. Use when the operator asks for a briefing, sitrep, or how Cardiff looks.
 ---
 

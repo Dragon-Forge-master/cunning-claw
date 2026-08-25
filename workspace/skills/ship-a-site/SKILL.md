@@ -1,5 +1,7 @@
 ---
 name: ship-a-site
+label: Ship a site
+category: forge
 description: Build a website or web app from a brief and deploy it live, to whatever host the user actually uses. Use when asked to make, build, or ship a site, landing page, or app.
 ---
 

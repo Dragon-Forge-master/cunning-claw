@@ -11,10 +11,27 @@ test("ships agentskills.io skills", () => {
   const names = listSkills().map((s) => s.name);
   // Skills are meant to be added, so assert the shipped set is present rather
   // than pinning an exclusive list.
-  for (const required of ["cardiff-briefing", "forge-doctrine", "landscape-watch"]) {
+  for (const required of [
+    "cardiff-briefing",
+    "forge-doctrine",
+    "landscape-watch",
+    "code-on-this-machine",
+    "desk-hands",
+    "linux-box",
+    "inbox-triage",
+    "web-research",
+    "house-control",
+    "security-pass",
+    "spend-aware",
+    "auto-care",
+    "welsh-copy",
+  ]) {
     assert.ok(names.includes(required), `missing skill: ${required}`);
   }
   assert.match(readSkill("landscape-watch"), /OpenClaw/);
+  const code = listSkills().find((s) => s.name === "code-on-this-machine");
+  assert.equal(code?.category, "machine");
+  assert.equal(code?.label, "Code");
 });
 
 test("field map tracks the systems that actually moved 2026", () => {
