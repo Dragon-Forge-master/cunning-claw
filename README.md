@@ -2,7 +2,9 @@
 
 <img src="docs/assets/banner.svg" alt="CUNNING CLAW" width="100%">
 
-**A personal AI assistant that runs on your machine and actually operates it.**
+**Y dyn hysbys — the knowing one.**
+
+A personal AI assistant that runs on your machine and actually operates it.
 Sees your screen. Runs your shell. Reads your inbox. Speaks back.
 And refuses when a web page tells it to do something you didn't ask for.
 
@@ -11,13 +13,43 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-104%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-111%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS%20·%20windows-supported-35d6ed?style=for-the-badge)
 
 <sub>Built in Cardiff by <b>Dragon Forge AI</b> · Local-first when privacy matters · Human approval when consequences matter</sub>
 
 </div>
+
+---
+
+## The name
+
+*Cunning folk* is an occupational term, not a flourish. In Wales they were the
+**dynion hysbys** — "the knowing ones", singular *dyn hysbys*, literally *the knowing man*.
+They worked in villages across Wales into the twentieth century.
+
+They were **tradespeople, not mystics**. You did not visit a *dyn hysbys* for enlightenment;
+you brought him a job. Find who took the horse. Read the weather before the sailing. Treat
+the child. He worked, you paid.
+
+That is the posture here. Not a companion, not a personality to be enjoyed for its own sake
+— **a practitioner you bring a job to.**
+
+The best known were **John Harries and his son Henry of Cwrt-y-Cadno, Carmarthenshire** —
+ninety minutes from where this was built. Harries kept the major medical texts of his day
+beside Latin and Greek, and practised as physician and astrologer both. His working papers
+survive at the National Library of Wales: prescriptions, payment records, horoscopes worked
+up on request, correspondence, lecture notes.
+
+A practitioner keeping a record of the work and the reasoning behind each judgement. That is
+a case file — and it is a closer description of this software's memory, journal and skills
+than the name it used to carry.
+
+*Cunning* cuts both ways, too. A cunning man's trade included telling a client when they
+were being had. Which is exactly what this does when a web page tries to give it orders.
+
+→ [`docs/NAME.md`](docs/NAME.md) for the history and sources.
 
 ---
 

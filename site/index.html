@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cunning Claw — the Forge Master's agent</title>
-<meta name="description" content="A personal AI assistant that runs on your machine and actually operates it. Sees your screen, runs your shell, reads your inbox — and refuses when a web page tells it to do something you didn't ask for.">
+<meta name="description" content="Y dyn hysbys — the knowing one. A personal AI assistant that runs on your machine and actually operates it. Sees your screen, runs your shell, reads your inbox — and refuses when a web page tells it to do something you didn't ask for.">
 <meta property="og:title" content="Cunning Claw — the Forge Master's agent">
 <meta property="og:description" content="Most AI assistants will do whatever a web page tells them to. This one won't.">
 <meta property="og:type" content="website">
@@ -37,7 +37,8 @@ a{color:var(--cyan)}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{50%{transform:scale(1.09);opacity:.86}}
 h1{font-size:clamp(1.9rem,5.6vw,3.6rem);letter-spacing:.1em;color:var(--cyan);font-weight:700}
-.tag{color:var(--dim);letter-spacing:.28em;font-size:clamp(.62rem,1.7vw,.8rem);margin-top:12px}
+.tag{color:var(--cyan);letter-spacing:.3em;font-size:clamp(.66rem,1.8vw,.86rem);margin-top:14px;opacity:.85}
+.tag2{color:var(--dim);letter-spacing:.14em;font-size:clamp(.6rem,1.5vw,.74rem);margin-top:9px}
 .pitch{margin-top:38px;font-size:clamp(1.05rem,2.6vw,1.5rem);max-width:22ch;line-height:1.45}
 .pitch em{color:var(--cyan);font-style:normal;display:block;margin-top:.4em}
 .cta{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:44px}
@@ -60,7 +61,10 @@ video{width:100%;border:1px solid var(--dim);display:block;background:#000}
 .attack .h{background:rgba(255,84,112,.14);color:var(--red);padding:9px 18px;font-size:.72rem;letter-spacing:.16em}
 .attack pre{padding:20px 18px;white-space:pre-wrap;color:#eb96a5;font-size:.88rem;line-height:1.6}
 .reply{border-left:3px solid var(--cyan);padding:6px 0 6px 24px;margin:26px 0;font-size:1.15rem}
-.reply small{display:block;color:var(--dim);font-size:.76rem;margin-top:14px;letter-spacing:.1em}
+.reply small{display:block;color:var(--dim);font-size:.72rem;margin-top:14px;letter-spacing:.14em}
+.reply strong{color:var(--cyan);font-weight:400}
+p.lede em{color:var(--cyan);font-style:italic}
+p.lede strong{color:var(--text);font-weight:700}
 .checks{list-style:none;margin-top:22px}
 .checks li{padding:5px 0;color:var(--text)}
 .checks li::before{content:"✓";color:var(--green);margin-right:12px}
@@ -94,11 +98,13 @@ footer{padding:60px 0 80px;text-align:center;color:var(--dim);font-size:.78rem;
 <header class="hero">
   <div class="reactor"><i></i><i></i><i></i><b></b></div>
   <h1>CUNNING CLAW</h1>
-  <div class="tag">DYN HYSBYS · THE FORGE MASTER'S AGENT · A THREAT MODEL, NOT A CHATBOT</div>
+  <div class="tag">Y DYN HYSBYS — THE KNOWING ONE</div>
+  <div class="tag2">a practitioner you bring a job to · not a chatbot</div>
   <div class="pitch">Most AI assistants will do whatever a web page tells them to.<em>This one won't.</em></div>
   <div class="cta">
     <a class="btn" href="#install">INSTALL</a>
     <a class="btn ghost" href="#attack">SEE IT REFUSE</a>
+    <a class="btn ghost" href="#name">THE NAME</a>
     <a class="btn ghost" href="https://github.com/Dragon-Forge-master/cunningclaw">SOURCE</a>
   </div>
 </header>
@@ -108,6 +114,38 @@ footer{padding:60px 0 80px;text-align:center;color:var(--dim);font-size:.78rem;
     <div class="eyebrow">SIXTY SECONDS</div>
     <video controls preload="metadata" poster="poster.png"><source src="cunningclaw-demo.mp4" type="video/mp4"></video>
     <p class="note">Narrated by CUNNING CLAW, in his own voice. Every line quoted is from a real run.</p>
+  </div>
+</section>
+
+
+<section id="name">
+  <div class="wrap">
+    <div class="eyebrow">WHERE THE NAME COMES FROM</div>
+    <h2>Not a companion. A practitioner you bring a job to.</h2>
+    <p class="lede"><em>Cunning folk</em> is an occupational term, not a flourish. In Wales they
+    were the <strong>dynion hysbys</strong> — "the knowing ones"; singular <em>dyn hysbys</em>,
+    literally <em>the knowing man</em>. They worked in villages across Wales into the twentieth
+    century.</p>
+    <p class="lede" style="margin-top:18px">They were <strong>tradespeople, not mystics</strong>.
+    Nobody visited a <em>dyn hysbys</em> for enlightenment. You brought him a job — find who took
+    the horse, read the weather before the sailing, treat the child. He worked. You paid.</p>
+
+    <div class="reply" style="margin-top:34px">
+      The best known were <strong>John Harries and his son Henry of Cwrt-y-Cadno</strong>,
+      Carmarthenshire — ninety minutes from where this was built. Harries kept the major medical
+      texts of his day beside Latin and Greek, and practised as physician and astrologer both.
+      <small>HIS PAPERS SURVIVE AT THE NATIONAL LIBRARY OF WALES</small>
+    </div>
+
+    <p class="lede">Prescriptions. Payment records. Horoscopes worked up on request.
+    Correspondence. Lecture notes. A practitioner keeping a record of the work and the reasoning
+    behind each judgement.</p>
+    <p class="lede" style="margin-top:18px">That is a case file — and a closer description of this
+    software's memory, journal and skills than the name it used to carry.</p>
+
+    <p class="note" style="margin-top:26px"><em>Cunning</em> cuts both ways. A cunning man's trade
+    included telling a client when they were being had — which is precisely what this does when a
+    web page tries to give it orders.</p>
   </div>
 </section>
 
@@ -210,6 +248,7 @@ npm run dev   <span class="c">→ http://127.0.0.1:3900</span></pre>
     <p><a href="https://github.com/Dragon-Forge-master/cunningclaw">github.com/Dragon-Forge-master/cunningclaw</a></p>
     <p style="margin-top:14px">DRAGON FORGE AI · CARDIFF, WALES 🏴󠁧󠁢󠁷󠁬󠁳󠁿</p>
     <p style="margin-top:10px;opacity:.6">Local-first when privacy matters · Human approval when consequences matter</p>
+    <p style="margin-top:16px;opacity:.45;letter-spacing:.14em;font-size:.7rem">YN LLEOL YN GYNTAF · CANIATÂD DYNOL PAN FO CANLYNIADAU</p>
   </div>
 </footer>
 
