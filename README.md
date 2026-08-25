@@ -11,7 +11,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-81%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-104%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 
 <sub>Built in Cardiff by <b>Dragon Forge AI</b> · Local-first when privacy matters · Human approval when consequences matter</sub>
@@ -252,9 +252,11 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 81 tests
+npm test        # 104 tests
 npm run check   # tsc --noEmit
 ```
+
+Want to change it? [CONTRIBUTING.md](CONTRIBUTING.md) is the contract: denylist floor, fences, approval, and how to add a tool or a skill.
 
 ---
 
