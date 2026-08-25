@@ -5,14 +5,17 @@ import { redact, containsSecret, redactDeep } from "./redact.js";
 /**
  * Every one of these shapes reaches history.json and the SSE stream in normal
  * use — pasted by the user, or returned by a tool reading a config file or an
- * HTTP response. Three real credentials were pasted into this project's chat
- * during development; that is the frequency this defends against.
+ * HTTP response.
+ *
+ * The fixtures below are synthetic. They match the real formats so the patterns
+ * are genuinely exercised, but no working credential belongs in a repository,
+ * least of all in the tests for the thing that redacts credentials.
  */
 
 const SAMPLES: [string, string][] = [
-  ["anthropic", "sk-ant-api03-REDACTED-FROM-HISTORY"],
-  ["github", "ghp_REDACTED-FROM-HISTORY"],
-  ["google-oauth", "AQ.REDACTED-FROM-HISTORY"],
+  ["anthropic", "sk-ant-api03-EXAMPLEfakeKEY0000111122223333444455556666777788889999aa"],
+  ["github", "ghp_EXAMPLEfake000011112222333344445555"],
+  ["google-oauth", "AQ.Ab8EXAMPLEfake0000111122223333444455556666"],
   ["google-api", "AIzaSyA1234567890abcdefghijklmnopqrstuvw"],
   ["aws", "AKIAIOSFODNN7EXAMPLE"],
   ["slack", "xoxb-123456789012-abcdefghijklmnop"],
