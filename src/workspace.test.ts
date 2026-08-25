@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
-import { listSkills, readSkill, readHeartbeat } from "./workspace.js";
+import { listSkills, readSkill, readHeartbeat, WORKSPACE } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
 
 test("ships OpenClaw/Hermes workspace files", () => {
   assert.match(readHeartbeat(), /HEARTBEAT_OK/);
+  assert.match(fs.readFileSync(path.join(WORKSPACE, "SOUL.md"), "utf-8"), /dynion hysbys/);
+  assert.match(fs.readFileSync(path.join(WORKSPACE, "IDENTITY.md"), "utf-8"), /Cunning Claw/);
 });
 
 test("ships agentskills.io skills", () => {

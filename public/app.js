@@ -1,4 +1,4 @@
-/* C.U.N.N.I.N.G. C.L.A.W. HUD client */
+/* Cunning Claw HUD client */
 
 const $ = (id) => document.getElementById(id);
 const chatLog = $("chat-log");
@@ -22,7 +22,7 @@ let serverVoiceAvailable = false;
     else if (s.brain?.model) brain = `${s.brain.provider} / ${s.brain.model}`;
   } catch { /* boot copy is cosmetic */ }
   const BOOT_LINES = [
-    "C.U.N.N.I.N.G. C.L.A.W. v0.3 — boot sequence initiated",
+    "Cunning Claw v0.3 — boot sequence initiated",
     `loading cognitive cores ............. ${brain}`,
     "mounting tool interface ............. tools + search + skills",
     "loading workspace ................... SOUL / HEARTBEAT / skills",
@@ -185,7 +185,7 @@ function startWakeLoop() {
   wakeRecognizer.interimResults = false;
   wakeRecognizer.onresult = (e) => {
     const text = e.results[e.results.length - 1][0].transcript.trim();
-    const m = text.match(/cunningclaw[,.]?\s*(.*)/i);
+    const m = text.match(/(?:cunning\s+)?claw[,.]?\s*(.*)/i);
     if (m) {
       const cmd = m[1].trim();
       if (cmd) sendMessage(cmd);
