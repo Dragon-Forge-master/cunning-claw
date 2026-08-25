@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import express from "express";
 import { config, ROOT } from "./config.js";
-import { getHistory, resetHistory, runTurn, type AgentEvents } from "./agent.js";
+import { getHistory, resetHistory, runTurn, CONTEXT_END, type AgentEvents } from "./agent.js";
 import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
 import { redactDeep } from "./redact.js";
@@ -12,7 +12,7 @@ import { connectAll as connectMcp, listMcpTools, shutdown as shutdownMcp } from 
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
 import { listSkills } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
-import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, missingKeyHint } from "./brain.js";
+import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, missingKeyHint, sessionSpend, lastTurnCost } from "./brain.js";
 import { createRequire } from "node:module";
 import { startTelegram, sendApprovalCard, approvalSettled, telegramStatus } from "./telegram.js";
 import { openPreview, closePreview, reloadPreview, previewState } from "./preview.js";
@@ -166,7 +166,12 @@ app.get("/api/history", (_req, res) => {
   const display: { role: string; text: string }[] = [];
   for (const m of getHistory()) {
     if (m.role === "user" && typeof m.content === "string") {
-      const text = m.content.replace(/^\[context[\s\S]*?\]\n\n/, "");
+      // Split on the explicit marker; fall back to the old shape so history
+      // written before the marker existed still renders.
+      const marker = m.content.indexOf(CONTEXT_END);
+      const text = marker >= 0
+        ? m.content.slice(marker + CONTEXT_END.length).replace(/^\n+/, "")
+        : m.content.replace(/^\[context[\s\S]*\]\n\n/, "");
       if (text.startsWith("[heartbeat]")) continue;
       display.push({ role: "user", text });
     } else if (m.role === "assistant" && Array.isArray(m.content)) {
@@ -203,6 +208,8 @@ app.get("/api/status", async (_req, res) => {
     landscapeCount: landscape.systems.length,
     telegram: telegramStatus(),
     toolCount: toolDefinitions.length,
+    spend: sessionSpend(),
+    lastTurn: lastTurnCost(),
     preview: previewState(),
   });
 });

@@ -220,3 +220,19 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
 #files-diff .l-ctx { color: var(--cyan-dim); }
 #files-diff .l-hdr { color: var(--amber); }
 .files-empty { color: var(--cyan-dim); font-size: 11px; }
+
+/* A control that cannot work must not look clickable. */
+.ctl.unsupported,
+#mic-btn.unsupported {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+.ctl.unsupported:hover { border-color: var(--cyan-dim); color: var(--cyan-dim); }
+
+/* The header wraps once four brains and six buttons are present. */
+header { flex-wrap: wrap; row-gap: 6px; }
+.header-controls { flex-wrap: wrap; justify-content: flex-end; }
+
+/* Connected, but no brain has a key — amber ring rather than a false red. */
+.dot.nobrain { box-shadow: 0 0 0 2px var(--amber) inset; }

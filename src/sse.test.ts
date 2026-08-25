@@ -20,6 +20,9 @@ function serverEvents(): Set<string> {
     if (!file.endsWith(".ts") || file.endsWith(".test.ts")) continue;
     const src = fs.readFileSync(path.join(ROOT, "src", file), "utf-8");
     for (const m of src.matchAll(/(?:emit|broadcast)\(\s*"([a-z_]+)"/g)) names.add(m[1]);
+    // The handshake frame is written straight to the response rather than
+    // going through broadcast, so match the raw SSE form too.
+    for (const m of src.matchAll(/event:\s*([a-z_]+)\\n/g)) names.add(m[1]);
   }
   return names;
 }

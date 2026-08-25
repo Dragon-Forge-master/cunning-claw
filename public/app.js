@@ -205,7 +205,7 @@ const es = new EventSource("/api/events");
 /** Parse an SSE payload without letting one bad frame kill the listener. */
 function sseData(e) {
   try {
-    return e.data ? sseData(e) : {};
+    return e.data ? JSON.parse(e.data) : {};
   } catch {
     return {};
   }
@@ -288,9 +288,18 @@ function renderFileList() {
     const row = document.createElement("div");
     row.className = "file-row" + (c.path === selectedFile ? " active" : "");
     const stat = c.action === "write"
-      ? `<span class="fs add">new · +${c.added}</span>`
-      : `<span class="fs"><span class="add">+${c.added}</span> <span class="del">−${c.removed}</span></span>`;
-    row.innerHTML = `<span class="fn">${c.name}</span><span class="fp">${c.path}</span>${stat}`;
+      ? `<span class="add">new · +${Number(c.added) || 0}</span>`
+      : `<span class="add">+${Number(c.added) || 0}</span> <span class="del">−${Number(c.removed) || 0}</span>`;
+    const fn = document.createElement("span");
+    fn.className = "fn";
+    fn.textContent = c.name;
+    const fp = document.createElement("span");
+    fp.className = "fp";
+    fp.textContent = c.path;
+    const fs_ = document.createElement("span");
+    fs_.className = "fs";
+    fs_.innerHTML = stat;          // built from numbers above, not from disk
+    row.append(fn, fp, fs_);
     row.onclick = () => { selectedFile = c.path; renderFileList(); renderDiff(c); };
     list.appendChild(row);
   }
@@ -361,9 +370,18 @@ for (const b of document.querySelectorAll(".ctl.dev")) {
   b.addEventListener("click", () => setDeviceWidth(Number(b.dataset.w)));
 }
 
-es.onerror = () => {
-  $("conn-dot").classList.remove("online");
-};
+// Connection state belongs to the socket, not to the status poll — otherwise a
+// real disconnect is painted over every five seconds.
+let sseConnected = false;
+
+function paintConnection() {
+  $("conn-dot").classList.toggle("online", sseConnected);
+  $("conn-dot").title = sseConnected ? "Connected to JARVIS" : "Disconnected — retrying";
+}
+
+es.addEventListener("hello", () => { sseConnected = true; paintConnection(); });
+es.onopen = () => { sseConnected = true; paintConnection(); };
+es.onerror = () => { sseConnected = false; paintConnection(); };
 
 es.addEventListener("timer_fired", (e) => {
   const { label } = sseData(e);
@@ -377,12 +395,13 @@ es.addEventListener("approval_request", (e) => {
   card.className = "approval-card";
   card.id = `approval-${id}`;
   card.innerHTML = `
-    <div class="ttl">⚠ APPROVAL REQUIRED — ${summary.replace(/</g, "&lt;")}</div>
+    <div class="ttl">⚠ APPROVAL REQUIRED — <span class="ttl-what"></span></div>
     <pre></pre>
     <div class="btns">
       <button class="yes">EXECUTE</button>
       <button class="no">DENY</button>
     </div>`;
+  card.querySelector(".ttl-what").textContent = summary;   // text, so & and < are safe
   card.querySelector("pre").textContent = detail;
   card.querySelector(".yes").onclick = () => resolveApproval(id, true);
   card.querySelector(".no").onclick = () => resolveApproval(id, false);
@@ -398,14 +417,50 @@ es.addEventListener("approval_resolved", (e) => {
 // ---------------------------------------------------------------------------
 // Input & controls
 // ---------------------------------------------------------------------------
+/**
+ * Settle an approval card. The buttons have called this since the card was
+ * added; the function was never written, so EXECUTE and DENY both threw a
+ * ReferenceError and the card sat there until the server timed it out.
+ */
+async function resolveApproval(id, approved) {
+  const card = document.getElementById(`approval-${id}`);
+  if (card) {
+    for (const b of card.querySelectorAll("button")) b.disabled = true;
+    card.querySelector(".ttl").textContent = approved ? "▸ EXECUTING…" : "▸ DENIED";
+  }
+  try {
+    const res = await fetch("/api/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, approved }),
+    });
+    if (!res.ok) addMsg("system", `⚠ Could not send that decision (HTTP ${res.status}).`);
+  } catch (err) {
+    addMsg("system", `⚠ Could not reach JARVIS to answer the approval: ${err.message}`);
+  }
+}
+
 async function sendMessage(text) {
   addMsg("user", text);
   currentBubble = null;
-  await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: text }),
-  });
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text }),
+    });
+    if (!res.ok) {
+      // A silent failure here looks exactly like a slow reply. Say what happened.
+      const detail = res.status === 401
+        ? "not authenticated — reload this page to get a session"
+        : `HTTP ${res.status}`;
+      addMsg("system", `⚠ Message not delivered (${detail}).`);
+      setState("STANDBY");
+    }
+  } catch (err) {
+    addMsg("system", `⚠ JARVIS is not reachable: ${err.message}`);
+    setState("STANDBY");
+  }
 }
 
 $("input-bar").addEventListener("submit", (e) => {
@@ -549,7 +604,7 @@ async function pollStatus() {
     const {
       text, online, serverVoice: sv, serverVoiceAvailable: sva,
       skills, heartbeat, landscapeCount, landscapeUpdated,
-      brain, brains, telegram, toolCount, preview,
+      brain, brains, telegram, toolCount, preview, spend,
     } = await res.json();
     renderBrainPicker(brains);
     if (preview?.open && preview.url) {
@@ -567,7 +622,19 @@ async function pollStatus() {
       `Telegram: ${telegram?.enabled ? `on (${(telegram.chats || []).join(", ")})` : "off"}`,
     ].join("\n");
     $("sys-status").textContent = text + extra;
-    $("conn-dot").classList.toggle("online", online);
+    // The dot is connection state, owned by the SSE socket. Brain readiness is
+    // a separate fact — showing it here made a keyless-but-connected JARVIS
+    // look disconnected, and painted over real drops every five seconds.
+    $("conn-dot").classList.toggle("nobrain", !online);
+    if (spend) {
+      const usd = typeof spend.usd === "number" ? spend.usd : 0;
+      $("spend-chip").textContent = spend.turns
+        ? `$${usd.toFixed(4)} · ${spend.turns} turn${spend.turns === 1 ? "" : "s"}`
+        : "";
+    }
+    if (brain) {
+      $("route-chip").textContent = `${brain.provider || ""} · ${brain.model || ""}`.trim();
+    }
     serverVoice = Boolean(sv);
     serverVoiceAvailable = Boolean(sva);
     const btn = $("tts-toggle");
@@ -578,7 +645,7 @@ async function pollStatus() {
       btn.classList.add("unsupported");
     }
   } catch {
-    $("conn-dot").classList.remove("online");
+    // A failed poll says nothing about the event stream; leave the dot alone.
   }
 }
 pollStatus();
