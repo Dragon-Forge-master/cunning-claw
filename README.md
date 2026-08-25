@@ -142,6 +142,27 @@ attacker-controlled and come back `<untrusted>`-fenced; and any MCP call taints 
 so it can never be handled by a cheap brain. Writes are approval-gated unless you list them
 as read-only.
 
+## Authentication
+
+Binding to loopback keeps JARVIS off your network. It does **not** keep it away from your
+machine — any process running as you could otherwise POST to `/api/chat` and get a shell,
+a file write, or your inbox. Loopback is not a permission boundary.
+
+A token is generated on first run and written to `.env` (mode 600). Three checks, because
+no single one covers every caller:
+
+- **Bearer token** for scripts: `Authorization: Bearer $JARVIS_TOKEN`
+- **A session cookie** (`HttpOnly`, `SameSite=Strict`) issued when you load the HUD —
+  `EventSource` cannot set headers, so the event stream has no other way to authenticate
+- **An Origin check** on state-changing requests, so a page you happen to be visiting
+  cannot ride that cookie
+
+```bash
+curl -H "Authorization: Bearer $JARVIS_TOKEN" http://127.0.0.1:3900/api/status
+```
+
+Opening `http://127.0.0.1:3900` in a browser needs nothing — the cookie is issued on load.
+
 ## Safety
 
 Most assistants in this category will run whatever the model emits. This one is built on the

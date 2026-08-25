@@ -7,6 +7,7 @@ import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
 import { redactDeep } from "./redact.js";
 import { banner } from "./banner.js";
+import { ensureToken, currentToken, requireAuth, issueSession } from "./auth.js";
 import { connectAll as connectMcp, listMcpTools, shutdown as shutdownMcp } from "./mcp.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
 import { listSkills } from "./workspace.js";
@@ -35,8 +36,23 @@ const VERSION: string = (() => {
 })();
 
 const app = express();
+// Established before any route is registered — issueSession and requireAuth
+// both read it, and a request can arrive the instant listen() resolves.
+const { generated: tokenGenerated } = ensureToken();
+
 app.use(express.json({ limit: "1mb" }));
+
+// Loading the HUD hands the browser its session, so EventSource — which cannot
+// set headers — can authenticate on the stream that follows.
+app.get(["/", "/index.html"], (_req, res) => {
+  issueSession(res);
+  res.sendFile(path.join(ROOT, "public", "index.html"));
+});
+
+// The static assets are the same files any visitor to the page would fetch;
+// nothing behind them is sensitive. Everything under /api is.
 app.use(express.static(path.join(ROOT, "public")));
+app.use("/api", requireAuth);
 
 // --- SSE event bus (single-user app: broadcast to all connected clients) ---
 const sseClients = new Set<express.Response>();
@@ -263,6 +279,11 @@ app.listen(port, host, async () => {
   await connectMcp((line) => console.log(line));
   const mcpCount = listMcpTools().length;
   if (mcpCount) console.log(`  MCP: ${mcpCount} tool(s) registered\n`);
+
+  if (tokenGenerated) {
+    console.log("  A JARVIS_TOKEN was generated and written to .env (mode 600).");
+    console.log("  Scripts authenticate with:  Authorization: Bearer $JARVIS_TOKEN\n");
+  }
 
   startHeartbeat(agentEvents);
   startTelegram(agentEvents, { resolveApproval: settleApproval });
