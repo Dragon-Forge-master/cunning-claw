@@ -102,7 +102,7 @@ Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and 
 | **Remembers** | Markdown memory and a dated journal that survive restarts |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
 | **Reaches you** | Telegram, so it isn't trapped at your desk |
-| **Extends** | Skills as `SKILL.md` files, the [agentskills.io](https://agentskills.io) standard |
+| **Extends** | Skills as `SKILL.md` files ([agentskills.io](https://agentskills.io)). Click **SKILLS** on the HUD to arm them, the same idea as Claude’s capabilities list |
 
 <div align="center">
 <br>
@@ -273,7 +273,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 104 tests
+npm test        # 111 tests
 npm run check   # tsc --noEmit
 ```
 

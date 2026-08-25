@@ -1,5 +1,7 @@
 ---
 name: business-platform
+label: Business platform
+category: forge
 description: Build a complete multi-tenant business platform on Cloudflare — auth, database, storage, payments, email, dashboard. Use when Chris asks for a SaaS, a client portal, a booking or quoting system, or anything a business would run on rather than a brochure site.
 ---
 

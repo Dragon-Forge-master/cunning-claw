@@ -221,6 +221,62 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
 #files-diff .l-hdr { color: var(--amber); }
 .files-empty { color: var(--cyan-dim); font-size: 11px; }
 
+/* Capabilities drawer — Claude-style skill picker on the glass */
+#skills-overlay {
+  position: fixed; inset: 0; z-index: 80;
+  background: rgba(4, 8, 15, 0.72);
+  display: flex; align-items: stretch; justify-content: flex-end;
+}
+#skills-overlay[hidden] { display: none; }
+.skills-sheet {
+  width: min(420px, 100%); height: 100%;
+  background: var(--panel); border-left: 1px solid var(--cyan);
+  box-shadow: -12px 0 40px rgba(0,0,0,0.45);
+  padding: 16px 16px 24px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.skills-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.skills-hint { font-size: 11px; color: var(--cyan-dim); line-height: 1.5; margin-top: 6px; max-width: 280px; }
+.skill-group { margin-bottom: 14px; }
+.skill-group-title {
+  color: var(--amber); font-size: 10px; letter-spacing: 2px;
+  margin-bottom: 8px; text-transform: uppercase;
+}
+.skill-card {
+  width: 100%; text-align: left; cursor: pointer;
+  background: rgba(53,214,237,0.04); border: 1px solid var(--cyan-dim);
+  color: var(--text); font-family: var(--mono);
+  padding: 10px 12px; margin-bottom: 6px;
+}
+.skill-card:hover { border-color: var(--cyan); }
+.skill-card.armed { border-color: var(--cyan); box-shadow: 0 0 10px var(--cyan-glow); background: rgba(53,214,237,0.1); }
+.skill-card .sk-label { color: var(--cyan); font-size: 13px; letter-spacing: 1px; display: block; }
+.skill-card .sk-desc { font-size: 11px; color: var(--cyan-dim); line-height: 1.45; margin-top: 4px; display: block; }
+.skill-card .sk-more {
+  margin-top: 8px; font-size: 11px; color: var(--text); line-height: 1.5;
+  white-space: pre-wrap; max-height: 180px; overflow-y: auto;
+  border-top: 1px dashed var(--cyan-dim); padding-top: 8px;
+}
+
+#armed-row {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+}
+#armed-row[hidden] { display: none; }
+.armed-chip {
+  font-size: 10px; letter-spacing: 1px; color: var(--cyan);
+  border: 1px solid var(--cyan); padding: 3px 8px; background: rgba(53,214,237,0.08);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.armed-chip button {
+  background: none; border: 0; color: var(--cyan-dim); cursor: pointer;
+  font-family: var(--mono); font-size: 12px; padding: 0; line-height: 1;
+}
+.armed-chip button:hover { color: var(--red); }
+
+@media (max-width: 900px) {
+  .skills-sheet { width: 100%; }
+}
+
 /* A control that cannot work must not look clickable. */
 .ctl.unsupported,
 #mic-btn.unsupported {

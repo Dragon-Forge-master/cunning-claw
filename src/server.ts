@@ -10,7 +10,7 @@ import { banner } from "./banner.js";
 import { ensureToken, currentToken, requireAuth, issueSession } from "./auth.js";
 import { connectAll as connectMcp, listMcpTools, shutdown as shutdownMcp } from "./mcp.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
-import { listSkills } from "./workspace.js";
+import { listSkills, readSkill, skillCatalog } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
 import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, missingKeyHint, sessionSpend, lastTurnCost } from "./brain.js";
 import { createRequire } from "node:module";
@@ -173,7 +173,8 @@ app.get("/api/history", (_req, res) => {
         ? m.content.slice(marker + CONTEXT_END.length).replace(/^\n+/, "")
         : m.content.replace(/^\[context[\s\S]*\]\n\n/, "");
       if (text.startsWith("[heartbeat]")) continue;
-      display.push({ role: "user", text });
+      const armed = text.replace(/^\[Armed skills[^\]]*\]\s*/, "");
+      display.push({ role: "user", text: armed });
     } else if (m.role === "assistant" && Array.isArray(m.content)) {
       const text = m.content
         .filter((b: any) => b.type === "text")
@@ -203,6 +204,7 @@ app.get("/api/status", async (_req, res) => {
     voiceEngine: (await voice.detect()).engine,
     voiceDetail: (await voice.detect()).detail,
     skills: listSkills().length,
+    skillCatalog: skillCatalog(),
     heartbeat: hb,
     landscapeUpdated: landscape.updated,
     landscapeCount: landscape.systems.length,
@@ -244,6 +246,23 @@ app.post("/api/brain", (req, res) => {
 
 app.get("/api/landscape", (_req, res) => {
   res.json(loadLandscape());
+});
+
+app.get("/api/skills", (_req, res) => {
+  res.json({ skills: skillCatalog() });
+});
+
+app.get("/api/skills/:name", (req, res) => {
+  const name = String(req.params.name ?? "").trim();
+  const known = listSkills().find((s) => s.name === name || s.dir === name);
+  if (!known) return res.status(404).json({ error: `No skill named "${name}"` });
+  res.json({
+    name: known.name,
+    label: known.label,
+    category: known.category,
+    description: known.description,
+    body: readSkill(known.name),
+  });
 });
 
 // --- Voice control ----------------------------------------------------------

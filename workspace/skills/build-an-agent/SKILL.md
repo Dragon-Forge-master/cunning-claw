@@ -1,5 +1,7 @@
 ---
 name: build-an-agent
+label: Build an agent
+category: forge
 description: Build and deploy an AI agent for someone on Cloudflare, using the Agents SDK. Use when Chris asks you to build an agent, assistant, chatbot, or automation for a client or for one of the Forge properties.
 ---
 

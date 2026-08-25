@@ -1,5 +1,7 @@
 ---
 name: landscape-watch
+label: Field map
+category: forge
 description: Survey competing Jarvis-class systems. Use when asked what is out there, how we compare to OpenClaw or Hermes, or to update the field map.
 ---
 

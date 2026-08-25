@@ -1,5 +1,7 @@
 ---
 name: forge-doctrine
+label: Doctrine
+category: forge
 description: Dragon Forge operating doctrine — local-first, approval, untrusted content, Awen. Use when asked who you are, how you differ from OpenClaw or Hermes, or how we will open-source.
 ---
 
