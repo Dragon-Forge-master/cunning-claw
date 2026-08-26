@@ -21,28 +21,48 @@ import {
 before(() => { pinBrain(null); });
 after(() => { pinBrain(null); });
 
-test("ships a named roster including core, pulse, cheap", () => {
-  const ids = catalog().map((b) => b.id);
-  // The roster is meant to grow — assert the required brains are present
-  // rather than pinning an exclusive list, so adding one is not a failure.
-  for (const required of ["core", "pulse", "cheap"]) {
-    assert.ok(ids.includes(required), `roster must include ${required}`);
+test("the roster spans a real price ladder", () => {
+  // Which brains exist is config and will change. What must hold is that there
+  // is a ladder to choose from, that every rung is priced so the picker can
+  // show what a choice costs, and that a frontier brain exists for the turns
+  // the guard will insist on.
+  const all = catalog();
+  assert.ok(all.length >= 3, "a picker needs something to pick between");
+
+  for (const b of all) {
+    assert.ok(b.price, `${b.id} must carry a price for the picker`);
+    assert.equal(typeof b.price!.in, "number");
+    assert.equal(typeof b.price!.out, "number");
   }
-  assert.equal(defaultBrainId(), "core");
-  assert.equal(heartbeatBrainId(), "pulse");
-  assert.equal(catalog().find((b) => b.id === "core")?.provider, "anthropic");
-  assert.equal(catalog().find((b) => b.id === "cheap")?.provider, "openai");
+
+  const cheapest = Math.min(...all.map((b) => b.price!.in));
+  const dearest = Math.max(...all.map((b) => b.price!.in));
+  assert.ok(dearest > cheapest, "a ladder, not a single rung");
+
+  assert.ok(all.some((b) => b.provider === "anthropic"), "a frontier brain must exist");
 });
 
-test("heartbeat uses pulse even when conversation is pinned to core", () => {
+test("the default is a working brain, and the heartbeat is not the dear one", () => {
+  const all = catalog();
+  const def = all.find((b) => b.id === defaultBrainId());
+  const hb = all.find((b) => b.id === heartbeatBrainId());
+  assert.ok(def, "the default must name a brain that exists");
+  assert.ok(hb, "the heartbeat must name a brain that exists");
+  // A quiet tick every 30 minutes should not cost what hard reasoning costs.
+  assert.ok(hb!.price!.in <= def!.price!.in, "heartbeat must not be dearer than the default");
+});
+
+test("a pin never drags the heartbeat with it", () => {
   try {
-    const msg = pinBrain("core");
-    assert.match(msg, /Pinned to Core/);
-    assert.equal(pinnedBrainId(), "core");
-    assert.equal(pickBrain("user").id, "core");
-    assert.equal(pickBrain("heartbeat").id, "pulse");
+    const target = catalog().find((b) => b.id !== heartbeatBrainId())!;
+    const msg = pinBrain(target.id);
+    assert.match(msg, new RegExp(target.label, "i"));
+    assert.equal(pinnedBrainId(), target.id);
+    assert.equal(pickBrain("user").id, target.id);
+    assert.equal(pickBrain("heartbeat").id, heartbeatBrainId(),
+      "the heartbeat keeps its own brain regardless of the pin");
     assert.equal(brainChain("user").length, 1, "a pin is strict — no fallbacks");
-    assert.ok(brainChain("heartbeat").map((b) => b.id).includes("pulse"));
+    assert.ok(brainChain("heartbeat").map((b) => b.id).includes(heartbeatBrainId()));
   } finally {
     pinBrain(null);
   }
@@ -50,10 +70,11 @@ test("heartbeat uses pulse even when conversation is pinned to core", () => {
 
 test("/brain commands pin, list, and clear without a model call", () => {
   try {
-    assert.match(applyBrainCommand("/brain") ?? "", /core:/);
+    const some = catalog()[0];
+    assert.match(applyBrainCommand("/brain") ?? "", new RegExp(some.id + ":"));
     assert.equal(applyBrainCommand("hello"), null);
-    assert.match(applyBrainCommand("/brain cheap") ?? "", /Pinned to Cheap/);
-    assert.equal(pinnedBrainId(), "cheap");
+    assert.match(applyBrainCommand(`/brain ${some.id}`) ?? "", new RegExp(`Pinned to ${some.label}`, "i"));
+    assert.equal(pinnedBrainId(), some.id);
     assert.match(applyBrainCommand("/brain auto") ?? "", /automatic/);
     assert.equal(pinnedBrainId(), null);
     assert.match(applyBrainCommand("/brain no-such") ?? "", /No brain named/);
@@ -64,8 +85,13 @@ test("/brain commands pin, list, and clear without a model call", () => {
 
 test("unpinned conversation walks default then fallbacks", () => {
   pinBrain(null);
-  assert.deepEqual(brainChain("user").map((b) => b.id), ["core", "pulse", "cheap"]);
-  assert.equal(brainChain("heartbeat")[0].id, "pulse");
+  const chain = brainChain("user").map((b) => b.id);
+  // Which brains are in the chain is config; the shape is not. The default
+  // leads, the chain has somewhere to fall back to, and nothing repeats.
+  assert.equal(chain[0], defaultBrainId(), "the default must lead");
+  assert.ok(chain.length > 1, "a chain of one is not a fallback chain");
+  assert.equal(new Set(chain).size, chain.length, "no brain appears twice");
+  assert.equal(brainChain("heartbeat")[0].id, heartbeatBrainId());
 });
 
 test("failover classifier catches outages and rate limits, not refusals", () => {

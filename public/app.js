@@ -748,10 +748,25 @@ function renderBrainPicker(payload) {
       body: JSON.stringify({ id: "auto" }),
     });
   });
-  for (const b of catalog) {
+  // Cheapest first, so the ladder reads left to right and the expensive
+  // choice is a deliberate one rather than the nearest button.
+  const priced = [...catalog].sort((x, y) => (x.price?.in ?? 99) - (y.price?.in ?? 99));
+
+  for (const b of priced) {
+    const p = b.price;
+    const cost = !p ? ""
+      : p.in === 0 ? " free"
+      : ` $${p.in}`;
+    const tip = [
+      `${b.provider} / ${b.model}`,
+      p ? `$${p.in} in · $${p.out} out  (per million tokens)` : null,
+      b.note || null,
+      b.ready ? null : "no API key — see npm run doctor",
+    ].filter(Boolean).join("\n");
+
     make(
-      b.label.toUpperCase(),
-      `${b.provider} / ${b.model}${b.ready ? "" : " — no API key"}`,
+      b.label.toUpperCase() + cost,
+      tip,
       pin ? pin === b.id : activeId === b.id,
       !b.ready,
       () => {
@@ -800,7 +815,10 @@ async function pollStatus() {
         : "";
     }
     if (brain) {
-      $("route-chip").textContent = `${brain.provider || ""} · ${brain.model || ""}`.trim();
+      const b = (brains?.catalog || []).find((x) => x.model === brain.model);
+      const p = b?.price;
+      const rate = p ? (p.in === 0 ? " · free" : ` · $${p.in}/$${p.out} per Mtok`) : "";
+      $("route-chip").textContent = `${brain.model || ""}${rate}`;
     }
     serverVoice = Boolean(sv);
     serverVoiceAvailable = Boolean(sva);

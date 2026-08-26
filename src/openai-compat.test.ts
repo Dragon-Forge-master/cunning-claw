@@ -3,8 +3,10 @@ import test from "node:test";
 import { toOpenAiMessages, openAiToolSchema } from "./openai-compat.js";
 import { activeProvider } from "./brain.js";
 
-test("conversation default is Anthropic core", () => {
-  assert.equal(activeProvider(), "anthropic");
+test("the default brain is one that can actually run", () => {
+  // The default is config and may be any provider — what matters is that it
+  // names something real rather than a typo nothing will match.
+  assert.ok(["anthropic", "openai"].includes(activeProvider()));
 });
 
 test("converts Anthropic history into OpenAI chat messages", () => {

@@ -12,6 +12,10 @@ export type BrainSpec = {
   model: string;
   effort?: "low" | "medium" | "high" | "xhigh" | "max";
   maxTokens?: number;
+  /** $ per million tokens, so the picker can show what a choice costs. */
+  price?: { in: number; out: number };
+  /** One line on what this brain is for. */
+  note?: string;
   /** Anthropic adaptive thinking. Off for cheap/heartbeat brains. */
   thinking?: boolean;
   baseUrl?: string;
@@ -53,6 +57,8 @@ function normalize(raw: any, fallbackId: string): BrainSpec {
     effort: raw?.effort,
     maxTokens: typeof raw?.maxTokens === "number" ? raw.maxTokens : undefined,
     thinking: raw?.thinking,
+    price: raw?.price,
+    note: raw?.note,
     baseUrl: raw?.baseUrl,
     apiKeyEnv: raw?.apiKeyEnv,
   };
@@ -250,6 +256,10 @@ export function catalogStatus() {
       provider: b.provider,
       model: b.model,
       ready: brainHasKey(b),
+      // The picker shows what a choice costs, so the expensive one is a
+      // deliberate decision rather than the nearest button.
+      price: b.price,
+      note: b.note,
     })),
   };
 }
