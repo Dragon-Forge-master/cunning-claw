@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { config } from "./config.js";
 import { DEFAULT_MEMORY_BODY } from "./workspace.js";
-import { catalog, defaultBrainId, type BrainSpec } from "./brain.js";
+import { catalog, defaultBrainId, brainHasKey, type BrainSpec } from "./brain.js";
 
 /**
  * Risk gate over brain selection.
@@ -112,6 +112,42 @@ export function trustedBrainIds(): string[] {
 
 export function isTrustedBrain(spec: BrainSpec): boolean {
   return trustedBrainIds().includes(spec.id);
+}
+
+/** Turns that cannot need a frontier model: no tools, no outside world. */
+const TRIVIAL = [
+  /^(what('s| is) the )?(time|date|day)\b/i,
+  /^(hello|hi|hey|good (morning|afternoon|evening|night))\b/i,
+  /^(thanks|thank you|cheers|ta)\b/i,
+  /^(are you (there|awake|alive)|you there)\b/i,
+  /^(set|start) a (timer|reminder)\b/i,
+  /^(volume|mute|unmute|louder|quieter)\b/i,
+  /^(system )?(status|telemetry|health)\b/i,
+];
+
+/**
+ * Route down to the cheap brain when a turn plainly cannot need more.
+ *
+ * The guard above only ever forces *up*. Without this, a cheap brain is
+ * configured, paid for, and never used — every "what's the time" costs the same
+ * as hard reasoning. Deliberately conservative: only turns matching a known
+ * trivial shape, on a clean history, and never the tainted ones.
+ */
+export function suggestCheapBrain(
+  userMessage: string,
+  history: Anthropic.MessageParam[],
+  kind: "user" | "heartbeat",
+): BrainSpec | null {
+  if (kind === "heartbeat") return null;              // heartbeat has its own brain
+  if (config.routing?.cheapWhenTrivial === false) return null;
+  if (historyIsTainted(history)) return null;         // hostile text in the window
+  if (userMessage.length > 120) return null;          // long asks are rarely trivial
+  if (!TRIVIAL.some((re) => re.test(userMessage.trim()))) return null;
+
+  const id = config.routing?.cheapBrain ?? "cheap";
+  const spec = catalog().find((b) => b.id === id);
+  if (!spec || !brainHasKey(spec)) return null;       // not configured — stay put
+  return spec;
 }
 
 /**

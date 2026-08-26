@@ -18,7 +18,7 @@ interface Rule {
 
 /** Keep a short prefix so a redaction is still identifiable in a transcript. */
 function stub(label: string, sample: string, keep = 6): string {
-  return `[${label}:${sample.slice(0, keep)}…REDACTED]`;
+  return `[${label}:${sample.slice(0, keep)}...REDACTED]`;
 }
 
 const RULES: Rule[] = [
@@ -62,13 +62,29 @@ export function containsSecret(text: string): boolean {
 }
 
 /** Recursively redact any string inside a structure (message content blocks). */
+/**
+ * Fields holding binary payloads rather than prose. Redacting one corrupts it:
+ * a screenshot's base64 will eventually contain a run that looks like a token,
+ * and replacing part of it produces an image the API rejects — poisoning every
+ * subsequent turn in that conversation, permanently. Base64 cannot meaningfully
+ * hide a credential from a reader anyway.
+ */
+const BINARY_FIELDS = new Set(["data", "base64", "bytes", "buffer"]);
+
 export function redactDeep<T>(value: T): T {
   if (typeof value === "string") return redact(value) as unknown as T;
   if (Array.isArray(value)) return value.map(redactDeep) as unknown as T;
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value)) out[k] = redactDeep(v);
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = BINARY_FIELDS.has(k) ? v : redactDeep(v);
+    }
     return out as T;
   }
   return value;
+}
+
+/** Would this survive the API's ASCII check on base64 payloads? */
+export function isCleanBase64(s: unknown): boolean {
+  return typeof s === "string" && /^[A-Za-z0-9+/=\r\n]*$/.test(s);
 }

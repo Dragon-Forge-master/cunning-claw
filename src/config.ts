@@ -109,6 +109,9 @@ export interface ClawConfig {
     enforceTrustedBrain?: boolean;
     /** Brain ids cleared to handle hostile input. Defaults to brains.default. */
     trustedBrains?: string[];
+    /** Route obviously-trivial turns to a cheap brain. */
+    cheapWhenTrivial?: boolean;
+    cheapBrain?: string;
   };
   coding?: { root?: string; skip?: string[] };
   mcp?: {

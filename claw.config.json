@@ -170,7 +170,9 @@
     "enforceTrustedBrain": true,
     "trustedBrains": [
       "core"
-    ]
+    ],
+    "cheapWhenTrivial": true,
+    "cheapBrain": "cheap"
   },
   "coding": {
     "root": "~",

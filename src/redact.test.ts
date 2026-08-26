@@ -93,3 +93,33 @@ test("local endpoints are recognised so offline models need no key", async () =>
     assert.equal(isLocalEndpoint(remote), false, remote);
   }
 });
+
+test("redaction never touches image data, and never emits non-ASCII", async () => {
+  const { redactDeep, isCleanBase64 } = await import("./redact.js");
+
+  // A long base64 run will eventually look like a token. Replacing part of it
+  // produces an image the API rejects, poisoning every later turn.
+  // Valid base64, but containing a run the generic APIKEY= rule matches — which
+  // is exactly how a real screenshot gets mangled.
+  const payload = "iVBORw0KGgoAAAANSUhEUgAA" + "QUJD".repeat(30) +
+    "APIKEY=AAAABBBBCCCCDDDDEEEE" + "Zm9v".repeat(30);
+  const msg = {
+    role: "user",
+    content: [{
+      type: "tool_result",
+      content: [{ type: "image", source: { type: "base64", media_type: "image/png", data: payload } }],
+    }],
+  };
+  const out: any = redactDeep(msg);
+  const data = out.content[0].content[0].source.data;
+  assert.equal(data, payload, "image payload must be returned untouched");
+  assert.ok(isCleanBase64(data), "and must remain valid base64");
+});
+
+test("every redaction marker is ASCII", async () => {
+  const { redact } = await import("./redact.js");
+  const out = redact("key sk-ant-api03-EXAMPLEfakeKEY0000111122223333444455556666777788889999aa");
+  // A non-ASCII character inside a base64 payload invalidates the whole request.
+  assert.ok(/^[\x00-\x7F]*$/.test(out), `marker must be ASCII-only, got: ${out}`);
+  assert.match(out, /REDACTED/);
+});

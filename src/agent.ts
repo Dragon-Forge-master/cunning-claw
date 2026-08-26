@@ -5,8 +5,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { config, DATA_DIR } from "./config.js";
 import { memorySnapshot } from "./memory.js";
 import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
-import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted } from "./routing.js";
-import { containsSecret, redactDeep } from "./redact.js";
+import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted, suggestCheapBrain } from "./routing.js";
+import { containsSecret, redactDeep, isCleanBase64 } from "./redact.js";
 import { clearTaskGrant } from "./consequence.js";
 import { toolDefinitions as mcpToolDefinitions } from "./mcp.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
@@ -106,7 +106,36 @@ function saveHistory(messages: Msg[]): void {
  * turn loses its reasoning, whereas an explicit "interrupted" result keeps the
  * thread readable and tells the model what happened.
  */
+/**
+ * Remove image blocks whose base64 is no longer valid.
+ *
+ * One corrupted screenshot makes every later turn fail with a 400, and the
+ * conversation cannot recover on its own — the bad block is replayed each time.
+ * Replacing it with a note keeps the thread readable and lets the turn proceed.
+ */
+function dropCorruptImages(messages: Msg[]): Msg[] {
+  return messages.map((m) => {
+    if (!Array.isArray(m.content)) return m;
+    let touched = false;
+    const content = (m.content as any[]).map((block) => {
+      const scan = (b: any): any => {
+        if (b?.type === "image" && b.source?.type === "base64" && !isCleanBase64(b.source.data)) {
+          touched = true;
+          return { type: "text", text: "[an image here was corrupted and has been dropped]" };
+        }
+        if (b?.type === "tool_result" && Array.isArray(b.content)) {
+          return { ...b, content: b.content.map(scan) };
+        }
+        return b;
+      };
+      return scan(block);
+    });
+    return touched ? { ...m, content } : m;
+  });
+}
+
 export function repairHistory(messages: Msg[]): Msg[] {
+  messages = dropCorruptImages(messages);
   const out: Msg[] = [];
 
   for (let i = 0; i < messages.length; i++) {
@@ -334,6 +363,11 @@ export async function runTurn(
 
   const kind = opts?.kind === "heartbeat" ? "heartbeat" as const : "user" as const;
   let spec = pickBrain(kind);
+
+  // Route down before routing up. A trivial turn on a clean history does not
+  // need a frontier model, and the guard below can still overrule this.
+  const cheap = suggestCheapBrain(userMessage, history, kind);
+  if (cheap) spec = cheap;
 
   // Safety gate over brain choice. A pin, a config default, or a failover
   // firing on a rate limit could otherwise put the cheapest model in front of
