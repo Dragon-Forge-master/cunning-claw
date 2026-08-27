@@ -104,7 +104,8 @@
       <div class="mcp-head">
         <div>
           <div class="panel-title">CONNECTORS</div>
-          <p class="mcp-hint">MCP servers Cunning Claw can use. Same <code>mcpServers</code> files as Claude Code. Sign-in opens the system browser — never at boot.</p>
+          <p class="mcp-hint">A directory of MCP servers, the same idea as Claude’s Connectors list. Seeing Slack or HubSpot here does not connect them — Connect still writes <code>mcp.json</code> and signs in in the system browser.</p>
+          <p id="mcp-count" class="mcp-count"></p>
         </div>
         <div class="mcp-head-actions">
           <input id="mcp-search" type="search" placeholder="Search connectors" autocomplete="off">
@@ -135,6 +136,7 @@
         <button type="button" class="mcp-tab" data-filter="connected">Connected</button>
         <button type="button" class="mcp-tab" data-filter="not_connected">Not connected</button>
       </div>
+      <div id="mcp-cats" class="mcp-cats" role="tablist"></div>
       <div id="mcp-table" class="mcp-table"></div>
     </div>
   </div>

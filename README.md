@@ -194,13 +194,15 @@ API; loopback and private-range hosts skip the key check entirely.
 
 Cunning Claw speaks the same `mcpServers` files Claude Code and Cursor use, over the
 same transports: **stdio** (a local subprocess) and **Streamable HTTP** (a remote URL,
-with `Mcp-Session-Id` and `MCP-Protocol-Version: 2025-03-26`). That is how Canva,
-Notion, Figma, and the rest of the hosted catalogue work — not a one-shot POST.
+with `Mcp-Session-Id` and `MCP-Protocol-Version: 2025-03-26`). That is how Canva, Slack, HubSpot, Notion, Figma, and the rest of the hosted
+catalogue work — not a one-shot POST.
 
-The HUD **CONNECT** button is the directory: Popular cards (Canva, GitHub, Notion,
-Figma), All / Connected / Not connected, and Reconnect when a server needs sign-in.
-It writes `~/.config/cunningclaw/mcp.json`. You can still paste a Claude snippet
-under ADD, or keep servers in the files below.
+The HUD **CONNECT** button is the directory: Popular cards, category chips
+(Create, Code, Work, Docs, Chat, Money, Data, Ship, Search, Sales, Automate,
+Meetings, AI), All / Connected / Not connected, search, and Reconnect when a
+server needs sign-in. Seeing a name in the list does **not** connect it.
+Connect writes `~/.config/cunningclaw/mcp.json`. You can still paste a Claude
+snippet under ADD, or keep servers in the files below.
 
 Put servers in any of these (first id wins):
 

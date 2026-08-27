@@ -3,10 +3,11 @@
  * Reads the same mcpServers files, writes only ~/.config/cunningclaw/mcp.json.
  */
 import { config } from "./config.js";
-import { MCP_CATALOGUE, catalogueById } from "./mcp-catalog.js";
+import { MCP_CATALOGUE, MCP_CATEGORIES, catalogueById } from "./mcp-catalog.js";
 import {
   claudeEntryToConfig,
   cunningclawMcpPath,
+  inferTransport,
   loadAllMcpServers,
   parseMcpServersBlock,
   removeUserMcpServer,
@@ -59,6 +60,8 @@ export function connectorSnapshot(): {
   path: string;
   sources: Array<{ file: string; count: number }>;
   connectors: ConnectorRow[];
+  categories: string[];
+  catalogueSize: number;
   needsAuth: number;
   connected: number;
 } {
@@ -94,7 +97,7 @@ export function connectorSnapshot(): {
 
   for (const cat of MCP_CATALOGUE) {
     if (configured.has(cat.id)) continue;
-    const transport = cat.entry.url ? "http" : "stdio";
+    const transport = inferTransport(cat.entry);
     rows.push({
       id: cat.id,
       label: cat.label,
@@ -119,11 +122,21 @@ export function connectorSnapshot(): {
     s === "needs_auth" ? 0 : s === "failed" ? 1 : s === "connected" ? 2 : 3;
   rows.sort((a, b) => rank(a.status) - rank(b.status) || a.label.localeCompare(b.label));
 
+  const seen = new Set(rows.map((r) => r.category));
+  const known = MCP_CATEGORIES as readonly string[];
+  const categories = [
+    ...known.filter((c) => seen.has(c)),
+    ...[...seen].filter((c) => !known.includes(c) && c !== "Custom"),
+    ...(seen.has("Custom") ? ["Custom"] : []),
+  ];
+
   return {
     enabled: mcpEnabled(),
     path: userFile(),
     sources,
     connectors: rows,
+    categories,
+    catalogueSize: MCP_CATALOGUE.length,
     needsAuth: rows.filter((r) => r.status === "needs_auth").length,
     connected: rows.filter((r) => r.status === "connected").length,
   };

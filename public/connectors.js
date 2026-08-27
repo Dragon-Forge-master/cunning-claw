@@ -1,8 +1,9 @@
 /* Connectors page. Separate from app.js on purpose — that file is crowded. */
 (function () {
   const $ = (id) => document.getElementById(id);
-  let snapshot = { connectors: [], path: "", enabled: true, needsAuth: 0, connected: 0, sources: [] };
+  let snapshot = { connectors: [], path: "", enabled: true, needsAuth: 0, connected: 0, sources: [], categories: [], catalogueSize: 0 };
   let filter = "all";
+  let category = "all";
   let search = "";
   let busy = "";
 
@@ -49,9 +50,10 @@
   function matches(c) {
     if (filter === "connected" && c.status !== "connected" && c.status !== "needs_auth" && c.status !== "failed") return false;
     if (filter === "not_connected" && c.configured) return false;
+    if (category !== "all" && c.category !== category) return false;
     if (search) {
       const q = search.toLowerCase();
-      const blob = `${c.label} ${c.id} ${c.blurb} ${c.url || ""} ${c.command || ""}`.toLowerCase();
+      const blob = `${c.label} ${c.id} ${c.blurb} ${c.category || ""} ${c.url || ""} ${c.command || ""}`.toLowerCase();
       if (!blob.includes(q)) return false;
     }
     return true;
@@ -111,6 +113,33 @@
     }
   }
 
+  function renderCount() {
+    const el = $("mcp-count");
+    if (!el) return;
+    const total = snapshot.catalogueSize || (snapshot.connectors || []).length;
+    const connected = snapshot.connected || 0;
+    const shown = (snapshot.connectors || []).filter(matches).length;
+    const noun = total === 1 ? "connector" : "connectors";
+    el.textContent = search || category !== "all" || filter !== "all"
+      ? `${shown} shown · ${total} ${noun} · ${connected} connected`
+      : `${total} ${noun} · ${connected} connected`;
+  }
+
+  function renderCats() {
+    const root = $("mcp-cats");
+    if (!root) return;
+    root.innerHTML = "";
+    const cats = ["all", ...(snapshot.categories || [])];
+    for (const cat of cats) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "mcp-cat" + (category === cat ? " active" : "");
+      btn.dataset.category = cat;
+      btn.textContent = cat === "all" ? "All categories" : cat;
+      root.appendChild(btn);
+    }
+  }
+
   function renderTable() {
     const root = $("mcp-table");
     if (!root) return;
@@ -121,7 +150,9 @@
       empty.className = "mcp-empty";
       empty.textContent = search
         ? "No connectors match that search."
-        : "No connectors yet. Connect Canva from Popular, or ADD a Claude Code snippet.";
+        : category !== "all"
+          ? `No ${category} connectors in this view.`
+          : "No connectors yet. Connect Canva from Popular, or ADD a Claude Code snippet.";
       root.appendChild(empty);
       return;
     }
@@ -129,7 +160,23 @@
     head.className = "mcp-cols";
     head.innerHTML = "<span>Connector</span><span>Type</span><span>Status</span><span></span>";
     root.appendChild(head);
+
+    const order = snapshot.categories && snapshot.categories.length
+      ? snapshot.categories
+      : [...new Set(rows.map((c) => c.category || "Custom"))];
+    const groups = new Map();
     for (const c of rows) {
+      const cat = c.category || "Custom";
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat).push(c);
+    }
+    const cats = [
+      ...order.filter((c) => groups.has(c)),
+      ...[...groups.keys()].filter((c) => !order.includes(c)),
+    ];
+    const showGroups = category === "all" && !search && cats.length > 1;
+
+    function appendRow(c) {
       const row = document.createElement("div");
       row.className = "mcp-row";
       const name = document.createElement("div");
@@ -156,6 +203,16 @@
       row.append(name, type, status, actionButtons(c));
       root.appendChild(row);
     }
+
+    for (const cat of cats) {
+      if (showGroups) {
+        const g = document.createElement("div");
+        g.className = "mcp-group";
+        g.textContent = cat;
+        root.appendChild(g);
+      }
+      for (const c of groups.get(cat)) appendRow(c);
+    }
   }
 
   function render() {
@@ -168,6 +225,8 @@
     } else {
       setBanner("");
     }
+    renderCount();
+    renderCats();
     renderPopular();
     renderTable();
   }
@@ -262,6 +321,7 @@
   $("mcp-add-form")?.addEventListener("submit", submitAdd);
   $("mcp-search")?.addEventListener("input", (e) => {
     search = e.target.value.trim();
+    renderCount();
     renderTable();
   });
   $("mcp-tabs")?.addEventListener("click", (e) => {
@@ -269,6 +329,15 @@
     if (!btn) return;
     filter = btn.dataset.filter;
     for (const t of $("mcp-tabs").querySelectorAll(".mcp-tab")) t.classList.toggle("active", t === btn);
+    renderCount();
+    renderTable();
+  });
+  $("mcp-cats")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-category]");
+    if (!btn) return;
+    category = btn.dataset.category;
+    for (const t of $("mcp-cats").querySelectorAll(".mcp-cat")) t.classList.toggle("active", t === btn);
+    renderCount();
     renderTable();
   });
   document.addEventListener("keydown", (e) => {
