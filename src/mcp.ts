@@ -287,7 +287,7 @@ function decideMcpApproval(name: string, writes: Set<string>, reads: Set<string>
 }
 
 export function localName(serverId: string, remote: string): string {
-  return `mcp__${serverId}__${remote}`.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 64);
+  return `mcp__${serverId}__${remote}`.replace(/[^A-Za-z0-9_]/g, "_").slice(0, 64);
 }
 
 export function isMcpTool(name: string): boolean {
@@ -444,20 +444,34 @@ export function toolDefinitions(): Anthropic.Tool[] {
 
 /** Invoke an MCP tool. The result is untrusted and comes back fenced. */
 export async function callTool(localToolName: string, input: unknown): Promise<string> {
-  const tool = discovered.find((t) => t.localName === localToolName);
+  const norm = (s: string) => s.replace(/-/g, "_");
+  const tool = discovered.find((t) => t.localName === localToolName)
+    ?? discovered.find((t) => norm(t.localName) === norm(localToolName));
   if (!tool) return `Unknown MCP tool: ${localToolName}`;
   const conn = connections.get(tool.serverId);
   if (!conn) return `MCP server "${tool.serverId}" is not connected.`;
 
+  // Retry a read-only tool once on a reported error. Web-scraping servers
+  // (DuckDuckGo among them) fail transiently, and a read is idempotent — so a
+  // second attempt costs nothing and turns a flaky tool into a reliable one.
+  // A write is never retried: it could double-send.
+  const retryable = !tool.needsApproval;
+  const attempts = retryable ? 2 : 1;
+
   try {
-    const result = await conn.rpc("tools/call", { name: tool.remoteName, arguments: input ?? {} });
+    let result: any = null;
+    for (let i = 0; i < attempts; i++) {
+      result = await conn.rpc("tools/call", { name: tool.remoteName, arguments: input ?? {} });
+      if (!result?.isError) break;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 1200));
+    }
     const parts: string[] = [];
     for (const block of result?.content ?? []) {
       if (block.type === "text") parts.push(String(block.text));
       else parts.push(`[${block.type} content omitted]`);
     }
     const body = (parts.join("\n") || "(no output)").slice(0, mcpConfig().maxResultChars);
-    const flagged = result?.isError ? "The tool reported an error.\n" : "";
+    const flagged = result?.isError ? "The tool reported an error (after a retry).\n" : "";
     return (
       `${flagged}<untrusted source="mcp:${tool.serverId}/${tool.remoteName}">\n` +
       `${body.replace(/<\/?untrusted[^>]*>/gi, "")}\n</untrusted>\n` +
