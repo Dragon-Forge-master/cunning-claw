@@ -887,3 +887,84 @@ setInterval(pollStatus, 5000);
     for (const m of history) addMsg(m.role === "user" ? "user" : "cunningclaw", m.text);
   } catch { /* fresh start */ }
 })();
+
+
+/* ── MCP servers panel ─────────────────────────────────────────────── */
+(function mcpPanel() {
+  const panel = document.getElementById("mcp-panel");
+  const list = document.getElementById("mcp-list");
+  if (!panel || !list) return;
+
+  async function refresh() {
+    try {
+      const { servers } = await fetch("/api/mcp").then((r) => r.json());
+      if (!servers || servers.length === 0) {
+        list.innerHTML = `<p class="mcp-hint">No MCP servers connected yet. Add one below — a search server, GitHub, Notion, Canva, anything that speaks MCP.</p>`;
+        return;
+      }
+      list.innerHTML = "";
+      for (const s of servers) {
+        const row = document.createElement("div");
+        row.className = "mcp-row";
+        const dot = document.createElement("span");
+        dot.className = "st " + s.status;
+        const id = document.createElement("span");
+        id.className = "id";
+        id.innerHTML = "";
+        const name = document.createElement("span");
+        name.textContent = s.id;
+        const sub = document.createElement("small");
+        const extra = s.detail && !/^\d+\s+tool/.test(s.detail) ? " · " + s.detail : "";
+        sub.textContent = `${s.transport} · ${s.status.replace("_", " ")} · ${s.tools} tool${s.tools === 1 ? "" : "s"}${extra}`;
+        id.append(name, sub);
+        row.append(dot, id);
+
+        if (s.status === "needs_auth") {
+          const b = document.createElement("button");
+          b.className = "ctl";
+          b.textContent = "CONNECT";
+          b.onclick = async () => {
+            b.textContent = "SIGN IN…";
+            b.disabled = true;
+            await fetch("/api/mcp/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s.id }) }).catch(() => {});
+            setTimeout(refresh, 1500);
+          };
+          row.append(b);
+        } else if (s.status === "failed") {
+          const b = document.createElement("button");
+          b.className = "ctl";
+          b.textContent = "RETRY";
+          b.onclick = async () => { await fetch("/api/mcp/reconnect", { method: "POST" }).catch(() => {}); setTimeout(refresh, 1200); };
+          row.append(b);
+        }
+        list.appendChild(row);
+      }
+    } catch (e) {
+      list.innerHTML = `<p class="mcp-hint">Could not load MCP status: ${e.message}</p>`;
+    }
+  }
+
+  document.getElementById("mcp-toggle")?.addEventListener("click", () => {
+    panel.style.display = "flex";
+    refresh();
+  });
+  document.getElementById("mcp-close")?.addEventListener("click", () => { panel.style.display = "none"; });
+  panel.addEventListener("click", (e) => { if (e.target === panel) panel.style.display = "none"; });
+
+  document.getElementById("mcp-add-btn")?.addEventListener("click", async () => {
+    const msg = document.getElementById("mcp-add-msg");
+    const text = document.getElementById("mcp-snippet").value.trim();
+    if (!text) { msg.textContent = "Paste a server snippet first."; return; }
+    msg.textContent = "adding…";
+    try {
+      const r = await fetch("/api/mcp/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ snippet: text }) }).then((x) => x.json());
+      if (r.ok) {
+        msg.textContent = `Added: ${r.added.join(", ")}. Connecting…`;
+        document.getElementById("mcp-snippet").value = "";
+        setTimeout(refresh, 1500);
+      } else {
+        msg.textContent = "⚠ " + (r.error || "could not add");
+      }
+    } catch (e) { msg.textContent = "⚠ " + e.message; }
+  });
+})();

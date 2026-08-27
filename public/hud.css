@@ -303,3 +303,26 @@ header { flex-wrap: wrap; row-gap: 6px; }
 .brain-btn { font-size: 9.5px; letter-spacing: 1px; padding: 3px 8px; }
 .brain-btn.offline { opacity: .32; border-style: dashed; }
 #brain-picker { display: flex; flex-wrap: wrap; gap: 3px; }
+
+/* ── MCP servers panel ─────────────────────────────────────────────── */
+.overlay { position: fixed; inset: 0; background: rgba(2,5,10,.72); z-index: 50;
+  display: flex; align-items: center; justify-content: center; }
+.overlay-card { width: min(620px, 92vw); max-height: 86vh; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--cyan); box-shadow: 0 0 40px var(--cyan-glow);
+  padding: 18px 20px; }
+.overlay-head { display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--cyan-dim); padding-bottom: 10px; margin-bottom: 14px; }
+.mcp-row { display: flex; align-items: center; gap: 12px; padding: 9px 0;
+  border-bottom: 1px solid rgba(26,108,122,.2); }
+.mcp-row .st { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.mcp-row .st.connected { background: var(--green, #5ddc8c); box-shadow: 0 0 7px var(--green,#5ddc8c); }
+.mcp-row .st.needs_auth { background: var(--amber); box-shadow: 0 0 7px var(--amber); }
+.mcp-row .st.failed { background: var(--red); }
+.mcp-row .st.disabled { background: var(--cyan-dim); }
+.mcp-row .id { color: var(--cyan); font-size: 13px; flex: 1; }
+.mcp-row .id small { color: var(--cyan-dim); display: block; font-size: 10.5px; }
+.mcp-row button { font-size: 10px; letter-spacing: 1px; padding: 4px 12px; }
+.mcp-add textarea { width: 100%; min-height: 80px; background: #020509; border: 1px solid var(--cyan-dim);
+  color: var(--text); font-family: var(--mono); font-size: 12px; padding: 9px; margin: 8px 0; resize: vertical; }
+.mcp-hint { color: var(--cyan-dim); font-size: 11px; line-height: 1.5; }
+.mcp-hint code { color: var(--cyan); }

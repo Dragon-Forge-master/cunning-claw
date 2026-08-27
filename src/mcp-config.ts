@@ -200,3 +200,41 @@ export function loadAllMcpServers(fromClaw: McpServerConfig[]): {
   }
   return { servers, sources };
 }
+
+/**
+ * Add server(s) from a pasted snippet to the user's own MCP config file, then
+ * return the ids added. Accepts the full `{ "mcpServers": { … } }` shape people
+ * copy from vendor docs, or a bare `{ "<id>": { … } }`. Merges into whatever is
+ * already there rather than overwriting.
+ */
+export function addMcpServerSnippet(input: unknown): string[] {
+  let obj: any = input;
+  if (typeof input === "string") {
+    try { obj = JSON.parse(input); } catch { throw new Error("That is not valid JSON."); }
+  }
+  const incoming: Record<string, unknown> =
+    obj && typeof obj === "object" && obj.mcpServers && typeof obj.mcpServers === "object"
+      ? obj.mcpServers
+      : (obj && typeof obj === "object" ? obj : {});
+
+  const ids = Object.keys(incoming);
+  if (ids.length === 0) throw new Error('No servers found. Expected { "mcpServers": { "name": { … } } }.');
+
+  // Validate each entry parses to a usable config before writing anything.
+  for (const id of ids) {
+    const cfg = claudeEntryToConfig(id, incoming[id] as ClaudeMcpEntry);
+    if (cfg.transport === "stdio" && !cfg.command) throw new Error(`"${id}" is stdio but has no command.`);
+    if ((cfg.transport === "http" || cfg.transport === "sse") && !cfg.url) throw new Error(`"${id}" is remote but has no url.`);
+  }
+
+  const file = cunningclawMcpPath();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  let current: any = { mcpServers: {} };
+  try {
+    const existing = JSON.parse(fs.readFileSync(file, "utf-8"));
+    if (existing && typeof existing === "object") current = existing;
+  } catch { /* fresh file */ }
+  current.mcpServers = { ...(current.mcpServers ?? {}), ...incoming };
+  fs.writeFileSync(file, JSON.stringify(current, null, 2));
+  return ids;
+}

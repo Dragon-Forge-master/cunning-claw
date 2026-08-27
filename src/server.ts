@@ -10,7 +10,8 @@ import { banner } from "./banner.js";
 import { board } from "./board.js";
 import { grantForTask } from "./consequence.js";
 import { ensureToken, currentToken, requireAuth, issueSession } from "./auth.js";
-import { connectAll as connectMcp, listMcpTools, shutdown as shutdownMcp } from "./mcp.js";
+import { connectAll as connectMcp, listMcpTools, listMcpStates, loginMcp, shutdown as shutdownMcp } from "./mcp.js";
+import { addMcpServerSnippet } from "./mcp-config.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
 import { listSkills, readSkill, skillCatalog } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
@@ -231,6 +232,46 @@ app.get("/api/board", async (_req, res) => {
     res.json(await board());
   } catch (err: any) {
     res.status(500).json({ error: String(err?.message ?? err) });
+  }
+});
+
+// ── MCP: the servers panel in the HUD ──────────────────────────────────────
+app.get("/api/mcp", (_req, res) => {
+  res.json({ servers: listMcpStates(), toolCount: listMcpTools().length });
+});
+
+/** Reconnect all servers — after adding one, or to retry a failed one. */
+app.post("/api/mcp/reconnect", async (_req, res) => {
+  await connectMcp((line) => broadcast("notice", { message: line.trim() }));
+  res.json({ ok: true, servers: listMcpStates() });
+});
+
+/** Start the OAuth flow for a hosted server. Opens the system browser. */
+app.post("/api/mcp/login", async (req, res) => {
+  const id = String(req.body?.id ?? "");
+  if (!id) return res.status(400).json({ error: "server id required" });
+  try {
+    const msg = await loginMcp(id, (line) => broadcast("notice", { message: line.trim() }));
+    await connectMcp(() => {});
+    res.json({ ok: true, message: msg, servers: listMcpStates() });
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message ?? err) });
+  }
+});
+
+/**
+ * Add a server from a pasted Claude-Code snippet — the same
+ * { "mcpServers": { … } } JSON people already copy from vendor docs. Written
+ * to the user's own config file, then connected. Servers still come only from
+ * files the user owns; this is a convenience over hand-editing, not discovery.
+ */
+app.post("/api/mcp/add", async (req, res) => {
+  try {
+    const added = addMcpServerSnippet(req.body?.snippet ?? req.body ?? {});
+    await connectMcp((line) => broadcast("notice", { message: line.trim() }));
+    res.json({ ok: true, added, servers: listMcpStates() });
+  } catch (err: any) {
+    res.status(400).json({ error: String(err?.message ?? err) });
   }
 });
 
