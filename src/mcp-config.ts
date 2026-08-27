@@ -33,6 +33,8 @@ export interface McpServerConfig {
   writeTools?: string[];
   /** Tools known read-only, so they never raise a card even if the name is unusual. */
   readTools?: string[];
+  /** Config file this entry was loaded from. HUD may only edit the user file. */
+  source?: string;
 }
 
 export type ClaudeMcpEntry = {
@@ -186,7 +188,7 @@ export function loadAllMcpServers(fromClaw: McpServerConfig[]): {
     for (const s of list) {
       if (seen.has(s.id)) continue;
       seen.add(s.id);
-      servers.push(s);
+      servers.push({ ...s, source: s.source ?? file });
       count++;
     }
     if (count) sources.push({ file, count });
@@ -199,6 +201,53 @@ export function loadAllMcpServers(fromClaw: McpServerConfig[]): {
     take(serversFromFile(file, json), file);
   }
   return { servers, sources };
+}
+
+function asMcpServersObject(json: unknown): { wrap: Record<string, unknown>; block: Record<string, unknown> } {
+  if (!json || typeof json !== "object" || Array.isArray(json)) {
+    return { wrap: { mcpServers: {} }, block: {} };
+  }
+  const wrap = json as Record<string, unknown>;
+  if (wrap.mcpServers && typeof wrap.mcpServers === "object" && !Array.isArray(wrap.mcpServers)) {
+    return { wrap, block: wrap.mcpServers as Record<string, unknown> };
+  }
+  return { wrap: { mcpServers: wrap }, block: wrap };
+}
+
+export function readUserMcpServers(file = cunningclawMcpPath()): Record<string, ClaudeMcpEntry> {
+  const json = readJson(file);
+  if (!json) return {};
+  const { block } = asMcpServersObject(json);
+  const out: Record<string, ClaudeMcpEntry> = {};
+  for (const [id, entry] of Object.entries(block)) {
+    if (entry && typeof entry === "object" && !Array.isArray(entry)) out[id] = entry as ClaudeMcpEntry;
+  }
+  return out;
+}
+
+export function writeUserMcpServers(servers: Record<string, ClaudeMcpEntry>, file = cunningclawMcpPath()): string {
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  const existing = readJson(file);
+  let wrap: Record<string, unknown> = { mcpServers: servers };
+  if (existing && typeof existing === "object" && !Array.isArray(existing) && "mcpServers" in (existing as object)) {
+    wrap = { ...(existing as Record<string, unknown>), mcpServers: servers };
+  }
+  fs.writeFileSync(file, JSON.stringify(wrap, null, 2) + "\n", { mode: 0o600 });
+  return file;
+}
+
+export function upsertUserMcpServer(id: string, entry: ClaudeMcpEntry, file = cunningclawMcpPath()): string {
+  const servers = readUserMcpServers(file);
+  servers[id] = entry;
+  return writeUserMcpServers(servers, file);
+}
+
+export function removeUserMcpServer(id: string, file = cunningclawMcpPath()): boolean {
+  const servers = readUserMcpServers(file);
+  if (!(id in servers)) return false;
+  delete servers[id];
+  writeUserMcpServers(servers, file);
+  return true;
 }
 
 /**
@@ -220,21 +269,14 @@ export function addMcpServerSnippet(input: unknown): string[] {
   const ids = Object.keys(incoming);
   if (ids.length === 0) throw new Error('No servers found. Expected { "mcpServers": { "name": { … } } }.');
 
-  // Validate each entry parses to a usable config before writing anything.
   for (const id of ids) {
     const cfg = claudeEntryToConfig(id, incoming[id] as ClaudeMcpEntry);
     if (cfg.transport === "stdio" && !cfg.command) throw new Error(`"${id}" is stdio but has no command.`);
     if ((cfg.transport === "http" || cfg.transport === "sse") && !cfg.url) throw new Error(`"${id}" is remote but has no url.`);
   }
 
-  const file = cunningclawMcpPath();
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  let current: any = { mcpServers: {} };
-  try {
-    const existing = JSON.parse(fs.readFileSync(file, "utf-8"));
-    if (existing && typeof existing === "object") current = existing;
-  } catch { /* fresh file */ }
-  current.mcpServers = { ...(current.mcpServers ?? {}), ...incoming };
-  fs.writeFileSync(file, JSON.stringify(current, null, 2));
+  for (const id of ids) {
+    upsertUserMcpServer(id, incoming[id] as ClaudeMcpEntry);
+  }
   return ids;
 }

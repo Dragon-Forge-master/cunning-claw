@@ -12,6 +12,13 @@ import { grantForTask } from "./consequence.js";
 import { ensureToken, currentToken, requireAuth, issueSession } from "./auth.js";
 import { connectAll as connectMcp, listMcpTools, listMcpStates, loginMcp, shutdown as shutdownMcp } from "./mcp.js";
 import { addMcpServerSnippet } from "./mcp-config.js";
+import {
+  addConnector,
+  connectorSnapshot,
+  loginConnector,
+  removeConnector,
+  retryConnector,
+} from "./connectors.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
 import { listSkills, readSkill, skillCatalog } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
@@ -237,7 +244,12 @@ app.get("/api/board", async (_req, res) => {
 
 // ── MCP: the servers panel in the HUD ──────────────────────────────────────
 app.get("/api/mcp", (_req, res) => {
-  res.json({ servers: listMcpStates(), toolCount: listMcpTools().length });
+  const snap = connectorSnapshot();
+  res.json({
+    ...snap,
+    servers: listMcpStates(),
+    toolCount: listMcpTools().length,
+  });
 });
 
 /** Reconnect all servers — after adding one, or to retry a failed one. */
@@ -298,6 +310,15 @@ app.get("/api/status", async (_req, res) => {
     turn: turnInFlight(),
     lastTurn: lastTurnCost(),
     preview: previewState(),
+    mcp: (() => {
+      const snap = connectorSnapshot();
+      return {
+        enabled: snap.enabled,
+        connected: snap.connected,
+        needsAuth: snap.needsAuth,
+        total: snap.connectors.filter((c) => c.configured).length,
+      };
+    })(),
   });
 });
 
@@ -348,6 +369,26 @@ app.get("/api/skills/:name", (req, res) => {
     description: known.description,
     body: readSkill(known.name),
   });
+});
+
+app.post("/api/mcp", async (req, res) => {
+  const result = await addConnector(req.body ?? {});
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
+app.delete("/api/mcp/:id", async (req, res) => {
+  const result = await removeConnector(String(req.params.id ?? ""));
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
+app.post("/api/mcp/:id/login", async (req, res) => {
+  const result = await loginConnector(String(req.params.id ?? ""));
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
+app.post("/api/mcp/:id/connect", async (req, res) => {
+  const result = await retryConnector(String(req.params.id ?? ""));
+  res.status(result.ok ? 200 : 400).json(result);
 });
 
 // --- Voice control ----------------------------------------------------------

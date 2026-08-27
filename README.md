@@ -197,6 +197,11 @@ same transports: **stdio** (a local subprocess) and **Streamable HTTP** (a remot
 with `Mcp-Session-Id` and `MCP-Protocol-Version: 2025-03-26`). That is how Canva,
 Notion, Figma, and the rest of the hosted catalogue work — not a one-shot POST.
 
+The HUD **CONNECT** button is the directory: Popular cards (Canva, GitHub, Notion,
+Figma), All / Connected / Not connected, and Reconnect when a server needs sign-in.
+It writes `~/.config/cunningclaw/mcp.json`. You can still paste a Claude snippet
+under ADD, or keep servers in the files below.
+
 Put servers in any of these (first id wins):
 
 1. `claw.config.json` → `mcp.servers`

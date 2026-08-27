@@ -1,0 +1,283 @@
+/* Connectors page. Separate from app.js on purpose — that file is crowded. */
+(function () {
+  const $ = (id) => document.getElementById(id);
+  let snapshot = { connectors: [], path: "", enabled: true, needsAuth: 0, connected: 0, sources: [] };
+  let filter = "all";
+  let search = "";
+  let busy = "";
+
+  function setOpen(open) {
+    const overlay = $("mcp-overlay");
+    const btn = $("mcp-toggle");
+    if (!overlay || !btn) return;
+    overlay.hidden = !open;
+    btn.classList.toggle("active", open);
+    if (open) {
+      const skills = $("skills-overlay");
+      if (skills) skills.hidden = true;
+      $("skills-toggle")?.classList.remove("active");
+      load();
+    }
+  }
+
+  function setBanner(text, isError) {
+    const el = $("mcp-banner");
+    if (!el) return;
+    if (!text) {
+      el.hidden = true;
+      el.textContent = "";
+      return;
+    }
+    el.hidden = false;
+    el.textContent = text;
+    el.style.color = isError ? "var(--red)" : "var(--amber)";
+  }
+
+  function paintBadge() {
+    const badge = $("mcp-badge");
+    if (!badge) return;
+    const n = snapshot.needsAuth || 0;
+    badge.hidden = n === 0;
+    badge.textContent = String(n);
+    $("mcp-toggle")?.classList.toggle("needs-auth", n > 0);
+  }
+
+  function initials(label) {
+    return (label || "?").slice(0, 2).toUpperCase();
+  }
+
+  function matches(c) {
+    if (filter === "connected" && c.status !== "connected" && c.status !== "needs_auth" && c.status !== "failed") return false;
+    if (filter === "not_connected" && c.configured) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const blob = `${c.label} ${c.id} ${c.blurb} ${c.url || ""} ${c.command || ""}`.toLowerCase();
+      if (!blob.includes(q)) return false;
+    }
+    return true;
+  }
+
+  function statusView(c) {
+    if (c.status === "connected") return { cls: "ok", mark: "✓", text: c.tools ? `${c.tools} tool${c.tools === 1 ? "" : "s"}` : "Connected" };
+    if (c.status === "needs_auth") return { cls: "warn", mark: "!", text: "Action required" };
+    if (c.status === "failed") return { cls: "err", mark: "×", text: c.detail ? c.detail.slice(0, 80) : "Failed" };
+    if (c.status === "disabled") return { cls: "idle", mark: "·", text: "Disabled" };
+    return { cls: "idle", mark: "○", text: "Not connected" };
+  }
+
+  function actionButtons(c) {
+    const wrap = document.createElement("div");
+    wrap.className = "mcp-actions";
+    const add = (label, title, fn, extraClass) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "ctl" + (extraClass ? " " + extraClass : "");
+      b.textContent = busy === c.id + label ? "…" : label;
+      b.title = title;
+      b.disabled = Boolean(busy);
+      b.onclick = fn;
+      wrap.appendChild(b);
+    };
+    if (c.status === "not_connected" || (c.status === "failed" && !c.configured)) {
+      add("Connect", `Add ${c.label} and try to connect`, () => act("connect", c.id));
+    } else if (c.status === "needs_auth") {
+      add("Reconnect", "Sign in in the system browser", () => act("login", c.id), "active");
+    } else if (c.status === "failed") {
+      add("Retry", "Try connecting again", () => act("connect", c.id));
+      if (c.url) add("Reconnect", "Sign in in the system browser", () => act("login", c.id));
+    } else if (c.status === "connected" && c.url) {
+      add("Reconnect", "Sign in again", () => act("login", c.id));
+    }
+    if (c.owned) add("Remove", "Remove from ~/.config/cunningclaw/mcp.json", () => act("remove", c.id));
+    return wrap;
+  }
+
+  function renderPopular() {
+    const root = $("mcp-popular");
+    if (!root) return;
+    root.innerHTML = "";
+    const popular = (snapshot.connectors || []).filter((c) => c.popular);
+    for (const c of popular) {
+      const card = document.createElement("div");
+      card.className = "mcp-pop";
+      const name = document.createElement("div");
+      name.className = "pop-name";
+      name.textContent = `${initials(c.label)}  ${c.label}`;
+      const blurb = document.createElement("div");
+      blurb.className = "pop-blurb";
+      blurb.textContent = c.blurb;
+      card.append(name, blurb, actionButtons(c));
+      root.appendChild(card);
+    }
+  }
+
+  function renderTable() {
+    const root = $("mcp-table");
+    if (!root) return;
+    root.innerHTML = "";
+    const rows = (snapshot.connectors || []).filter(matches);
+    if (!rows.length) {
+      const empty = document.createElement("p");
+      empty.className = "mcp-empty";
+      empty.textContent = search
+        ? "No connectors match that search."
+        : "No connectors yet. Connect Canva from Popular, or ADD a Claude Code snippet.";
+      root.appendChild(empty);
+      return;
+    }
+    const head = document.createElement("div");
+    head.className = "mcp-cols";
+    head.innerHTML = "<span>Connector</span><span>Type</span><span>Status</span><span></span>";
+    root.appendChild(head);
+    for (const c of rows) {
+      const row = document.createElement("div");
+      row.className = "mcp-row";
+      const name = document.createElement("div");
+      const title = document.createElement("span");
+      title.className = "c-name";
+      title.textContent = c.label;
+      const blurb = document.createElement("span");
+      blurb.className = "c-blurb";
+      const src = c.source ? c.source.replace(/^.*\//, "…/") : (c.configured ? "" : "Not added yet");
+      blurb.textContent = [c.blurb, src].filter(Boolean).join(" · ");
+      name.append(title, blurb);
+      const type = document.createElement("div");
+      type.className = "c-type";
+      type.textContent = c.typeLabel;
+      const st = statusView(c);
+      const status = document.createElement("div");
+      status.className = "mcp-status " + st.cls;
+      const mark = document.createElement("span");
+      mark.className = "mcp-mark";
+      mark.textContent = st.mark;
+      const lab = document.createElement("span");
+      lab.textContent = st.text;
+      status.append(mark, lab);
+      row.append(name, type, status, actionButtons(c));
+      root.appendChild(row);
+    }
+  }
+
+  function render() {
+    paintBadge();
+    if (!$("mcp-overlay") || $("mcp-overlay").hidden) return;
+    if (!snapshot.enabled) setBanner("MCP is disabled in claw.config.json (mcp.enabled).");
+    else if (snapshot.needsAuth) setBanner(`${snapshot.needsAuth} connector${snapshot.needsAuth === 1 ? "" : "s"} need sign-in. Reconnect opens the system browser.`);
+    else if ((snapshot.sources || []).length) {
+      setBanner("Reading " + snapshot.sources.map((s) => s.file).join(" · "));
+    } else {
+      setBanner("");
+    }
+    renderPopular();
+    renderTable();
+  }
+
+  async function load() {
+    try {
+      const res = await fetch("/api/mcp");
+      if (!res.ok) return;
+      snapshot = await res.json();
+      render();
+    } catch { /* overlay will retry on open */ }
+  }
+
+  async function act(kind, id) {
+    if (busy) return;
+    if (kind === "remove" && !confirm(`Remove connector "${id}" from ${snapshot.path}?`)) return;
+    busy = id + (kind === "login" ? "Reconnect" : kind === "remove" ? "Remove" : "Connect");
+    render();
+    const url =
+      kind === "remove" ? `/api/mcp/${encodeURIComponent(id)}` :
+      kind === "login" ? `/api/mcp/${encodeURIComponent(id)}/login` :
+      `/api/mcp/${encodeURIComponent(id)}/connect`;
+    const opts = kind === "remove" ? { method: "DELETE" } : { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" };
+    try {
+      const res = await fetch(url, opts);
+      const data = await res.json();
+      if (data.snapshot) snapshot = data.snapshot;
+      setBanner(data.message || "", !data.ok);
+      if (kind === "login" && !data.ok) {
+        setBanner((data.message || "Sign-in did not finish.") + " If no browser opened, use the mcp-remote snippet under ADD.", true);
+      }
+    } catch (err) {
+      setBanner(String(err.message || err), true);
+    } finally {
+      busy = "";
+      render();
+    }
+  }
+
+  async function submitAdd(e) {
+    e.preventDefault();
+    const form = e.target;
+    const paste = String(form.paste.value || "").trim();
+    let body = {};
+    if (paste) {
+      try {
+        const json = JSON.parse(paste);
+        body = json.mcpServers ? json : { mcpServers: json };
+      } catch {
+        setBanner("Paste valid JSON — the same mcpServers object Claude Code uses.", true);
+        return;
+      }
+    } else {
+      const id = String(form.id.value || "").trim();
+      const url = String(form.url.value || "").trim();
+      const command = String(form.command.value || "").trim();
+      const args = String(form.args.value || "").trim().split(/\s+/).filter(Boolean);
+      body = { id, url: url || undefined, command: command || undefined, args: args.length ? args : undefined };
+    }
+    busy = "add";
+    try {
+      const res = await fetch("/api/mcp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.snapshot) snapshot = data.snapshot;
+      setBanner(data.message || "", !data.ok);
+      if (data.ok) {
+        form.reset();
+        $("mcp-add-form").hidden = true;
+      }
+    } catch (err) {
+      setBanner(String(err.message || err), true);
+    } finally {
+      busy = "";
+      render();
+    }
+  }
+
+  $("mcp-toggle")?.addEventListener("click", () => setOpen($("mcp-overlay").hidden));
+  $("mcp-close")?.addEventListener("click", () => setOpen(false));
+  $("mcp-overlay")?.addEventListener("click", (e) => {
+    if (e.target === $("mcp-overlay")) setOpen(false);
+  });
+  $("mcp-add-toggle")?.addEventListener("click", () => {
+    const form = $("mcp-add-form");
+    form.hidden = !form.hidden;
+  });
+  $("mcp-add-cancel")?.addEventListener("click", () => { $("mcp-add-form").hidden = true; });
+  $("mcp-add-form")?.addEventListener("submit", submitAdd);
+  $("mcp-search")?.addEventListener("input", (e) => {
+    search = e.target.value.trim();
+    renderTable();
+  });
+  $("mcp-tabs")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-filter]");
+    if (!btn) return;
+    filter = btn.dataset.filter;
+    for (const t of $("mcp-tabs").querySelectorAll(".mcp-tab")) t.classList.toggle("active", t === btn);
+    renderTable();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && $("mcp-overlay") && !$("mcp-overlay").hidden) {
+      setOpen(false);
+      e.stopPropagation();
+    }
+  });
+
+  load();
+  setInterval(load, 12000);
+})();

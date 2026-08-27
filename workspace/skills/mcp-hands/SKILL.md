@@ -15,13 +15,9 @@ Claude Code's client is `mcpServers` in `.mcp.json` / `~/.claude.json` / Cursor'
 
 ## Add a server
 
-Do not invent URLs. Copy the vendor's Claude/Cursor snippet.
+Do not invent URLs. Prefer the HUD **CONNECT** page (same idea as Claude's Customize → Connectors): Popular cards, All / Connected / Not connected, Reconnect for 401. That writes `~/.config/cunningclaw/mcp.json`. `mcp_status` / `mcp_login` still work from chat.
 
-1. Write it to `~/.config/cunningclaw/mcp.json` (create the dir), or the install's `.mcp.json`. First id wins over `claw.config.json`.
-2. `${GITHUB_TOKEN}` and `${VAR:-default}` expand. A Bearer token belongs in `headers`, not the chat.
-3. Tell Chris to restart Cunning Claw (or do it if he asks). Boot loads the files. It does **not** open a browser.
-4. `mcp_status`. HTTP servers that returned 401 show `needs_auth`.
-5. *Connect Canva* / *log into Notion* → `mcp_login` with that server id. That opens the **system** browser (`xdg-open`) and waits on `127.0.0.1`. Always approval-gated. After sign-in, tools are `mcp__canva__…`.
+If you must edit files yourself:
 
 If OAuth registration fails (some vendors only allowlist Claude/ChatGPT), swap the HTTP entry for stdio `mcp-remote`:
 
