@@ -252,6 +252,20 @@ function sanitiseDescription(raw: unknown): string {
 }
 
 /** `mcp__github__create_issue` — namespaced so servers cannot shadow built-ins. */
+/** A read verb as a whole word — catches web-search, list_files, fetchPage, get-thing. */
+const MCP_READ_VERB = /(^|[^a-z])(get|list|read|search|fetch|find|query|lookup|browse|view|describe)([^a-z]|$)/i;
+
+/**
+ * Whether an MCP tool needs an approval card. writeTools always gates,
+ * readTools never does; otherwise a name that clearly reads runs free and
+ * anything unrecognised asks — third-party code, so unknown means a card.
+ */
+function decideMcpApproval(name: string, writes: Set<string>, reads: Set<string>): boolean {
+  if (writes.has(name)) return true;
+  if (reads.has(name)) return false;
+  return !MCP_READ_VERB.test(name);
+}
+
 export function localName(serverId: string, remote: string): string {
   return `mcp__${serverId}__${remote}`.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 64);
 }
@@ -271,6 +285,7 @@ export function listMcpStates(): McpServerState[] {
 function harvestTools(cfg: McpServerConfig, result: any): number {
   const allow = new Set(cfg.allow ?? []);
   const writes = new Set(cfg.writeTools ?? []);
+  const reads = new Set(cfg.readTools ?? []);
   let taken = 0;
   for (const t of result?.tools ?? []) {
     if (allow.size && !allow.has(t.name)) continue;
@@ -281,7 +296,7 @@ function harvestTools(cfg: McpServerConfig, result: any): number {
       localName: localName(cfg.id, t.name),
       description: sanitiseDescription(t.description),
       inputSchema: (t.inputSchema as Record<string, unknown>) ?? { type: "object", properties: {} },
-      needsApproval: writes.size ? writes.has(t.name) : !/^(get|list|read|search|fetch|find)_/i.test(t.name),
+      needsApproval: decideMcpApproval(t.name, writes, reads),
     });
     taken++;
   }

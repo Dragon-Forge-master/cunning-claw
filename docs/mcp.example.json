@@ -6,10 +6,23 @@
     },
     "github": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
       }
+    },
+    "search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@oevortex/ddg_search"
+      ],
+      "readTools": [
+        "web-search"
+      ]
     }
   }
 }

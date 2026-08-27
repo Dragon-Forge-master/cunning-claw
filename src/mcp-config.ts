@@ -31,6 +31,8 @@ export interface McpServerConfig {
   allow?: string[];
   /** Tools that change state and therefore need approval. */
   writeTools?: string[];
+  /** Tools known read-only, so they never raise a card even if the name is unusual. */
+  readTools?: string[];
 }
 
 export type ClaudeMcpEntry = {
@@ -44,6 +46,7 @@ export type ClaudeMcpEntry = {
   headers?: Record<string, string>;
   allow?: string[];
   writeTools?: string[];
+  readTools?: string[];
 };
 
 export function expandEnvVars(raw: string): string {
@@ -84,6 +87,7 @@ export function claudeEntryToConfig(id: string, entry: ClaudeMcpEntry): McpServe
     headers: expandRecord(entry.headers),
     allow: entry.allow,
     writeTools: entry.writeTools,
+    readTools: entry.readTools,
   };
 }
 
