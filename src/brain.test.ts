@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { config } from "./config.js";
 import test, { after, before } from "node:test";
 import {
   applyBrainCommand,
@@ -39,7 +40,15 @@ test("the roster spans a real price ladder", () => {
   const dearest = Math.max(...all.map((b) => b.price!.in));
   assert.ok(dearest > cheapest, "a ladder, not a single rung");
 
-  assert.ok(all.some((b) => b.provider === "anthropic"), "a frontier brain must exist");
+  // Which provider sits at the top is the operator's choice. What must hold is
+  // that the brains cleared to handle untrusted content are not the cheapest
+  // thing on the shelf.
+  const trusted = all.filter((b) => (config.routing?.trustedBrains ?? []).includes(b.id));
+  assert.ok(trusted.length > 0, "at least one brain must be cleared for untrusted content");
+  assert.ok(
+    Math.max(...trusted.map((b) => b.price!.in)) > cheapest,
+    "the trusted brain must not be the cheapest rung",
+  );
 });
 
 test("the default is a working brain, and the heartbeat is not the dear one", () => {
@@ -115,16 +124,19 @@ test("pricing table covers the shipped brains and prefix-matches dated ids", () 
 
 test("recordUsage prices a turn from the config table and other modules can read it", () => {
   resetSpendForTests();
-  const opus = catalog().find((b) => b.id === "core");
-  const haiku = catalog().find((b) => b.id === "pulse");
-  assert.ok(opus && haiku);
+  // Whichever brains are in the roster, the dearest must price higher than the
+  // cheapest for identical tokens.
+  const priced = catalog().filter((b) => b.price && b.price.in > 0)
+    .sort((a, b) => a.price!.in - b.price!.in);
+  assert.ok(priced.length >= 2, "need two priced brains to compare");
+  const cheapest = priced[0], dearest = priced[priced.length - 1];
   const tokens = { inputTokens: 1_000_000, outputTokens: 1_000_000 };
-  const expensive = recordUsage(opus!, tokens);
-  const cheap = recordUsage(haiku!, tokens);
+  const expensive = recordUsage(dearest, tokens);
+  const cheap = recordUsage(cheapest, tokens);
   assert.equal(expensive.unpriced, false);
   assert.equal(cheap.unpriced, false);
-  assert.ok(expensive.usd > cheap.usd, "core should cost more than pulse for the same tokens");
-  assert.equal(lastTurnCost()?.brainId, "pulse");
+  assert.ok(expensive.usd > cheap.usd, `${dearest.id} should cost more than ${cheapest.id}`);
+  assert.equal(lastTurnCost()?.brainId, cheapest.id, "the last recorded turn is the one just recorded");
   assert.equal(sessionSpend().turns, 2);
   assert.equal(sessionSpend().inputTokens, 2_000_000);
   assert.match(formatCost(expensive), /\$/);

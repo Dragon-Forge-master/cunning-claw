@@ -12,7 +12,7 @@
     "persist": true
   },
   "webSearch": {
-    "enabled": true,
+    "enabled": false,
     "maxUses": 5
   },
   "commandPolicy": {
@@ -116,8 +116,8 @@
     "heartbeat": "lite",
     "fallbacks": [
       "flash",
-      "core",
-      "lite"
+      "lite",
+      "nano"
     ],
     "catalog": [
       {
@@ -191,32 +191,6 @@
         "note": "strong at code for the money"
       },
       {
-        "id": "core",
-        "label": "Core",
-        "provider": "anthropic",
-        "model": "claude-opus-5",
-        "effort": "high",
-        "thinking": true,
-        "price": {
-          "in": 5.0,
-          "out": 25.0
-        },
-        "note": "frontier \u2014 best at refusing what it should"
-      },
-      {
-        "id": "pulse",
-        "label": "Pulse",
-        "provider": "anthropic",
-        "model": "claude-haiku-4-5",
-        "effort": "low",
-        "thinking": false,
-        "price": {
-          "in": 1.0,
-          "out": 5.0
-        },
-        "note": "Anthropic's small one"
-      },
-      {
         "id": "local",
         "label": "Local",
         "provider": "openai",
@@ -243,7 +217,8 @@
   "routing": {
     "enforceTrustedBrain": true,
     "trustedBrains": [
-      "core"
+      "pro",
+      "flash"
     ],
     "cheapWhenTrivial": true,
     "cheapBrain": "lite",

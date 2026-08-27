@@ -361,7 +361,13 @@ export function priceForModel(model: string): { inputPerMillion: number; outputP
 }
 
 export function recordUsage(spec: BrainSpec, usage: TokenUsage): TurnCost {
-  const price = priceForModel(spec.model);
+  // The price lives with the brain. A separate lookup table drifts from the
+  // roster — this one had Opus at $15/$75 against a real $5/$25, so every
+  // figure shown to the operator was three times too high. The table stays as
+  // a fallback for a brain added without a price.
+  const price = spec.price
+    ? { inputPerMillion: spec.price.in, outputPerMillion: spec.price.out }
+    : priceForModel(spec.model);
   const inputUsd = price ? (usage.inputTokens / 1_000_000) * price.inputPerMillion : 0;
   const outputUsd = price ? (usage.outputTokens / 1_000_000) * price.outputPerMillion : 0;
   const cost: TurnCost = {
