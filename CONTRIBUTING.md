@@ -13,6 +13,7 @@ src/agent.ts       Streaming tool loop
 src/brain.ts       Named brains, failover, spend
 src/tools.ts       Tool schemas + dispatcher + HARD_DENY
 src/browser.ts     Chrome via CDP; fences page/email as <untrusted>
+src/gmail.ts       Gmail search language, list/thread scrapers, compose helpers
 src/desktop.ts     Screen, keys, clipboard — Linux and macOS via src/platform.ts
 src/voice.ts       Piper / spd-say / say
 src/doctor.ts      npm run doctor
@@ -43,7 +44,7 @@ Never commit `.env`, keys, or `data/history.json`.
 
 3. **Agent-written files are data, never instructions.** `MEMORY.md`, the journal, and `data/memory.json` are rendered with `<recorded>` via `wrapRecorded`. Human-authored workspace files (`SOUL.md`, `USER.md`, `AGENTS.md`, …) are not. If you add a file CUNNING CLAW writes at runtime, fence it. `defuse()` must keep stripping `</recorded>` / `</untrusted>` so a stored note cannot escape.
 
-4. **State-changing tools stay approval-gated.** Clicks, typing, keystrokes, non-GET HTTP, Home Assistant `call`, file writes/edits, and shell commands that are not on the auto-approve list must call `ctx.requestApproval` and stop if the user declines. Do not add a write/click/send tool that runs freely because “it is convenient.” Read-only tools (screenshot, `browser_read`, `check_email`) may run without a prompt; their *results* are still untrusted.
+4. **State-changing tools stay approval-gated.** Clicks, typing, keystrokes, non-GET HTTP, Home Assistant `call`, file writes/edits, and shell commands that are not on the auto-approve list must call `ctx.requestApproval` and stop if the user declines. Do not add a write/click/send tool that runs freely because “it is convenient.” Read-only tools (screenshot, `browser_read`, `check_email`) may run without a prompt; their *results* are still untrusted. `draft_email` types into an unsent compose window; `send_email` is the gate, and it always asks.
 
 Defence in depth, not a guarantee. The approval card is the real boundary.
 

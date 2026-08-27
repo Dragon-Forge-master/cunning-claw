@@ -13,6 +13,31 @@ import {
   type ClawRef,
   type AxNode,
 } from "./browser-ax.js";
+import {
+  expandGmailQuery,
+  formatGmailList,
+  formatGmailThread,
+  gmailListUrl,
+  parseGmailView,
+  shouldSweepUnread,
+  gmailFocusScript,
+  GMAIL_LIST_JS,
+  GMAIL_THREAD_JS,
+  GMAIL_COMPOSE_OPEN_JS,
+  GMAIL_CLICK_COMPOSE_JS,
+  GMAIL_CLICK_SEND_JS,
+  GMAIL_DRAFT_JS,
+  GMAIL_ACTION_KEYS,
+  GMAIL_ACTIONS,
+  GMAIL_COMPOSE_KEY,
+  GMAIL_REPLY_KEY,
+  GMAIL_REPLY_ALL_KEY,
+  type GmailAction,
+  type GmailKeySpec,
+  type GmailList,
+  type GmailThread,
+  type GmailView,
+} from "./gmail.js";
 
 export { fenceUntrusted, lookupRef, refLabel } from "./browser-ax.js";
 
@@ -761,91 +786,305 @@ export async function screenshotPage(index?: number): Promise<{ data: string; me
 }
 
 // ---------------------------------------------------------------------------
-// Email
+// Email — Gmail through the signed-in Chrome profile, not the Gmail API.
+// Search operators and hash URLs are the stable surface. Keyboard shortcuts
+// (c, r, e, Shift+i, Ctrl+Enter) beat clicking obfuscated buttons.
 // ---------------------------------------------------------------------------
 
-const GMAIL_INBOX_JS = `(() => {
-  const rows = [...document.querySelectorAll('tr.zA')].slice(0, 25);
-  if (rows.length === 0) return { ready: false, url: location.href };
-  return {
-    ready: true,
-    url: location.href,
-    messages: rows.map(r => ({
-      unread:  r.classList.contains('zE'),
-      sender:  (r.querySelector('.yX .yP, .yX .zF, [email]')?.getAttribute('name')
-                || r.querySelector('.yX')?.innerText || '').trim().slice(0, 60),
-      subject: (r.querySelector('.y6 span, .bog')?.innerText || '').trim().slice(0, 140),
-      snippet: (r.querySelector('.y2')?.innerText || '').trim().slice(0, 180),
-      date:    (r.querySelector('.xW span, .xY span')?.getAttribute('title')
-                || r.querySelector('.xW span')?.innerText || '').trim(),
-    })),
-  };
-})()`;
+async function dispatchChord(s: CdpSession, spec: GmailKeySpec): Promise<void> {
+  const mod = spec.modifiers ?? 0;
+  if (mod & 2) {
+    await s.call("Input.dispatchKeyEvent", {
+      type: "keyDown", key: "Control", code: "ControlLeft", windowsVirtualKeyCode: 17, modifiers: 2,
+    });
+  }
+  if (mod & 4) {
+    await s.call("Input.dispatchKeyEvent", {
+      type: "keyDown", key: "Meta", code: "MetaLeft", windowsVirtualKeyCode: 91, modifiers: 4,
+    });
+  }
+  if (mod & 8) {
+    await s.call("Input.dispatchKeyEvent", {
+      type: "keyDown", key: "Shift", code: "ShiftLeft", windowsVirtualKeyCode: 16, modifiers: 8,
+    });
+  }
+  await s.call("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: spec.key,
+    code: spec.code,
+    windowsVirtualKeyCode: spec.vk,
+    modifiers: mod,
+  });
+  await s.call("Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: spec.key,
+    code: spec.code,
+    windowsVirtualKeyCode: spec.vk,
+    modifiers: mod,
+  });
+  if (mod & 8) {
+    await s.call("Input.dispatchKeyEvent", {
+      type: "keyUp", key: "Shift", code: "ShiftLeft", windowsVirtualKeyCode: 16,
+    });
+  }
+  if (mod & 4) {
+    await s.call("Input.dispatchKeyEvent", {
+      type: "keyUp", key: "Meta", code: "MetaLeft", windowsVirtualKeyCode: 91,
+    });
+  }
+  if (mod & 2) {
+    await s.call("Input.dispatchKeyEvent", {
+      type: "keyUp", key: "Control", code: "ControlLeft", windowsVirtualKeyCode: 17,
+    });
+  }
+}
 
-export async function checkEmail(query?: string): Promise<string> {
+async function gmailTab(): Promise<{ ok: true; s: CdpSession } | { ok: false; message: string }> {
   const boot = await ensureBrowser();
-  if (!boot.ok) return boot.message;
-
-  const url = query
-    ? `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(query)}`
-    : "https://mail.google.com/mail/u/0/#inbox";
-
+  if (!boot.ok) return { ok: false, message: boot.message };
   let target = (await listTargets()).find((t) => t.url.includes("mail.google.com"));
-  if (target) {
-    const s = await sessionFor(target);
-    await s.call("Page.navigate", { url });
-  } else {
-    await fetch(`${ORIGIN}/json/new?${encodeURIComponent(url)}`, { method: "PUT" });
+  if (!target) {
+    await fetch(`${ORIGIN}/json/new?${encodeURIComponent("https://mail.google.com/mail/u/0/#inbox")}`, {
+      method: "PUT",
+    });
+    await sleep(900);
+    target = (await listTargets()).find((t) => t.url.includes("mail.google.com"));
   }
-  await sleep(800);
-
-  target = (await listTargets()).find((t) => t.url.includes("mail.google.com"));
-  if (!target) return "Could not open Gmail.";
+  if (!target) return { ok: false, message: "Could not open Gmail." };
   const s = await sessionFor(target);
+  return { ok: true, s };
+}
 
-  let data: any = null;
-  for (let i = 0; i < 12; i++) {
-    data = await evaluate(s, GMAIL_INBOX_JS);
-    if (data?.ready) break;
-    await sleep(1000);
-  }
-
-  if (!data?.ready) {
-    const here = String(data?.url ?? "");
-    if (/accounts\.google\.com|signin/.test(here)) {
-      return "Gmail is asking for sign-in. Cunning Claw uses its own Chrome profile — " +
-        "please sign in once in the window that just opened, then ask me again. " +
-        "I never see or handle your password.";
-    }
-    return "Gmail did not finish loading its message list. It may still be rendering — try again in a moment.";
-  }
-
-  const lines = (data.messages as any[]).map((m, i) =>
-    `[${i}]${m.unread ? " UNREAD" : ""} ${m.date} — ${m.sender}\n    ${m.subject}\n    ${m.snippet}`,
+function signInMessage(): string {
+  return (
+    "Gmail is asking for sign-in. Cunning Claw uses its own Chrome profile — " +
+    "please sign in once in the window that just opened, then ask me again. " +
+    "I never see or handle your password."
   );
-  const header = query ? `Gmail search "${query}" — ${lines.length} results` : `Gmail inbox — ${lines.length} messages`;
-  return fenceUntrusted("mail.google.com", `${header}\n\n${lines.join("\n")}`);
+}
+
+async function scrapeList(s: CdpSession): Promise<GmailList> {
+  let data: GmailList | null = null;
+  for (let i = 0; i < 14; i++) {
+    data = (await evaluate(s, GMAIL_LIST_JS)) as GmailList;
+    if (data?.signin) return data;
+    if (data?.ready) return data;
+    if (data?.threadOpen && i < 2) {
+      await dispatchChord(s, GMAIL_ACTION_KEYS.back);
+      await sleep(700);
+      continue;
+    }
+    await sleep(500);
+  }
+  return data ?? { ready: false, url: "", unreadFromTitle: null, tabs: [], messages: [] };
+}
+
+async function waitForCompose(s: CdpSession, tries = 10): Promise<boolean> {
+  for (let i = 0; i < tries; i++) {
+    const st = await evaluate(s, GMAIL_COMPOSE_OPEN_JS) as { composeOpen?: boolean };
+    if (st?.composeOpen) return true;
+    await sleep(250);
+  }
+  return false;
+}
+
+export async function checkEmail(query?: string, view?: string): Promise<string> {
+  const tab = await gmailTab();
+  if (!tab.ok) return tab.message;
+  const s = tab.s;
+  const expanded = expandGmailQuery(query);
+  const parsedView: GmailView = parseGmailView(view);
+  const url = gmailListUrl(query, parsedView);
+  await s.call("Page.navigate", { url });
+  await settle(s, 500, 12000);
+
+  const data = await scrapeList(s);
+  if (data.signin || /accounts\.google\.com|signin/.test(data.url)) return signInMessage();
+  if (!data.ready) {
+    return "Gmail did not finish loading its message list. It may still be rendering — try again in a moment. If keyboard shortcuts are off, I also cannot fall back to a list that isn't there.";
+  }
+
+  const heading = expanded
+    ? `Gmail search "${expanded}" — ${data.messages.length} conversations`
+    : `Gmail ${parsedView} — ${data.messages.length} conversations`;
+  let text = formatGmailList(data, heading);
+
+  if (shouldSweepUnread(data, query, view)) {
+    await s.call("Page.navigate", { url: gmailListUrl("is:unread") });
+    await settle(s, 500, 10000);
+    const unread = await scrapeList(s);
+    if (unread.ready) {
+      text +=
+        "\n\n--- Hidden unread (is:unread — title/tabs showed more than Primary) ---\n" +
+        formatGmailList(unread, `Gmail search "is:unread" — ${unread.messages.length} conversations`);
+    }
+  }
+
+  return fenceUntrusted("mail.google.com", text);
 }
 
 export async function readEmail(index: number): Promise<string> {
-  const target = (await listTargets()).find((t) => t.url.includes("mail.google.com"));
-  if (!target) return "Gmail is not open. Run check_email first.";
-  const s = await sessionFor(target);
-  const js = `(() => {
-    const rows = [...document.querySelectorAll('tr.zA')];
-    const row = rows[${index}];
-    if (!row) return { ok: false };
+  const tab = await gmailTab();
+  if (!tab.ok) return tab.message;
+  const s = tab.s;
+  const opened = await evaluate(s, `(() => {
+    const main = document.querySelector('div[role="main"]') || document.body;
+    let rows = [...main.querySelectorAll("tr.zA")];
+    if (!rows.length) {
+      rows = [...main.querySelectorAll('div[role="listitem"]')].filter((el) =>
+        el.querySelector('[email], span[name], .yX, .bA4, .bog')
+      );
+    }
+    const row = rows[${Number(index)}];
+    if (!row) return { ok: false, count: rows.length };
     row.click();
-    return { ok: true };
-  })()`;
-  const res = await evaluate(s, js);
-  if (!res?.ok) return `No message at index ${index}.`;
+    return { ok: true, count: rows.length };
+  })()`) as { ok: boolean; count: number };
+  if (!opened?.ok) {
+    return `No message at index ${index}. Currently ${opened?.count ?? 0} visible rows. check_email first, then use that numbering (it starts at 0).`;
+  }
   await settle(s, 400, 8000);
-  const body = await evaluate(s, `(() => {
-    const b = document.querySelector('.a3s');
-    const subj = document.querySelector('h2.hP')?.innerText || '';
-    const from = document.querySelector('.gD')?.getAttribute('email') || '';
-    return { subj, from, text: (b?.innerText || '').slice(0, 6000) };
-  })()`);
-  return fenceUntrusted("mail.google.com", `FROM: ${body?.from}\nSUBJECT: ${body?.subj}\n\n${body?.text}`);
+  await dispatchChord(s, GMAIL_ACTION_KEYS.expand);
+  await sleep(350);
+  const thread = (await evaluate(s, GMAIL_THREAD_JS)) as GmailThread;
+  return fenceUntrusted("mail.google.com", formatGmailThread(thread));
+}
+
+export async function peekCompose(): Promise<{ open: boolean; to: string; subject: string; body: string }> {
+  const tab = await gmailTab();
+  if (!tab.ok) return { open: false, to: "", subject: "", body: "" };
+  const draft = await evaluate(tab.s, GMAIL_DRAFT_JS) as {
+    open?: boolean; to?: string; subject?: string; body?: string;
+  };
+  return {
+    open: Boolean(draft?.open),
+    to: String(draft?.to ?? ""),
+    subject: String(draft?.subject ?? ""),
+    body: String(draft?.body ?? ""),
+  };
+}
+
+async function insertInto(s: CdpSession, field: "to" | "subject" | "body", text: string, replace = false): Promise<boolean> {
+  const focused = await evaluate(s, gmailFocusScript(field));
+  if (!focused) return false;
+  await sleep(80);
+  if (replace) {
+    const modifiers = process.platform === "darwin" ? 4 : 2;
+    await dispatchChord(s, { key: "a", code: "KeyA", vk: 65, modifiers });
+    await sleep(40);
+  }
+  await s.call("Input.insertText", { text });
+  return true;
+}
+
+export async function draftEmail(input: {
+  to?: string;
+  subject?: string;
+  body: string;
+  reply?: boolean;
+  replyAll?: boolean;
+}): Promise<string> {
+  const tab = await gmailTab();
+  if (!tab.ok) return tab.message;
+  const s = tab.s;
+
+  if (input.reply || input.replyAll) {
+    await dispatchChord(s, input.replyAll ? GMAIL_REPLY_ALL_KEY : GMAIL_REPLY_KEY);
+  } else {
+    await dispatchChord(s, GMAIL_COMPOSE_KEY);
+  }
+
+  let open = await waitForCompose(s);
+  if (!open && !input.reply && !input.replyAll) {
+    const clicked = await evaluate(s, GMAIL_CLICK_COMPOSE_JS);
+    if (clicked) open = await waitForCompose(s);
+  }
+  if (!open) {
+    return (
+      "Could not open Gmail compose. Turn on keyboard shortcuts: " +
+      "Settings → See all settings → General → Keyboard shortcuts → On, then reload. " +
+      "Or the compose button was not on this view — check_email first."
+    );
+  }
+
+  if (!input.reply && !input.replyAll && input.to) {
+    const ok = await insertInto(s, "to", input.to, true);
+    if (!ok) return "Compose opened but the To field was not there. Try again, or type it with browser_type.";
+    await dispatchChord(s, { key: "Tab", code: "Tab", vk: 9 });
+    await sleep(150);
+  }
+  if (!input.reply && !input.replyAll && input.subject) {
+    await insertInto(s, "subject", input.subject, true);
+    await dispatchChord(s, { key: "Tab", code: "Tab", vk: 9 });
+    await sleep(80);
+  }
+  const bodyOk = await insertInto(s, "body", input.body, !(input.reply || input.replyAll));
+  if (!bodyOk) {
+    return "Compose opened but the message body was not focused. The draft may be empty — look at the window before sending.";
+  }
+
+  const preview = await evaluate(s, GMAIL_DRAFT_JS) as { to?: string; subject?: string; body?: string };
+  return [
+    "Draft is in the Gmail compose window. NOT sent.",
+    `To: ${preview?.to || input.to || "(reply — existing recipients)"}`,
+    `Subject: ${preview?.subject || input.subject || "(reply — existing subject)"}`,
+    "",
+    (preview?.body || input.body).slice(0, 2000),
+    "",
+    "Call send_email only after Chris has seen this and said to send it.",
+  ].join("\n");
+}
+
+export async function sendEmail(): Promise<string> {
+  const tab = await gmailTab();
+  if (!tab.ok) return tab.message;
+  const s = tab.s;
+  const before = await evaluate(s, GMAIL_COMPOSE_OPEN_JS) as { composeOpen?: boolean };
+  if (!before?.composeOpen) {
+    return "No compose window is open. draft_email first, then send_email after Chris approves.";
+  }
+  const modifiers = process.platform === "darwin" ? 4 : 2;
+  await dispatchChord(s, { key: "Enter", code: "Enter", vk: 13, modifiers });
+  await sleep(700);
+  let still = await evaluate(s, GMAIL_COMPOSE_OPEN_JS) as { composeOpen?: boolean };
+  if (still?.composeOpen) {
+    const clicked = await evaluate(s, GMAIL_CLICK_SEND_JS);
+    if (clicked) await sleep(700);
+    still = await evaluate(s, GMAIL_COMPOSE_OPEN_JS) as { composeOpen?: boolean };
+  }
+  if (still?.composeOpen) {
+    return "Tried to send (Ctrl+Enter, then the Send button) but compose is still open. It may need a To address, or Gmail blocked it. Look at the window.";
+  }
+  return "Email sent. Compose window closed.";
+}
+
+export async function emailAction(action: string, index?: number): Promise<string> {
+  if (!GMAIL_ACTIONS.includes(action as GmailAction)) {
+    return `Unknown Gmail action "${action}". Use one of: ${GMAIL_ACTIONS.join(", ")}.`;
+  }
+  const tab = await gmailTab();
+  if (!tab.ok) return tab.message;
+  const s = tab.s;
+  if (typeof index === "number") {
+    const opened = await evaluate(s, `(() => {
+      const main = document.querySelector('div[role="main"]') || document.body;
+      let rows = [...main.querySelectorAll("tr.zA")];
+      if (!rows.length) {
+        rows = [...main.querySelectorAll('div[role="listitem"]')].filter((el) =>
+          el.querySelector('[email], span[name], .yX, .bA4, .bog')
+        );
+      }
+      const row = rows[${Number(index)}];
+      if (!row) return { ok: false, count: rows.length };
+      row.click();
+      return { ok: true };
+    })()`) as { ok: boolean; count?: number };
+    if (!opened?.ok) {
+      return `No conversation at index ${index} (${opened?.count ?? 0} visible). check_email first.`;
+    }
+    await settle(s, 300, 6000);
+  }
+  await dispatchChord(s, GMAIL_ACTION_KEYS[action as GmailAction]);
+  await sleep(400);
+  return `Gmail action "${action}" sent${typeof index === "number" ? ` on conversation ${index}` : ""}.`;
 }

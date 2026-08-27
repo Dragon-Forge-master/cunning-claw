@@ -110,3 +110,18 @@ test("ordinary requests are not dragged in by the domain pattern", () => {
     assert.equal(requiresTrustedBrain(q, []).required, false, q);
   }
 });
+
+test("any browser_* tool use taints the turn, not just browser_read", () => {
+  const tainted: Anthropic.MessageParam[] = [
+    user("open gmail"),
+    { role: "assistant", content: [{ type: "tool_use", id: "t1", name: "browser_snapshot", input: {} }] },
+    {
+      role: "user",
+      content: [{
+        type: "tool_result", tool_use_id: "t1",
+        content: "Page title Gmail",
+      }],
+    },
+  ];
+  assert.ok(historyIsTainted(tainted));
+});

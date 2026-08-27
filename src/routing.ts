@@ -22,16 +22,17 @@ import { catalog, defaultBrainId, brainHasKey, type BrainSpec } from "./brain.js
 
 /** Tool results that carry bytes an attacker may control. */
 export const UNTRUSTED_TOOLS = new Set([
-  "browser_read", "check_email", "read_email", "browser_tabs",
+  "check_email", "read_email",
   "http_request", "web_search", "clipboard", "read_file", "landscape",
 ]);
 
 /**
  * Any tool from a third-party MCP server returns bytes that server controls,
  * so every one of them taints the turn — the guard cannot know which are safe.
+ * Every browser_* result is page content (snapshots included), so they all taint.
  */
 function isUntrustedToolName(name: string): boolean {
-  return UNTRUSTED_TOOLS.has(name) || name.startsWith("mcp__");
+  return UNTRUSTED_TOOLS.has(name) || name.startsWith("mcp__") || name.startsWith("browser_");
 }
 
 /**

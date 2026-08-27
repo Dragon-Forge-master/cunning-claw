@@ -129,7 +129,7 @@ Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and 
 | **Sees** | Screenshots the desktop and *looks* at it — reads UI state, verifies its own work |
 | **Operates** | Shell, files, apps, volume, media, clipboard, notifications, window focus, keystrokes |
 | **Browses** | Owns a Chrome profile over CDP — accessibility refs, real mouse/keys, snapshot after every action, Gmail |
-| **Reads mail** | Gmail inbox and search, through that browser session. No credentials handled |
+| **Reads mail** | Gmail through that Chrome session — search operators, category tabs, whole threads, drafts. Send is always an approval. No credentials handled |
 | **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Claw" wake word |
 | **Remembers** | Markdown memory and a dated journal that survive restarts |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
@@ -290,6 +290,7 @@ src/brain.ts     Brain catalogue, failover, /brain pinning
 src/routing.ts   Trusted-brain guard, sticky taint
 src/tools.ts     tool schemas, dispatcher, HARD_DENY
 src/browser.ts   persistent CDP, accessibility refs, Gmail
+src/gmail.ts     search operators, list/thread scrapers, draft/send helpers
 src/doctor.ts    `npm run doctor` — one line per check, every failure names the fix
 packaging/       systemd --user unit (session, not system)
 install.sh       clean-clone setup
