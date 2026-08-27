@@ -47,10 +47,10 @@
       "model": "voices/en_GB-alan-medium.onnx",
       "player": "paplay",
       "sampleRate": 22050,
-      "lengthScale": 1.0,
+      "lengthScale": 0.92,
       "noiseScale": 0.667,
       "noiseWScale": 0.8,
-      "sentenceSilence": 0.25,
+      "sentenceSilence": 0.15,
       "volume": 1.0
     },
     "spd": {
