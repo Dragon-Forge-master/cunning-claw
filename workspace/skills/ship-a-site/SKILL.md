@@ -39,6 +39,53 @@ Then let the user overrule you. A recommendation is not a restriction.
 Anything with a CLI works, because you have a shell. There is no per-provider support to
 wait for.
 
+## Deploy is a shell job, not a tool hunt
+
+You deploy by running a CLI through `run_command`. There is **no special deploy tool** to
+find. A connected Cloudflare **MCP** is for reads and management — listing workers, KV, DNS —
+**it does not deploy**. If you catch yourself reaching for something like
+`deploy_worker_script`, or calling `mcp_status` to look for one, stop: the answer is
+`npx wrangler deploy` in a shell. Do not invent a tool that isn't in your list; use the shell
+you already have.
+
+`wrangler` is already logged in on this machine (the OAuth account tied to Chris's email), so
+there is no login step — just deploy.
+
+### Fastest live URL — a page on the edge
+
+This works — it is a walked path, not a theory. Two files and one command puts a Worker on a
+free subdomain:
+
+```jsonc
+// wrangler.jsonc
+{ "name": "cunningclaw-demo", "main": "worker.js",
+  "compatibility_date": "2025-06-01", "workers_dev": true }
+```
+```js
+// worker.js — the whole page is the response body
+export default { async fetch() {
+  return new Response("<!doctype html>…", { headers: { "content-type": "text/html" } });
+}};
+```
+```bash
+npx wrangler deploy      # prints https://<name>.<subdomain>.workers.dev
+```
+
+Static folder instead of a Worker? `npx wrangler pages deploy ./dist --project-name <name>`
+returns a `<name>.pages.dev` URL.
+
+### Mind what the URL says out loud
+
+A `*.workers.dev` URL is prefixed with the **account's** subdomain, which here is Chris's
+business name (`cjvehiclespecialist`). He does not want that on a public link. So for anything
+someone else will see, **prefer Pages** — `wrangler pages deploy --project-name cunningclaw`
+gives `cunningclaw.pages.dev`, where the URL is the *project* name and the account name never
+appears. Whichever you use, confirm the public name with Chris before you ship — the name is
+part of what goes live, not an afterthought.
+
+Then verify: open the returned URL, screenshot it, and only then report success — a deploy
+that 200s on a blank page is a failure.
+
 > **v0, Lovable, Bolt** generate UI; they are not hosts. If the user brings v0 output, the
 > deploy target is Vercel. Treat generated code as a starting point and read it before
 > shipping it.
