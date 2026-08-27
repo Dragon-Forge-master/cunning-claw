@@ -20,11 +20,42 @@ function flattenToolContent(content: unknown): string {
   return content
     .map((block: any) => {
       if (block?.type === "text") return block.text;
-      if (block?.type === "image") return "[image — not forwarded on the OpenAI-compatible provider; use Anthropic for vision]";
+      // Images are lifted out of the tool result and sent as a separate user
+      // message — see imagesFromToolContent. A `tool` message may only carry
+      // text, so this is the note left in its place.
+      if (block?.type === "image") return "[screenshot attached below]";
       return "";
     })
     .filter(Boolean)
     .join("\n");
+}
+
+/**
+ * Pull image blocks out of a tool result.
+ *
+ * Gemini Flash, Gemini Pro and gpt-4.1-nano all take image input, but the
+ * OpenAI chat schema will not carry an image inside a `tool` message. So the
+ * screenshot travels as a `user` message immediately after the tool result,
+ * which is where the model expects to find it.
+ *
+ * This was dropping every screenshot on the floor: the adapter replaced them
+ * with a "no vision on this provider" note, which was true of the placeholder
+ * and false of the models. Removing Anthropic therefore blinded the assistant,
+ * and it noticed before we did.
+ */
+function imagesFromToolContent(content: unknown): OpenAiChatMessage[] {
+  if (!Array.isArray(content)) return [];
+  const parts = content
+    .filter((b: any) => b?.type === "image" && b?.source?.type === "base64" && b.source.data)
+    .map((b: any) => ({
+      type: "image_url" as const,
+      image_url: { url: `data:${b.source.media_type || "image/png"};base64,${b.source.data}` },
+    }));
+  if (!parts.length) return [];
+  return [{
+    role: "user",
+    content: [{ type: "text" as const, text: "Screenshot from the tool call above." }, ...parts] as any,
+  }];
 }
 
 /** Convert stored Anthropic-shaped history into OpenAI chat messages. */
@@ -46,6 +77,8 @@ export function toOpenAiMessages(
             tool_call_id: block.tool_use_id,
             content: flattenToolContent(block.content),
           });
+          // The image cannot ride inside the tool message, so it follows it.
+          out.push(...imagesFromToolContent(block.content));
         }
       }
       continue;
