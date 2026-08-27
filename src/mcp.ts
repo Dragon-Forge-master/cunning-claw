@@ -393,6 +393,28 @@ export async function connectAll(log: (line: string) => void = () => {}): Promis
   return discovered;
 }
 
+/** Attach one server without dropping the others. Used by the HUD Connectors page. */
+export async function connectOne(cfg: McpServerConfig, log: (line: string) => void = () => {}): Promise<void> {
+  discovered = discovered.filter((t) => t.serverId !== cfg.id);
+  const old = connections.get(cfg.id);
+  if (old) {
+    old.stop();
+    connections.delete(cfg.id);
+  }
+  states = states.filter((s) => s.id !== cfg.id);
+  await attach(cfg, log);
+}
+
+export function disconnectOne(id: string): void {
+  const old = connections.get(id);
+  if (old) {
+    old.stop();
+    connections.delete(id);
+  }
+  discovered = discovered.filter((t) => t.serverId !== id);
+  states = states.filter((s) => s.id !== id);
+}
+
 /** Test/helper: connect an explicit list (does not reload config files). */
 export async function connectServers(servers: McpServerConfig[], log: (line: string) => void = () => {}): Promise<McpTool[]> {
   discovered = [];

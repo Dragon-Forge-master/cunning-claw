@@ -17,10 +17,10 @@
       <div class="header-controls">
         <div id="brain-picker" class="brain-picker" title="Which model thinks. Same tools on every brain."></div>
         <button id="skills-toggle" class="ctl" title="Capabilities — click to arm a skill">SKILLS</button>
+        <button id="mcp-toggle" class="ctl" title="Connectors — MCP servers such as Canva, GitHub, Notion">CONNECT<span id="mcp-badge" class="hdr-badge" hidden></span></button>
         <button id="preview-toggle" class="ctl" title="In-HUD browser viewport">VIEWPORT</button>
         <button id="tts-toggle" class="ctl active" title="Voice output">VOICE</button>
         <button id="wake-toggle" class="ctl" title="Always listening for 'Claw'">WAKE</button>
-        <button id="mcp-toggle" class="ctl" title="Connected MCP servers">MCP</button>
         <a href="/board" class="ctl" title="The Forge Board" style="text-decoration:none;line-height:1.9">BOARD</a>
         <button id="stop-btn" class="ctl" title="Abandon the request in flight" style="display:none">STOP</button>
         <button id="reset-btn" class="ctl" title="Clear conversation">RESET</button>
@@ -99,25 +99,47 @@
     </div>
   </div>
 
-
-  <div id="mcp-panel" class="overlay" style="display:none">
-    <div class="overlay-card">
-      <div class="overlay-head">
-        <span class="panel-title">MCP SERVERS</span>
-        <button id="mcp-close" class="ctl">CLOSE</button>
+  <div id="mcp-overlay" hidden>
+    <div class="mcp-sheet">
+      <div class="mcp-head">
+        <div>
+          <div class="panel-title">CONNECTORS</div>
+          <p class="mcp-hint">MCP servers Cunning Claw can use. Same <code>mcpServers</code> files as Claude Code. Sign-in opens the system browser — never at boot.</p>
+        </div>
+        <div class="mcp-head-actions">
+          <input id="mcp-search" type="search" placeholder="Search connectors" autocomplete="off">
+          <button type="button" id="mcp-add-toggle" class="ctl">ADD</button>
+          <button type="button" id="mcp-close" class="ctl">CLOSE</button>
+        </div>
       </div>
-      <div id="mcp-list"></div>
-      <div class="mcp-add">
-        <div class="panel-title" style="margin-top:14px">ADD A SERVER</div>
-        <p class="mcp-hint">Paste a server snippet from any vendor's docs — the same
-          <code>{ "mcpServers": { … } }</code> JSON you'd give Claude Code.</p>
-        <textarea id="mcp-snippet" spellcheck="false" placeholder='{ "mcpServers": { "notion": { "type": "http", "url": "https://mcp.notion.com/mcp" } } }'></textarea>
-        <button id="mcp-add-btn" class="ctl">ADD &amp; CONNECT</button>
-        <span id="mcp-add-msg" class="mcp-hint"></span>
+      <p id="mcp-banner" class="mcp-banner" hidden></p>
+      <form id="mcp-add-form" class="mcp-add" hidden>
+        <div class="mcp-add-grid">
+          <label>Id <input name="id" placeholder="canva" spellcheck="false"></label>
+          <label>URL <input name="url" placeholder="https://mcp.canva.com/mcp" spellcheck="false"></label>
+          <label>Command <input name="command" placeholder="npx" spellcheck="false"></label>
+          <label>Args <input name="args" placeholder="-y mcp-remote@latest https://…" spellcheck="false"></label>
+        </div>
+        <label class="mcp-paste">Paste a Claude / Cursor snippet
+          <textarea name="paste" rows="6" placeholder='{ "mcpServers": { "canva": { "type": "http", "url": "https://mcp.canva.com/mcp" } } }' spellcheck="false"></textarea>
+        </label>
+        <div class="mcp-add-btns">
+          <button type="submit" class="ctl active">SAVE</button>
+          <button type="button" id="mcp-add-cancel" class="ctl">CANCEL</button>
+        </div>
+      </form>
+      <div class="mcp-popular-label">Popular</div>
+      <div id="mcp-popular" class="mcp-popular"></div>
+      <div id="mcp-tabs" class="mcp-tabs" role="tablist">
+        <button type="button" class="mcp-tab active" data-filter="all">All</button>
+        <button type="button" class="mcp-tab" data-filter="connected">Connected</button>
+        <button type="button" class="mcp-tab" data-filter="not_connected">Not connected</button>
       </div>
+      <div id="mcp-table" class="mcp-table"></div>
     </div>
   </div>
 
   <script src="app.js"></script>
+  <script src="connectors.js"></script>
 </body>
 </html>
