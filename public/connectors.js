@@ -161,9 +161,9 @@
     head.innerHTML = "<span>Connector</span><span>Type</span><span>Status</span><span></span>";
     root.appendChild(head);
 
-    const order = snapshot.categories && snapshot.categories.length
+    const order = (snapshot.categories && snapshot.categories.length
       ? snapshot.categories
-      : [...new Set(rows.map((c) => c.category || "Custom"))];
+      : [...new Set(rows.map((c) => c.category).filter(Boolean))]);
     const groups = new Map();
     for (const c of rows) {
       const cat = c.category || "Custom";
@@ -174,7 +174,7 @@
       ...order.filter((c) => groups.has(c)),
       ...[...groups.keys()].filter((c) => !order.includes(c)),
     ];
-    const showGroups = category === "all" && !search && cats.length > 1;
+    const showGroups = !search;
 
     function appendRow(c) {
       const row = document.createElement("div");
@@ -208,7 +208,7 @@
       if (showGroups) {
         const g = document.createElement("div");
         g.className = "mcp-group";
-        g.textContent = cat;
+        g.textContent = `${cat} · ${groups.get(cat).length}`;
         root.appendChild(g);
       }
       for (const c of groups.get(cat)) appendRow(c);

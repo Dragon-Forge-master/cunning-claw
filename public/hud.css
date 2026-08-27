@@ -301,7 +301,10 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
 .mcp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
 .mcp-hint { font-size: 11px; color: var(--cyan-dim); line-height: 1.5; margin-top: 6px; max-width: 560px; }
 .mcp-hint code { color: var(--cyan); }
-.mcp-count { font-size: 11px; color: var(--cyan); letter-spacing: 1px; margin-top: 6px; }
+.mcp-count {
+  display: inline; font-size: 11px; letter-spacing: 1px; color: var(--cyan);
+  margin-left: 10px; text-transform: none;
+}
 .mcp-head-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 #mcp-search {
   width: 200px; background: rgba(53,214,237,0.05); border: 1px solid var(--cyan-dim);
@@ -341,17 +344,29 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
 }
 .mcp-pop .pop-name { color: var(--cyan); font-size: 13px; letter-spacing: 1px; }
 .mcp-pop .pop-blurb { font-size: 11px; color: var(--cyan-dim); line-height: 1.4; flex: 1; }
-.mcp-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--cyan-dim); padding-bottom: 8px; }
+.mcp-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
 .mcp-tab, .mcp-cat {
   background: transparent; border: 1px solid transparent; color: var(--cyan-dim);
   font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 4px 10px; cursor: pointer;
 }
-.mcp-tab.active, .mcp-cat.active { border-color: var(--cyan); color: var(--cyan); }
-.mcp-cats { display: flex; flex-wrap: wrap; gap: 4px; }
-.mcp-cat { font-size: 10px; padding: 3px 8px; border: 1px solid rgba(26,108,122,0.55); }
+.mcp-tab.active, .mcp-cat.active { border-color: var(--cyan); color: var(--cyan); background: rgba(53,214,237,0.08); }
+.mcp-cats {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  border-bottom: 1px solid var(--cyan-dim); padding-bottom: 10px;
+}
+.mcp-cat {
+  font-size: 11px; padding: 5px 10px;
+  border: 1px solid var(--cyan-dim); color: var(--cyan);
+  background: rgba(53,214,237,0.04);
+}
+.mcp-cat.active { background: rgba(53,214,237,0.16); }
 .mcp-group {
-  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--amber); padding: 16px 8px 6px;
+  grid-column: 1 / -1;
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--amber); padding: 10px 10px;
+  margin-top: 8px;
+  background: rgba(255,180,84,0.08);
+  border-left: 2px solid var(--amber);
 }
 .mcp-table { display: flex; flex-direction: column; gap: 0; }
 .mcp-cols, .mcp-row {
