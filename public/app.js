@@ -158,23 +158,68 @@ if (!SR) {
   micBtn.title = "Speech recognition not supported in this browser";
   $("wake-toggle").classList.add("unsupported");
 } else {
+  /**
+   * The mic is a dictaphone, not a trigger.
+   *
+   * It used to send on the browser's first result — which arrives the moment
+   * you pause for breath, not when you have finished your sentence. So a
+   * thought got cut in half and posted before you could see it. Now speech goes
+   * into the input box, you read it, correct it if the transcription mangled a
+   * word, and press SEND when you mean it.
+   */
+  const input = $("msg-input");
+  let dictationBase = "";   // whatever was already typed before the mic opened
+  let finalSpeech = "";     // utterances the recogniser has committed
+
+  const paint = (interim) => {
+    const parts = [dictationBase, finalSpeech, interim].map((s) => s.trim()).filter(Boolean);
+    input.value = parts.join(" ");
+  };
+
+  const stopDictation = () => {
+    recognizer = null;
+    micBtn.classList.remove("listening");
+    if (state === "LISTENING") setState("STANDBY");
+    paint("");                 // drop any uncommitted interim text
+    input.placeholder = "At your service, sir…";
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  };
+
   micBtn.addEventListener("click", () => {
     if (recognizer) { recognizer.stop(); return; }
+
+    dictationBase = input.value;
+    finalSpeech = "";
+
     recognizer = new SR();
     recognizer.lang = "en-GB";
-    recognizer.interimResults = false;
+    // Keep listening through the pauses; a pause is not the end of a thought.
+    recognizer.continuous = true;
+    // Show the words landing, so it is obvious it is hearing you.
+    recognizer.interimResults = true;
+
     recognizer.onresult = (e) => {
-      const text = e.results[0][0].transcript.trim();
-      if (text) sendMessage(text);
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const chunk = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalSpeech += (finalSpeech ? " " : "") + chunk.trim();
+        else interim += chunk;
+      }
+      paint(interim);
     };
-    recognizer.onend = () => {
-      recognizer = null;
-      micBtn.classList.remove("listening");
-      if (state === "LISTENING") setState("STANDBY");
+
+    recognizer.onend = stopDictation;
+    recognizer.onerror = (e) => {
+      if (e.error !== "aborted" && e.error !== "no-speech") {
+        addMsg("system", `⚠ Microphone: ${e.error}`);
+      }
+      stopDictation();
     };
-    recognizer.onerror = () => {};
+
     micBtn.classList.add("listening");
     setState("LISTENING");
+    input.placeholder = "listening — press the mic again when you're done";
     recognizer.start();
   });
 }
