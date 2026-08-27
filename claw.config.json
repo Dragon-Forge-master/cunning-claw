@@ -240,7 +240,7 @@
   "mcp": {
     "enabled": true,
     "timeoutMs": 30000,
-    "maxToolsPerServer": 12,
+    "maxToolsPerServer": 80,
     "maxResultChars": 12000,
     "servers": []
   },

@@ -130,11 +130,12 @@ export interface ClawConfig {
     maxResultChars: number;
     servers: {
       id: string;
-      transport: "stdio" | "http";
+      transport: "stdio" | "http" | "sse";
       command?: string;
       args?: string[];
       url?: string;
       env?: Record<string, string>;
+      headers?: Record<string, string>;
       allow?: string[];
       writeTools?: string[];
     }[];

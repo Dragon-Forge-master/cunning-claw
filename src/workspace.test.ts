@@ -24,6 +24,7 @@ test("ships agentskills.io skills", () => {
     "browser-hands",
     "linux-box",
     "inbox-triage",
+    "mcp-hands",
     "web-research",
     "house-control",
     "security-pass",

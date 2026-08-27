@@ -211,8 +211,30 @@ export const toolDefinitions: Anthropic.Tool[] = [
   {
     name: "system_status",
     description:
-      "Get live system telemetry: CPU load, memory, disk usage, uptime, and top processes.",
+      "Get live system telemetry: CPU load, memory, disk usage, uptime, install path, and MCP servers.",
     input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "mcp_status",
+    description:
+      "List configured MCP servers (Canva, GitHub, Notion, …) and their tools. " +
+      "Use when Chris asks which MCPs are connected, or before mcp_login.",
+    input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "mcp_login",
+    description:
+      "Open the browser so Chris can sign in to a remote MCP server (OAuth), then reconnect it. " +
+      "Use when mcp_status says needs_auth, or Chris says 'connect Canva' / 'log into Notion'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        server: { type: "string", description: "Server id, e.g. canva" },
+      },
+      required: ["server"],
+      additionalProperties: false,
+    },
+    strict: true,
   },
   {
     name: "set_volume",
@@ -1042,7 +1064,17 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         return `Viewport open: ${opened.url}`;
       }
       case "open": return await openTool(input);
-      case "system_status": return await systemStatusText();
+      case "system_status": return `${await systemStatusText()}\n${mcp.mcpStatusText()}`;
+      case "mcp_status": return mcp.mcpStatusText();
+      case "mcp_login": {
+        const id = String(input.server ?? "");
+        const ok = await ctx.requestApproval(
+          `Sign in to MCP server "${id}"`,
+          "This opens the system browser for OAuth (Canva, Notion, …) and listens on 127.0.0.1 for the callback.",
+        );
+        if (!ok) return "The user declined MCP sign-in.";
+        return await mcp.loginMcp(id);
+      }
       case "set_volume": return await desktop.setVolume(input);
       case "get_weather": return await getWeather(input);
       case "memory_save": return remember(input.key, input.value);

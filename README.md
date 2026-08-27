@@ -192,8 +192,38 @@ API; loopback and private-range hosts skip the key check entirely.
 
 ## MCP
 
-Any [MCP](https://modelcontextprotocol.io) server becomes CUNNING CLAW tools — GitHub, Postgres,
-Slack, Puppeteer, Blender, your own. Add it to `claw.config.json`:
+Cunning Claw speaks the same `mcpServers` files Claude Code and Cursor use, over the
+same transports: **stdio** (a local subprocess) and **Streamable HTTP** (a remote URL,
+with `Mcp-Session-Id` and `MCP-Protocol-Version: 2025-03-26`). That is how Canva,
+Notion, Figma, and the rest of the hosted catalogue work — not a one-shot POST.
+
+Put servers in any of these (first id wins):
+
+1. `claw.config.json` → `mcp.servers`
+2. `~/.config/cunningclaw/mcp.json` (the one to copy snippets into)
+3. `<this install>/.mcp.json`
+4. `~/.claude.json` (Claude Code user-scope, plus a matching project block)
+5. `~/.cursor/mcp.json`
+
+Canva is a hosted server. Nothing to install. Copy `docs/mcp.example.json` to
+`~/.config/cunningclaw/mcp.json`, restart, then in the HUD: *connect Canva*.
+`mcp_login` opens the **system** browser for OAuth (PKCE + dynamic registration)
+and listens on `127.0.0.1`. Sign-in is never started at boot — systemd has no
+browser. After that, tools show up as `mcp__canva__…`.
+
+If Canva (or another vendor) only allowlists Claude/ChatGPT as OAuth clients,
+use the stdio bridge instead (`docs/mcp.canva-remote.example.json`). Same tools,
+local `mcp-remote` process, its own browser dance.
+
+```jsonc
+{
+  "mcpServers": {
+    "canva": { "type": "http", "url": "https://mcp.canva.com/mcp" }
+  }
+}
+```
+
+The older `claw.config.json` array still works:
 
 ```jsonc
 "mcp": {
@@ -201,11 +231,12 @@ Slack, Puppeteer, Blender, your own. Add it to `claw.config.json`:
   "servers": [
     { "id": "github", "transport": "stdio",
       "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" } },
-    { "id": "vendor", "transport": "http", "url": "https://example.com/mcp" }
+      "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" } }
   ]
 }
 ```
+
+`${VAR}` and `${VAR:-default}` expand in command, args, env, url, and headers.
 
 Tools arrive namespaced (`mcp__github__create_issue`) so a server cannot shadow a built-in.
 The client is hand-rolled — MCP is JSON-RPC, and the official SDK brings ten dependencies
@@ -217,7 +248,7 @@ Three consequences are handled for you: tool *descriptions* are written by the s
 reach the system prompt, so they are sanitised and length-capped; tool *results* are
 attacker-controlled and come back `<untrusted>`-fenced; and any MCP call taints the turn,
 so it can never be handled by a cheap brain. Writes are approval-gated unless you list them
-as read-only.
+as read-only. Ask `mcp_status` any time.
 
 ## Authentication
 
