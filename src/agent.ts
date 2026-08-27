@@ -8,6 +8,7 @@ import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
 import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted, suggestCheapBrain } from "./routing.js";
 import { containsSecret, redactDeep, isCleanBase64 } from "./redact.js";
 import { clearTaskGrant } from "./consequence.js";
+import * as coherence from "./coherence.js";
 import { toolDefinitions as mcpToolDefinitions } from "./mcp.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
 import { pinnedBrainId, pickBrain, nextBrain, isFailoverError, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
@@ -438,6 +439,11 @@ export async function runTurn(
   // identical tool invocations within a turn and force a pivot at the limit.
   const attempts = new Map<string, number>();
 
+  // Chris's repetition ratio, from the Quantum Coherence Kernel: the Ouroboros
+  // guard catches an identical call, this catches circling — the same move in
+  // different clothes.
+  const shapes: string[] = [];
+
   try {
     let finalText = "";
     // Manual agentic loop: stream each iteration, execute tools between them.
@@ -518,8 +524,24 @@ export async function runTurn(
             };
           }
 
+          shapes.push(coherence.signature(tu.name, tu.input));
+          const reading = coherence.read(shapes);
+          if (reading.verdict === "halt") {
+            events.emit("notice", { message: coherence.notice(reading) });
+            return {
+              type: "tool_result" as const,
+              tool_use_id: tu.id,
+              content: coherence.notice(reading),
+              is_error: true,
+            };
+          }
+
           events.emit("tool_start", { name: tu.name, input: tu.input });
           const result = await executeTool(tu.name, tu.input, ctx);
+          const nudge = coherence.read(shapes).verdict === "ruminate"
+            ? "\n\n" + coherence.notice(coherence.read(shapes))
+            : "";
+
           const preview = typeof result === "string"
             ? (result.length > 400 ? result.slice(0, 400) + "…" : result)
             : result.map((b) => b.type === "image" ? "[image]" : b.text).join(" ").slice(0, 400);
@@ -527,7 +549,7 @@ export async function runTurn(
           return {
             type: "tool_result" as const,
             tool_use_id: tu.id,
-            content: result,
+            content: typeof result === "string" && nudge ? result + nudge : result,
           };
         }),
       );

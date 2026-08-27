@@ -78,7 +78,14 @@ export interface ClawConfig {
   };
   http: { allowlist: string[]; timeoutMs: number; maxResponseChars: number };
   homeAssistant: { enabled: boolean; baseUrl: string; tokenEnv: string };
-  coherence: { ouroborosLimit: number; maxIterations: number };
+  coherence: {
+    ouroborosLimit: number;
+    maxIterations: number;
+    /** Repetition ratio at which to nudge, and at which to stop. */
+    repetitionWarn?: number;
+    repetitionHalt?: number;
+    minStepsBeforeJudging?: number;
+  };
   heartbeat: { enabled: boolean; intervalMinutes: number };
   /**
    * Named brains that all share the same tools. One butler, several models.

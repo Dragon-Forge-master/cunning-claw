@@ -105,7 +105,10 @@
   },
   "coherence": {
     "ouroborosLimit": 2,
-    "maxIterations": 25
+    "maxIterations": 25,
+    "repetitionWarn": 0.4,
+    "repetitionHalt": 0.6,
+    "minStepsBeforeJudging": 4
   },
   "heartbeat": {
     "enabled": true,
