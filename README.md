@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-111%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-146%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS%20·%20windows-supported-35d6ed?style=for-the-badge)
 
@@ -108,7 +108,7 @@ Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and 
   ▸ brain    flash · google/gemini-2.5-flash (openrouter)
   ▸ voice    piper · en_GB-alan-medium
   ▸ pulse    every 30m
-  ▸ tools    36 available
+  ▸ tools    browser refs · desktop · shell
 
   At your service, sir.
 ```
@@ -128,7 +128,7 @@ Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and 
 |---|---|
 | **Sees** | Screenshots the desktop and *looks* at it — reads UI state, verifies its own work |
 | **Operates** | Shell, files, apps, volume, media, clipboard, notifications, window focus, keystrokes |
-| **Browses** | Drives its own Chrome over the DevTools Protocol — opens, reads, clicks, types |
+| **Browses** | Owns a Chrome profile over CDP — accessibility refs, real mouse/keys, snapshot after every action, Gmail |
 | **Reads mail** | Gmail inbox and search, through that browser session. No credentials handled |
 | **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Claw" wake word |
 | **Remembers** | Markdown memory and a dated journal that survive restarts |
@@ -288,8 +288,8 @@ public/          HUD — vanilla JS, canvas arc reactor, SSE client
 src/agent.ts     Streaming agent loop, Ouroboros guard
 src/brain.ts     Brain catalogue, failover, /brain pinning
 src/routing.ts   Trusted-brain guard, sticky taint
-src/tools.ts     36 tools + the command policy
-src/browser.ts   Chrome via DevTools Protocol + Gmail
+src/tools.ts     tool schemas, dispatcher, HARD_DENY
+src/browser.ts   persistent CDP, accessibility refs, Gmail
 src/doctor.ts    `npm run doctor` — one line per check, every failure names the fix
 packaging/       systemd --user unit (session, not system)
 install.sh       clean-clone setup

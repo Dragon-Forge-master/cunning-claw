@@ -21,6 +21,7 @@ test("ships agentskills.io skills", () => {
     "landscape-watch",
     "code-on-this-machine",
     "desk-hands",
+    "browser-hands",
     "linux-box",
     "inbox-triage",
     "web-research",
