@@ -235,17 +235,17 @@ test("HTTP 401 at boot is needs_auth, not a browser popup", async () => {
   }
 });
 
-test("read-only MCP tools do not raise an approval card; writes and unknowns do", async () => {
-  const { default: _ } = await import("./mcp.js").then(m => ({ default: m })).catch(() => ({ default: null })) as any;
-  // decideMcpApproval is internal; assert its behaviour through the exported
-  // needsApproval contract via a synthetic discovered set would need wiring.
-  // Instead, pin the verb rule that drives it, since that is what regressed.
-  const READ = /(^|[^a-z])(get|list|read|search|fetch|find|query|lookup|browse|view|describe)([^a-z]|$)/i;
-  // The bug: "web-search" (verb at the end, hyphen) was treated as a write.
-  assert.ok(READ.test("web-search"), "web-search must read");
-  assert.ok(READ.test("list_files"), "list_files must read");
-  assert.ok(READ.test("fetchPage"), "fetchPage must read");
-  assert.ok(!READ.test("send_message"), "send must not read");
-  assert.ok(!READ.test("create_issue"), "create must not read");
-  assert.ok(!READ.test("delete"), "delete must not read");
+test("MCP approval: a write word gates, else a read word frees, else ask", () => {
+  const tok = (n: string) => n.replace(/([a-z])([A-Z])/g, "$1 $2").split(/[^a-zA-Z]+/).filter(Boolean).map(w => w.toLowerCase());
+  const READ = new Set(["get","list","read","search","fetch","find","query","lookup","browse","view","describe","count","check"]);
+  const WRITE = new Set(["send","create","delete","remove","update","post","put","write","edit","add","set","move","rename","drop","insert","publish","upload","execute","run","invoke","trigger","pay","buy","cancel","archive","close","merge"]);
+  const gated = (n: string) => { const w = tok(n); if (w.some(x=>WRITE.has(x))) return true; if (w.some(x=>READ.has(x))) return false; return true; };
+  assert.equal(gated("web-search"), false, "web-search is read-only");
+  assert.equal(gated("list_files"), false);
+  assert.equal(gated("fetchPage"), false);
+  assert.equal(gated("send_message"), true);
+  assert.equal(gated("create_issue"), true);
+  assert.equal(gated("delete"), true);
+  assert.equal(gated("search_and_delete"), true, "a compound with a write word gates");
+  assert.equal(gated("frobnicate"), true, "an unrecognised tool asks");
 });

@@ -252,18 +252,38 @@ function sanitiseDescription(raw: unknown): string {
 }
 
 /** `mcp__github__create_issue` — namespaced so servers cannot shadow built-ins. */
-/** A read verb as a whole word — catches web-search, list_files, fetchPage, get-thing. */
-const MCP_READ_VERB = /(^|[^a-z])(get|list|read|search|fetch|find|query|lookup|browse|view|describe)([^a-z]|$)/i;
+const MCP_READ_VERBS = new Set([
+  "get", "list", "read", "search", "fetch", "find", "query", "lookup", "browse", "view", "describe", "count", "check",
+]);
+/** Verbs that mean the world changes. Any of these, anywhere, forces a card. */
+const MCP_WRITE_VERBS = new Set([
+  "send", "create", "delete", "remove", "update", "post", "put", "write", "edit",
+  "add", "set", "move", "rename", "drop", "insert", "publish", "upload", "execute",
+  "run", "invoke", "trigger", "pay", "buy", "cancel", "archive", "close", "merge",
+]);
+
+/** Split a tool name into words across separators and camelCase: webSearch, web-search, web_search → [web, search]. */
+function tokens(name: string): string[] {
+  return name
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .split(/[^a-zA-Z]+/)
+    .filter(Boolean)
+    .map((w) => w.toLowerCase());
+}
 
 /**
  * Whether an MCP tool needs an approval card. writeTools always gates,
- * readTools never does; otherwise a name that clearly reads runs free and
- * anything unrecognised asks — third-party code, so unknown means a card.
+ * readTools never does; otherwise a name whose first word is a read verb runs
+ * free and anything unrecognised asks — third-party code, so unknown means a
+ * card. The first word matters: "search" reads, "search_and_delete" does not.
  */
 function decideMcpApproval(name: string, writes: Set<string>, reads: Set<string>): boolean {
-  if (writes.has(name)) return true;
-  if (reads.has(name)) return false;
-  return !MCP_READ_VERB.test(name);
+  if (writes.has(name)) return true;      // operator said: this one writes
+  if (reads.has(name)) return false;      // operator said: this one is safe
+  const words = tokens(name);
+  if (words.some((w) => MCP_WRITE_VERBS.has(w))) return true;  // any write word → card
+  if (words.some((w) => MCP_READ_VERBS.has(w))) return false;  // otherwise a read word → free
+  return true;                            // unrecognised third-party tool → ask
 }
 
 export function localName(serverId: string, remote: string): string {
