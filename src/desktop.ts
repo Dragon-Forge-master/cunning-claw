@@ -233,10 +233,90 @@ export async function screenshot(target: "screen" | "window" = "screen", windowN
   const final = await downscale(raw, out);
   const data = fs.readFileSync(final).toString("base64");
   const kb = Math.round(fs.statSync(final).size / 1024);
+
+  // Report the geometry rather than leaving it to be worked out.
+  //
+  // The screenshot is downscaled to keep the token cost sane, so a coordinate
+  // read off the image is not a screen coordinate. Cunning Claw had derived the
+  // conversion factor by hand and written it into its own memory — which works
+  // until the resolution changes and the remembered number is silently wrong.
+  const shot = imageSize(final);
+  const screen = await displaySize();
+  const scale = shot && screen ? screen.w / shot.w : null;
+  lastShot = shot && screen && target === "screen"
+    ? { imageW: shot.w, imageH: shot.h, screenW: screen.w, screenH: screen.h }
+    : null;
+
+  const where = target === "window" ? windowName ?? "active window" : "the screen";
+  const geometry = shot && screen
+    ? target === "window"
+      ? ` The image is ${shot.w}x${shot.h}; it is a window capture, so do NOT derive click ` +
+        `coordinates from it — take a full-screen shot and use click_at instead.`
+      : ` The image is ${shot.w}x${shot.h} and the screen is ${screen.w}x${screen.h} ` +
+        `(scale ${scale!.toFixed(4)}). Use click_at with coordinates read straight off this ` +
+        `image — it converts for you. Do not do the arithmetic yourself.`
+    : "";
+
   return [
     { type: "image", source: { type: "base64", media_type: "image/png", data } },
-    { type: "text", text: `[screenshot of ${target === "window" ? windowName ?? "active window" : "the screen"}, ${kb}KB]` },
+    { type: "text", text: `[screenshot of ${where}, ${kb}KB.${geometry}]` },
   ];
+}
+
+/** Geometry of the last full-screen capture, so click_at can convert. */
+let lastShot: { imageW: number; imageH: number; screenW: number; screenH: number } | null = null;
+
+export function lastShotGeometry() {
+  return lastShot;
+}
+
+/** PNG dimensions straight from the IHDR header — no decoder needed. */
+function imageSize(file: string): { w: number; h: number } | null {
+  try {
+    const buf = fs.readFileSync(file).subarray(0, 33);
+    if (buf.readUInt32BE(12) !== 0x49484452) return null; // "IHDR"
+    return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+  } catch {
+    return null;
+  }
+}
+
+async function displaySize(): Promise<{ w: number; h: number } | null> {
+  try {
+    const { stdout } = await execFileAsync("xdotool", ["getdisplaygeometry"], { timeout: 5000 });
+    const [w, h] = stdout.trim().split(/\s+/).map(Number);
+    return w && h ? { w, h } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Click a point read off the last full-screen screenshot.
+ *
+ * The whole point is that the caller never converts. It reads a coordinate off
+ * the image it was shown and says so; the scale is applied here, where the two
+ * sizes are actually known.
+ */
+export async function clickAt(imageX: number, imageY: number, button = 1): Promise<string> {
+  if (host() === "other") return unsupportedDesktop();
+  if (!lastShot) {
+    return "No full-screen screenshot to measure against. Take one with take_screenshot first.";
+  }
+  const sx = Math.round(imageX * (lastShot.screenW / lastShot.imageW));
+  const sy = Math.round(imageY * (lastShot.screenH / lastShot.imageH));
+
+  if (sx < 0 || sy < 0 || sx > lastShot.screenW || sy > lastShot.screenH) {
+    return `That lands at ${sx},${sy}, which is off a ${lastShot.screenW}x${lastShot.screenH} screen. ` +
+      `Coordinates should be read off the image (${lastShot.imageW}x${lastShot.imageH}).`;
+  }
+
+  if (host() === "win32") {
+    return "click_at is not wired for Windows yet.";
+  }
+  if (!(await hasBin("xdotool"))) return missing("xdotool");
+  await execFileAsync("xdotool", ["mousemove", String(sx), String(sy), "click", String(button)], { timeout: 8000 });
+  return `Clicked image ${imageX},${imageY} → screen ${sx},${sy}.`;
 }
 
 function installOr(tool: string): string {

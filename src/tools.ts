@@ -371,6 +371,24 @@ export const toolDefinitions: Anthropic.Tool[] = [
     strict: true,
   },
   {
+    name: "click_at",
+    description:
+      "Click a point you read off the last full-screen screenshot. Give the coordinates " +
+      "exactly as they appear in that image — the scaling to real screen pixels is done " +
+      "for you. Do not convert them yourself. Requires user approval.",
+    input_schema: {
+      type: "object",
+      properties: {
+        x: { type: "number", description: "X in image pixels, as seen in the screenshot" },
+        y: { type: "number", description: "Y in image pixels, as seen in the screenshot" },
+        button: { type: "number", description: "1 left (default), 2 middle, 3 right" },
+      },
+      required: ["x", "y"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
     name: "list_windows",
     description: "List the titles of all open desktop windows.",
     input_schema: { type: "object", properties: {}, additionalProperties: false },
@@ -807,6 +825,14 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "check_email": return await browser.checkEmail(input.query);
       case "read_email": return await browser.readEmail(input.index);
       case "take_screenshot": return await desktop.screenshot(input.target ?? "screen", input.windowName);
+      case "click_at": {
+        const ok = await ctx.requestApproval(
+          "Click on the desktop",
+          `At image coordinates ${input.x}, ${input.y}`,
+        );
+        if (!ok) return "The user declined the click.";
+        return await desktop.clickAt(Number(input.x), Number(input.y), Number(input.button ?? 1));
+      }
       case "list_windows": return await desktop.listWindows();
       case "focus_window": return await desktop.focusWindow(input.name);
       case "press_keys": {

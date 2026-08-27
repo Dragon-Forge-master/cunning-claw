@@ -27,7 +27,15 @@ xdotool getwindowgeometry <id>                # Position: X,Y  Geometry: WxH
 xdotool getdisplaygeometry
 ```
 
-`take_screenshot` with `target: window`, `windowName: WhatsApp` returns an image that is **scaled** relative to the real window. Convert image pixels → screen pixels:
+**Use `click_at`.** Take a full-screen `take_screenshot`, read the coordinate straight off
+that image, and pass it to `click_at` — it converts to screen pixels itself, using the sizes
+it actually measured. Do not work the scale out by hand and do not remember a scale factor;
+a remembered number goes silently wrong the moment the resolution changes.
+
+Window-target screenshots are non-uniformly scaled (the frame is included), so never derive
+click coordinates from one. Full-screen only.
+
+Historic note — the manual conversion this replaced:
 
 ```
 scale   = window_width / image_width
