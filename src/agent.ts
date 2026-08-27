@@ -613,7 +613,7 @@ export async function runTurn(
 
     let msg = "Something went wrong.";
     if (err instanceof Anthropic.AuthenticationError) {
-      msg = "My API credentials appear to be invalid, sir. Check ANTHROPIC_API_KEY in .env.";
+      msg = "My API credentials appear to be invalid, sir. Check the API key in .env for the active brain.";
     } else if (err instanceof Anthropic.RateLimitError) {
       msg = "We've hit the API rate limit. A brief pause is in order.";
     } else if (err instanceof Anthropic.APIError) {

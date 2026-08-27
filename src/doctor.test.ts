@@ -26,6 +26,8 @@ test("Node 22 is the floor", () => {
 test("placeholder keys do not count as present", () => {
   process.env.CLAW_DOCTOR_TEST_KEY = "sk-ant-...";
   assert.equal(envLooksSet("CLAW_DOCTOR_TEST_KEY"), false);
+  process.env.CLAW_DOCTOR_TEST_KEY = "sk-or-...";
+  assert.equal(envLooksSet("CLAW_DOCTOR_TEST_KEY"), false);
   process.env.CLAW_DOCTOR_TEST_KEY = "sk-ant-api03-realishvaluewithenoughchars";
   assert.equal(envLooksSet("CLAW_DOCTOR_TEST_KEY"), true);
   delete process.env.CLAW_DOCTOR_TEST_KEY;
@@ -34,8 +36,8 @@ test("placeholder keys do not count as present", () => {
 test("no-key guide names the file, the env var, and where to get a key", () => {
   const g = noKeyGuide();
   assert.match(g, /cp \.env\.example \.env/);
-  assert.match(g, /ANTHROPIC_API_KEY=/);
-  assert.match(g, /console\.anthropic\.com/);
+  assert.match(g, /OPENROUTER_API_KEY=/);
+  assert.match(g, /openrouter\.ai\/keys/);
   assert.match(g, /ollama pull/);
 });
 

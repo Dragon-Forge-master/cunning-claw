@@ -58,12 +58,12 @@ were being had. Which is exactly what this does when a web page tries to give it
 One command from a clean clone:
 
 ```bash
-git clone https://github.com/Dragon-Forge-master/cunningclaw.git
-cd cunningclaw
+git clone https://github.com/Dragon-Forge-master/jarvis.git
+cd jarvis
 ./install.sh
 ```
 
-That checks Node 22+, runs `npm install`, creates `.env` from the example, asks for an Anthropic key, offers the offline voice, runs `npm run doctor`, and prints how to start.
+That checks Node 22+, runs `npm install`, creates `.env` from the example, asks for an OpenRouter key, offers the offline voice, runs `npm run doctor`, and prints how to start.
 
 Then `npm run dev` and open **http://127.0.0.1:3900**. It binds to loopback only — nothing is exposed to your network.
 
@@ -82,7 +82,7 @@ The template lives at `packaging/cunningclaw.service`. macOS: keep `npm run dev`
 
 ```bash
 npm install
-cp .env.example .env        # add your ANTHROPIC_API_KEY
+cp .env.example .env        # add your OPENROUTER_API_KEY
 ./setup-voice.sh            # neural voice, ~60MB, fully offline
 npm run doctor
 npm run dev
@@ -102,10 +102,10 @@ Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and 
       ▀▀████▀▀      
 
   ──────────────────────────────────────────────────────────────
-  JUST A RATHER VERY INTELLIGENT SYSTEM  ·  v0.1.0
+  CUNNING CLAW  ·  dyn hysbys  ·  v0.2.0
 
   ▸ online   http://127.0.0.1:3900
-  ▸ brain    core · claude-opus-5 (anthropic)
+  ▸ brain    flash · google/gemini-2.5-flash (openrouter)
   ▸ voice    piper · en_GB-alan-medium
   ▸ pulse    every 30m
   ▸ tools    36 available

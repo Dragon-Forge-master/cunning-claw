@@ -47,27 +47,27 @@ set_env_key() {
   chmod 600 .env
 }
 
-current_key="$(grep -E '^ANTHROPIC_API_KEY=' .env | head -1 | cut -d= -f2- || true)"
+current_key="$(grep -E '^OPENROUTER_API_KEY=' .env | head -1 | cut -d= -f2- || true)"
 needs_key=1
 case "$current_key" in
-  ""|"sk-ant-..."|*placeholder*|*your-key*) needs_key=1 ;;
+  ""|"sk-or-..."|"sk-ant-..."|*placeholder*|*your-key*) needs_key=1 ;;
   *) needs_key=0 ;;
 esac
 
 if [ "$needs_key" -eq 1 ] && [ -t 0 ]; then
-  printf "Anthropic API key (https://console.anthropic.com/settings/keys)\n"
-  printf "Paste sk-ant-... or press Enter to skip: "
+  printf "OpenRouter API key (https://openrouter.ai/keys)\n"
+  printf "Paste sk-or-... or press Enter to skip: "
   # -s so the key never echoes. A leaked paste in the scrollback is how keys die.
   IFS= read -r -s KEY || true
   printf "\n"
   if [ -n "${KEY:-}" ]; then
-    set_env_key ANTHROPIC_API_KEY "$KEY"
-    say "Wrote ANTHROPIC_API_KEY to .env"
+    set_env_key OPENROUTER_API_KEY "$KEY"
+    say "Wrote OPENROUTER_API_KEY to .env"
   else
-    say "Skipped. Add ANTHROPIC_API_KEY=sk-ant-... to .env before the first run."
+    say "Skipped. Add OPENROUTER_API_KEY=sk-or-... to .env before the first run."
   fi
 elif [ "$needs_key" -eq 1 ]; then
-  say "No TTY — add ANTHROPIC_API_KEY=sk-ant-... to .env (https://console.anthropic.com/settings/keys)"
+  say "No TTY — add OPENROUTER_API_KEY=sk-or-... to .env (https://openrouter.ai/keys)"
 fi
 
 if [ -x ./setup-voice.sh ] && [ -t 0 ]; then

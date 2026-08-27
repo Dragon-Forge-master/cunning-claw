@@ -16,7 +16,7 @@ test("a local runtime is enough only when it answers", () => {
 });
 
 test("the keyless message still tells you the file, the line, and the URL", () => {
-  assert.match(noKeyGuide(), /ANTHROPIC_API_KEY=/);
-  assert.match(noKeyGuide(), /console\.anthropic\.com/);
+  assert.match(noKeyGuide(), /OPENROUTER_API_KEY=/);
+  assert.match(noKeyGuide(), /openrouter\.ai\/keys/);
   assert.match(noKeyGuide(), /\.env/);
 });

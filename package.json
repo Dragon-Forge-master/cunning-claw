@@ -25,11 +25,11 @@
   "author": "Chris Jenkins <cjvehiclespecialist@gmail.com> (Dragon Forge AI)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Dragon-Forge-master/cunningclaw.git"
+    "url": "git+https://github.com/Dragon-Forge-master/jarvis.git"
   },
-  "homepage": "https://github.com/Dragon-Forge-master/cunningclaw#readme",
+  "homepage": "https://github.com/Dragon-Forge-master/jarvis#readme",
   "bugs": {
-    "url": "https://github.com/Dragon-Forge-master/cunningclaw/issues"
+    "url": "https://github.com/Dragon-Forge-master/jarvis/issues"
   },
   "keywords": [
     "ai-agent",
@@ -37,8 +37,7 @@
     "local-first",
     "prompt-injection",
     "mcp",
-    "anthropic",
-    "claude",
+    "openrouter",
     "ollama",
     "llm",
     "security"

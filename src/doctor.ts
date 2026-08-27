@@ -3,7 +3,7 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config, DATA_DIR, ROOT } from "./config.js";
-import { brainHasKey, catalog, envLooksSet, isLocalEndpoint } from "./brain.js";
+import { brainHasKey, brainKeyEnv, catalog, envLooksSet, isLocalEndpoint } from "./brain.js";
 import { hasBin, host, missing } from "./platform.js";
 import { detect } from "./voice.js";
 
@@ -17,7 +17,25 @@ export interface DoctorCheck {
   line: string;
 }
 
-const ANTHROPIC_KEYS = "https://console.anthropic.com/settings/keys";
+export function keyDashboard(envName: string): string {
+  if (envName === "ANTHROPIC_API_KEY") return "https://console.anthropic.com/settings/keys";
+  if (envName === "OPENROUTER_API_KEY") return "https://openrouter.ai/keys";
+  if (envName === "OPENAI_API_KEY") return "https://platform.openai.com/api-keys";
+  return "the provider dashboard";
+}
+
+function sampleKey(envName: string): string {
+  if (envName === "ANTHROPIC_API_KEY") return "sk-ant-...";
+  if (envName === "OPENROUTER_API_KEY") return "sk-or-...";
+  return "...";
+}
+
+/** The first non-local catalog brain — what a fresh install actually needs. */
+export function preferredCloudKey(): { envName: string; sample: string; url: string } {
+  const cloud = catalog().find((b) => !(b.provider === "openai" && isLocalEndpoint(b.baseUrl)));
+  const envName = cloud ? brainKeyEnv(cloud) : "OPENROUTER_API_KEY";
+  return { envName, sample: sampleKey(envName), url: keyDashboard(envName) };
+}
 
 function mark(status: CheckStatus): string {
   if (status === "ok") return "✓";
@@ -38,6 +56,7 @@ export function nodeMajor(version = process.versions.node): number {
  * line to add. Shared by doctor and the boot path.
  */
 export function noKeyGuide(): string {
+  const key = preferredCloudKey();
   return [
     "CUNNING CLAW has no usable API key, so starting the server would give you a dead assistant.",
     "",
@@ -45,8 +64,8 @@ export function noKeyGuide(): string {
     "  cp .env.example .env",
     "",
     "Then add this line to .env:",
-    "  ANTHROPIC_API_KEY=sk-ant-...",
-    `Get a key: ${ANTHROPIC_KEYS}`,
+    `  ${key.envName}=${key.sample}`,
+    `Get a key: ${key.url}`,
     "",
     "Or point a catalog brain at a local runtime (Ollama on 11434 needs no key)",
     "and pull a model:  ollama pull llama3.1:8b",
@@ -148,11 +167,12 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
     out.push(row("env", "ok", true, `.env present`));
   } else {
     const anyKey = catalog().some(brainHasKey);
+    const key = preferredCloudKey();
     out.push(row(
       "env",
       anyKey ? "warn" : "fail",
       !anyKey,
-      `.env is missing — cp .env.example .env and add ANTHROPIC_API_KEY (${ANTHROPIC_KEYS})`,
+      `.env is missing — cp .env.example .env and add ${key.envName} (${key.url})`,
     ));
   }
 
@@ -170,7 +190,7 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
       ));
       continue;
     }
-    const envName = b.provider === "openai" ? (b.apiKeyEnv ?? "OPENAI_API_KEY") : "ANTHROPIC_API_KEY";
+    const envName = brainKeyEnv(b);
     if (ready) {
       out.push(row(`brain-${b.id}`, "ok", false, `Brain ${b.id} (${b.model}): ${envName} present`));
     } else if (process.env[envName]?.trim() && !envLooksSet(envName)) {
@@ -181,19 +201,17 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
         `Brain ${b.id}: ${envName} looks like a placeholder — put a real key in .env`,
       ));
     } else {
-      const where = envName === "ANTHROPIC_API_KEY"
-        ? `${ANTHROPIC_KEYS}`
-        : "https://platform.openai.com/api-keys";
       out.push(row(
         `brain-${b.id}`,
         "warn",
         false,
-        `Brain ${b.id} has no ${envName} — add ${envName}=... to .env (${where})`,
+        `Brain ${b.id} has no ${envName} — add ${envName}=... to .env (${keyDashboard(envName)})`,
       ));
     }
   }
   if (!anyBrain) {
-    out.push(row("brains", "fail", true, noKeyGuide().split("\n")[0] + ` — ${ANTHROPIC_KEYS}`));
+    const key = preferredCloudKey();
+    out.push(row("brains", "fail", true, noKeyGuide().split("\n")[0] + ` — ${key.url}`));
   } else {
     out.push(row("brains", "ok", true, "At least one brain can run"));
   }

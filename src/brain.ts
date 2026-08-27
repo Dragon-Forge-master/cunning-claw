@@ -149,9 +149,13 @@ export function envLooksSet(name: string): boolean {
   const v = process.env[name]?.trim() ?? "";
   if (!v) return false;
   if (/your-?key|placeholder|changeme/i.test(v)) return false;
-  if (v === "sk-ant-..." || v === "sk-your-key-here") return false;
+  if (v === "sk-ant-..." || v === "sk-or-..." || v === "sk-your-key-here") return false;
   if (/\.\.\.$/.test(v) && v.length < 24) return false;
   return true;
+}
+
+export function brainKeyEnv(spec: BrainSpec): string {
+  return spec.provider === "openai" ? (spec.apiKeyEnv ?? "OPENAI_API_KEY") : "ANTHROPIC_API_KEY";
 }
 
 export function brainHasKey(spec: BrainSpec): boolean {
@@ -160,9 +164,9 @@ export function brainHasKey(spec: BrainSpec): boolean {
     // whenever it is reachable — reporting NO KEY would hide it from
     // pickBrain and make an offline setup silently unselectable.
     if (isLocalEndpoint(spec.baseUrl)) return true;
-    return envLooksSet(spec.apiKeyEnv ?? "OPENAI_API_KEY");
+    return envLooksSet(brainKeyEnv(spec));
   }
-  return envLooksSet("ANTHROPIC_API_KEY");
+  return envLooksSet(brainKeyEnv(spec));
 }
 
 export function openAiEndpoint(spec: BrainSpec): { baseUrl: string; model: string; apiKeyEnv: string } {
@@ -318,10 +322,7 @@ export function brainReady(): boolean {
 export function missingKeyHint(): string {
   const missing = catalog().filter((b) => !brainHasKey(b));
   if (!missing.length) return "A key is present but the provider refused it.";
-  return missing.map((b) => {
-    const env = b.provider === "openai" ? (b.apiKeyEnv ?? "OPENAI_API_KEY") : "ANTHROPIC_API_KEY";
-    return `${b.id} needs ${env}`;
-  }).join("; ") + ". Copy .env.example to .env.";
+  return missing.map((b) => `${b.id} needs ${brainKeyEnv(b)}`).join("; ") + ". Copy .env.example to .env.";
 }
 
 // ---------------------------------------------------------------------------

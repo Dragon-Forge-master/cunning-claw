@@ -40,7 +40,7 @@ export async function canBoot(): Promise<{ ok: true } | { ok: false; message: st
   if (decideBoot(cloud, local, reachable)) return { ok: true };
 
   const extra = local && !reachable
-    ? "\nA local brain is in the catalog, but nothing answered on 127.0.0.1:11434.\nStart Ollama (`ollama serve`) or add ANTHROPIC_API_KEY to .env.\n"
+    ? "\nA local brain is in the catalog, but nothing answered on 127.0.0.1:11434.\nStart Ollama (`ollama serve`) or add a cloud key to .env — the default roster wants OPENROUTER_API_KEY.\n"
     : "";
   return { ok: false, message: noKeyGuide() + extra };
 }
