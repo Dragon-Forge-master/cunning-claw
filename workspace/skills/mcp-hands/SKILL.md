@@ -2,7 +2,7 @@
 name: mcp-hands
 label: MCP
 category: machine
-description: Connect and drive MCP servers the way Claude Code does — Canva, GitHub, Notion, Figma, and any other mcpServers snippet. Use when Chris says connect Canva, add an MCP, or asks which servers are live.
+description: Connect and drive MCP servers the way Claude Code does — Canva, Slack, HubSpot, GitHub, Notion, Figma, and the rest of the Connectors directory. Use when Chris says connect Canva, add an MCP, or asks which servers are live.
 author: cunningclaw
 written: 2026-08-27
 ---
@@ -15,7 +15,7 @@ Claude Code's client is `mcpServers` in `.mcp.json` / `~/.claude.json` / Cursor'
 
 ## Add a server
 
-Do not invent URLs. Prefer the HUD **CONNECT** page (same idea as Claude's Customize → Connectors): Popular cards, All / Connected / Not connected, Reconnect for 401. That writes `~/.config/cunningclaw/mcp.json`. `mcp_status` / `mcp_login` still work from chat.
+Do not invent URLs. Prefer the HUD **CONNECT** page (same idea as Claude's Customize → Connectors): a substantial directory of vendor servers grouped by category, Popular cards, All / Connected / Not connected, search, Reconnect for 401. Listing Slack or HubSpot is not connecting them — Connect still writes `~/.config/cunningclaw/mcp.json`. `mcp_status` / `mcp_login` still work from chat.
 
 If you must edit files yourself:
 
