@@ -865,21 +865,52 @@ export function resolveCommandCwd(cwd?: string): string {
   return expandHome(String(cwd).trim());
 }
 
+/**
+ * Prefer bash, but survive boxes that lack it — Alpine, containers, sandboxed
+ * runtimes. Hardcoding /bin/bash turned every command into "spawn /bin/bash
+ * ENOENT" the day this ran somewhere bash wasn't reachable.
+ */
+const SHELL_CANDIDATES = ["/bin/bash", "/usr/bin/bash", "/bin/sh", "/usr/bin/sh"];
+let shellPath = SHELL_CANDIDATES.find((s) => fs.existsSync(s)) ?? "/bin/sh";
+
+/** A spawn failure of the shell itself, as opposed to the command failing. */
+function isShellSpawnFailure(err: any): boolean {
+  return err?.code === "ENOENT" && /^spawn/.test(String(err?.syscall ?? err?.message ?? ""));
+}
+
 async function execIn(command: string, cwd: string): Promise<string> {
-  try {
-    const { stdout, stderr } = await execAsync(command, {
-      cwd,
-      timeout: config.commandPolicy.timeoutMs,
-      maxBuffer: 1024 * 1024,
-      shell: "/bin/bash",
-    });
-    const out = [stdout && `stdout:\n${stdout}`, stderr && `stderr:\n${stderr}`]
-      .filter(Boolean)
-      .join("\n");
-    return (`(cwd ${cwd})\n` + (out || "(no output)")).slice(0, 20000);
-  } catch (err: any) {
-    const detail = (err.stderr || err.message || "").slice(0, 5000);
-    return `(cwd ${cwd})\nCommand failed (exit ${err.code ?? "?"}):\n${detail}`;
+  for (;;) {
+    try {
+      const { stdout, stderr } = await execAsync(command, {
+        cwd,
+        timeout: config.commandPolicy.timeoutMs,
+        maxBuffer: 1024 * 1024,
+        shell: shellPath,
+      });
+      const out = [stdout && `stdout:\n${stdout}`, stderr && `stderr:\n${stderr}`]
+        .filter(Boolean)
+        .join("\n");
+      return (`(cwd ${cwd})\n` + (out || "(no output)")).slice(0, 20000);
+    } catch (err: any) {
+      // The SHELL failed to start — the command never ran. Existence on disk is
+      // not the same as being spawnable here; try the next shell before giving up.
+      if (isShellSpawnFailure(err)) {
+        const next = SHELL_CANDIDATES.indexOf(shellPath) + 1;
+        if (next > 0 && next < SHELL_CANDIDATES.length) {
+          shellPath = SHELL_CANDIDATES[next];
+          continue;
+        }
+        return (
+          `(cwd ${cwd})\nCommand failed before it ran: this environment refuses to spawn ` +
+          `any shell (${String(err?.message ?? err).slice(0, 120)}). That is a sandbox or ` +
+          `runtime restriction, not a fault in the command or in you. Do not retry or ` +
+          `rewrite the command — every shell command will fail the same way until the ` +
+          `server is restarted from a normal terminal. Tell the user exactly that.`
+        );
+      }
+      const detail = (err.stderr || err.message || "").slice(0, 5000);
+      return `(cwd ${cwd})\nCommand failed (exit ${err.code ?? "?"}):\n${detail}`;
+    }
   }
 }
 
