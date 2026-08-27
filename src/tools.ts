@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import type Anthropic from "@anthropic-ai/sdk";
-import { config } from "./config.js";
+import { config, ROOT } from "./config.js";
 import { remember, forget, searchMemory } from "./memory.js";
 import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
@@ -53,7 +53,10 @@ export const toolDefinitions: Anthropic.Tool[] = [
       type: "object",
       properties: {
         command: { type: "string", description: "The bash command to run" },
-        cwd: { type: "string", description: "Working directory (default: user home, which is not the Cunning Claw repo — pass cwd from list_repos)" },
+        cwd: {
+          type: "string",
+          description: "Working directory (default: this Cunning Claw install — the jarvis repo). Pass ~ for the home folder.",
+        },
       },
       required: ["command"],
       additionalProperties: false,
@@ -822,9 +825,28 @@ async function runCommand(input: { command: string; cwd?: string }, ctx: ToolCon
     const ok = await ctx.requestApproval("Run shell command", input.command);
     if (!ok) return "The user declined to run this command.";
   }
+  const cwd = resolveCommandCwd(input.cwd);
+  const ran = await execIn(input.command, cwd);
+  if (
+    /not a git repository/i.test(ran) &&
+    path.resolve(cwd) !== path.resolve(ROOT)
+  ) {
+    const retry = await execIn(input.command, ROOT);
+    return `cwd ${cwd} is not a git repo. Re-ran in this install:\n${ROOT}\n\n${retry}`;
+  }
+  return ran;
+}
+
+/** Shell default is this install (the jarvis repo), not $HOME. */
+export function resolveCommandCwd(cwd?: string): string {
+  if (!cwd || !String(cwd).trim()) return ROOT;
+  return expandHome(String(cwd).trim());
+}
+
+async function execIn(command: string, cwd: string): Promise<string> {
   try {
-    const { stdout, stderr } = await execAsync(input.command, {
-      cwd: input.cwd ? expandHome(input.cwd) : os.homedir(),
+    const { stdout, stderr } = await execAsync(command, {
+      cwd,
       timeout: config.commandPolicy.timeoutMs,
       maxBuffer: 1024 * 1024,
       shell: "/bin/bash",
@@ -832,9 +854,10 @@ async function runCommand(input: { command: string; cwd?: string }, ctx: ToolCon
     const out = [stdout && `stdout:\n${stdout}`, stderr && `stderr:\n${stderr}`]
       .filter(Boolean)
       .join("\n");
-    return (out || "(no output)").slice(0, 20000);
+    return (`(cwd ${cwd})\n` + (out || "(no output)")).slice(0, 20000);
   } catch (err: any) {
-    return `Command failed (exit ${err.code ?? "?"}):\n${(err.stderr || err.message || "").slice(0, 5000)}`;
+    const detail = (err.stderr || err.message || "").slice(0, 5000);
+    return `(cwd ${cwd})\nCommand failed (exit ${err.code ?? "?"}):\n${detail}`;
   }
 }
 
@@ -907,6 +930,7 @@ export async function systemStatusText(): Promise<string> {
     `Memory: ${memUsed}GB / ${memTotal}GB used`,
     `Disk /: ${disk || "unknown"}`,
     `Uptime: ${uptimeH}h`,
+    `Install (jarvis repo): ${ROOT}`,
     topProcs && `Top processes:\n${topProcs}`,
   ].filter(Boolean).join("\n");
 }

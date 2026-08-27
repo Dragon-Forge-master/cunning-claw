@@ -45,5 +45,5 @@ test("grep and glob find a file without shelling out", () => {
 test("list_repos names this install; glob skipping .git is why a naive hunt failed", () => {
   const text = listLocalRepos();
   assert.match(text, /this install \(Cunning Claw \/ jarvis\)/);
-  assert.match(text, /Shell commands start in \$HOME/);
+  assert.match(text, /Shell commands start in this install/);
 });

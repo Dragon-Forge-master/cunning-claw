@@ -301,7 +301,7 @@ export function listLocalRepos(): string {
     return [
       `No git repositories found next to this install or under ${home}.`,
       `This Cunning Claw process is running from: ${ROOT}`,
-      "That directory is the Cunning Claw / jarvis repo. Shell cwd defaults to your home folder, which is not a git repo — pass that path as cwd.",
+      "That directory is the Cunning Claw / jarvis repo. Shell cwd defaults to it. Pass cwd ~ for the home folder.",
     ].join("\n");
   }
   const lines = acc.map((dir) => {
@@ -311,7 +311,7 @@ export function listLocalRepos(): string {
   });
   return [
     `This Cunning Claw process is running from: ${ROOT}`,
-    "Shell commands start in $HOME, which is usually not a git repo. Pass cwd.",
+    "Shell commands start in this install. Pass cwd ~ for the home folder.",
     "",
     ...lines,
   ].join("\n");

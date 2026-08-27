@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyCommand, isSensitivePath } from "./tools.js";
+import { classifyCommand, isSensitivePath, resolveCommandCwd } from "./tools.js";
+import { ROOT } from "./config.js";
+import os from "node:os";
 
 test("HARD_DENY blocks rm -rf variants regardless of flag order", () => {
   assert.equal(classifyCommand("rm -rf /"), "deny");
@@ -34,4 +36,11 @@ test("file tools refuse shadow, sudoers and ssh keys", () => {
   assert.equal(isSensitivePath("/etc/sudoers"), true);
   assert.equal(isSensitivePath("~/.ssh/id_rsa"), true);
   assert.equal(isSensitivePath("/home/chris/notes.txt"), false);
+});
+
+test("shell cwd defaults to this install, not the home folder", () => {
+  assert.equal(resolveCommandCwd(), ROOT);
+  assert.equal(resolveCommandCwd("   "), ROOT);
+  assert.equal(resolveCommandCwd("~"), os.homedir());
+  assert.equal(resolveCommandCwd("/tmp"), "/tmp");
 });
