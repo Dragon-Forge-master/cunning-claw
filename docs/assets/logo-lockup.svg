@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 240" width="900" height="240" role="img" aria-label="Cunning Claw — the knowing one">
+  <defs>
+    <linearGradient id="claw2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7ff0ff"/><stop offset="0.55" stop-color="#35d6ed"/><stop offset="1" stop-color="#1a8ba0"/>
+    </linearGradient>
+    <radialGradient id="core2" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#dffaff"/><stop offset="0.5" stop-color="#35d6ed"/><stop offset="1" stop-color="#35d6ed" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="g2" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+
+  <!-- mark, scaled into the left -->
+  <g transform="translate(20,20) scale(0.39)">
+    <circle cx="256" cy="256" r="232" fill="none" stroke="#1a6c7a" stroke-width="4" stroke-dasharray="4 12" opacity="0.55"/>
+    <g fill="url(#claw2)" filter="url(#g2)">
+      <path d="M369 132 C300 96 214 104 168 160 C205 132 268 128 316 152 C300 150 286 154 276 164 C312 156 348 168 372 196 C374 174 374 150 369 132 Z"/>
+      <path d="M150 256 C150 197 190 165 250 156 C210 178 190 214 190 256 C190 298 210 334 250 356 C190 347 150 315 150 256 Z"/>
+      <path d="M369 380 C300 416 214 408 168 352 C205 380 268 384 316 360 C300 362 286 358 276 348 C312 356 348 344 372 316 C374 338 374 362 369 380 Z"/>
+    </g>
+    <circle cx="326" cy="256" r="34" fill="url(#core2)"/>
+    <circle cx="326" cy="256" r="11" fill="#eafcff" filter="url(#g2)"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="232" y="128" font-family="'JetBrains Mono','DejaVu Sans Mono',monospace" font-size="66" font-weight="700"
+        letter-spacing="6" fill="#35d6ed">CUNNING CLAW</text>
+  <text x="234" y="170" font-family="'JetBrains Mono','DejaVu Sans Mono',monospace" font-size="21"
+        letter-spacing="8" fill="#1a6c7a">Y  D Y N  H Y S B Y S</text>
+</svg>
