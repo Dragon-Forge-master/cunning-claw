@@ -88,18 +88,18 @@ npm run doctor
 npm run dev
 ```
 
-Runs on **Linux** (GNOME/X11 tools: `xdotool`, `wmctrl`, `pactl`, `paplay`) and **macOS** (`screencapture`, `osascript`, `pbcopy`, `afplay` or `say`). Missing tools return a message that names what to install — they never silently no-op.
+Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screencapture`, `osascript`, `pbcopy`, `afplay`/`say`) and **Windows** (PowerShell — nothing to install). Missing tools return a message naming what to install, never a silent no-op. See the platform table below.
 
 ```
 
-      ▄▄████▄▄      
-    ▄██▀▀  ▀▀██▄         ██╗ █████╗ ██████╗ ██╗   ██╗██╗███████╗
-   ██▀  ▄██▄  ▀██        ██║██╔══██╗██╔══██╗██║   ██║██║██╔════╝
-  ██   ██▀▀██   ██       ██║███████║██████╔╝██║   ██║██║███████╗
-  ██   ██▄▄██   ██  ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║
-   ██▄  ▀██▀  ▄██   ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║
-    ▀██▄▄  ▄▄██▀     ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝
-      ▀▀████▀▀      
+    ▟█▙   ▟█▙   ▟█▙    
+    ▜██▙ ▟███▙ ▟██▛     ██████╗██╗      █████╗ ██╗    ██╗
+     ▜██▄███████▄██▛   ██╔════╝██║     ██╔══██╗██║    ██║
+      ▀████▀ ▀████▀    ██║     ██║     ███████║██║ █╗ ██║
+        ▜██▄▄▄██▛      ██║     ██║     ██╔══██║██║███╗██║
+          ▜███▛        ╚██████╗███████╗██║  ██║╚███╔███╔╝
+           ▜▛           ╚═════╝╚══════╝╚═╝  ╚═╝ ╚══╝╚══╝ 
+            ▀          
 
   ──────────────────────────────────────────────────────────────
   CUNNING CLAW  ·  dyn hysbys  ·  v0.2.0
