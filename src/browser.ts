@@ -21,6 +21,10 @@ import {
   parseGmailView,
   shouldSweepUnread,
   gmailFocusScript,
+  isGmailMailboxUrl,
+  isGoogleAuthUrl,
+  isGmailRelatedUrl,
+  formatGmailOpenFailure,
   GMAIL_LIST_JS,
   GMAIL_THREAD_JS,
   GMAIL_COMPOSE_OPEN_JS,
@@ -49,6 +53,10 @@ const PROFILE_DIR =
     : process.platform === "win32"
       ? path.join(os.homedir(), "AppData", "Local", "cunningclaw", "chrome-profile")
       : path.join(os.homedir(), ".config", "cunningclaw", "chrome-profile");
+
+export function chromeProfileDir(): string {
+  return PROFILE_DIR;
+}
 
 const PORT = config.browser.debugPort;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
@@ -290,6 +298,48 @@ export async function listTargets(): Promise<Target[]> {
   return all.filter((t) => t.type === "page" && !t.url.startsWith("devtools://"));
 }
 
+/**
+ * Chrome's /json/new accepts PUT on some builds and GET on others, and the
+ * fragment of a Gmail hash URL must be encoded. Parse the returned target so
+ * we can follow the tab by id after it redirects to accounts.google.com.
+ */
+async function openNewTab(url: string): Promise<Target | null> {
+  const q = encodeURIComponent(url);
+  for (const method of ["PUT", "GET"] as const) {
+    try {
+      const res = await fetch(`${ORIGIN}/json/new?${q}`, {
+        method,
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) continue;
+      const text = await res.text();
+      try {
+        const body = JSON.parse(text) as Target;
+        if (body?.id) return body;
+      } catch {
+        /* some builds return a websocket URL as plain text */
+      }
+    } catch {
+      /* try the other method */
+    }
+  }
+  return null;
+}
+
+async function waitForTarget(pred: (t: Target) => boolean, timeoutMs = 8000): Promise<Target | null> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const hit = (await listTargets()).find(pred);
+      if (hit) return hit;
+    } catch {
+      /* debug port blipped */
+    }
+    await sleep(250);
+  }
+  return null;
+}
+
 async function activeTarget(index?: number): Promise<Target> {
   const targets = await listTargets();
   if (targets.length === 0) throw new Error("No open tabs.");
@@ -454,14 +504,16 @@ export async function openUrl(url: string, newTab: boolean): Promise<string> {
 
   let target: Target;
   if (newTab) {
-    const res = await fetch(`${ORIGIN}/json/new?${encodeURIComponent(url)}`, { method: "PUT" });
-    if (!res.ok) throw new Error(`Could not open a new tab (${res.status}).`);
-    await sleep(400);
-    const list = await listTargets();
+    const created = await openNewTab(url);
+    await sleep(300);
     const host = (() => {
       try { return new URL(url).host; } catch { return ""; }
     })();
-    target = list.find((t) => t.url.startsWith(url) || (host && t.url.includes(host))) ?? list[list.length - 1];
+    const list = await listTargets();
+    target =
+      (created && list.find((t) => t.id === created.id)) ||
+      list.find((t) => t.url.startsWith(url) || (host && t.url.includes(host))) ||
+      list[list.length - 1];
     if (!target) throw new Error("Opened a tab but could not find it.");
   } else {
     target = await activeTarget();
@@ -842,25 +894,81 @@ async function dispatchChord(s: CdpSession, spec: GmailKeySpec): Promise<void> {
 async function gmailTab(): Promise<{ ok: true; s: CdpSession } | { ok: false; message: string }> {
   const boot = await ensureBrowser();
   if (!boot.ok) return { ok: false, message: boot.message };
-  let target = (await listTargets()).find((t) => t.url.includes("mail.google.com"));
-  if (!target) {
-    await fetch(`${ORIGIN}/json/new?${encodeURIComponent("https://mail.google.com/mail/u/0/#inbox")}`, {
-      method: "PUT",
-    });
-    await sleep(900);
-    target = (await listTargets()).find((t) => t.url.includes("mail.google.com"));
+
+  const inbox = "https://mail.google.com/mail/u/0/#inbox";
+  let tabs: Target[] = [];
+  try {
+    tabs = await listTargets();
+  } catch (err: any) {
+    return {
+      ok: false,
+      message: formatGmailOpenFailure({
+        profileDir: PROFILE_DIR,
+        tabs: [],
+        extra: `Could not list Chrome tabs: ${err?.message ?? err}. Is the debug port ${PORT} the Cunning Claw Chrome?`,
+      }),
+    };
   }
-  if (!target) return { ok: false, message: "Could not open Gmail." };
+
+  let target: Target | undefined =
+    tabs.find((t) => isGmailMailboxUrl(t.url)) ||
+    tabs.find((t) => isGmailRelatedUrl(t.url));
+
+  if (!target) {
+    const created = await openNewTab(inbox);
+    target = (created
+      ? await waitForTarget((t) => t.id === created.id || isGmailRelatedUrl(t.url))
+      : await waitForTarget((t) => isGmailRelatedUrl(t.url))) ?? undefined;
+  }
+
+  if (!target && tabs[0]) {
+    try {
+      const s = await sessionFor(tabs[0]);
+      await s.call("Page.navigate", { url: inbox });
+      target = await waitForTarget(
+        (t) => t.id === tabs[0].id || isGmailRelatedUrl(t.url),
+        8000,
+      ) ?? tabs[0];
+    } catch (err: any) {
+      return {
+        ok: false,
+        message: formatGmailOpenFailure({
+          profileDir: PROFILE_DIR,
+          tabs,
+          extra: `Tried to navigate an existing tab to Gmail and failed: ${err?.message ?? err}`,
+        }),
+      };
+    }
+  }
+
+  if (!target) {
+    let listed: Target[] = tabs;
+    try { listed = await listTargets(); } catch { /* keep */ }
+    return {
+      ok: false,
+      message: formatGmailOpenFailure({ profileDir: PROFILE_DIR, tabs: listed }),
+    };
+  }
+
   const s = await sessionFor(target);
+  if (!isGmailMailboxUrl(target.url) && !isGoogleAuthUrl(target.url)) {
+    try {
+      await s.call("Page.navigate", { url: inbox });
+      await settle(s, 400, 10000);
+    } catch {
+      /* scrapeList will still see a sign-in page */
+    }
+  }
   return { ok: true, s };
 }
 
 function signInMessage(): string {
-  return (
-    "Gmail is asking for sign-in. Cunning Claw uses its own Chrome profile — " +
-    "please sign in once in the window that just opened, then ask me again. " +
-    "I never see or handle your password."
-  );
+  return [
+    "Gmail is asking for sign-in in Cunning Claw's own Chrome — a separate window from your everyday browser.",
+    `Profile: ${PROFILE_DIR}`,
+    "Finish signing in once in that window (I never see or handle the password), then ask me again.",
+    "Signing into the Chrome you already use for the rest of the day does not sign this one in.",
+  ].join(" ");
 }
 
 async function scrapeList(s: CdpSession): Promise<GmailList> {

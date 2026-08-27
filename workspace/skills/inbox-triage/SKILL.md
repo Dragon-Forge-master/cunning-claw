@@ -11,6 +11,8 @@ written: 2026-08-27
 
 Gmail in this house is the Chrome profile Cunning Claw already owns. There is no Gmail API, no OAuth paste, no MCP. `check_email` / `read_email` / `draft_email` / `send_email` / `email_action` drive that window.
 
+That Chrome is a **separate window** (`~/.config/cunningclaw/chrome-profile` on Linux). Signing into the Chrome Chris already uses for the rest of the day does nothing. If `check_email` asks for sign-in, finish it in *that* window. If it lists the tabs it can see, read them — a Google account picker is success, not "Could not open Gmail."
+
 Claude Code's usual miss: scrape the Primary tab, read one `.a3s` body, ignore Promotions / Updates / Social, then draft a reply from half a thread. Do not do that.
 
 ## The miss
@@ -93,4 +95,4 @@ If compose does not open, say so and ask Chris to turn shortcuts on. Do not star
 - Report unread from the Primary tab when `TITLE_UNREAD` disagrees.
 - Send because you drafted. Draft is the work; send is a decision.
 - Open WhatsApp with these tools. WhatsApp on this machine is native — see `whatsapp-desk`.
-- Handle passwords. If Gmail asks for sign-in, stop and tell Chris the Chrome profile window needs him once.
+- Handle passwords. If Gmail asks for sign-in, stop and tell Chris the Cunning Claw Chrome window (not the everyday one) needs him once.

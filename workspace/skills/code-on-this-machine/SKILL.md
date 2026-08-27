@@ -9,7 +9,7 @@ description: Change a codebase on this machine the way Claude Code would. Use wh
 
 You are already on the box. Do not describe an IDE. Work.
 
-1. **Find.** `glob` then `grep`. Do not guess file paths.
+1. **Find.** `list_repos` if Chris said "the repo" or `git status` said this is not a repository. Shell cwd is `$HOME` by default — that is not the Cunning Claw clone. Then `glob` then `grep`. Do not guess file paths.
 2. **Read.** `read_file` (lines are numbered). Read the callers, not just the symbol.
 3. **Plan only if it is more than two steps.** `todo` write, then work the list.
 4. **Edit.** `edit_file` for surgical changes. `write_file` only for new files. Do not rewrite a file to change three lines.

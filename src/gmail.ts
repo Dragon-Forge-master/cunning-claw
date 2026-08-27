@@ -126,6 +126,55 @@ export function gmailListUrl(query?: string, view: GmailView = "inbox"): string 
   return `https://mail.google.com/mail/u/0/#${VIEWS[parseGmailView(view)] ?? "inbox"}`;
 }
 
+function hostPath(url: string): { host: string; path: string } | null {
+  try {
+    const u = new URL(url);
+    return { host: u.hostname.replace(/^www\./, "").toLowerCase(), path: u.pathname.toLowerCase() };
+  } catch {
+    return null;
+  }
+}
+
+/** A tab that is actually Gmail, not a Google marketing page. */
+export function isGmailMailboxUrl(url: string): boolean {
+  const p = hostPath(url);
+  if (!p) return /mail\.google\.com/i.test(url);
+  return p.host === "mail.google.com" || p.host === "gmail.com" || p.host === "inbox.google.com";
+}
+
+/** Sign-in / account picker — the usual landing after opening Gmail in a fresh profile. */
+export function isGoogleAuthUrl(url: string): boolean {
+  const p = hostPath(url);
+  if (!p) return /accounts\.google\.com/i.test(url);
+  if (p.host === "accounts.google.com") return true;
+  if (p.host.endsWith(".google.com") && /signin|accountchooser|servicelogin/i.test(p.path + url)) return true;
+  return false;
+}
+
+export function isGmailRelatedUrl(url: string): boolean {
+  return isGmailMailboxUrl(url) || isGoogleAuthUrl(url) || /google\.com\/gmail/i.test(url);
+}
+
+export function formatGmailOpenFailure(opts: {
+  profileDir: string;
+  tabs: Array<{ title: string; url: string }>;
+  extra?: string;
+}): string {
+  const tabs = opts.tabs.length
+    ? opts.tabs.map((t, i) => `  [${i}] ${t.title || "(no title)"} — ${t.url}`).join("\n")
+    : "  (no page tabs — Chrome's debug port is up but empty)";
+  return [
+    "Could not open Gmail in Cunning Claw's Chrome.",
+    `Profile: ${opts.profileDir}`,
+    "",
+    "That is a separate window from your everyday Chrome. Signing into the everyday browser does not sign this one in. Look for a Chrome window that is not your usual one, finish Google sign-in there once, then ask me again.",
+    "",
+    "Tabs I can currently see:",
+    tabs,
+    opts.extra ? "\n" + opts.extra : "",
+  ].filter((l) => l !== "").join("\n");
+}
+
 /**
  * Primary is not the inbox. Gmail's title `(12)` counts Promotions / Updates /
  * Social too. If that number is bigger than the rows on this view, or another

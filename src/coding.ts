@@ -1,6 +1,7 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { config, DATA_DIR } from "./config.js";
+import { config, DATA_DIR, ROOT } from "./config.js";
 import { expandHome, isSensitivePath } from "./paths.js";
 
 const TODO_FILE = path.join(DATA_DIR, "todos.json");
@@ -219,4 +220,99 @@ export function formatTodos(items = readTodos()): string {
 
 export function numberLines(text: string, start = 1): string {
   return text.split("\n").map((line, i) => `${String(start + i).padStart(6)}|${line}`).join("\n");
+}
+
+const REPO_SKIP = new Set([
+  "node_modules", "dist", ".venv", "voices", ".cache", ".local", ".npm",
+  ".steam", "snap", "proc", "sys", "Library", "AppData", "Application Support",
+]);
+
+function isGitRepo(dir: string): boolean {
+  try {
+    return fs.existsSync(path.join(dir, ".git"));
+  } catch {
+    return false;
+  }
+}
+
+function gitOrigin(dir: string): string {
+  try {
+    const cfg = fs.readFileSync(path.join(dir, ".git", "config"), "utf-8");
+    const m = cfg.match(/\[remote "origin"\][\s\S]*?^\s*url\s*=\s*(\S+)/m);
+    return m?.[1] ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function walkRepos(dir: string, depth: number, acc: string[], seen: Set<string>): void {
+  if (depth < 0 || acc.length >= 40) return;
+  let resolved: string;
+  try {
+    resolved = fs.realpathSync(dir);
+  } catch {
+    return;
+  }
+  if (seen.has(resolved)) return;
+  seen.add(resolved);
+  if (isGitRepo(dir)) {
+    acc.push(dir);
+    return;
+  }
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const ent of entries) {
+    if (!ent.isDirectory()) continue;
+    if (ent.name.startsWith(".") || REPO_SKIP.has(ent.name)) continue;
+    walkRepos(path.join(dir, ent.name), depth - 1, acc, seen);
+  }
+}
+
+/**
+ * Find git checkouts without globbing into .git (the coding walker skips that
+ * directory, which is why "where's the repo" used to return nothing).
+ */
+export function listLocalRepos(): string {
+  const home = os.homedir();
+  const roots = [
+    ROOT,
+    codingRoot(),
+    home,
+    path.join(home, "Game Dev"),
+    path.join(home, "src"),
+    path.join(home, "code"),
+    path.join(home, "dev"),
+    path.join(home, "projects"),
+    path.join(home, "Documents"),
+  ];
+  const acc: string[] = [];
+  const seen = new Set<string>();
+  const uniqueRoots = [...new Set(roots.map((r) => path.resolve(r)))];
+  for (const root of uniqueRoots) {
+    if (!fs.existsSync(root)) continue;
+    const depth = root === home ? 2 : 4;
+    walkRepos(root, depth, acc, seen);
+  }
+  if (!acc.length) {
+    return [
+      `No git repositories found next to this install or under ${home}.`,
+      `This Cunning Claw process is running from: ${ROOT}`,
+      "That directory is the Cunning Claw / jarvis repo. Shell cwd defaults to your home folder, which is not a git repo — pass that path as cwd.",
+    ].join("\n");
+  }
+  const lines = acc.map((dir) => {
+    const origin = gitOrigin(dir);
+    const tag = path.resolve(dir) === path.resolve(ROOT) ? "  ← this install (Cunning Claw / jarvis)" : "";
+    return `${dir}${origin ? "  " + origin : ""}${tag}`;
+  });
+  return [
+    `This Cunning Claw process is running from: ${ROOT}`,
+    "Shell commands start in $HOME, which is usually not a git repo. Pass cwd.",
+    "",
+    ...lines,
+  ].join("\n");
 }

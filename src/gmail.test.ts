@@ -7,6 +7,10 @@ import {
   gmailListUrl,
   parseGmailView,
   shouldSweepUnread,
+  isGmailMailboxUrl,
+  isGoogleAuthUrl,
+  isGmailRelatedUrl,
+  formatGmailOpenFailure,
   GMAIL_ACTIONS,
   GMAIL_LIST_JS,
   GMAIL_THREAD_JS,
@@ -31,6 +35,21 @@ test("a leading spoken phrase expands and the rest of the query is kept", () => 
   assert.equal(expandGmailQuery("unread from dave"), "is:unread from dave");
   assert.equal(expandGmailQuery("unread from:bank"), "is:unread from:bank");
   assert.equal(expandGmailQuery("today subject:mot"), "newer_than:1d subject:mot");
+});
+
+test("Gmail-related URLs include the account picker, not just mail.google.com", () => {
+  assert.equal(isGmailMailboxUrl("https://mail.google.com/mail/u/0/#inbox"), true);
+  assert.equal(isGoogleAuthUrl("https://accounts.google.com/v3/signin/identifier?flowName=GlifWebSignIn"), true);
+  assert.equal(isGmailRelatedUrl("https://accounts.google.com/ServiceLogin?service=mail"), true);
+  assert.equal(isGmailMailboxUrl("https://accounts.google.com/ServiceLogin"), false);
+  assert.equal(isGmailRelatedUrl("https://news.ycombinator.com"), false);
+  const msg = formatGmailOpenFailure({
+    profileDir: "/home/chris/.config/cunningclaw/chrome-profile",
+    tabs: [{ title: "New Tab", url: "chrome://newtab" }],
+  });
+  assert.match(msg, /everyday Chrome/);
+  assert.match(msg, /cunningclaw\/chrome-profile/);
+  assert.match(msg, /New Tab/);
 });
 
 test("list URLs use the hash search API, not a CSS scrape", () => {
@@ -121,7 +140,7 @@ test("page scripts are plain JS — TypeScript casts in a string would throw in 
 
 test("gmail tools are on the roster, including draft and send", () => {
   const names = toolDefinitions.map((t) => t.name);
-  for (const n of ["check_email", "read_email", "draft_email", "send_email", "email_action"]) {
+  for (const n of ["check_email", "read_email", "draft_email", "send_email", "email_action", "list_repos"]) {
     assert.ok(names.includes(n), n);
   }
   const send = toolDefinitions.find((t) => t.name === "send_email");

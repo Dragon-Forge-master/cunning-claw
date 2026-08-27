@@ -15,7 +15,7 @@ import { snapshot, record } from "./filewatch.js";
 import { readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
 import { expandHome, isSensitivePath } from "./paths.js";
-import { grepFiles, globFiles, planEdit, commitEdit, readTodos, writeTodos, formatTodos, numberLines, resolveWorkPath } from "./coding.js";
+import { grepFiles, globFiles, planEdit, commitEdit, readTodos, writeTodos, formatTodos, numberLines, resolveWorkPath, listLocalRepos } from "./coding.js";
 import { openPreview, closePreview, reloadPreview } from "./preview.js";
 
 export { isSensitivePath } from "./paths.js";
@@ -53,7 +53,7 @@ export const toolDefinitions: Anthropic.Tool[] = [
       type: "object",
       properties: {
         command: { type: "string", description: "The bash command to run" },
-        cwd: { type: "string", description: "Working directory (default: user home)" },
+        cwd: { type: "string", description: "Working directory (default: user home, which is not the Cunning Claw repo — pass cwd from list_repos)" },
       },
       required: ["command"],
       additionalProperties: false,
@@ -136,6 +136,18 @@ export const toolDefinitions: Anthropic.Tool[] = [
         path: { type: "string", description: "Directory to search from" },
       },
       required: ["pattern"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_repos",
+    description:
+      "Find git repositories on this machine, including this Cunning Claw install. " +
+      "Use when Chris says 'the repo', when git status says this is not a repository, " +
+      "or before running git in an unknown directory. Read-only.",
+    input_schema: {
+      type: "object",
+      properties: {},
       additionalProperties: false,
     },
   },
@@ -979,6 +991,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         glob: input.glob,
       });
       case "glob": return globFiles(String(input.pattern ?? ""), input.path);
+      case "list_repos": return listLocalRepos();
       case "todo": {
         if (Array.isArray(input.items)) {
           const next = writeTodos(input.items);

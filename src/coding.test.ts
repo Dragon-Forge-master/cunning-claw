@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { planEdit, commitEdit, grepFiles, globFiles } from "./coding.js";
+import { planEdit, commitEdit, grepFiles, globFiles, listLocalRepos } from "./coding.js";
 import { parsePreviewUrl, openPreview, closePreview } from "./preview.js";
 
 test("preview URLs rewrite 0.0.0.0 and reject script/file schemes", () => {
@@ -40,4 +40,10 @@ test("grep and glob find a file without shelling out", () => {
   const hits = grepFiles({ pattern: "cardiff", path: dir, glob: "*.ts" });
   assert.match(hits, /hit\.ts:1:/);
   fs.rmSync(dir, { recursive: true });
+});
+
+test("list_repos names this install; glob skipping .git is why a naive hunt failed", () => {
+  const text = listLocalRepos();
+  assert.match(text, /this install \(Cunning Claw \/ jarvis\)/);
+  assert.match(text, /Shell commands start in \$HOME/);
 });
