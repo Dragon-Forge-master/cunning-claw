@@ -58,8 +58,8 @@ were being had. Which is exactly what this does when a web page tries to give it
 One command from a clean clone:
 
 ```bash
-git clone https://github.com/Dragon-Forge-master/jarvis.git
-cd jarvis
+git clone https://github.com/Dragon-Forge-master/cunning-claw.git
+cd cunning-claw
 ./install.sh
 ```
 

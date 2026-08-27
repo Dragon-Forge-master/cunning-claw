@@ -6,7 +6,7 @@ inbox. A hole in it is a hole in your machine. Reports are genuinely welcome.
 ## Reporting
 
 Email **cjvehiclespecialist@gmail.com** with `SECURITY` in the subject, or open a
-[private advisory](https://github.com/Dragon-Forge-master/jarvis/security/advisories/new).
+[private advisory](https://github.com/Dragon-Forge-master/cunning-claw/security/advisories/new).
 
 Please don't open a public issue for anything exploitable. Expect a reply within a
 few days — this is maintained by one person.
