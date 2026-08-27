@@ -9,7 +9,7 @@ description: Change a codebase on this machine the way Claude Code would. Use wh
 
 You are already on the box. Do not describe an IDE. Work.
 
-1. **Find.** This install is the jarvis repo — `system_status` prints the absolute path. `list_repos` for other checkouts. `run_command` already starts here; pass `cwd: ~` for the home folder. Then `glob` then `grep`. Do not guess file paths, and do not ask Chris for a path this process already knows.
+1. **Find.** This install is the Cunning Claw repo — `system_status` prints the absolute path. `list_repos` for other checkouts. `run_command` already starts here; pass `cwd: ~` for the home folder. Then `glob` then `grep`. Do not guess file paths, and do not ask Chris for a path this process already knows.
 2. **Read.** `read_file` (lines are numbered). Read the callers, not just the symbol.
 3. **Plan only if it is more than two steps.** `todo` write, then work the list.
 4. **Edit.** `edit_file` for surgical changes. `write_file` only for new files. Do not rewrite a file to change three lines.

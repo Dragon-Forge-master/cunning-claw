@@ -301,12 +301,12 @@ export function listLocalRepos(): string {
     return [
       `No git repositories found next to this install or under ${home}.`,
       `This Cunning Claw process is running from: ${ROOT}`,
-      "That directory is the Cunning Claw / jarvis repo. Shell cwd defaults to it. Pass cwd ~ for the home folder.",
+      "That directory is the Cunning Claw repo. Shell cwd defaults to it. Pass cwd ~ for the home folder.",
     ].join("\n");
   }
   const lines = acc.map((dir) => {
     const origin = gitOrigin(dir);
-    const tag = path.resolve(dir) === path.resolve(ROOT) ? "  ← this install (Cunning Claw / jarvis)" : "";
+    const tag = path.resolve(dir) === path.resolve(ROOT) ? "  ← this install (Cunning Claw)" : "";
     return `${dir}${origin ? "  " + origin : ""}${tag}`;
   });
   return [

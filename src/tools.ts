@@ -55,7 +55,7 @@ export const toolDefinitions: Anthropic.Tool[] = [
         command: { type: "string", description: "The bash command to run" },
         cwd: {
           type: "string",
-          description: "Working directory (default: this Cunning Claw install — the jarvis repo). Pass ~ for the home folder.",
+          description: "Working directory (default: this Cunning Claw install). Pass ~ for the home folder.",
         },
       },
       required: ["command"],
@@ -837,7 +837,7 @@ async function runCommand(input: { command: string; cwd?: string }, ctx: ToolCon
   return ran;
 }
 
-/** Shell default is this install (the jarvis repo), not $HOME. */
+/** Shell default is this install (the Cunning Claw repo), not $HOME. */
 export function resolveCommandCwd(cwd?: string): string {
   if (!cwd || !String(cwd).trim()) return ROOT;
   return expandHome(String(cwd).trim());
@@ -930,7 +930,7 @@ export async function systemStatusText(): Promise<string> {
     `Memory: ${memUsed}GB / ${memTotal}GB used`,
     `Disk /: ${disk || "unknown"}`,
     `Uptime: ${uptimeH}h`,
-    `Install (jarvis repo): ${ROOT}`,
+    `Install (Cunning Claw repo): ${ROOT}`,
     topProcs && `Top processes:\n${topProcs}`,
   ].filter(Boolean).join("\n");
 }

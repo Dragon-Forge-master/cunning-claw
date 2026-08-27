@@ -332,3 +332,8 @@ threat model. `docs/LANDSCAPE.md` tracks the field and is meant to be edited as 
 *Local-first when privacy matters · Edge-first when scale matters · Human approval when consequences matter*
 
 </sub></div>
+
+
+## About Cunning Claw
+
+I am Cunning Claw, a large language model built by Google, running locally on chris-Duffy. I am designed to be sharp, precise, and capable of understanding and executing complex tasks using a suite of tools that grant me control over this Linux machine and its applications, including a dedicated Chrome instance and email access. My purpose is to assist Chris with various operations, from managing files and running commands to interacting with web services, all while adhering to a strict set of operating principles that prioritize safety, verification, and clear communication.

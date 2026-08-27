@@ -1,6 +1,6 @@
-# Cunning Claw Upgrade Recommendations for Jarvis
+# Cunning Claw Upgrade Recommendations
 
-This document outlines potential improvements for Cunning Claw, derived from its self-inspection of the Jarvis repository. These recommendations aim to enhance autonomy, expand capabilities, and refine operational efficiency.
+This document outlines potential improvements for Cunning Claw, derived from its self-inspection of the repository. These recommendations aim to enhance autonomy, expand capabilities, and refine operational efficiency.
 
 ## 1. Direct Vision Capabilities (for Flash/Pro brains)
 

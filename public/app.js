@@ -494,7 +494,7 @@ async function resolveApproval(id, approved, scope) {
 // ---------------------------------------------------------------------------
 // Capabilities (skills) — click to arm, like Claude's skills list
 // ---------------------------------------------------------------------------
-const ARMED_KEY = "jarvis.armedSkills";
+const ARMED_KEY = "cunningclaw.armedSkills";
 let skillCatalog = [];
 let armedSkills = [];
 try {
