@@ -848,6 +848,13 @@ async function runCommand(input: { command: string; cwd?: string }, ctx: ToolCon
     if (!ok) return "The user declined to run this command.";
   }
   const cwd = resolveCommandCwd(input.cwd);
+  if (!fs.existsSync(cwd)) {
+    return (
+      `cwd does not exist: ${cwd}\n` +
+      `The command never ran — this is a wrong directory, not a broken tool or a sandbox. ` +
+      `Pass an absolute path that exists (try list_dir on ~), or omit cwd to run from this install.`
+    );
+  }
   const ran = await execIn(input.command, cwd);
   if (
     /not a git repository/i.test(ran) &&
@@ -859,19 +866,40 @@ async function runCommand(input: { command: string; cwd?: string }, ctx: ToolCon
   return ran;
 }
 
-/** Shell default is this install (the Cunning Claw repo), not $HOME. */
+/**
+ * Shell default is this install (the Cunning Claw repo), not $HOME.
+ *
+ * A bare relative name ("cunningclaw_landing_page") almost always means a
+ * folder the model made in $HOME, not one inside this repo — try both. Never
+ * return a directory that does not exist if a sensible one does: Node reports
+ * a missing cwd as "spawn /bin/sh ENOENT", which reads as a missing *shell*
+ * and once sent everyone — model and maintainer alike — hunting sandboxes.
+ */
 export function resolveCommandCwd(cwd?: string): string {
   if (!cwd || !String(cwd).trim()) return ROOT;
-  return expandHome(String(cwd).trim());
+  const given = expandHome(String(cwd).trim());
+  const inRepo = path.resolve(ROOT, given);
+  if (fs.existsSync(inRepo)) return inRepo;
+  if (!path.isAbsolute(given)) {
+    const inHome = path.join(os.homedir(), given);
+    if (fs.existsSync(inHome)) return inHome;
+  }
+  return path.resolve(ROOT, given);
 }
 
 /**
  * Prefer bash, but survive boxes that lack it — Alpine, containers, sandboxed
  * runtimes. Hardcoding /bin/bash turned every command into "spawn /bin/bash
- * ENOENT" the day this ran somewhere bash wasn't reachable.
+ * ENOENT" the day this ran somewhere bash wasn't reachable. On Windows there
+ * are no POSIX shells to find; leave the choice to Node (cmd.exe).
  */
-const SHELL_CANDIDATES = ["/bin/bash", "/usr/bin/bash", "/bin/sh", "/usr/bin/sh"];
-let shellPath = SHELL_CANDIDATES.find((s) => fs.existsSync(s)) ?? "/bin/sh";
+const SHELL_CANDIDATES =
+  process.platform === "win32" ? [] : ["/bin/bash", "/usr/bin/bash", "/bin/sh", "/usr/bin/sh"];
+
+function defaultShell(): string | undefined {
+  return SHELL_CANDIDATES.find((s) => fs.existsSync(s));
+}
+let shellPath: string | undefined = defaultShell();
 
 /** A spawn failure of the shell itself, as opposed to the command failing. */
 function isShellSpawnFailure(err: any): boolean {
@@ -892,14 +920,25 @@ async function execIn(command: string, cwd: string): Promise<string> {
         .join("\n");
       return (`(cwd ${cwd})\n` + (out || "(no output)")).slice(0, 20000);
     } catch (err: any) {
-      // The SHELL failed to start — the command never ran. Existence on disk is
-      // not the same as being spawnable here; try the next shell before giving up.
       if (isShellSpawnFailure(err)) {
-        const next = SHELL_CANDIDATES.indexOf(shellPath) + 1;
+        // Node reports a MISSING CWD with the exact same "spawn <shell> ENOENT"
+        // it uses for a missing shell. Check the mundane cause before the exotic:
+        // blaming the environment for a wrong directory sent model and maintainer
+        // alike hunting sandboxes for an afternoon.
+        if (!fs.existsSync(cwd)) {
+          return (
+            `cwd vanished before the command ran: ${cwd}\n` +
+            `This is a directory problem, not a broken tool. Pass an absolute path that ` +
+            `exists, or omit cwd to run from this install.`
+          );
+        }
+        // The shell itself would not start. Try the next one before giving up.
+        const next = shellPath ? SHELL_CANDIDATES.indexOf(shellPath) + 1 : SHELL_CANDIDATES.length;
         if (next > 0 && next < SHELL_CANDIDATES.length) {
           shellPath = SHELL_CANDIDATES[next];
           continue;
         }
+        shellPath = defaultShell(); // do not let one bad episode degrade the next turn
         return (
           `(cwd ${cwd})\nCommand failed before it ran: this environment refuses to spawn ` +
           `any shell (${String(err?.message ?? err).slice(0, 120)}). That is a sandbox or ` +

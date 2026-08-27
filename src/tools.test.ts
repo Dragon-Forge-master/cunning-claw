@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { classifyCommand, isSensitivePath, resolveCommandCwd } from "./tools.js";
 import { ROOT } from "./config.js";
+import fs from "node:fs";
 import os from "node:os";
+import path from "node:path";
 
 test("HARD_DENY blocks rm -rf variants regardless of flag order", () => {
   assert.equal(classifyCommand("rm -rf /"), "deny");
@@ -43,4 +45,25 @@ test("shell cwd defaults to this install, not the home folder", () => {
   assert.equal(resolveCommandCwd("   "), ROOT);
   assert.equal(resolveCommandCwd("~"), os.homedir());
   assert.equal(resolveCommandCwd("/tmp"), "/tmp");
+});
+
+test("a bare relative cwd finds the folder in $HOME when the repo lacks it", () => {
+  // A folder that exists in HOME but not in the repo: resolve to HOME. This is
+  // the "cunningclaw_landing_page" case — Node reports a missing cwd as
+  // "spawn /bin/sh ENOENT", so resolving wrong reads as a broken shell.
+  const name = `claw-cwd-test-${process.pid}`;
+  const inHome = path.join(os.homedir(), name);
+  fs.mkdirSync(inHome, { recursive: true });
+  try {
+    assert.equal(resolveCommandCwd(name), inHome);
+  } finally {
+    fs.rmdirSync(inHome);
+  }
+  // Relative names that exist in the repo still resolve to the repo.
+  assert.equal(resolveCommandCwd("src"), path.join(ROOT, "src"));
+  // A path that exists nowhere comes back repo-resolved for the caller to report.
+  assert.equal(
+    resolveCommandCwd("no-such-dir-anywhere-xyz"),
+    path.join(ROOT, "no-such-dir-anywhere-xyz"),
+  );
 });
