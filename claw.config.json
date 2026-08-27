@@ -246,7 +246,8 @@
       "core"
     ],
     "cheapWhenTrivial": true,
-    "cheapBrain": "lite"
+    "cheapBrain": "lite",
+    "guardOverridesPin": false
   },
   "coding": {
     "root": "~",

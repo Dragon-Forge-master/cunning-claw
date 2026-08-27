@@ -10,7 +10,7 @@ import { containsSecret, redactDeep, isCleanBase64 } from "./redact.js";
 import { clearTaskGrant } from "./consequence.js";
 import { toolDefinitions as mcpToolDefinitions } from "./mcp.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
-import { pickBrain, nextBrain, isFailoverError, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
+import { pinnedBrainId, pickBrain, nextBrain, isFailoverError, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
 import { completeOpenAi } from "./openai-compat.js";
 import { appendJournal, todayJournalSnippet } from "./journal.js";
 
@@ -373,17 +373,42 @@ export async function runTurn(
   // firing on a rate limit could otherwise put the cheapest model in front of
   // attacker-controlled text — the one turn where model quality is a security
   // property rather than a cost question.
-  const guard = requiresTrustedBrain(userMessage, history);
-  const guarded = enforceGuard(spec, guard);
-  spec = guarded.spec;
-  if (guarded.overridden) {
-    events.emit("brain_guard", { forcedTo: spec.id, reason: guard.reason });
+  // Taint is judged on the window that will actually be sent, not on the whole
+  // stored history. Scanning everything meant one email read hours ago kept
+  // every later turn on the dear brain long after that text had been trimmed
+  // out of context — an invisible, open-ended bill.
+  const outgoing = repairHistory(trimHistory(history));
+  const guard = requiresTrustedBrain(userMessage, outgoing);
+
+  // An explicit pin is an operator decision on their own machine and their own
+  // money. Overriding it silently is how a picker becomes a lie. The code-level
+  // protections — denylist, approval gates, allowlist, redaction — hold on any
+  // brain, so what is lost here is one behavioural layer, not the guard rail.
+  const pinned = pinnedBrainId();
+  if (pinned && guard.required && !isTrustedBrain(spec)) {
+    if (config.routing?.guardOverridesPin) {
+      const guarded = enforceGuard(spec, guard);
+      spec = guarded.spec;
+      if (guarded.overridden) events.emit("brain_guard", { forcedTo: spec.id, reason: guard.reason });
+    } else {
+      events.emit("notice", {
+        message: `${spec.label} is pinned, so this turn stays on it even though it ${guard.reason}. ` +
+          `Approvals and the command floor still apply. Use AUTO to let the guard choose.`,
+      });
+    }
+  } else {
+    const guarded = enforceGuard(spec, guard);
+    spec = guarded.spec;
+    if (guarded.overridden) {
+      events.emit("brain_guard", { forcedTo: spec.id, reason: guard.reason });
+    }
   }
 
   events.emit("brain", {
     id: spec.id, label: spec.label, provider: spec.provider, model: spec.model, kind,
-    trusted: !guard.required || !guarded.overridden ? undefined : true,
-    guardReason: guarded.overridden ? guard.reason : undefined,
+    // Say why this brain is in the seat, so the picker never appears to lie.
+    pinned: Boolean(pinnedBrainId()),
+    guardReason: guard.required && isTrustedBrain(spec) ? guard.reason : undefined,
   });
 
   const now = new Date().toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" });
@@ -441,7 +466,7 @@ export async function runTurn(
           // Failover must not quietly demote a guarded turn. If hostile text is
           // in play, walk the chain for another trusted brain; if there is none,
           // fail loudly rather than finish the turn on a weaker model.
-          if (nxt && requiresTrustedBrain(userMessage, history).required) {
+          if (nxt && !pinnedBrainId() && requiresTrustedBrain(userMessage, outgoing).required) {
             while (nxt && !isTrustedBrain(nxt)) nxt = nextBrain(nxt, kind);
             if (!nxt) {
               events.emit("notice", {

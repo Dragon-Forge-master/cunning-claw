@@ -34,12 +34,23 @@ function isUntrustedToolName(name: string): boolean {
   return UNTRUSTED_TOOLS.has(name) || name.startsWith("mcp__");
 }
 
-/** Phrases whose turn will reach outside before it finishes. */
+/**
+ * Phrases whose turn will reach outside before it finishes.
+ *
+ * These fire *before* anything untrusted has arrived, so they have to catch the
+ * request rather than the result. "open cjvs.co.uk" matched none of the first
+ * draft — no "http", no "browse" — and went to the cheap brain, which is the
+ * exact turn the guard exists for.
+ */
 const REACHES_OUT = [
-  /email|inbox|gmail|mail/i,
-  /browse|website|web page|url|http|search|look up|google/i,
+  /email|inbox|gmail|mail\b/i,
+  /browse|website|web ?page|url|https?:|search|look up|google/i,
   /screenshot|read the (page|screen)|what.*on (my |the )?screen/i,
-  /clipboard|download|fetch/i,
+  /clipboard|download|fetch\b/i,
+  // A bare domain is a request to go and look at something.
+  /\b[a-z0-9-]+\.(com|co\.uk|org|net|io|dev|ai|app|cloud|uk|me|xyz|pages\.dev|workers\.dev)\b/i,
+  // Opening or visiting a named thing generally means the outside world.
+  /\b(open|visit|go to|load|pull up|check)\b.{0,24}\b(site|page|link|tab|browser)\b/i,
 ];
 
 function hasRecordedContent(text: string): boolean {

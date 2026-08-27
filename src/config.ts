@@ -112,6 +112,8 @@ export interface ClawConfig {
     /** Route obviously-trivial turns to a cheap brain. */
     cheapWhenTrivial?: boolean;
     cheapBrain?: string;
+    /** Let the trusted-brain guard override an explicit pin. Off: the operator decides. */
+    guardOverridesPin?: boolean;
   };
   coding?: { root?: string; skip?: string[] };
   mcp?: {

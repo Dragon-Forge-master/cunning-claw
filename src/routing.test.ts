@@ -89,3 +89,24 @@ test("at least one trusted brain is configured", () => {
   assert.ok(trustedBrainIds().length > 0);
   assert.ok(catalog().some(isTrustedBrain), "a trusted brain must exist in the catalog");
 });
+
+test("a bare domain counts as reaching outside", () => {
+  // These fire before anything untrusted has arrived, so they must catch the
+  // request rather than the result. "open cjvs.co.uk" matched nothing in the
+  // first draft and went to the cheap brain — the exact turn the guard is for.
+  for (const q of [
+    "open cjvs.co.uk and tell me what it says",
+    "have a look at great-drives.pages.dev",
+    "check estimatic.workers.dev",
+    "go to the site and read it",
+    "pull up that page",
+  ]) {
+    assert.equal(requiresTrustedBrain(q, []).required, true, q);
+  }
+});
+
+test("ordinary requests are not dragged in by the domain pattern", () => {
+  for (const q of ["what is the time", "set volume to 40", "how much memory is free"]) {
+    assert.equal(requiresTrustedBrain(q, []).required, false, q);
+  }
+});
