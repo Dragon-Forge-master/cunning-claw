@@ -135,13 +135,13 @@
           "in": 0.1,
           "out": 0.4
         },
-        "note": "fastest and cheapest \u2014 chat, clock, telemetry"
+        "note": "fastest and cheapest — chat, clock, telemetry"
       },
       {
         "id": "flash",
         "label": "Flash",
         "provider": "openai",
-        "model": "google/gemini-2.5-flash",
+        "model": "google/gemini-3.5-flash-lite",
         "baseUrl": "https://openrouter.ai/api/v1",
         "apiKeyEnv": "OPENROUTER_API_KEY",
         "thinking": false,
@@ -149,7 +149,7 @@
           "in": 0.3,
           "out": 2.5
         },
-        "note": "the workhorse \u2014 tools, browsing, most jobs"
+        "note": "the workhorse — tools, browsing, most jobs (Gemini 3.5 generation, same price as the old 2.5 flash)"
       },
       {
         "id": "pro",
@@ -177,7 +177,7 @@
           "in": 0.1,
           "out": 0.4
         },
-        "note": "OpenAI's cheapest \u2014 a second opinion"
+        "note": "OpenAI's cheapest — a second opinion"
       },
       {
         "id": "deepseek",
@@ -205,7 +205,7 @@
           "in": 0.0,
           "out": 0.0
         },
-        "note": "Ollama \u2014 free, offline, nothing leaves the machine"
+        "note": "Ollama — free, offline, nothing leaves the machine"
       }
     ]
   },
