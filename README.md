@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-172%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-183%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -124,7 +124,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
   CUNNING CLAW  ·  dyn hysbys  ·  v0.2.0
 
   ▸ online   http://127.0.0.1:3900
-  ▸ brain    flash · google/gemini-2.5-flash (openrouter)
+  ▸ brain    flash · google/gemini-3.5-flash-lite (openrouter)
   ▸ voice    piper · en_GB-alan-medium
   ▸ pulse    every 30m
   ▸ tools    browser refs · desktop · shell
@@ -194,12 +194,12 @@ Every brain is swappable. Point one at a local runtime and nothing leaves the ma
 no API key, no account, no network.
 
 ```bash
-ollama pull llama3.1:8b
+ollama pull llama3.2
 ```
 
 ```jsonc
 // claw.config.json — this brain ships already configured
-{ "id": "local", "provider": "openai", "model": "llama3.1:8b",
+{ "id": "local", "provider": "openai", "model": "llama3.2:latest",
   "baseUrl": "http://localhost:11434/v1" }
 ```
 
@@ -209,7 +209,7 @@ API; loopback and private-range hosts skip the key check entirely.
 > **One caveat, stated plainly.** Resisting a prompt injection is model *behaviour*, not a
 > code guarantee, and small models are measurably worse at it. So turns that can see
 > untrusted content are forced onto a trusted brain — see below. Offline is for privacy and
-> cost, not for handing your inbox to a 7B model.
+> cost, not for handing your inbox to a 3B model.
 
 ---
 
@@ -369,13 +369,13 @@ src/redact.ts    Credential redaction
 src/workspace.ts SOUL.md / USER.md / MEMORY.md / skills
 ```
 
-**4,500 lines. Two runtime dependencies.** Most of what it does comes from composing things
+**~11,300 lines, plus 2,400 of tests. Two runtime dependencies.** Most of what it does comes from composing things
 your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, `pactl` /
 `afplay`, Chrome's debug protocol — rather
 than dragging in frameworks.
 
 ```bash
-npm test        # 111 tests
+npm test        # 183 tests
 npm run check   # tsc --noEmit
 ```
 
@@ -401,8 +401,3 @@ threat model. `docs/LANDSCAPE.md` tracks the field and is meant to be edited as 
 *Local-first when privacy matters · Edge-first when scale matters · Human approval when consequences matter*
 
 </sub></div>
-
-
-## About Cunning Claw
-
-I am Cunning Claw, a large language model built by Google, running locally on chris-Duffy. I am designed to be sharp, precise, and capable of understanding and executing complex tasks using a suite of tools that grant me control over this Linux machine and its applications, including a dedicated Chrome instance and email access. My purpose is to assist Chris with various operations, from managing files and running commands to interacting with web services, all while adhering to a strict set of operating principles that prioritize safety, verification, and clear communication.
