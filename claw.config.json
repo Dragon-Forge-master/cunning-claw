@@ -197,7 +197,7 @@
         "id": "local",
         "label": "Local",
         "provider": "openai",
-        "model": "llama3.1:8b",
+        "model": "llama3.2:latest",
         "baseUrl": "http://localhost:11434/v1",
         "apiKeyEnv": "OLLAMA_API_KEY",
         "thinking": false,
@@ -205,7 +205,7 @@
           "in": 0.0,
           "out": 0.0
         },
-        "note": "Ollama — free, offline, nothing leaves the machine"
+        "note": "free and fully offline — Ollama llama3.2 3B, sized for this machine's RAM; chatty, not scholarly"
       }
     ]
   },
