@@ -9,7 +9,7 @@ import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted, s
 import { containsSecret, redactDeep, isCleanBase64 } from "./redact.js";
 import { clearTaskGrant } from "./consequence.js";
 import * as coherence from "./coherence.js";
-import { toolDefinitions as mcpToolDefinitions } from "./mcp.js";
+import { toolDefinitions as mcpToolDefinitions, listMcpStates } from "./mcp.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
 import { pinnedBrainId, pickBrain, nextBrain, isFailoverError, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
 import { completeOpenAi } from "./openai-compat.js";
@@ -132,7 +132,34 @@ function buildStableSystem(spec: BrainSpec): string {
 /** The volatile half — just what genuinely changes each turn. Kept tiny. */
 function volatileSystem(spec: BrainSpec): string {
   const now = new Date().toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" });
-  return `[This turn — time: ${now}; brain: ${describeBrain(spec)} (${spec.id}).]`;
+  return `[This turn — time: ${now}; brain: ${describeBrain(spec)} (${spec.id}).${mcpRosterLine()}]`;
+}
+
+/**
+ * The live MCP roster, one line, every turn. History is a belief store with no
+ * invalidation: after a server connects or dies, old turns still say the old
+ * thing, and the model trusts its own transcript over its tool list. This line
+ * is present-tense authority — "Replicate IS connected" — sitting above every
+ * remembered failure.
+ */
+function mcpRosterLine(): string {
+  try {
+    const states = listMcpStates();
+    if (!states.length) return "";
+    const up = states.filter((s) => s.status === "connected").map((s) => `${s.id}(${s.tools})`);
+    const auth = states.filter((s) => s.status === "needs_auth").map((s) => s.id);
+    const down = states.filter((s) => s.status !== "connected" && s.status !== "needs_auth").map((s) => s.id);
+    const parts = [
+      up.length ? `connected: ${up.join(" ")}` : "",
+      auth.length ? `needs OAuth: ${auth.join(", ")}` : "",
+      down.length ? `down: ${down.join(", ")}` : "",
+    ].filter(Boolean);
+    return parts.length
+      ? ` MCP now — ${parts.join(" · ")}. This is the live state; it beats anything earlier in the conversation.`
+      : "";
+  } catch {
+    return "";
+  }
 }
 
 type Msg = Anthropic.MessageParam;
