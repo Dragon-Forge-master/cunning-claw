@@ -105,9 +105,17 @@ async function firstJson(urls: string[]): Promise<any | null> {
 
 function openBrowser(url: string): void {
   const plat = process.platform;
-  if (plat === "darwin") spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
-  else if (plat === "win32") spawn("cmd", ["/c", "start", "", url], { detached: true, stdio: "ignore" }).unref();
-  else spawn("xdg-open", [url], { detached: true, stdio: "ignore" }).unref();
+  // cmd's `start` splits on every & in the URL — an OAuth authorization URL
+  // is made of &s, so Windows opened a truncated sign-in page and the flow
+  // timed out after three minutes, every time. rundll32 takes the URL whole.
+  const child =
+    plat === "darwin"
+      ? spawn("open", [url], { detached: true, stdio: "ignore" })
+      : plat === "win32"
+        ? spawn("rundll32", ["url.dll,FileProtocolHandler", url], { detached: true, stdio: "ignore" })
+        : spawn("xdg-open", [url], { detached: true, stdio: "ignore" });
+  child.once("error", () => { /* reported by the timeout path, not a crash */ });
+  child.unref();
 }
 
 function waitForCode(portHint = 0): Promise<{ port: number; code: Promise<string> }> {
@@ -152,6 +160,9 @@ function waitForCode(portHint = 0): Promise<{ port: number; code: Promise<string
           finish(() => fail(new Error("OAuth timed out — finish sign-in in the browser within three minutes.")));
         }, 180_000);
       });
+      // A late timeout must not become an unhandled rejection when the caller
+      // has already given up and moved on; real awaiters still see it.
+      code.catch(() => {});
       resolve({ port, code });
     });
     server.on("error", reject);

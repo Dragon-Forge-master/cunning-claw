@@ -1084,17 +1084,29 @@ async function writeFileTool(
 
 async function openTool(input: { target: string }): Promise<string> {
   const t = input.target;
-  const isUrlOrPath = /^https?:\/\//.test(t) || t.startsWith("/") || t.startsWith("~/");
-  // "Open this" belongs to the platform — xdg-open is a Linuxism that ENOENTs
-  // everywhere else. (The empty string after `start` is its window title slot,
-  // so paths with spaces are not eaten as the title.)
+  // Any URI scheme (https:, file:, mailto:, microsoft-edge:, a bare C:\ drive)
+  // or path is a thing to OPEN; only bare words are programs to launch. The
+  // old test knew only http(s) and Unix paths, so "file:///C:/…" was spawned
+  // AS a program and detonated as an uncaught exception.
+  const isUrlOrPath =
+    /^[a-z][a-z0-9+.-]*:/i.test(t) || t.startsWith("/") || t.startsWith("~/");
+  // "Open this" belongs to the platform. On Windows, cmd's `start` treats
+  // every & in a URL as a command separator — rundll32 takes the URL as one
+  // clean argument and has no parser to trip.
   const opener =
     process.platform === "darwin" ? ["open"] :
-    process.platform === "win32" ? ["cmd", "/c", "start", ""] :
+    process.platform === "win32" ? ["rundll32", "url.dll,FileProtocolHandler"] :
     ["xdg-open"];
   const [cmd, ...args] = isUrlOrPath ? [...opener, expandHome(t)] : t.split(" ");
   try {
     const child = spawn(cmd, args, { detached: true, stdio: "ignore" });
+    // spawn errors arrive as events, not throws — unheard, they crash the
+    // process. Wait for the verdict before claiming success.
+    const failure = await new Promise<string | null>((resolve) => {
+      child.once("error", (e) => resolve(e.message));
+      child.once("spawn", () => resolve(null));
+    });
+    if (failure) return `Failed to launch ${t}: ${failure}`;
     child.unref();
     return `Launched: ${t}`;
   } catch (err: any) {
