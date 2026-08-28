@@ -231,7 +231,11 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
     out.push(row("voice", "ok", false, `Voice engine: ${voice.engine} · ${voice.detail}`));
   }
   if (!fs.existsSync(piperBin)) {
-    out.push(row("piper", "warn", false, `Piper venv missing — run ./setup-voice.sh`));
+    // setup-voice.sh is a bash script; telling a Windows user to run it is a
+    // wild goose chase when SAPI already covers them.
+    out.push(h === "win32"
+      ? row("piper", "ok", false, "Piper not set up — Windows speech synthesis (SAPI) speaks instead")
+      : row("piper", "warn", false, `Piper venv missing — run ./setup-voice.sh`));
   } else if (!fs.existsSync(modelAbs)) {
     out.push(row(
       "piper-model",
@@ -269,8 +273,14 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
     out.push(await binCheck("wmctrl", "wmctrl", false));
     out.push(await binCheck("xclip", "xclip", false));
     out.push(await binCheck("pactl", "pactl", false));
+  } else if (h === "win32") {
+    // The desktop tools on Windows are PowerShell all the way down —
+    // screenshots via System.Drawing, keys via SendKeys, clipboard built in.
+    out.push((await hasBin("powershell"))
+      ? row("desktop", "ok", false, "Desktop tools: PowerShell (screenshots, keys, clipboard) — nothing to install")
+      : row("desktop", "warn", false, "powershell.exe not on PATH — desktop tools need it"));
   } else {
-    out.push(row("desktop", "warn", false, "Desktop tools currently support Linux and macOS"));
+    out.push(row("desktop", "warn", false, "Desktop tools support Linux, macOS and Windows — this platform is unknown"));
   }
 
   const chrome = await findChrome();
