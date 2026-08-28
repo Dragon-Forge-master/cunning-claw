@@ -34,6 +34,18 @@ success, not failure.** The image does not exist yet; you go back for it.
    on the glass with `preview` (or `browser_open`). If Chris wants the file,
    download it with your shell to `~/` and say where you put it.
 
+## The classic mistake — where the prompt goes
+
+The prompt is NOT a top-level argument. `create_prediction` takes
+`{"model": …, "input": {"prompt": …}}` — the prompt lives INSIDE `input`.
+Called with a top-level prompt, Replicate runs the model with an empty input
+and fails with "Required value missing: prompt" — which is your argument
+shape, not a broken server. (The executor now auto-repairs the obvious case
+and tells you when it did; do not rely on it.)
+
+And read failures before reporting them: a `Status: failed` reply with an
+`Error:` line is not an empty response — the Error line is the answer.
+
 ## Choosing a model
 
 - Default: `black-forest-labs/flux-schnell` — fast, good, about a penny.

@@ -10,6 +10,7 @@ import {
   listMcpStates,
   listMcpTools,
   localName,
+  repairNestedInput,
   shutdown,
 } from "./mcp.js";
 import {
@@ -248,4 +249,45 @@ test("MCP approval: a write word gates, else a read word frees, else ask", () =>
   assert.equal(gated("delete"), true);
   assert.equal(gated("search_and_delete"), true, "a compound with a write word gates");
   assert.equal(gated("frobnicate"), true, "an unrecognised tool asks");
+});
+
+test("stray top-level args are repaired into the one object prop that owns them", () => {
+  // Flash called create_prediction with {model, prompt}; the schema nests
+  // prompt inside input. Replicate ran with an empty input and "failed".
+  const schema = {
+    type: "object",
+    properties: {
+      model: { type: "string" },
+      version: { type: "string" },
+      input: { type: "object", properties: { prompt: { type: "string" }, seed: { type: "number" } } },
+    },
+  };
+  const fixed = repairNestedInput({ model: "black-forest-labs/flux-schnell", prompt: "a claw" }, schema);
+  assert.deepEqual(fixed.value, { model: "black-forest-labs/flux-schnell", input: { prompt: "a claw" } });
+  assert.match(fixed.note, /prompt → input\.prompt/);
+
+  // Already-correct input passes through untouched, no note.
+  const ok = repairNestedInput({ model: "m", input: { prompt: "p" } }, schema);
+  assert.deepEqual(ok.value, { model: "m", input: { prompt: "p" } });
+  assert.equal(ok.note, "");
+
+  // A stray that fits nowhere is left alone: the server's own error is honest then.
+  const stray = repairNestedInput({ model: "m", banana: 1 }, schema);
+  assert.deepEqual(stray.value, { model: "m", banana: 1 });
+  assert.equal(stray.note, "");
+
+  // Two candidate homes means ambiguity — no guessing.
+  const twoHomes = {
+    type: "object",
+    properties: {
+      a: { type: "object", properties: { x: {} } },
+      b: { type: "object", properties: { x: {} } },
+    },
+  };
+  const ambiguous = repairNestedInput({ x: 1 }, twoHomes);
+  assert.deepEqual(ambiguous.value, { x: 1 });
+
+  // Never overwrite a value that already exists in the nest.
+  const keep = repairNestedInput({ input: { prompt: "keep me" }, prompt: "usurper" }, schema);
+  assert.deepEqual(keep.value, { input: { prompt: "keep me" }, prompt: "usurper" });
 });
