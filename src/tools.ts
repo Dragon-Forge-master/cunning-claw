@@ -224,6 +224,21 @@ export const toolDefinitions: Anthropic.Tool[] = [
     input_schema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
+    name: "mcp_describe",
+    description:
+      "Show the exact input schema — parameter names, nesting, required fields — for MCP tools. " +
+      "Pass server (e.g. replicate) for all its tools, or tool for one. Use BEFORE first calling an " +
+      "unfamiliar MCP tool, so arguments come from the schema instead of guesswork.",
+    input_schema: {
+      type: "object",
+      properties: {
+        server: { type: "string", description: "Server id, e.g. replicate" },
+        tool: { type: "string", description: "A single tool name, e.g. create_prediction" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: "mcp_add",
     description:
       "Add MCP server(s) from a Claude-Code-style JSON snippet — {\"mcpServers\":{\"name\":{…}}} or a bare " +
@@ -1194,6 +1209,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "open": return await openTool(input);
       case "system_status": return `${await systemStatusText()}\n${mcp.mcpStatusText()}`;
       case "mcp_status": return mcp.mcpStatusText();
+      case "mcp_describe": return mcp.describeTools(input.server, input.tool);
       case "mcp_add": {
         const snippet = String(input.snippet ?? "");
         // A raw credential in config is how the last one ended up in three
