@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { config } from "./config.js";
 import { openAiEndpoint, isLocalEndpoint, type BrainSpec } from "./brain.js";
 import { toolDefinitions } from "./tools.js";
+import { toolDefinitions as mcpToolDefinitions, jsonSchemaForOpenAi } from "./mcp.js";
 
 export type OpenAiChatMessage = {
   role: "system" | "user" | "assistant" | "tool";
@@ -106,12 +107,15 @@ export function toOpenAiMessages(
 }
 
 export function openAiToolSchema() {
-  return toolDefinitions.map((t) => ({
+  // Flash, Pro, nano, DeepSeek and local Ollama all come through here.
+  // Anthropic already receives MCP tools via agent.buildTools; this path used
+  // to send only built-ins, so the model saw names in mcp_status and guessed.
+  return [...toolDefinitions, ...mcpToolDefinitions()].map((t) => ({
     type: "function" as const,
     function: {
       name: t.name,
       description: t.description,
-      parameters: t.input_schema,
+      parameters: jsonSchemaForOpenAi(t.input_schema),
     },
   }));
 }

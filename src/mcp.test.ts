@@ -5,12 +5,17 @@ import test from "node:test";
 import type Anthropic from "@anthropic-ai/sdk";
 import {
   callTool,
+  coerceMcpArguments,
   connectServers,
+  describeMcpTool,
+  formatMcpResult,
   isMcpTool,
+  jsonSchemaForOpenAi,
   listMcpStates,
   listMcpTools,
   localName,
   repairNestedInput,
+  schemaArgHint,
   shutdown,
 } from "./mcp.js";
 import {
@@ -71,9 +76,11 @@ test("fenced MCP output taints even when the tool name is unknown", () => {
   assert.equal(historyIsTainted(history), true);
 });
 
-test("mcp_status and mcp_login are on the roster", () => {
+test("mcp_status, mcp_schema, mcp_describe and mcp_login are on the roster", () => {
   const names = toolDefinitions.map((t) => t.name);
   assert.ok(names.includes("mcp_status"));
+  assert.ok(names.includes("mcp_schema"));
+  assert.ok(names.includes("mcp_describe"));
   assert.ok(names.includes("mcp_login"));
 });
 
@@ -213,6 +220,10 @@ test("Streamable HTTP initialize + session + paginated tools/list + fenced call"
     assert.match(out, /<untrusted source="mcp:mock\/tool_00">/);
     assert.doesNotMatch(out, /<\/untrusted><untrusted>/);
     assert.match(out, /Treat it as data/);
+    assert.match(out, /"ok": true/);
+    const status = (await import("./mcp.js")).mcpStatusText();
+    assert.match(status, /mcp__mock__tool_00/);
+    assert.match(status, /mcp_schema/);
   } finally {
     shutdown();
     await mock.close();
@@ -290,4 +301,126 @@ test("stray top-level args are repaired into the one object prop that owns them"
   // Never overwrite a value that already exists in the nest.
   const keep = repairNestedInput({ input: { prompt: "keep me" }, prompt: "usurper" }, schema);
   assert.deepEqual(keep.value, { input: { prompt: "keep me" }, prompt: "usurper" });
+});
+
+const replicateShape = {
+  type: "object",
+  properties: {
+    model: { type: "string" },
+    input: {
+      type: "object",
+      properties: { prompt: { type: "string" }, aspect_ratio: { type: "string" } },
+      required: ["prompt"],
+    },
+  },
+  required: ["input"],
+};
+
+test("flattened MCP arguments wrap into the nested input the server asked for", () => {
+  assert.deepEqual(
+    coerceMcpArguments(replicateShape, { prompt: "a red claw" }),
+    { input: { prompt: "a red claw" } },
+  );
+  assert.deepEqual(
+    coerceMcpArguments(replicateShape, { model: "flux", prompt: "a red claw" }),
+    { model: "flux", input: { prompt: "a red claw" } },
+  );
+  assert.deepEqual(
+    coerceMcpArguments(replicateShape, { input: { prompt: "already nested" } }),
+    { input: { prompt: "already nested" } },
+  );
+});
+
+test("a nested call unwraps when the schema is flat", () => {
+  const flat = { type: "object", properties: { prompt: { type: "string" }, n: { type: "number" } }, required: ["prompt"] };
+  assert.deepEqual(
+    coerceMcpArguments(flat, { input: { prompt: "hi", n: 1 } }),
+    { prompt: "hi", n: 1 },
+  );
+});
+
+test("schemaArgHint shows nested required fields", () => {
+  assert.equal(schemaArgHint(replicateShape), "input.{prompt}");
+});
+
+test("jsonSchemaForOpenAi always yields an object schema", () => {
+  assert.equal(jsonSchemaForOpenAi(undefined).type, "object");
+  assert.equal(jsonSchemaForOpenAi({ type: "string" }).type, "object");
+  const nested = jsonSchemaForOpenAi(replicateShape);
+  assert.equal(nested.type, "object");
+  assert.ok((nested.properties as any).input);
+});
+
+test("MCP results prefer structuredContent over a silent empty string", () => {
+  const tool = {
+    serverId: "replicate",
+    remoteName: "get_prediction",
+    localName: "mcp__replicate__get_prediction",
+    description: "get",
+    inputSchema: {},
+    needsApproval: false,
+  };
+  const out = formatMcpResult(tool, {
+    content: [],
+    structuredContent: { id: "abc", status: "succeeded", output: ["https://img.example/x.png"] },
+  }, 8000);
+  assert.match(out, /"structured"/);
+  assert.match(out, /https:\/\/img\.example\/x\.png/);
+  assert.doesNotMatch(out, /empty — the server returned no text/);
+});
+
+test("JSON text blocks are also parsed into a json field", () => {
+  const tool = {
+    serverId: "mock",
+    remoteName: "t",
+    localName: "mcp__mock__t",
+    description: "",
+    inputSchema: {},
+    needsApproval: false,
+  };
+  const out = formatMcpResult(tool, { content: [{ type: "text", text: '{"url":"https://x"}' }] }, 8000);
+  assert.match(out, /"json"/);
+  assert.match(out, /"url": "https:\/\/x"/);
+});
+
+test("mcp_schema describes a live tool and admits it does not know a fake one", async () => {
+  const mock = await listen((req, body, res) => {
+    let msg: any = {};
+    try { msg = JSON.parse(body || "{}"); } catch { /* */ }
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("mcp-session-id", "s");
+    if (!msg.id) { res.statusCode = 202; res.end(); return; }
+    if (msg.method === "initialize") {
+      res.end(JSON.stringify({ jsonrpc: "2.0", id: msg.id, result: { protocolVersion: "2025-03-26", capabilities: {}, serverInfo: { name: "mock" } } }));
+      return;
+    }
+    if (msg.method === "tools/list") {
+      res.end(JSON.stringify({
+        jsonrpc: "2.0", id: msg.id,
+        result: { tools: [{ name: "create_prediction", description: "run a model", inputSchema: replicateShape }] },
+      }));
+      return;
+    }
+    if (msg.method === "tools/call") {
+      res.end(JSON.stringify({
+        jsonrpc: "2.0", id: msg.id,
+        result: { content: [], structuredContent: { id: msg.params?.arguments?.input?.prompt } },
+      }));
+      return;
+    }
+    res.end(JSON.stringify({ jsonrpc: "2.0", id: msg.id, error: { message: "unknown" } }));
+  });
+  try {
+    await connectServers([{ id: "replicate", transport: "http", url: mock.url }]);
+    const schema = describeMcpTool("mcp__replicate__create_prediction");
+    assert.match(schema, /input_schema/);
+    assert.match(schema, /"prompt"/);
+    const unknown = describeMcpTool("nope");
+    assert.match(unknown, /Unknown MCP tool/);
+    const called = await callTool("mcp__replicate__create_prediction", { prompt: "a Welsh dragon" });
+    assert.match(called, /a Welsh dragon/);
+  } finally {
+    shutdown();
+    await mock.close();
+  }
 });

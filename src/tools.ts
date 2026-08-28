@@ -219,8 +219,8 @@ export const toolDefinitions: Anthropic.Tool[] = [
   {
     name: "mcp_status",
     description:
-      "List configured MCP servers (Canva, GitHub, Notion, …) and their tools. " +
-      "Use when Chris asks which MCPs are connected, or before mcp_login.",
+      "List every connected MCP server and each tool's local name plus required arguments. " +
+      "Use this, then mcp_schema, before guessing mcp__ tool names or argument shapes.",
     input_schema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
@@ -237,6 +237,24 @@ export const toolDefinitions: Anthropic.Tool[] = [
       },
       additionalProperties: false,
     },
+  },
+  {
+    name: "mcp_schema",
+    description:
+      "Return the exact JSON Schema (properties, required, nested input.prompt vs prompt) for one MCP tool. " +
+      "Same job as mcp_describe for a single tool, as structured JSON.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tool: {
+          type: "string",
+          description: "Local name such as mcp__replicate__create_prediction, or the remote name create_prediction",
+        },
+      },
+      required: ["tool"],
+      additionalProperties: false,
+    },
+    strict: true,
   },
   {
     name: "mcp_add",
@@ -1210,6 +1228,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "system_status": return `${await systemStatusText()}\n${mcp.mcpStatusText()}`;
       case "mcp_status": return mcp.mcpStatusText();
       case "mcp_describe": return mcp.describeTools(input.server, input.tool);
+      case "mcp_schema": return mcp.describeMcpTool(String(input.tool ?? ""));
       case "mcp_add": {
         const snippet = String(input.snippet ?? "");
         // A raw credential in config is how the last one ended up in three

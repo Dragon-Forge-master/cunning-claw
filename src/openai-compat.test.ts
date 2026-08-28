@@ -64,6 +64,8 @@ test("OpenAI tool schema wraps every CUNNING CLAW tool as a function", () => {
   assert.equal(schema[0].type, "function");
   assert.ok(schema.some((t) => t.function.name === "memory_search"));
   assert.ok(schema.some((t) => t.function.name === "skill_read"));
+  assert.ok(schema.some((t) => t.function.name === "mcp_schema"));
+  assert.ok(schema.some((t) => t.function.name === "mcp_describe"));
 });
 
 test("screenshots reach vision-capable models instead of being dropped", () => {

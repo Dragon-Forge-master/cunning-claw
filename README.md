@@ -269,6 +269,13 @@ The older `claw.config.json` array still works:
 `${VAR}` and `${VAR:-default}` expand in command, args, env, url, and headers.
 
 Tools arrive namespaced (`mcp__github__create_issue`) so a server cannot shadow a built-in.
+Those tools, **with their JSON Schemas**, are sent to every brain — Anthropic and the
+OpenAI-compatible ones (Gemini Flash/Pro, nano, local Ollama). `mcp_status` lists each
+tool and its required arguments; `mcp_schema` returns the full input schema so the
+assistant does not have to guess `prompt` vs `input.prompt`. Call results come back as
+JSON (`ok`, `text`, `json`, `structured`, `resources`) inside `<untrusted>`. Flattened
+arguments are repaired to the schema before the server sees them.
+
 The client is hand-rolled — MCP is JSON-RPC, and the official SDK brings ten dependencies
 into a project that has two.
 
