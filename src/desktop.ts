@@ -415,8 +415,52 @@ export async function focusWindow(name: string): Promise<string> {
 // Input synthesis
 // ---------------------------------------------------------------------------
 
-export async function pressKeys(keys: string): Promise<string> {
+/** Title of the window that has focus right now, or null where unknowable. */
+export async function activeWindowName(): Promise<string | null> {
+  try {
+    if (host() === "darwin") {
+      const name = await runOsa(
+        `tell application "System Events" to get name of first application process whose frontmost is true`,
+      );
+      return name || null;
+    }
+    if (host() === "win32" || host() === "other") return null;
+    if (!(await hasBin("xdotool"))) return null;
+    const { stdout } = await execFileAsync(
+      "xdotool", ["getactivewindow", "getwindowname"], { timeout: 5000 },
+    );
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Keystrokes land on whatever has focus — which could be anything, including
+ * the user's own typing. When the caller names a window, aim first and refuse
+ * to fire blind if the aim fails; either way, report where the input went, so
+ * "typed into the wrong app" is visible in the result instead of discovered
+ * later on the screen.
+ */
+async function aimWindow(window?: string): Promise<{ error?: string }> {
+  if (!window) return {};
+  const focused = await focusWindow(window);
+  if (/^No window matching/.test(focused)) {
+    return { error: `${focused} Nothing was sent — the keys would have gone to whatever happened to have focus.` };
+  }
+  await new Promise((r) => setTimeout(r, 150));
+  return {};
+}
+
+async function landedIn(): Promise<string> {
+  const active = await activeWindowName();
+  return active ? ` — focus: ${active.slice(0, 60)}` : "";
+}
+
+export async function pressKeys(keys: string, window?: string): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
+  const aim = await aimWindow(window);
+  if (aim.error) return aim.error;
   if (host() === "win32") {
     try { return await win.pressKeys(keys); } catch (err) { return (err as Error).message; }
   }
@@ -424,32 +468,34 @@ export async function pressKeys(keys: string): Promise<string> {
   if (host() === "darwin") {
     try {
       await runOsa(keysToDarwinScript(keys));
-      return `Pressed: ${chords.join(" ")}`;
+      return `Pressed: ${chords.join(" ")}${await landedIn()}`;
     } catch (err) {
       return `Could not send keystrokes: ${(err as Error).message}`;
     }
   }
   if (!(await hasBin("xdotool"))) return missing("xdotool");
   await execFileAsync("xdotool", ["key", "--clearmodifiers", ...chords], { timeout: 10000 });
-  return `Pressed: ${chords.join(" ")}`;
+  return `Pressed: ${chords.join(" ")}${await landedIn()}`;
 }
 
-export async function typeOnDesktop(text: string): Promise<string> {
+export async function typeOnDesktop(text: string, window?: string): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
+  const aim = await aimWindow(window);
+  if (aim.error) return aim.error;
   if (host() === "win32") {
     try { return await win.typeText(text); } catch (err) { return (err as Error).message; }
   }
   if (host() === "darwin") {
     try {
       await runOsa(textToDarwinScript(text));
-      return `Typed ${text.length} characters into the focused window.`;
+      return `Typed ${text.length} characters${await landedIn()}`;
     } catch (err) {
       return `Could not type: ${(err as Error).message}`;
     }
   }
   if (!(await hasBin("xdotool"))) return missing("xdotool");
   await execFileAsync("xdotool", ["type", "--clearmodifiers", "--delay", "12", text], { timeout: 30000 });
-  return `Typed ${text.length} characters into the focused window.`;
+  return `Typed ${text.length} characters${await landedIn()}`;
 }
 
 // ---------------------------------------------------------------------------

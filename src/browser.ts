@@ -431,18 +431,36 @@ export async function snapshot(index?: number): Promise<string> {
 }
 
 async function afterAction(s: CdpSession, headline: string): Promise<string> {
+  const before = lastUrl;
   await settle(s);
   const meta = await pageMeta(s);
   lastUrl = meta.url;
   lastRefs = await captureRefs(s);
+  // A click that navigates is the single most-missed event in web automation:
+  // the model clicks "Generate", lands on the homepage, and reads the old
+  // intent into the new page. Say the move out loud so it cannot be missed.
+  const moved = before && before !== meta.url ? `\nPage navigated: ${before} → ${meta.url}` : "";
   const snap = formatSnapshot({
     url: meta.url,
     title: meta.title,
     refs: lastRefs,
     consoleErrors: s.errors.slice(-6),
-    note: headline,
+    note: headline + moved,
   });
-  return `${headline}\n\n${snap}`;
+  return `${headline}${moved}\n\n${snap}`;
+}
+
+/**
+ * A ref that is not in the last tree usually means the page moved on — a
+ * navigation, a re-render, a dialog. The old answer ("call browser_snapshot
+ * first") cost a whole round trip; hand back the fresh tree in the same breath.
+ */
+async function staleRefRecovery(s: CdpSession, ref: string): Promise<string> {
+  return afterAction(
+    s,
+    `Ref ${ref} is not in the current page — it has changed since that snapshot. ` +
+      `Nothing was clicked or typed. Fresh tree below; aim again with its refs.`,
+  );
 }
 
 function resolveAim(input: { ref?: string; query?: string }): ClawRef | { query: string } {
@@ -645,7 +663,13 @@ export async function click(
 ): Promise<string> {
   const target = await activeTarget(input.tab);
   const s = await sessionFor(target);
-  const aim = resolveAim(input);
+  let aim: ReturnType<typeof resolveAim>;
+  try {
+    aim = resolveAim(input);
+  } catch (err) {
+    if (input.ref) return staleRefRecovery(s, input.ref);
+    throw err;
+  }
   const hit = await locate(s, aim);
   await mouseClick(s, hit.x, hit.y, input.button ?? "left");
   return afterAction(s, `Clicked ${hit.label}`);
@@ -654,7 +678,14 @@ export async function click(
 export async function hover(input: { ref?: string; query?: string; tab?: number }): Promise<string> {
   const target = await activeTarget(input.tab);
   const s = await sessionFor(target);
-  const hit = await locate(s, resolveAim(input));
+  let aim: ReturnType<typeof resolveAim>;
+  try {
+    aim = resolveAim(input);
+  } catch (err) {
+    if (input.ref) return staleRefRecovery(s, input.ref);
+    throw err;
+  }
+  const hit = await locate(s, aim);
   await s.call("Input.dispatchMouseEvent", { type: "mouseMoved", x: hit.x, y: hit.y });
   return afterAction(s, `Hovered ${hit.label}`);
 }
@@ -670,7 +701,13 @@ export async function typeText(input: {
 }): Promise<string> {
   const target = await activeTarget(input.tab);
   const s = await sessionFor(target);
-  const aim = resolveAim({ ref: input.ref, query: input.query ?? input.selector });
+  let aim: ReturnType<typeof resolveAim>;
+  try {
+    aim = resolveAim({ ref: input.ref, query: input.query ?? input.selector });
+  } catch (err) {
+    if (input.ref) return staleRefRecovery(s, input.ref);
+    throw err;
+  }
   const hit = await locate(s, aim);
   await mouseClick(s, hit.x, hit.y);
   await sleep(80);
@@ -791,9 +828,28 @@ export async function selectOption(input: {
   return afterAction(s, `Selected ${res.label}`);
 }
 
+/**
+ * "On the page" and "clickable" are different facts: a button can exist,
+ * be visible, and still sit under a cookie banner. Interactable means
+ * present, sized, enabled, and topmost at its own centre.
+ */
+const INTERACTABLE_JS = (selector: string) => `(() => {
+  const el = document.querySelector(${JSON.stringify(selector)});
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  if (r.width < 1 || r.height < 1) return false;
+  if (el.disabled || el.getAttribute('aria-disabled') === 'true') return false;
+  const top = document.elementFromPoint(
+    Math.min(Math.max(r.x + r.width / 2, 0), innerWidth - 1),
+    Math.min(Math.max(r.y + r.height / 2, 0), innerHeight - 1),
+  );
+  return !!top && (el === top || el.contains(top) || top.contains(el));
+})()`;
+
 export async function waitFor(input: {
   text?: string;
   selector?: string;
+  interactable?: string;
   url?: string;
   timeoutMs?: number;
   tab?: number;
@@ -811,6 +867,10 @@ export async function waitFor(input: {
       const found = await evaluate(s, `Boolean(document.querySelector(${JSON.stringify(input.selector)}))`);
       if (found) return afterAction(s, `Selector ${input.selector} is on the page`);
     }
+    if (input.interactable) {
+      const ok = await evaluate(s, INTERACTABLE_JS(input.interactable));
+      if (ok) return afterAction(s, `${input.interactable} is interactable — visible, enabled, and on top`);
+    }
     if (input.text) {
       const found = await evaluate(
         s,
@@ -818,13 +878,73 @@ export async function waitFor(input: {
       );
       if (found) return afterAction(s, `Text matched ${JSON.stringify(input.text)}`);
     }
-    if (!input.url && !input.selector && !input.text) {
+    if (!input.url && !input.selector && !input.text && !input.interactable) {
       await settle(s, 200, timeout);
       return afterAction(s, "Page settled");
     }
     await sleep(250);
   }
-  return `Timed out after ${timeout}ms waiting for ${input.text ?? input.selector ?? input.url ?? "settle"}.`;
+  const what = input.text ?? input.selector ?? input.interactable ?? input.url ?? "settle";
+  const hint = input.interactable
+    ? " It exists but stayed covered or disabled — browser_dismiss may clear what is on top of it."
+    : "";
+  return `Timed out after ${timeout}ms waiting for ${what}.${hint}`;
+}
+
+// ---------------------------------------------------------------------------
+// Overlay dismissal — cookie banners, consent walls, newsletter pop-ups
+// ---------------------------------------------------------------------------
+
+/**
+ * Heuristic, deliberately conservative: only elements that look like overlays
+ * (fixed/sticky or role=dialog, covering a real fraction of the viewport), and
+ * only controls whose label plainly says what they do. Privacy first: a
+ * reject/necessary-only control beats an accept when both are present.
+ */
+const DISMISS_JS = `(() => {
+  const PREFER = [
+    /\\b(reject|decline|refuse|deny)\\b|necessary only|only necessary|essential only|use necessary/i,
+    /no thanks|not now|maybe later|remind me later|skip/i,
+    /^(close|dismiss|got it|ok|okay|understood|i understand|continue)$|\\u00d7|\\u2715|\\u2716/i,
+  ];
+  const vw = innerWidth, vh = innerHeight;
+  const overlays = [];
+  for (const el of document.querySelectorAll('div,section,aside,dialog,[role=dialog],[aria-modal="true"]')) {
+    const st = getComputedStyle(el);
+    const dialogish = el.tagName === 'DIALOG' || el.getAttribute('role') === 'dialog' || el.getAttribute('aria-modal') === 'true';
+    if (!dialogish && st.position !== 'fixed' && st.position !== 'sticky') continue;
+    if (st.visibility === 'hidden' || st.display === 'none') continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    if (r.width * r.height < vw * vh * 0.04) continue;
+    overlays.push(el);
+  }
+  for (const group of PREFER) {
+    for (const ov of overlays) {
+      for (const b of ov.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')) {
+        const t = (b.innerText || b.value || b.getAttribute('aria-label') || '').trim();
+        if (!t || t.length > 42 || !group.test(t)) continue;
+        const r = b.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1) continue;
+        return { ok: true, x: r.x + r.width / 2, y: r.y + r.height / 2, label: t.slice(0, 60) };
+      }
+    }
+  }
+  return { ok: false, count: overlays.length };
+})()`;
+
+export async function dismissOverlays(index?: number): Promise<string> {
+  const target = await activeTarget(index);
+  const s = await sessionFor(target);
+  const res = await evaluate(s, DISMISS_JS);
+  if (!res?.ok) {
+    return res?.count
+      ? `Found ${res.count} overlay-like element(s) but no dismiss control whose label I trust. ` +
+        `Nothing was clicked — snapshot the page and aim by ref instead.`
+      : "No blocking overlay found — the page is already clear.";
+  }
+  await mouseClick(s, res.x, res.y);
+  return afterAction(s, `Dismissed overlay via "${res.label}" (privacy first: reject beats accept when both exist)`);
 }
 
 export async function screenshotPage(index?: number): Promise<{ data: string; meta: string }> {

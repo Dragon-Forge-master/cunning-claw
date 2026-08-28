@@ -486,16 +486,33 @@ export const toolDefinitions: Anthropic.Tool[] = [
   },
   {
     name: "browser_wait",
-    description: "Wait until text, a CSS selector, or a URL fragment appears, or until the page settles. Up to 30s.",
+    description:
+      "Wait until text, a CSS selector, or a URL fragment appears, or until the page settles. Up to 30s. " +
+      "Pass interactable (a CSS selector) to wait until that element is actually clickable — " +
+      "visible, enabled, and not covered by an overlay — which is stronger than merely present.",
     input_schema: {
       type: "object",
       properties: {
         text: { type: "string" },
         selector: { type: "string" },
+        interactable: { type: "string" },
         url: { type: "string" },
         timeoutMs: { type: "number" },
         tab: { type: "number" },
       },
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    name: "browser_dismiss",
+    description:
+      "Find and dismiss a blocking overlay — cookie banner, consent wall, newsletter pop-up. " +
+      "Privacy first: clicks reject/necessary-only over accept when both exist, says exactly what " +
+      "it clicked, and clicks nothing when no trustworthy dismiss control is found.",
+    input_schema: {
+      type: "object",
+      properties: { tab: { type: "number" } },
       additionalProperties: false,
     },
     strict: true,
@@ -657,20 +674,24 @@ export const toolDefinitions: Anthropic.Tool[] = [
     name: "press_keys",
     description:
       "Send keystrokes to the focused window, e.g. 'ctrl+s', 'alt+Tab', 'Return'. " +
-      "Space-separate a sequence. Requires user approval.",
+      "Space-separate a sequence. Pass window to focus a named window first and refuse to fire " +
+      "blind if it cannot be found; the result reports which window actually had focus. Requires user approval.",
     input_schema: {
       type: "object",
-      properties: { keys: { type: "string" } },
+      properties: { keys: { type: "string" }, window: { type: "string" } },
       required: ["keys"],
       additionalProperties: false,
     },
   },
   {
     name: "type_on_desktop",
-    description: "Type text into whatever window currently has focus. Requires user approval.",
+    description:
+      "Type text into whatever window currently has focus. Pass window to focus a named window " +
+      "first — it refuses to type blind if that window cannot be found, and the result reports " +
+      "where the text landed. Requires user approval.",
     input_schema: {
       type: "object",
-      properties: { text: { type: "string" } },
+      properties: { text: { type: "string" }, window: { type: "string" } },
       required: ["text"],
       additionalProperties: false,
     },
@@ -1225,9 +1246,11 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       }
       case "browser_wait":
         return await browser.waitFor({
-          text: input.text, selector: input.selector, url: input.url,
-          timeoutMs: input.timeoutMs, tab: input.tab,
+          text: input.text, selector: input.selector, interactable: input.interactable,
+          url: input.url, timeoutMs: input.timeoutMs, tab: input.tab,
         });
+      case "browser_dismiss":
+        return await browser.dismissOverlays(input.tab);
       case "browser_back": return await browser.goHistory(-1, input.tab);
       case "browser_forward": return await browser.goHistory(1, input.tab);
       case "check_email": return await browser.checkEmail(input.query, input.view);
@@ -1275,14 +1298,16 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "list_windows": return await desktop.listWindows();
       case "focus_window": return await desktop.focusWindow(input.name);
       case "press_keys": {
-        const ok = await ctx.requestApproval("Send keystrokes to the desktop", input.keys);
+        const where = input.window ? ` → window "${input.window}"` : "";
+        const ok = await ctx.requestApproval("Send keystrokes to the desktop", `${input.keys}${where}`);
         if (!ok) return "The user declined the keystrokes.";
-        return await desktop.pressKeys(input.keys);
+        return await desktop.pressKeys(input.keys, input.window);
       }
       case "type_on_desktop": {
-        const ok = await ctx.requestApproval("Type into the focused window", input.text);
+        const where = input.window ? ` → window "${input.window}"` : "";
+        const ok = await ctx.requestApproval("Type into the focused window", `${input.text}${where}`);
         if (!ok) return "The user declined the input.";
-        return await desktop.typeOnDesktop(input.text);
+        return await desktop.typeOnDesktop(input.text, input.window);
       }
       case "notify": return await desktop.notify(input.title, input.body);
       case "clipboard":
