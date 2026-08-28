@@ -117,13 +117,38 @@ export async function listWindows(): Promise<string> {
 }
 
 export async function focusWindow(name: string): Promise<string> {
+  // AppActivate is subject to the foreground lock — a background process may
+  // not steal focus, the taskbar button merely flashes — and it reported "ok"
+  // for FINDING the window, not for raising it. A claw once told its operator
+  // four times that Chrome was focused while nothing on screen moved. The
+  // real dance: restore the window, tap Alt (which legally unlocks a
+  // foreground change), SetForegroundWindow — then CHECK, and say what
+  // actually happened.
   const script = [
-    "$s=New-Object -ComObject WScript.Shell;",
-    `$p=Get-Process | Where-Object {$_.MainWindowTitle -like ${psQuote("*" + name + "*")}} | Select-Object -First 1;`,
-    "if($p){$s.AppActivate($p.Id) | Out-Null; 'ok'} else {'none'}",
-  ].join("");
-  const out = (await runPs(script)).trim();
-  return out.endsWith("ok") ? `Focused window matching "${name}".` : `No window matching "${name}".`;
+    `$sig = '[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);` +
+      `[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);` +
+      `[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();` +
+      `[DllImport("user32.dll")] public static extern void keybd_event(byte k, byte s, uint f, UIntPtr e);';`,
+    `$W = Add-Type -MemberDefinition $sig -Name ClawFocus -Namespace Claw -PassThru;`,
+    `$p = Get-Process | Where-Object {$_.MainWindowTitle -like ${psQuote("*" + name + "*")}} | Select-Object -First 1;`,
+    `if (-not $p) { 'none' } else {`,
+    `$h = $p.MainWindowHandle;`,
+    `$W::ShowWindow($h, 9) | Out-Null;`, // SW_RESTORE — un-minimise first
+    `$W::keybd_event(0x12,0,0,[UIntPtr]::Zero); $W::keybd_event(0x12,0,2,[UIntPtr]::Zero);`, // Alt tap
+    `$W::SetForegroundWindow($h) | Out-Null;`,
+    `Start-Sleep -Milliseconds 200;`,
+    `if ($W::GetForegroundWindow() -eq $h) { 'ok' } else { 'found-not-front' } }`,
+  ].join(" ");
+  const out = (await runPs(script, 30000)).trim();
+  if (out.endsWith("ok")) return `Focused window matching "${name}" — it is in front now.`;
+  if (out.endsWith("found-not-front")) {
+    return (
+      `Found a window matching "${name}" and asked Windows to raise it, but the foreground ` +
+      `lock refused — its taskbar button should be flashing. Tell the user one click on it ` +
+      `finishes the job; do not claim it is visible.`
+    );
+  }
+  return `No window matching "${name}".`;
 }
 
 // ---------------------------------------------------------------------------
