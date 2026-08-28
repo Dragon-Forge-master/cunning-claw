@@ -81,14 +81,8 @@ if [ -x ./setup-voice.sh ] && [ -t 0 ]; then
   esac
 fi
 
-say "npm run doctor"
-set +e
-npm run doctor
-DOCTOR_EXIT=$?
-set -e
-if [ "$DOCTOR_EXIT" -ne 0 ]; then
-  
 # Personal workspace files are per-install, so seed them from the templates.
+# (Unconditionally — a healthy install deserves a USER.md too.)
 for f in USER MEMORY; do
   if [ ! -f "workspace/$f.md" ] && [ -f "workspace/$f.md.example" ]; then
     cp "workspace/$f.md.example" "workspace/$f.md"
@@ -96,7 +90,13 @@ for f in USER MEMORY; do
   fi
 done
 
-say "Doctor reported essential problems (see ✗ lines). Fix those before starting."
+say "npm run doctor"
+set +e
+npm run doctor
+DOCTOR_EXIT=$?
+set -e
+if [ "$DOCTOR_EXIT" -ne 0 ]; then
+  say "Doctor reported essential problems (see ✗ lines). Fix those before starting."
 fi
 
 install_user_unit() {

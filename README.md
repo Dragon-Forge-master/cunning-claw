@@ -13,9 +13,10 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-146%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-172%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
-![platforms](https://img.shields.io/badge/linux%20·%20macOS%20·%20windows-supported-35d6ed?style=for-the-badge)
+![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
+![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
 
 <sub>Built in Cardiff by <b>Dragon Forge AI</b> · Local-first when privacy matters · Human approval when consequences matter</sub>
 
@@ -66,6 +67,24 @@ cd cunning-claw
 That checks Node 22+, runs `npm install`, creates `.env` from the example, asks for an OpenRouter key, offers the offline voice, runs `npm run doctor`, and prints how to start.
 
 Then `npm run dev` and open **http://127.0.0.1:3900**. It binds to loopback only — nothing is exposed to your network.
+
+### Windows (native)
+
+Install [Node 22+](https://nodejs.org) and [Git](https://git-scm.com/download/win), then in PowerShell:
+
+```powershell
+git clone https://github.com/Dragon-Forge-master/cunning-claw.git
+cd cunning-claw
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+npm run dev
+```
+
+`install.ps1` mirrors `install.sh`: Node check, `npm install`, `.env` with a no-echo key
+prompt, workspace seeding, `npm run doctor`. No Piper voice on Windows yet — he types.
+
+Windows is the youngest platform: coded and doctor-checked, but the least field-tested —
+that is why the badge says beta. If you want the full Linux experience on a Windows
+machine (voice included), install under **WSL2** instead and follow the Linux steps.
 
 ### Autostart (Linux)
 
@@ -160,6 +179,10 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 Windows needs nothing installed for the desktop tools — PowerShell ships with the OS.
 Each platform's paths live in `src/platform.ts`, `src/windows.ts` and `src/desktop.ts`;
 a missing tool always produces a message naming the fix, never a silent no-op.
+
+Honesty about maturity: **Linux** is where CUNNING CLAW lives every day. **macOS** and
+**Windows** are coded and doctor-checked but far younger — expect rough edges, and please
+report what you find. Native install on Windows is `install.ps1` (see Install above).
 
 > **Honesty about testing:** Linux is exercised daily. macOS and Windows are written
 > against the documented APIs with their pure logic unit-tested, but neither has been run
@@ -331,7 +354,8 @@ src/browser.ts   persistent CDP, accessibility refs, Gmail
 src/gmail.ts     search operators, list/thread scrapers, draft/send helpers
 src/doctor.ts    `npm run doctor` — one line per check, every failure names the fix
 packaging/       systemd --user unit (session, not system)
-install.sh       clean-clone setup
+install.sh       clean-clone setup (Linux / macOS)
+install.ps1      clean-clone setup (Windows, native)
 src/desktop.ts   Screen capture, windows, input, clipboard, volume
 src/voice.ts     Piper neural TTS, espeak / macOS `say` fallback
 src/redact.ts    Credential redaction

@@ -994,7 +994,14 @@ async function writeFileTool(
 async function openTool(input: { target: string }): Promise<string> {
   const t = input.target;
   const isUrlOrPath = /^https?:\/\//.test(t) || t.startsWith("/") || t.startsWith("~/");
-  const [cmd, ...args] = isUrlOrPath ? ["xdg-open", expandHome(t)] : t.split(" ");
+  // "Open this" belongs to the platform — xdg-open is a Linuxism that ENOENTs
+  // everywhere else. (The empty string after `start` is its window title slot,
+  // so paths with spaces are not eaten as the title.)
+  const opener =
+    process.platform === "darwin" ? ["open"] :
+    process.platform === "win32" ? ["cmd", "/c", "start", ""] :
+    ["xdg-open"];
+  const [cmd, ...args] = isUrlOrPath ? [...opener, expandHome(t)] : t.split(" ");
   try {
     const child = spawn(cmd, args, { detached: true, stdio: "ignore" });
     child.unref();
