@@ -55,7 +55,10 @@ function yamlLine(block: string, key: string): string {
 
 function readIfExists(file: string): string {
   try {
-    return fs.readFileSync(file, "utf-8").trim();
+    // Normalise CRLF: Git for Windows checks text out with \r\n by default,
+    // which made the frontmatter regex reject every SKILL.md on a Windows
+    // clone — Skills: 0, and an assistant that denied its own abilities.
+    return fs.readFileSync(file, "utf-8").replace(/\r\n/g, "\n").trim();
   } catch {
     return "";
   }
