@@ -518,6 +518,15 @@ export async function runTurn(
   // identical tool invocations within a turn and force a pivot at the limit.
   const attempts = new Map<string, number>();
 
+  // What each identical call answered last time, and how many consecutive
+  // times it answered exactly that. The distinction matters: results still
+  // CHANGING is polling — legitimate, give it rope. Results IDENTICAL is a
+  // comprehension failure — the answer exists and re-asking will not improve
+  // it, so the block hands the answer back instead of only scolding. (Learned
+  // from a turn where "Status: succeeded" plus the image URL was in hand
+  // twice, unread, while the guard said the call "was not productive".)
+  const lastAnswers = new Map<string, { result: string; sameCount: number }>();
+
   // Chris's repetition ratio, from the Quantum Coherence Kernel: the Ouroboros
   // guard catches an identical call, this catches circling — the same move in
   // different clothes.
@@ -588,17 +597,34 @@ export async function runTurn(
           const seen = (attempts.get(signature) ?? 0) + 1;
           attempts.set(signature, seen);
 
-          if (seen > config.coherence.ouroborosLimit) {
+          const prior = lastAnswers.get(signature);
+          // A poll whose answers are still changing may honestly need many
+          // rounds; only a stuck one deserves the axe. Identical answers get
+          // it at the normal limit.
+          const pollCap = Math.max(8, config.coherence.ouroborosLimit * 4);
+          const answersFrozen = (prior?.sameCount ?? 0) >= 2;
+
+          if (seen > config.coherence.ouroborosLimit && (answersFrozen || !prior || seen > pollCap)) {
             events.emit("tool_result", { name: tu.name, result: "[Ouroboros] loop blocked" });
+            const echo = prior
+              ? `\n\nThe most recent answer to this exact call is repeated below. The answer you ` +
+                `need — a status line, a URL, an error message — is in this text. Read it and act ` +
+                `on it; calling again will not change it:\n\n${prior.result.slice(0, 6000)}`
+              : "";
+            const verdict = answersFrozen
+              ? `it answered IDENTICALLY each time. The answer exists; re-asking is not reading.`
+              : prior
+                ? `the results were still changing, but waiting this long is not working. Report the ` +
+                  `latest state to the user instead of polling further.`
+                : `it was not productive.`;
             return {
               type: "tool_result" as const,
               tool_use_id: tu.id,
               content:
-                `[Ouroboros Protocol] Loop detected: you have already attempted this exact ` +
-                `${tu.name} call ${seen - 1} times in this turn and it was not productive. ` +
-                `The action was NOT executed. Stop retrying this path — either take a ` +
-                `materially different approach, or tell the user plainly that you are stuck ` +
-                `and what you need from them.`,
+                `[Ouroboros Protocol] Loop detected: you have made this exact ${tu.name} call ` +
+                `${seen - 1} times in this turn and ${verdict} ` +
+                `This attempt was NOT executed. Do not retry this path — take a materially ` +
+                `different approach, or tell the user plainly where things stand.${echo}`,
               is_error: true,
             };
           }
@@ -617,6 +643,20 @@ export async function runTurn(
 
           events.emit("tool_start", { name: tu.name, input: tu.input });
           const result = await executeTool(tu.name, tu.input, ctx);
+
+          // Remember what this exact call answered, and whether it keeps
+          // answering the same thing — the Ouroboros guard above reads this.
+          const answerText = typeof result === "string"
+            ? result
+            : result.map((b) => (b.type === "image" ? "[image]" : b.text)).join("\n");
+          const prevAnswer = lastAnswers.get(signature);
+          lastAnswers.set(
+            signature,
+            prevAnswer && prevAnswer.result === answerText
+              ? { result: answerText, sameCount: prevAnswer.sameCount + 1 }
+              : { result: answerText, sameCount: 1 },
+          );
+
           const nudge = coherence.read(shapes).verdict === "ruminate"
             ? "\n\n" + coherence.notice(coherence.read(shapes))
             : "";
