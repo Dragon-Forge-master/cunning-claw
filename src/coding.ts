@@ -42,6 +42,20 @@ export function resolveWorkPath(p: string): string {
     }
     return normal;
   }
+  // Relative paths: the shell starts in ROOT, so file tools must not silently
+  // disagree — a split brain once had `mkdir` build a tree in the repo while
+  // `write_file` filled an identically-named tree in $HOME, and the agent
+  // concluded its own writes were failing. Prefer wherever the path (or its
+  // parent directory) already exists; fall back to the coding root.
+  const bases = [codingRoot(), ROOT];
+  for (const base of bases) {
+    if (fs.existsSync(path.join(base, expanded))) return path.normalize(path.join(base, expanded));
+  }
+  for (const base of bases) {
+    if (fs.existsSync(path.dirname(path.join(base, expanded)))) {
+      return path.normalize(path.join(base, expanded));
+    }
+  }
   return path.normalize(path.join(codingRoot(), expanded));
 }
 

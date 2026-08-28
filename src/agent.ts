@@ -35,11 +35,29 @@ export interface AgentEvents {
 
 const client = new Anthropic();
 
+function platformName(): string {
+  return process.platform === "win32" ? "Windows" : process.platform === "darwin" ? "macOS" : "Linux";
+}
+
+/**
+ * The prompt used to say "Linux machine" unconditionally — so the first thing
+ * a Windows claw did was run `ls`, apologise, and try again. Tell him where
+ * he actually is and how that shell behaves.
+ */
+function windowsShellNote(): string {
+  if (process.platform !== "win32") return "";
+  return (
+    ` The shell behind run_command is cmd.exe: use dir, type, copy, del — not ls, cat, cp, rm. ` +
+    `Paths use backslashes but forward slashes also work in most tools. Python is usually ` +
+    `"py" (so "py -m pip install …"); "python3" often is not a thing here.`
+  );
+}
+
 // Stable system prompt — cached across requests. Volatile context (time,
 // memory) goes into the user turn instead, so this prefix never changes.
 const SYSTEM_PROMPT = `You are ${config.persona.name} — named for the Welsh cunning folk, the dynion hysbys: the one in the village who actually knew the work. That is Chris, and that is you on his machine. Sharp rather than servile; clever enough to see what is really being asked, and clever enough to notice when you are being played. Unflappable, precise, dryly witty, quietly brilliant.
 
-Your user is ${config.persona.userName}; address them as "${config.persona.addressUserAs}" naturally but not in every sentence. You are running locally on their Linux machine (${os.hostname()}, ${os.cpus().length} cores, ${(os.totalmem() / 1024 ** 3).toFixed(0)}GB RAM) and you have real control over it through your tools.
+Your user is ${config.persona.userName}; address them as "${config.persona.addressUserAs}" naturally but not in every sentence. You are running locally on their ${platformName()} machine (${os.hostname()}, ${os.cpus().length} cores, ${(os.totalmem() / 1024 ** 3).toFixed(0)}GB RAM) and you have real control over it through your tools.${windowsShellNote()}
 
 About your tools: most are built in. Some are MCP tools — capabilities from external servers Chris has connected, and they always appear with an mcp__ prefix (e.g. mcp__search__web-search). MCP is Model Context Protocol; it is simply how a tool from another program is plugged into you. If you see an mcp__ tool in your list, it is real, it has an input schema, and you can call it like any other. Do not invent argument names: use the schema on the tool, or mcp_schema. In particular, mcp__search__* means you CAN search the web now — use it when asked to look something up, rather than saying you cannot. If someone mentions "MCP", they mean these plugged-in tools, not any product feature.
 

@@ -59,3 +59,21 @@ test("an absolute path that only exists under the repo root gets one act of grac
   // A path that exists nowhere stays as given, for an honest error downstream.
   assert.equal(resolveWorkPath("/no-such-dir-anywhere-xyz/f.md"), "/no-such-dir-anywhere-xyz/f.md");
 });
+
+test("relative file paths agree with the shell about where 'here' is", () => {
+  // The split brain: mkdir built ROOT/cunning-claw-website while write_file
+  // filled HOME/cunning-claw-website. A relative path whose parent exists
+  // under ROOT must resolve there, not to a phantom twin in HOME.
+  const name = `claw-split-test-${process.pid}`;
+  const inRoot = path.join(ROOT, name);
+  fs.mkdirSync(inRoot, { recursive: true });
+  try {
+    assert.equal(resolveWorkPath(`${name}/app.py`), path.join(inRoot, "app.py"));
+    // And reading repo files by bare relative path lands in the repo.
+    assert.equal(resolveWorkPath("src/coding.ts"), path.join(ROOT, "src/coding.ts"));
+  } finally {
+    fs.rmSync(inRoot, { recursive: true, force: true });
+  }
+  // A bare new filename keeps the old home-default.
+  assert.equal(resolveWorkPath("brand-new-notes.md"), path.join(os.homedir(), "brand-new-notes.md"));
+});
