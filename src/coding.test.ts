@@ -50,10 +50,12 @@ test("list_repos names this install; glob skipping .git is why a naive hunt fail
 });
 
 test("an absolute path that only exists under the repo root gets one act of grace", () => {
-  // "/workspace/MEMORY.md" is container-speak for the repo's workspace/ — he
+  // "/workspace/SOUL.md" is container-speak for the repo's workspace/ — he
   // asked for exactly this, got ENOENT, and concluded he had never been changed.
-  const inRoot = resolveWorkPath("/workspace/MEMORY.md");
-  assert.equal(inRoot, path.join(ROOT, "workspace/MEMORY.md"));
+  // (SOUL.md, not MEMORY.md: the grace only fires for a file that exists, and
+  // MEMORY.md is personal-per-install — absent on a fresh clone.)
+  const inRoot = resolveWorkPath("/workspace/SOUL.md");
+  assert.equal(inRoot, path.join(ROOT, "workspace/SOUL.md"));
   // A real absolute path is untouched.
   assert.equal(resolveWorkPath("/tmp"), "/tmp");
   // A path that exists nowhere stays as given, for an honest error downstream.
