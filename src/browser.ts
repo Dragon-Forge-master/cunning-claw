@@ -238,6 +238,11 @@ export function chromeCandidates(): string[] {
       path.join(local, "Google", "Chrome", "Application", "chrome.exe"),
       path.join(pf, "Google", "Chrome", "Application", "chrome.exe"),
       path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
+      // Edge is Chromium and speaks CDP: every Windows machine has it, so
+      // browser control works out of the box even before Chrome is installed.
+      path.join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"),
+      path.join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
+      "msedge",
     );
   }
   return out;

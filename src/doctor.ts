@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { config, DATA_DIR, ROOT } from "./config.js";
 import { brainHasKey, brainKeyEnv, catalog, envLooksSet, isLocalEndpoint } from "./brain.js";
 import { hasBin, host, missing } from "./platform.js";
+import { findChromeBinary } from "./browser.js";
 import { detect } from "./voice.js";
 
 export type CheckStatus = "ok" | "fail" | "warn";
@@ -110,29 +111,11 @@ async function portFree(port: number, listenHost: string): Promise<boolean> {
   });
 }
 
-const CHROME_CANDIDATES = [
-  "google-chrome",
-  "google-chrome-stable",
-  "chromium",
-  "chromium-browser",
-  "google-chrome-beta",
-];
-
-const CHROME_PATHS = [
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "/Applications/Chromium.app/Contents/MacOS/Chromium",
-];
-
+// The doctor once kept its own private Chrome finder with no Windows paths in
+// it, and told a machine with Chrome visibly running that Chrome was not
+// installed. One finder, the real one, shared with the launcher.
 async function findChrome(): Promise<string | null> {
-  const configured = config.browser.binary?.trim();
-  if (configured && (fs.existsSync(configured) || (await hasBin(configured)))) return configured;
-  for (const bin of CHROME_CANDIDATES) {
-    if (await hasBin(bin)) return bin;
-  }
-  for (const p of CHROME_PATHS) {
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
+  return findChromeBinary();
 }
 
 async function ollamaUp(): Promise<boolean> {
