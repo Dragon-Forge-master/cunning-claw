@@ -93,7 +93,15 @@ class McpConnection {
     }
     if (!this.cfg.command) throw new Error(`MCP server "${this.cfg.id}" has no command`);
 
-    this.proc = spawn(this.cfg.command, this.cfg.args ?? [], {
+    // Windows cannot spawn npx or npm directly — they are .cmd batch files,
+    // and Node (rightly, CVE-2024-27980) refuses batch spawns without a
+    // shell. Route the command through cmd.exe there; args here are package
+    // names and flags from mcp.json, not user text. Everywhere else, spawn
+    // the binary straight.
+    const viaCmd = process.platform === "win32";
+    const spawnCmd = viaCmd ? "cmd.exe" : this.cfg.command;
+    const spawnArgs = viaCmd ? ["/c", this.cfg.command, ...(this.cfg.args ?? [])] : this.cfg.args ?? [];
+    this.proc = spawn(spawnCmd, spawnArgs, {
       stdio: ["pipe", "pipe", "pipe"],
       env: {
         ...process.env,
