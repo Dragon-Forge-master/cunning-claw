@@ -3,7 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { planEdit, commitEdit, grepFiles, globFiles, listLocalRepos } from "./coding.js";
+import { planEdit, commitEdit, grepFiles, globFiles, listLocalRepos, resolveWorkPath } from "./coding.js";
+import { ROOT } from "./config.js";
 import { parsePreviewUrl, openPreview, closePreview } from "./preview.js";
 
 test("preview URLs rewrite 0.0.0.0 and reject script/file schemes", () => {
@@ -46,4 +47,15 @@ test("list_repos names this install; glob skipping .git is why a naive hunt fail
   const text = listLocalRepos();
   assert.match(text, /this install \(Cunning Claw\)/);
   assert.match(text, /Shell commands start in this install/);
+});
+
+test("an absolute path that only exists under the repo root gets one act of grace", () => {
+  // "/workspace/MEMORY.md" is container-speak for the repo's workspace/ — he
+  // asked for exactly this, got ENOENT, and concluded he had never been changed.
+  const inRoot = resolveWorkPath("/workspace/MEMORY.md");
+  assert.equal(inRoot, path.join(ROOT, "workspace/MEMORY.md"));
+  // A real absolute path is untouched.
+  assert.equal(resolveWorkPath("/tmp"), "/tmp");
+  // A path that exists nowhere stays as given, for an honest error downstream.
+  assert.equal(resolveWorkPath("/no-such-dir-anywhere-xyz/f.md"), "/no-such-dir-anywhere-xyz/f.md");
 });

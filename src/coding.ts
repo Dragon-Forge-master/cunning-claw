@@ -21,11 +21,27 @@ export function codingRoot(): string {
   return path.resolve(expandHome(config.coding?.root ?? "~"));
 }
 
-/** Absolute, or relative to coding.root. `~` works. */
+/**
+ * Absolute, or relative to coding.root. `~` works.
+ *
+ * An absolute path that does not exist gets one act of grace: models write
+ * "/workspace/MEMORY.md" meaning the repo's workspace/, container-style. If
+ * the same path exists under the repo root (or $HOME), that is plainly what
+ * was meant — resolve there instead of failing on a leading slash.
+ */
 export function resolveWorkPath(p: string): string {
   const trimmed = (p || ".").trim() || ".";
   const expanded = expandHome(trimmed);
-  if (path.isAbsolute(expanded)) return path.normalize(expanded);
+  if (path.isAbsolute(expanded)) {
+    const normal = path.normalize(expanded);
+    if (fs.existsSync(normal)) return normal;
+    const relative = normal.replace(/^[/\\]+/, "");
+    const inRoot = path.join(codingRoot(), relative);
+    if (fs.existsSync(inRoot)) return inRoot;
+    const inHome = path.join(os.homedir(), relative);
+    if (fs.existsSync(inHome)) return inHome;
+    return normal;
+  }
   return path.normalize(path.join(codingRoot(), expanded));
 }
 
