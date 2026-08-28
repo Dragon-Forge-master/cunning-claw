@@ -46,13 +46,20 @@ and tells you when it did; do not rely on it.)
 And read failures before reporting them: a `Status: failed` reply with an
 `Error:` line is not an empty response — the Error line is the answer.
 
-## Choosing a model
+## Choosing a model — never from memory
 
-- Default: `black-forest-labs/flux-schnell` — fast, good, about a penny.
+- Default: `black-forest-labs/flux-schnell` — fast, good, about a penny, and
+  **verified working on this machine**. Use it unless Chris names another.
 - Higher quality when asked: `black-forest-labs/flux-1.1-pro` (slower, dearer).
-- Anything else: `search_models` finds it; `get_model(owner, name)` shows its
-  inputs. Official models accept `"model": "owner/name"`; community models may
-  need `"version": "<hash>"` from get_model instead.
+- Anything else: the slug MUST come from `search_models` or `get_model` in this
+  session — **never from your training memory**. Invented slugs
+  (`stability-ai/stable-diffusion-xl` is not a real one; SDXL is
+  `stability-ai/sdxl` and needs a `version` hash) are rejected by the API.
+- **"An asynchronous error occurred. Please try again."** is the server's
+  catch-all for a REJECTED create — wrong model slug, missing version, bad
+  input. It is not transient and it is not about asynchrony: retrying the same
+  call fails the same way. Fix the model slug (default to flux-schnell) or look
+  the model up properly, then create again.
 
 ## Things that are already true — do not re-litigate them
 
