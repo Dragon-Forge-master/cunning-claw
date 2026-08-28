@@ -36,10 +36,10 @@ export function resolveWorkPath(p: string): string {
     const normal = path.normalize(expanded);
     if (fs.existsSync(normal)) return normal;
     const relative = normal.replace(/^[/\\]+/, "");
-    const inRoot = path.join(codingRoot(), relative);
-    if (fs.existsSync(inRoot)) return inRoot;
-    const inHome = path.join(os.homedir(), relative);
-    if (fs.existsSync(inHome)) return inHome;
+    for (const base of [codingRoot(), ROOT, os.homedir()]) {
+      const candidate = path.join(base, relative);
+      if (fs.existsSync(candidate)) return candidate;
+    }
     return normal;
   }
   return path.normalize(path.join(codingRoot(), expanded));
