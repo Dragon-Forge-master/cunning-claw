@@ -96,9 +96,11 @@ that 200s on a blank page is a failure.
    the domain. If told "just make something", pick sensibly and show them.
 2. **Build locally.** Plain HTML and CSS is usually right: no build step, instant deploy,
    nothing to rot. Reach for a framework only when something genuinely needs one.
-3. **Look at your own work.** `preview` it, `take_screenshot`, and judge it as a stranger
-   would — does it read on a phone, is the call to action obvious, is anything misaligned.
-   Fix what you see before showing it.
+3. **Look at your own work.** `preview` with the site's folder `path` — the HUD serves it
+   itself; do NOT try to start `python -m http.server` through run_command, which waits for
+   commands to finish and reaps any server at the timeout. Then `take_screenshot` and judge
+   it as a stranger would — does it read on a phone, is the call to action obvious, is
+   anything misaligned. Fix what you see before showing it.
 4. **Deploy.** State-changing, so it raises an approval card. Put the target in the command
    so the user can see exactly what goes live.
 5. **Verify.** Open the returned URL, read it, screenshot it. A deploy that returns 200 and

@@ -16,7 +16,7 @@ import { readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
 import { expandHome, isSensitivePath } from "./paths.js";
 import { grepFiles, globFiles, planEdit, commitEdit, readTodos, writeTodos, formatTodos, numberLines, resolveWorkPath, listLocalRepos } from "./coding.js";
-import { openPreview, closePreview, reloadPreview } from "./preview.js";
+import { openPreview, closePreview, reloadPreview, servePath } from "./preview.js";
 import { addMcpServerSnippet, cunningclawMcpPath } from "./mcp-config.js";
 import { containsSecret } from "./redact.js";
 
@@ -185,13 +185,15 @@ export const toolDefinitions: Anthropic.Tool[] = [
     name: "preview",
     description:
       "Open, reload, or close the in-HUD browser panel (Claude Code-style viewport). " +
-      "Call this when a local web server is up or UI work is ready to look at. " +
-      "url is required to open (http/https; 0.0.0.0 is rewritten to 127.0.0.1).",
+      "Pass url for a running server (http/https; 0.0.0.0 is rewritten to 127.0.0.1) — or pass path " +
+      "to a local folder or html file and it is served read-only by the HUD itself and shown. " +
+      "For static sites ALWAYS use path: run_command cannot host servers (it waits for commands to end).",
     input_schema: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["open", "close", "reload"], description: "Default open" },
         url: { type: "string", description: "Page to show, e.g. http://127.0.0.1:5173" },
+        path: { type: "string", description: "Local folder or file to serve and show, e.g. ~/cunning_claw_website" },
       },
       additionalProperties: false,
     },
@@ -1019,6 +1021,17 @@ async function execIn(command: string, cwd: string): Promise<string> {
           `server is restarted from a normal terminal. Tell the user exactly that.`
         );
       }
+      // A timeout kill is not a failure of the command — it is usually a
+      // server or watcher that would have run forever. Say what actually
+      // happened, and name the tool that does this job properly.
+      if (err?.killed) {
+        return (
+          `(cwd ${cwd})\nThe command ran for ${config.commandPolicy.timeoutMs}ms and was then stopped: ` +
+          `run_command waits for commands to FINISH, so servers and watchers cannot be hosted here — ` +
+          `they get reaped at the timeout, every time. For a static site or folder, call preview with ` +
+          `its path instead: the HUD serves it itself. Do not retry this command.`
+        );
+      }
       const detail = (err.stderr || err.message || "").slice(0, 5000);
       return `(cwd ${cwd})\nCommand failed (exit ${err.code ?? "?"}):\n${detail}`;
     }
@@ -1218,6 +1231,12 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
           const st = reloadPreview();
           ctx.emit("preview", { action: "reload", ...st });
           return st.url ? `Reloading ${st.url}` : "Nothing on the glass to reload.";
+        }
+        if (input.path) {
+          const served = servePath(resolveWorkPath(String(input.path)));
+          if (!served.ok) return served.error;
+          ctx.emit("preview", { action: "open", open: true, url: served.url });
+          return `Serving that from the HUD itself — viewport open: ${served.url}`;
         }
         const opened = openPreview(String(input.url ?? ""));
         if (!opened.ok) return opened.error;

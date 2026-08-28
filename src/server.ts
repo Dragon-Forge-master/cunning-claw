@@ -25,7 +25,9 @@ import { loadLandscape } from "./landscape.js";
 import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, missingKeyHint, sessionSpend, lastTurnCost } from "./brain.js";
 import { createRequire } from "node:module";
 import { startTelegram, sendApprovalCard, approvalSettled, telegramStatus } from "./telegram.js";
-import { openPreview, closePreview, reloadPreview, previewState } from "./preview.js";
+import { openPreview, closePreview, reloadPreview, previewState, servedDir } from "./preview.js";
+import fs from "node:fs";
+import { isSensitivePath } from "./paths.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -320,6 +322,30 @@ app.get("/api/status", async (_req, res) => {
       };
     })(),
   });
+});
+
+/**
+ * Read-only static serving for the viewport — only directories the preview
+ * tool explicitly registered, loopback-only like everything else, no auth
+ * because the viewport iframe cannot send headers. Traversal is walled and
+ * the sensitive-path denylist applies file by file.
+ */
+app.get("/served/:token/*", (req, res) => {
+  const dir = servedDir(String(req.params.token ?? ""));
+  if (!dir) return res.status(404).send("Nothing is served under that token.");
+  const rel = String((req.params as Record<string, string>)[0] ?? "") || "index.html";
+  const target = path.resolve(dir, rel);
+  if (target !== dir && !target.startsWith(dir + path.sep)) {
+    return res.status(403).send("Path escapes the served folder.");
+  }
+  if (isSensitivePath(target)) return res.status(403).send("Not serving that file.");
+  if (!fs.existsSync(target)) return res.status(404).send("Not found.");
+  if (fs.statSync(target).isDirectory()) {
+    const index = path.join(target, "index.html");
+    if (fs.existsSync(index)) return res.sendFile(index);
+    return res.status(404).send("No index.html in that folder.");
+  }
+  res.sendFile(target);
 });
 
 app.post("/api/preview", (req, res) => {
