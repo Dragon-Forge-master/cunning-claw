@@ -123,3 +123,14 @@ test("every redaction marker is ASCII", async () => {
   assert.ok(/^[\x00-\x7F]*$/.test(out), `marker must be ASCII-only, got: ${out}`);
   assert.match(out, /REDACTED/);
 });
+
+test("replicate and huggingface tokens are redacted (synthetic)", () => {
+  // Synthetic tokens, never real: a live r8_ token once sailed through this
+  // list into a config file, the history, and a day's journal.
+  const r8 = redact("REPLICATE_API_TOKEN=r8_SyntheticTestTokenAbc123Def456Ghi789");
+  assert.doesNotMatch(r8, /r8_Synthetic/);
+  assert.match(r8, /REDACTED/);
+  const hf = redact("token: hf_SyntheticTestTokenAbc123Def456Ghi789");
+  assert.doesNotMatch(hf, /hf_Synthetic/);
+  assert.match(hf, /REDACTED/);
+});

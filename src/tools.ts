@@ -17,6 +17,8 @@ import { landscapeSummary } from "./landscape.js";
 import { expandHome, isSensitivePath } from "./paths.js";
 import { grepFiles, globFiles, planEdit, commitEdit, readTodos, writeTodos, formatTodos, numberLines, resolveWorkPath, listLocalRepos } from "./coding.js";
 import { openPreview, closePreview, reloadPreview } from "./preview.js";
+import { addMcpServerSnippet, cunningclawMcpPath } from "./mcp-config.js";
+import { containsSecret } from "./redact.js";
 
 export { isSensitivePath } from "./paths.js";
 
@@ -220,6 +222,22 @@ export const toolDefinitions: Anthropic.Tool[] = [
       "List configured MCP servers (Canva, GitHub, Notion, …) and their tools. " +
       "Use when Chris asks which MCPs are connected, or before mcp_login.",
     input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "mcp_add",
+    description:
+      "Add MCP server(s) from a Claude-Code-style JSON snippet — {\"mcpServers\":{\"name\":{…}}} or a bare " +
+      "{name: entry} map. Validates, merges into mcp.json, and reconnects live: no restart, no hand-editing, no jq. " +
+      "NEVER put a raw token in the snippet — it will be refused. Tokens go in .env; reference them in the entry's " +
+      "env block as ${VAR_NAME}, which is expanded at connect time.",
+    input_schema: {
+      type: "object",
+      properties: {
+        snippet: { type: "string", description: "The JSON snippet, as a string" },
+      },
+      required: ["snippet"],
+      additionalProperties: false,
+    },
   },
   {
     name: "mcp_login",
@@ -997,6 +1015,12 @@ async function writeFileTool(
   if (isSensitivePath(p)) {
     return "BLOCKED: that path is on the sensitive-file denylist and will never be written.";
   }
+  if (path.resolve(p) === path.resolve(cunningclawMcpPath())) {
+    return (
+      "BLOCKED: mcp.json is managed — a hand-write once replaced the whole file and wiped every " +
+      "connector. Use mcp_add with a mcpServers snippet instead; it validates, merges, and reconnects."
+    );
+  }
   const action = input.append ? "Append to" : "Write";
   const ok = await ctx.requestApproval(
     `${action} file ${p}`,
@@ -1109,6 +1133,12 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "read_file": return await readFileTool(input);
       case "write_file": return await writeFileTool(input, ctx);
       case "edit_file": {
+        if (path.resolve(resolveWorkPath(String(input.path ?? ""))) === path.resolve(cunningclawMcpPath())) {
+          return (
+            "BLOCKED: mcp.json is managed — use mcp_add with a mcpServers snippet instead; " +
+            "it validates, merges, and reconnects without hand-editing."
+          );
+        }
         const plan = planEdit({
           path: String(input.path ?? ""),
           oldString: String(input.oldString ?? ""),
@@ -1164,6 +1194,28 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "open": return await openTool(input);
       case "system_status": return `${await systemStatusText()}\n${mcp.mcpStatusText()}`;
       case "mcp_status": return mcp.mcpStatusText();
+      case "mcp_add": {
+        const snippet = String(input.snippet ?? "");
+        // A raw credential in config is how the last one ended up in three
+        // files and a journal. Refuse before it touches disk.
+        if (containsSecret(snippet)) {
+          return (
+            "REFUSED: that snippet contains what looks like a raw credential. Secrets never go in " +
+            "mcp.json. Ask Chris to put the token in .env, then reference it in the entry's env " +
+            'block as "${VAR_NAME}" — it is expanded from the environment at connect time.'
+          );
+        }
+        const ok = await ctx.requestApproval("Add MCP server(s) to mcp.json", snippet.slice(0, 1200));
+        if (!ok) return "The user declined the MCP change.";
+        let added: string[];
+        try {
+          added = addMcpServerSnippet(JSON.parse(snippet));
+        } catch (err: any) {
+          return `Could not add: ${String(err?.message ?? err).slice(0, 300)}`;
+        }
+        await mcp.connectAll(() => {});
+        return `Added ${added.join(", ")} to mcp.json and reconnected. mcp_status has the live state.`;
+      }
       case "mcp_login": {
         const id = String(input.server ?? "");
         const ok = await ctx.requestApproval(

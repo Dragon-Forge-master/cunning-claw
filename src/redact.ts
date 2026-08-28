@@ -26,6 +26,10 @@ const RULES: Rule[] = [
   { name: "openai", re: /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}/g, replace: (m) => stub("openai-key", m, 6) },
   { name: "openrouter", re: /\bsk-or-v1-[A-Za-z0-9]{16,}/g, replace: (m) => stub("openrouter-key", m, 9) },
   { name: "github", re: /\bgh[pousr]_[A-Za-z0-9]{16,}/g, replace: (m) => stub("github-token", m, 4) },
+  // Replicate tokens sailed straight through this list once — into a config
+  // file, the history, and a day's journal. Never again.
+  { name: "replicate", re: /\br8_[A-Za-z0-9]{16,}/g, replace: (m) => stub("replicate-token", m, 3) },
+  { name: "huggingface", re: /\bhf_[A-Za-z0-9]{16,}/g, replace: (m) => stub("huggingface-token", m, 3) },
   { name: "github-fine", re: /\bgithub_pat_[A-Za-z0-9_]{20,}/g, replace: (m) => stub("github-pat", m, 11) },
   { name: "google-oauth", re: /\bAQ\.[A-Za-z0-9_-]{20,}/g, replace: (m) => stub("google-token", m, 6) },
   { name: "google-refresh", re: /\b1\/\/[A-Za-z0-9_-]{20,}/g, replace: (m) => stub("google-refresh", m, 4) },
