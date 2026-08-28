@@ -643,6 +643,16 @@ export async function loginMcp(serverId: string, log: (line: string) => void = (
   try {
     await authorizeMcp(serverId, cfg.url, conn?.lastWwwAuth ?? null);
   } catch (err: any) {
+    // GitHub does not allow self-registered OAuth clients, so the browser
+    // flow can never work there — say what does, instead of an OAuth riddle.
+    if (serverId === "github") {
+      return (
+        `GitHub refuses self-registered OAuth clients, so browser sign-in cannot work. ` +
+        `Use a Personal Access Token instead: create one at github.com/settings/tokens ` +
+        `(classic; scopes: repo, read:org), ask Chris to add GITHUB_TOKEN=ghp_... to .env ` +
+        `— never paste it in chat — then restart. The connector sends it automatically.`
+      );
+    }
     return `OAuth failed for ${serverId}: ${err?.message ?? err}`;
   }
   discovered = discovered.filter((t) => t.serverId !== serverId);

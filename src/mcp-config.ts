@@ -60,6 +60,21 @@ export function expandEnvVars(raw: string): string {
   });
 }
 
+/**
+ * A header whose ${VAR} expanded to nothing ("Bearer ") is worse than no
+ * header — servers answer "bad credentials" instead of the 401 that guides
+ * sign-in. An auth header only ships when its token actually exists.
+ */
+function stripEmptyAuth(rec?: Record<string, string>): Record<string, string> | undefined {
+  if (!rec) return rec;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(rec)) {
+    if (/authorization/i.test(k) && /^(Bearer|Basic|Token)?\s*$/i.test(v.trim())) continue;
+    out[k] = v;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 function expandRecord(rec?: Record<string, string>): Record<string, string> | undefined {
   if (!rec) return undefined;
   const out: Record<string, string> = {};
@@ -86,7 +101,7 @@ export function claudeEntryToConfig(id: string, entry: ClaudeMcpEntry): McpServe
     args: entry.args?.map((a) => expandEnvVars(String(a))),
     url: rawUrl ? expandEnvVars(rawUrl) : undefined,
     env: expandRecord(entry.env),
-    headers: expandRecord(entry.headers),
+    headers: stripEmptyAuth(expandRecord(entry.headers)),
     allow: entry.allow,
     writeTools: entry.writeTools,
     readTools: entry.readTools,

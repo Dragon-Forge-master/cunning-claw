@@ -59,7 +59,21 @@ function sse(
 export const MCP_CATALOGUE: CatalogueEntry[] = [
   // Popular — names people already know they have.
   http("canva", "Canva", "Designs, exports, brand kit", "Create", "https://mcp.canva.com/mcp", true),
-  http("github", "GitHub", "Repos, issues, pull requests", "Code", "https://api.githubcopilot.com/mcp/", true),
+  // GitHub refuses self-registered OAuth clients, so browser sign-in cannot
+  // work here. A Personal Access Token in .env as GITHUB_TOKEN does: the
+  // header ships only once the token exists (empty auth headers are stripped).
+  {
+    id: "github",
+    label: "GitHub",
+    blurb: "Repos, issues, pull requests (needs GITHUB_TOKEN in .env)",
+    category: "Code",
+    popular: true,
+    entry: {
+      type: "http",
+      url: "https://api.githubcopilot.com/mcp/",
+      headers: { Authorization: "Bearer ${GITHUB_TOKEN}" },
+    },
+  },
   http("notion", "Notion", "Pages, databases, search", "Docs", "https://mcp.notion.com/mcp", true),
   http("figma", "Figma", "Files, components, comments", "Create", "https://mcp.figma.com/mcp", true),
   http("slack", "Slack", "Messages, canvases, workspace search", "Chat", "https://mcp.slack.com/mcp", true),
