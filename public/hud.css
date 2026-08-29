@@ -459,3 +459,22 @@ header { flex-wrap: wrap; row-gap: 6px; }
   padding: 18px 20px; }
 .overlay-head { display: flex; justify-content: space-between; align-items: center;
   border-bottom: 1px solid var(--cyan-dim); padding-bottom: 10px; margin-bottom: 14px; }
+
+/* Chat paperclip — dresses like the mic button */
+#attach-btn {
+  background: transparent; border: 1px solid var(--cyan-dim); color: var(--cyan-dim);
+  font-size: 14px; padding: 0 10px; cursor: pointer;
+}
+#attach-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* Hover-tools on the assistant's replies: copy, speak */
+.msg { position: relative; }
+.msg-tools {
+  position: absolute; top: 2px; right: 4px; display: none; gap: 2px;
+}
+.msg:hover .msg-tools { display: flex; }
+.msg-tools button {
+  background: rgba(4, 8, 15, 0.85); border: 1px solid var(--cyan-dim); color: var(--cyan-dim);
+  font-family: var(--mono); font-size: 11px; line-height: 1; padding: 3px 6px; cursor: pointer;
+}
+.msg-tools button:hover { border-color: var(--cyan); color: var(--cyan); }

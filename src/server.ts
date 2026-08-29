@@ -261,6 +261,32 @@ function docPath(name: string): string | null {
   return p.startsWith(DOCS_DIR + path.sep) ? p : null;
 }
 
+/**
+ * The chat paperclip. Files land in the Desk's uploads folder, where both
+ * Chris and the assistant can reach them; the chat message carries the path.
+ */
+app.post("/api/upload", express.json({ limit: "30mb" }), (req, res) => {
+  const name = String(req.body?.name ?? "").replace(/[^A-Za-z0-9 ._()-]/g, "_").slice(0, 100);
+  const data = String(req.body?.data ?? "");
+  if (!name || !data) return res.status(400).json({ error: "name and data required" });
+  if (data.length > 28_000_000) return res.status(413).json({ error: "file too large (20MB cap)" });
+  let buf: Buffer;
+  try {
+    buf = Buffer.from(data, "base64");
+  } catch {
+    return res.status(400).json({ error: "data must be base64" });
+  }
+  const dir = path.join(DOCS_DIR, "uploads");
+  fs.mkdirSync(dir, { recursive: true });
+  let target = path.join(dir, name);
+  if (fs.existsSync(target)) {
+    const ext = path.extname(name);
+    target = path.join(dir, `${path.basename(name, ext)}-${Date.now()}${ext}`);
+  }
+  fs.writeFileSync(target, buf);
+  res.json({ ok: true, path: target, bytes: buf.length });
+});
+
 app.get("/api/docs", (_req, res) => {
   fs.mkdirSync(DOCS_DIR, { recursive: true });
   const items = fs.readdirSync(DOCS_DIR)

@@ -5,6 +5,7 @@ const chatLog = $("chat-log");
 const stateLabel = $("state-label");
 
 let state = "STANDBY"; // STANDBY | THINKING | SPEAKING | LISTENING
+let resetDictation = () => {}; // reassigned by the mic block when supported
 let currentBubble = null;
 let ttsEnabled = true;
 let wakeEnabled = false;
@@ -163,10 +164,45 @@ function setState(s) {
 function addMsg(role, text) {
   const div = document.createElement("div");
   div.className = `msg ${role}`;
-  div.textContent = text;
+  // Text lives in its own span so streaming appends and the hover-tools can
+  // coexist — and so "copy" grabs the words, never the button glyphs.
+  const span = document.createElement("span");
+  span.className = "msg-text";
+  span.textContent = text;
+  div.appendChild(span);
+  if (role === "cunningclaw") attachMsgTools(div, span);
   chatLog.appendChild(div);
   chatLog.scrollTop = chatLog.scrollHeight;
-  return div;
+  return span;
+}
+
+function attachMsgTools(div, span) {
+  const tools = document.createElement("div");
+  tools.className = "msg-tools";
+  const mk = (label, title, fn) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.title = title;
+    b.onclick = fn;
+    tools.appendChild(b);
+    return b;
+  };
+  const copyBtn = mk("⧉", "Copy this reply", async () => {
+    try {
+      await navigator.clipboard.writeText(span.textContent);
+      copyBtn.textContent = "✓";
+      setTimeout(() => { copyBtn.textContent = "⧉"; }, 1200);
+    } catch { /* clipboard blocked — nothing to say */ }
+  });
+  mk("🔊", "Speak this reply", () => {
+    fetch("/api/voice/sample", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: span.textContent.slice(0, 1100) }),
+    }).catch(() => {});
+  });
+  div.appendChild(tools);
 }
 
 function addChip(text) {
@@ -233,6 +269,11 @@ if (!SR) {
   const input = $("msg-input");
   let dictationBase = "";   // whatever was already typed before the mic opened
   let finalSpeech = "";     // utterances the recogniser has committed
+
+  // Sending must wipe the dictaphone's memory too. It used to clear only the
+  // box — then the next repaint (another word, or just switching the mic off)
+  // resurrected the sent message, and Chris had to delete it by hand. Again.
+  resetDictation = () => { dictationBase = ""; finalSpeech = ""; };
 
   const paint = (interim) => {
     const parts = [dictationBase, finalSpeech, interim].map((s) => s.trim()).filter(Boolean);
@@ -738,7 +779,43 @@ $("input-bar").addEventListener("submit", (e) => {
   const text = input.value.trim();
   if (!text) return;
   input.value = "";
+  resetDictation(); // or the mic's memory resurrects the sent message
   sendMessage(text);
+});
+
+// ---------------------------------------------------------------------------
+// File upload — the paperclip
+// ---------------------------------------------------------------------------
+$("attach-btn")?.addEventListener("click", () => $("attach-input").click());
+$("attach-input")?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  if (!file) return;
+  if (file.size > 20 * 1024 * 1024) {
+    addMsg("system", "⚠ That file is over 20MB — too big for the chat paperclip.");
+    return;
+  }
+  addMsg("system", `Uploading ${file.name}…`);
+  const data = await new Promise((res) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(",")[1] ?? "");
+    r.readAsDataURL(file);
+  });
+  try {
+    const resp = await fetch("/api/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: file.name, data }),
+    });
+    const d = await resp.json();
+    if (!resp.ok || !d.path) throw new Error(d.error || `HTTP ${resp.status}`);
+    const input = $("msg-input");
+    input.value = `[file attached: ${d.path}] ${input.value}`;
+    input.focus();
+    addMsg("system", `📎 ${file.name} uploaded — add your words and send.`);
+  } catch (err) {
+    addMsg("system", `⚠ Upload failed: ${err.message}`);
+  }
 });
 
 $("tts-toggle").addEventListener("click", async (e) => {
