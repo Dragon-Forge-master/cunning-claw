@@ -10,7 +10,7 @@ import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
 import * as http from "./http.js";
 import * as mcp from "./mcp.js";
-import { classifyBrowserAction, needsApproval as browserNeedsApproval } from "./consequence.js";
+import { classifyBrowserAction, needsApproval as browserNeedsApproval, taskGrantActive } from "./consequence.js";
 import { snapshot, record } from "./filewatch.js";
 import { readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
@@ -679,12 +679,20 @@ export const toolDefinitions: Anthropic.Tool[] = [
     name: "take_screenshot",
     description:
       "Capture the screen (or a specific window) and look at it. Use this whenever you need to " +
-      "see what is actually on screen — to check state, read a UI, or verify something worked.",
+      "see what is actually on screen — to check state, read a UI, or verify something worked. " +
+      "Pass windowName with target 'screen' to FOCUS that window first, then shoot — essential " +
+      "right after an approval, because clicking Approve fronts the HUD and steals focus from " +
+      "the app you were automating.",
     input_schema: {
       type: "object",
       properties: {
         target: { type: "string", enum: ["screen", "window"], description: "Whole screen or one window" },
-        windowName: { type: "string", description: "Part of the window title, when target is 'window'" },
+        windowName: {
+          type: "string",
+          description:
+            "Part of a window title. With target 'window': capture that window. With target " +
+            "'screen': front that window first, then capture the whole screen.",
+        },
       },
       additionalProperties: false,
     },
@@ -695,13 +703,16 @@ export const toolDefinitions: Anthropic.Tool[] = [
     description:
       "Click a point you read off the last full-screen screenshot. Give the coordinates " +
       "exactly as they appear in that image — the scaling to real screen pixels is done " +
-      "for you. Do not convert them yourself. Requires user approval.",
+      "for you. Do not convert them yourself. Pass window to focus the target window first " +
+      "(clicking Approve fronts the HUD, so an un-aimed click lands on the wrong app). " +
+      "Requires user approval.",
     input_schema: {
       type: "object",
       properties: {
         x: { type: "number", description: "X in image pixels, as seen in the screenshot" },
         y: { type: "number", description: "Y in image pixels, as seen in the screenshot" },
         button: { type: "number", description: "1 left (default), 2 middle, 3 right" },
+        window: { type: "string", description: "Window title fragment to focus before clicking" },
       },
       required: ["x", "y"],
       additionalProperties: false,
@@ -1406,25 +1417,38 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       }
       case "take_screenshot": return await desktop.screenshot(input.target ?? "screen", input.windowName);
       case "click_at": {
-        const ok = await ctx.requestApproval(
-          "Click on the desktop",
-          `At image coordinates ${input.x}, ${input.y}`,
+        // "Allow for this task" on the approval card covers the whole
+        // sequence — otherwise every click bounces Chris to the HUD, and the
+        // bounce itself steals focus from the app being clicked.
+        if (!taskGrantActive()) {
+          const ok = await ctx.requestApproval(
+            "Click on the desktop",
+            `At image coordinates ${input.x}, ${input.y}` +
+              (input.window ? ` → window "${input.window}"` : ""),
+          );
+          if (!ok) return "The user declined the click.";
+        }
+        return await desktop.clickAt(
+          Number(input.x), Number(input.y), Number(input.button ?? 1),
+          input.window ? String(input.window) : undefined,
         );
-        if (!ok) return "The user declined the click.";
-        return await desktop.clickAt(Number(input.x), Number(input.y), Number(input.button ?? 1));
       }
       case "list_windows": return await desktop.listWindows();
       case "focus_window": return await desktop.focusWindow(input.name);
       case "press_keys": {
-        const where = input.window ? ` → window "${input.window}"` : "";
-        const ok = await ctx.requestApproval("Send keystrokes to the desktop", `${input.keys}${where}`);
-        if (!ok) return "The user declined the keystrokes.";
+        if (!taskGrantActive()) {
+          const where = input.window ? ` → window "${input.window}"` : "";
+          const ok = await ctx.requestApproval("Send keystrokes to the desktop", `${input.keys}${where}`);
+          if (!ok) return "The user declined the keystrokes.";
+        }
         return await desktop.pressKeys(input.keys, input.window);
       }
       case "type_on_desktop": {
-        const where = input.window ? ` → window "${input.window}"` : "";
-        const ok = await ctx.requestApproval("Type into the focused window", `${input.text}${where}`);
-        if (!ok) return "The user declined the input.";
+        if (!taskGrantActive()) {
+          const where = input.window ? ` → window "${input.window}"` : "";
+          const ok = await ctx.requestApproval("Type into the focused window", `${input.text}${where}`);
+          if (!ok) return "The user declined the input.";
+        }
         return await desktop.typeOnDesktop(input.text, input.window);
       }
       case "notify": return await desktop.notify(input.title, input.body);

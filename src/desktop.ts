@@ -203,9 +203,13 @@ export async function screenshot(target: "screen" | "window" = "screen", windowN
   const out = path.join(TMP, "shot.png");
   for (const f of [raw, out]) if (fs.existsSync(f)) fs.unlinkSync(f);
 
-  if (target === "window" && windowName) {
+  if (windowName) {
+    // For a window-target shot, focus is required. For a SCREEN shot, a
+    // windowName means "front this first": clicking Approve in the HUD steals
+    // focus from the app being automated, so the next screenshot faithfully
+    // photographed the HUD and the whole aim went stale. Refocus, then shoot.
     try { await focusWindow(windowName); } catch { /* best effort */ }
-    await new Promise((r) => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, target === "window" ? 600 : 350));
   }
 
   let captured = false;
@@ -298,10 +302,16 @@ async function displaySize(): Promise<{ w: number; h: number } | null> {
  * the image it was shown and says so; the scale is applied here, where the two
  * sizes are actually known.
  */
-export async function clickAt(imageX: number, imageY: number, button = 1): Promise<string> {
+export async function clickAt(imageX: number, imageY: number, button = 1, window?: string): Promise<string> {
   if (host() === "other") return unsupportedDesktop();
   if (!lastShot) {
     return "No full-screen screenshot to measure against. Take one with take_screenshot first.";
+  }
+  // Approval clicks steal focus to the HUD; a click aimed at WhatsApp then
+  // lands on whatever is in front. Naming the window re-aims after the theft.
+  if (window) {
+    const aim = await aimWindow(window);
+    if (aim.error) return aim.error;
   }
   const sx = Math.round(imageX * (lastShot.screenW / lastShot.imageW));
   const sy = Math.round(imageY * (lastShot.screenH / lastShot.imageH));

@@ -53,6 +53,14 @@ screen actually changed before the next one. Five identical clicks at the same
 pixel means the approach is wrong, not the aim. And the send-verification law
 above applies doubly here.
 
+**Approval steals focus — always re-aim.** When Chris clicks Approve, the HUD
+comes to the front and the app you were automating loses focus. So on this
+path, EVERY `take_screenshot` passes `windowName` (fronts the window first,
+then shoots) and EVERY `click_at`/`type_on_desktop`/`press_keys` passes
+`window`. Never screenshot or click "wherever focus happens to be". And tell
+Chris once per task: pressing **Allow for this task** on the approval card
+covers the whole sequence, so he is not bounced to the HUD per click.
+
 ```bash
 xdotool search --name "WhatsApp Web"          # → window id
 xdotool windowactivate <id>; sleep 1
