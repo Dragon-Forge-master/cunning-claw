@@ -98,7 +98,11 @@ export function toOpenAiMessages(
         }));
       out.push({
         role: "assistant",
-        content: text || null,
+        // Empty string, never null: OpenRouter tolerates null content on
+        // tool-call messages, but Ollama's server rejects it outright —
+        // "invalid message content type: <nil>" — killing every Local turn
+        // whose history contained a tool call.
+        content: text || "",
         ...(tool_calls.length ? { tool_calls } : {}),
       });
     }
