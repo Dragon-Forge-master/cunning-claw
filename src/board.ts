@@ -42,12 +42,35 @@ export interface Repo {
   language: string | null;
 }
 
+/**
+ * Whose repositories? The configured owner if set — otherwise whoever is
+ * actually signed in to gh on THIS machine. The author's own GitHub name was
+ * once hardcoded as the fallback, so every fresh install anywhere booted
+ * showing his repositories. A butler serves the house he is standing in.
+ */
+let detectedOwner: string | null | undefined;
+async function githubOwner(): Promise<string | null> {
+  if (config.board?.githubOwner) return config.board.githubOwner;
+  if (detectedOwner !== undefined) return detectedOwner;
+  try {
+    const { stdout } = await execFileAsync("gh", ["api", "user", "--jq", ".login"], { timeout: 10000 });
+    detectedOwner = stdout.trim() || null;
+  } catch {
+    detectedOwner = null;
+  }
+  return detectedOwner;
+}
+
 /** Your repositories, most recently touched first. Cached — gh is not fast. */
 export async function repos(): Promise<{ items: Repo[]; error?: string }> {
   return cached("repos", 15 * 60_000, async () => {
+    const owner = await githubOwner();
+    if (!owner) {
+      return { items: [], error: "no GitHub account — run `gh auth login`, or set board.githubOwner in claw.config.json" };
+    }
     try {
       const { stdout } = await execFileAsync("gh", [
-        "repo", "list", config.board?.githubOwner ?? "Dragon-Forge-master",
+        "repo", "list", owner,
         "--limit", "60",
         "--json", "name,pushedAt,description,isPrivate,primaryLanguage",
       ], { timeout: 20000, maxBuffer: 4 * 1024 * 1024 });
