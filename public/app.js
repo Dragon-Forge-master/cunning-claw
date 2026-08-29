@@ -76,6 +76,10 @@ function drawReactor() {
   ctx.beginPath(); ctx.arc(CX, CY, coreR * 3.1, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = `rgba(${glow}, ${idle ? 0.55 + breath * 0.2 : 0.9})`;
   ctx.beginPath(); ctx.arc(CX, CY, coreR * 0.38, 0, Math.PI * 2); ctx.fill();
+  // A still white pupil at dead centre — the fixed point an entranced eye
+  // settles on while everything around it drifts.
+  ctx.fillStyle = `rgba(234, 252, 255, ${idle ? 0.75 : 0.85})`;
+  ctx.beginPath(); ctx.arc(CX, CY, coreR * 0.14, 0, Math.PI * 2); ctx.fill();
 
   // Quiet rails so the moving arcs have something to ride.
   if (idle) {
@@ -109,8 +113,11 @@ function drawReactor() {
     const span = (Math.PI * 2) / ring.segs;
     for (let i = 0; i < ring.segs; i++) {
       const start = i * span + t * ring.speed;
+      // In standby, brightness is a WAVE that travels around each ring — one
+      // crest forever circling — rather than segments blinking in place.
+      const mid = start + span / 2;
       const flicker = idle
-        ? 0.16 + 0.38 * (0.5 + 0.5 * Math.sin(t * 0.7 + i * 0.9))
+        ? 0.14 + 0.42 * (0.5 + 0.5 * Math.sin(mid * 2 - t * 0.85))
         : 0.25 + 0.5 * Math.abs(Math.sin(t + i));
       ctx.strokeStyle = `rgba(${glow}, ${flicker})`;
       ctx.lineWidth = ring.w;
