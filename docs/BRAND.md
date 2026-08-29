@@ -4,25 +4,38 @@ The visual identity, its reasons, and its rules. The verbal identity (the Swyn,
 the doctrine line, the lexicon) lives in [SWYN.md](SWYN.md); this file is the
 eyes to its voice.
 
-## The mark: the triskele claw
+## The primary mark: the Forge Claw
 
-Three hooked talons in rotation, gripping a spark.
+A dragon's claw gripping an anvil, scales on the wrist, a gear in the base.
+Chosen by the founder; it says *Dragon Forge* and *work gets done here* in a
+single image — a trade sign, in the tradition of hanging an anvil over the
+smithy door.
 
-- **Three talons, three wards.** One each for *y ffens*, *y llw*, *y sarff* —
-  the fence, the oath, the serpent. The mark is the safety model drawn.
-- **The spark is the hearth** — the user's machine, held but never pierced.
-  The talons grip; they do not touch it.
-- **The triskele is honest heritage.** Rotational triple-spiral geometry is
-  carved at Newgrange (~3200 BC) and runs through Celtic art since. No
-  invented lore, no borrowed sigils — per the epistemic firewall, the brand
-  makes no claim a museum couldn't back.
+Provenance, stated per the epistemic firewall: the illustration was generated
+by Gemini at Chris's direction (original plate kept at
+[`assets/forge-mark-original.jpeg`](assets/forge-mark-original.jpeg)) and
+traced to vector locally with vtracer. The claw grips the anvil; it does not
+crush it — the forge serves the work.
 
-Files: [`assets/mark.svg`](assets/mark.svg) (gradient, dark grounds) ·
-[`assets/mark-mono.svg`](assets/mark-mono.svg) (one colour, `currentColor`) ·
+Files: [`assets/forge-mark.svg`](assets/forge-mark.svg) (master,
+`currentColor` — inherits when inlined) ·
+[`assets/forge-mark-cyan.svg`](assets/forge-mark-cyan.svg) (explicit cyan for
+`<img>` on dark grounds) ·
 [`assets/logo-lockup.svg`](assets/logo-lockup.svg) (mark + wordmark).
 
-The terminal glyph `▟█▙` is the mark's ASCII kin — correct in monospace
-contexts (boot banner, nav bars, commit art) where an image cannot go.
+**Size floor: 48px.** Below that the illustration turns to mud — hand small
+sizes to the secondary mark.
+
+## The secondary mark: the spark triskele
+
+Three hooked talons in rotation around the spark
+([`assets/mark.svg`](assets/mark.svg), [`assets/mark-mono.svg`](assets/mark-mono.svg))
+— one talon per ward: *y ffens*, *y llw*, *y sarff*. Its job is the small
+squares the Forge Claw cannot survive: favicons, app icons, avatars, 16–48px.
+Below 16px, the spark (ring + dot) stands alone.
+
+The terminal glyph `▟█▙` is the ASCII kin — correct in monospace contexts
+(boot banner, nav bars, commit art) where an image cannot go.
 
 ## Palette
 
@@ -56,16 +69,16 @@ the wordmark height.
 
 ## Rules
 
-1. **The mark has one orientation.** Knuckle of the first talon upper-left,
-   its tip at upper-right. Never rotate, mirror, or animate it spinning —
-   it is a grip, not a fan.
-2. **Clear space** around the mark: the spark's diameter on all sides.
-3. **Never below 16px.** At 16px it reads as the swirl-and-spark; below that
-   use the plain spark (ring + dot) alone.
-4. **Gradient on ink only.** Anywhere else — light grounds, single-colour
-   print, embroidery — use `mark-mono.svg`. (Note: `currentColor` does not
-   inherit through an `<img>` tag; inline the SVG or set the colour in the
-   file for those contexts.)
+1. **One orientation each.** The Forge Claw grips down-left onto the anvil;
+   the triskele's first knuckle sits upper-left. Never rotate, mirror, or
+   animate either spinning.
+2. **Clear space**: a quarter of the mark's width on all sides.
+3. **Right mark for the size.** Forge Claw at 48px and above; triskele from
+   16–48px; the bare spark below 16px.
+4. **One colour at a time.** The Forge Claw is always a single colour — ink
+   on light grounds (the stamp), cyan on ink. Never gradients, never outlines
+   added. (Note: `currentColor` does not inherit through an `<img>` tag;
+   inline the SVG or use the explicit-colour file.)
 5. **Dragon red strikes once** per page/screen/document. Two red elements on
    one surface means one of them is wrong.
 6. **No glow below 64px.** Glow is atmosphere, not identity; small sizes get
