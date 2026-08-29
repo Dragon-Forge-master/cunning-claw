@@ -9,10 +9,14 @@ fi
 [ -n "$GITREVIEW_SKIP" ] && exit 0
 export GITREVIEW_MODEL="${GITREVIEW_MODEL:-llama3.2:latest}"
 
+# Deterministic only by default: a CPU model review here stalls every push
+# past the 2-minute mark. Set GITREVIEW_REVIEW=1 to opt into the model pass.
+fast="--fast"
+[ -n "$GITREVIEW_REVIEW" ] && fast=""
 base="${GITREVIEW_BASE:-origin/main}"
 while read -r _local_ref local_sha _remote_ref _remote_sha; do
   [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
-  "$GR_PY" -m gitreview.cli branch --base "$base"
+  "$GR_PY" -m gitreview.cli branch --base "$base" $fast
   exit $?
 done
 exit 0

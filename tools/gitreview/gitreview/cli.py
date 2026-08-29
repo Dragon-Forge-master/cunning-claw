@@ -99,10 +99,12 @@ def cmd_branch(args) -> int:
           f"{len(commits)} commit(s), {len(files)} file(s)")
 
     findings = run_all(files, cwd=str(root))
-    model_findings, notes = review_files(
-        files, model_from_env(), root, intent=intent, timeout=args.timeout,
-    )
-    findings.extend(model_findings)
+    notes: list[str] = []
+    if not args.fast:
+        model_findings, notes = review_files(
+            files, model_from_env(), root, intent=intent, timeout=args.timeout,
+        )
+        findings.extend(model_findings)
     render(findings, notes)
     return 1 if any(f.severity == "block" for f in findings) else 0
 
@@ -226,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("branch", help="review this branch vs a base ref")
     p.add_argument("--base", default=os.environ.get("GITREVIEW_BASE", "origin/main"))
+    p.add_argument("--fast", action="store_true", help="deterministic checks only")
     p.add_argument("--timeout", type=int, default=120)
     p.set_defaults(fn=cmd_branch)
 
