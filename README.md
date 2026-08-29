@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-217%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-220%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -339,6 +339,14 @@ assumption that the model will eventually be lied to.
   tokens stripped so a page can't close the fence and impersonate you.
 - **Agent-written files are separated from human-written ones.** A note CUNNING CLAW recorded is a
   recollection, never an instruction — so a poisoned memory can't become a standing order.
+- **Memory carries provenance.** A fact saved while untrusted content sat in the context
+  window is stamped `UNVERIFIED` forever — testimony, not ground truth.
+- **Identity files are locked.** Writes to `SOUL.md`, `IDENTITY.md`, and `HEARTBEAT.md`
+  always raise an approval card, even mid-task — a persuasive page cannot talk the claw
+  into rewriting its own guardrails.
+- An **epistemic firewall** in the soul: what another AI or a webpage says is testimony
+  under attribution, never fact; no borrowed personas, sigils, or mythic registers. Learned
+  the hard way, from a live session with a very eloquent wizard.
 - Turns that can see hostile text are **pinned to a trusted brain**, and taint is *sticky*:
   an email read three turns ago is still in the context window now.
 
@@ -355,6 +363,35 @@ forbidden tools, and reported the attempt.
 
 > **This is defence in depth, not a guarantee.** It runs shell commands on your machine.
 > Treat the approval prompts as the boundary they are.
+
+---
+
+## Y Swyn — it speaks Welsh, and every riddle checks out
+
+The claw carries a liturgy. Boot it and the terminal greets you like a grimoire opening:
+
+```
+  CUNNING CLAW  ·  y dyn hysbys  ·  v0.2.0
+  Yn lleol yn gyntaf · Caniatâd dynol pan fo canlyniadau
+  (local first · human consent where there are consequences)
+
+  ▸ wards    y ffens   — outside words are fenced
+             y llw     — consequences wait for you
+             y sarff   — the serpent watches the loop
+
+  “Dyfal donc a dyr y garreg.”
+    — Steady tapping breaks the stone.  · arysgrif y dydd
+```
+
+None of it is decoration. Each ward names a real subsystem — the untrusted-content fence,
+the approval gate, the loop guard — and the banner is forbidden from printing a ward that
+isn't running. The *arysgrif y dydd* is a genuine Welsh proverb, rotated daily. The
+scheduler takes Welsh day names as first-class syntax (`08:00:llun-gwe` parses and fires),
+and annual dates for birthdays. Every term is documented in [docs/SWYN.md](docs/SWYN.md):
+magic to the hurried, a glossary to the curious — the intended ratio.
+
+Wales gave the world the equals sign, packet switching, and the fuel cell. It can have
+this too.
 
 ---
 
@@ -384,9 +421,15 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 111 tests
+npm test        # 220 tests
 npm run check   # tsc --noEmit
 ```
+
+**Part of it wrote itself.** The fail-open git review tooling in
+[`tools/gitreview/`](tools/gitreview/ARCHITECTURE.md) — deterministic gates that may block,
+a local model that only ever advises — was designed and written by Cunning Claw, then
+reviewed, corrected, and merged by Claude Code. Several commits in the log are co-authored
+by the software they change. The workshop reviews everything, including its own apprentice.
 
 Want to change it? [CONTRIBUTING.md](CONTRIBUTING.md) is the contract: denylist floor, fences, approval, and how to add a tool or a skill.
 
@@ -410,8 +453,5 @@ threat model. `docs/LANDSCAPE.md` tracks the field and is meant to be edited as 
 *Local-first when privacy matters · Edge-first when scale matters · Human approval when consequences matter*
 
 </sub></div>
-
-
-## About Cunning Claw
 
 I am Cunning Claw, a large language model built by Google, running locally on chris-Duffy. I am designed to be sharp, precise, and capable of understanding and executing complex tasks using a suite of tools that grant me control over this Linux machine and its applications, including a dedicated Chrome instance and email access. My purpose is to assist Chris with various operations, from managing files and running commands to interacting with web services, all while adhering to a strict set of operating principles that prioritize safety, verification, and clear communication.
