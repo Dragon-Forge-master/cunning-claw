@@ -6,16 +6,22 @@
  * escape codes into a log file.
  */
 
-/** Three talons closing on a point — ours, rather than a borrowed reactor. */
+/**
+ * The Forge Claw's ASCII kin: talons gripping the anvil, per the brand mark
+ * (docs/assets/forge-mark.svg). Horn left, face wide, waist, base — with the
+ * claw hooking over the face from above.
+ */
 const MARK = [
-  "  ▟█▙   ▟█▙   ▟█▙  ",
-  "  ▜██▙ ▟███▙ ▟██▛  ",
-  "   ▜██▄███████▄██▛ ",
-  "    ▀████▀ ▀████▀  ",
-  "      ▜██▄▄▄██▛    ",
-  "        ▜███▛      ",
-  "         ▜▛        ",
-  "          ▀        ",
+  "           ▗▄▄▟█▛▀▘ ",
+  "       ▄▄▟██████▛   ",
+  "     ▗▟█▛▘▜█▛▜██▖   ",
+  "     ▝▜█▙ ▜█▖▝█▙▚   ",
+  " ▄▄▄▄▄▄▟██▄▄██▄▄█▙▄ ",
+  " ▀▀▜████████████▛▀▘ ",
+  "     ▀▜████████▛▀   ",
+  "       ▐██████▌     ",
+  "     ▄▟████████▙▄   ",
+  "     ▀▀▀▀▀▀▀▀▀▀▀▀   ",
 ];
 
 const WORDMARK = [
