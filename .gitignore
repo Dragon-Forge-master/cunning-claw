@@ -21,3 +21,5 @@ workspace/*.log
 workspace/*.html
 
 .gitreview/cache/
+__pycache__/
+*.pyc
