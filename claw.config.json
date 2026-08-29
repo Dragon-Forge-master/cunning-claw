@@ -17,7 +17,15 @@
   },
   "commandPolicy": {
     "autoApprovePatterns": [
-      "^(ls|cat|head|tail|grep|find|du|df|free|uptime|date|whoami|hostname|uname|ps|top -b -n 1|sensors|lsblk|ip addr|nmcli( .*)? (status|show)|xdg-open .*|pactl .*|playerctl .*|notify-send .*)( |$)"
+      "^(ls|cat|head|tail|grep|find|du|df|free|uptime|date|whoami|hostname|uname|ps|top -b -n 1|sensors|lsblk|ip addr|nmcli( .*)? (status|show)|xdg-open .*|pactl .*|playerctl .*|notify-send .*)( |$)",
+      "^git (status|log|diff|show|branch|remote|shortlog|blame)( |$)",
+      "^(pwd|wc|sort|uniq|file|stat|which|where|tree|less|more|readlink|basename|dirname)( |$)",
+      "^(node|py|python3?|npm|npx|git|ffmpeg|gh) (--version|-v)$",
+      "^npm (test|run test|ls|outdated|view)( |$)",
+      "^mkdir( -p)? [^;&|<>]*$",
+      "^touch [^;&|<>]*$",
+      "^gh (repo list|repo view|pr list|issue list)( |$)",
+      "^(tar -t|unzip -l|du -sh|df -h)( |$)?"
     ],
     "denyPatterns": [
       "rm\\s+-rf\\s+/(\\s|$)",

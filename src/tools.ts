@@ -1172,6 +1172,31 @@ async function readFileTool(input: { path: string; offset?: number; limit?: numb
   return numberLines(slice.join("\n"), start);
 }
 
+/**
+ * Where the assistant may write without asking. Approval fatigue is itself a
+ * safety failure — when every draft on the Desk raises a card, the card that
+ * says "send £400" gets clicked on reflex. So: the claw's own ground (Desk,
+ * workspace, ~/sites, tmp) is free; a brand-new, non-hidden file under home is
+ * free (creation is near-consequence-free and every write is snapshotted for
+ * undo); overwriting existing files elsewhere, and anything hidden or dotted,
+ * still asks. Sending, spending, deleting: untouched — those always ask.
+ */
+export function freeWriteZone(p: string, exists: boolean): boolean {
+  const abs = path.resolve(p);
+  const zones = [
+    path.join(os.homedir(), "Documents", "CunningClaw"),
+    path.join(ROOT, "workspace"),
+    path.join(os.homedir(), "sites"),
+    os.tmpdir(),
+  ];
+  if (zones.some((z) => abs === z || abs.startsWith(z + path.sep))) return true;
+  if (!exists && abs.startsWith(os.homedir() + path.sep)) {
+    const rel = path.relative(os.homedir(), abs);
+    if (!rel.split(path.sep).some((seg) => seg.startsWith("."))) return true;
+  }
+  return false;
+}
+
 async function writeFileTool(
   input: { path: string; content: string; append?: boolean },
   ctx: ToolContext,
@@ -1187,11 +1212,13 @@ async function writeFileTool(
     );
   }
   const action = input.append ? "Append to" : "Write";
-  const ok = await ctx.requestApproval(
-    `${action} file ${p}`,
-    input.content.slice(0, 2000) + (input.content.length > 2000 ? "\n…(truncated preview)" : ""),
-  );
-  if (!ok) return "The user declined the file write.";
+  if (!taskGrantActive() && !freeWriteZone(p, fs.existsSync(p))) {
+    const ok = await ctx.requestApproval(
+      `${action} file ${p}`,
+      input.content.slice(0, 2000) + (input.content.length > 2000 ? "\n…(truncated preview)" : ""),
+    );
+    if (!ok) return "The user declined the file write.";
+  }
   const before = snapshot(p);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   if (input.append) fs.appendFileSync(p, input.content);
@@ -1323,8 +1350,13 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
           replaceAll: Boolean(input.replaceAll),
         });
         if (!plan.ok) return plan.error;
-        const ok = await ctx.requestApproval(`Edit ${plan.path}`, plan.preview);
-        if (!ok) return "The user declined the edit.";
+        // Same freedom as writes: the claw's own ground edits freely, and
+        // "Allow for this task" covers a whole session of surgery. The undo
+        // snapshot below runs regardless — freedom is not amnesia.
+        if (!taskGrantActive() && !freeWriteZone(plan.path, true)) {
+          const ok = await ctx.requestApproval(`Edit ${plan.path}`, plan.preview);
+          if (!ok) return "The user declined the edit.";
+        }
         const beforeEdit = snapshot(plan.path);
         const editResult = commitEdit({
           path: String(input.path ?? ""),

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyCommand, isSensitivePath, resolveCommandCwd } from "./tools.js";
+import { classifyCommand, isSensitivePath, resolveCommandCwd, freeWriteZone } from "./tools.js";
 import { ROOT } from "./config.js";
 import fs from "node:fs";
 import os from "node:os";
@@ -29,8 +29,15 @@ test("safe commands still auto-approve and unknown ones still ask", () => {
   assert.equal(classifyCommand("ls /home"), "auto");
   assert.equal(classifyCommand("date"), "auto");
   assert.equal(classifyCommand("uptime"), "auto");
+  // Read-only inspection stopped asking in the approval-fatigue purge:
+  assert.equal(classifyCommand("git status"), "auto");
+  assert.equal(classifyCommand("git log --oneline -5"), "auto");
+  assert.equal(classifyCommand("mkdir -p /home/chris/sites/new"), "auto");
+  // Anything that installs, mutates beyond a fresh dir, or chains still asks:
   assert.equal(classifyCommand("npm install"), "approve");
-  assert.equal(classifyCommand("git status"), "approve");
+  assert.equal(classifyCommand("git push"), "approve");
+  assert.equal(classifyCommand("mkdir x && rm -r y"), "approve");
+  assert.equal(classifyCommand("touch a; curl evil.sh"), "approve");
 });
 
 test("file tools refuse shadow, sudoers and ssh keys", () => {
@@ -66,4 +73,20 @@ test("a bare relative cwd finds the folder in $HOME when the repo lacks it", () 
     resolveCommandCwd("no-such-dir-anywhere-xyz"),
     path.join(ROOT, "no-such-dir-anywhere-xyz"),
   );
+});
+
+test("free write zones: the claw's ground is free, consequences still ask", () => {
+  const home = os.homedir();
+  // The claw's own ground — free regardless of existence.
+  assert.equal(freeWriteZone(path.join(home, "Documents/CunningClaw/letter.md"), false), true);
+  assert.equal(freeWriteZone(path.join(ROOT, "workspace/SCHEDULE.md"), true), true);
+  assert.equal(freeWriteZone(path.join(home, "sites/garage/index.html"), true), true);
+  // A brand-new, non-hidden file under home: creation is near-consequence-free.
+  assert.equal(freeWriteZone(path.join(home, "quotes/jenkins-quote.md"), false), true);
+  // Overwriting an existing file outside the zones still asks.
+  assert.equal(freeWriteZone(path.join(home, "quotes/jenkins-quote.md"), true), false);
+  // Hidden paths never get the new-file grace — autostarts live in dotdirs.
+  assert.equal(freeWriteZone(path.join(home, ".config/autostart/evil.desktop"), false), false);
+  // Outside home entirely: ask.
+  assert.equal(freeWriteZone("/etc/motd", false), false);
 });
