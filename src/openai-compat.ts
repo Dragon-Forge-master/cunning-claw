@@ -58,7 +58,9 @@ function imagesFromToolContent(content: unknown): OpenAiChatMessage[] {
         const png = head.length > 7 && head.readUInt32BE(0) === 0x89504e47;
         const jpg = head.length > 2 && head[0] === 0xff && head[1] === 0xd8;
         const webp = head.length > 11 && head.toString("ascii", 0, 4) === "RIFF" && head.toString("ascii", 8, 12) === "WEBP";
-        const sane = b.source.data.length > 1024 && b.source.data.length < 9_000_000;
+        // No lower bound: a 1x1 PNG is ~100 bytes and perfectly decodable —
+        // the magic bytes are the real test. Only the huge get dropped.
+        const sane = b.source.data.length < 9_000_000;
         return (png || jpg || webp) && sane;
       } catch {
         return false;
