@@ -28,6 +28,10 @@ curious, which is exactly the intended ratio.
 | **nos da** | good night | a clean shutdown |
 | **yr Archdderwydd** | the Archdruid | an honorific, never a default — the claw does not presume titles on strangers. The cunning folk were always human; the claw is only the familiar, and an owner takes a title only by claiming one themself |
 | **penblwydd** | birthday | an annual swyn (`08:30:20/04`) — the spellbook learned about years for this |
+| **ar-lein** | online | the boot banner's first status line |
+| **llais** | voice | the TTS engine (Piper) |
+| **offer** | tools | the tool roster on the bench |
+| **arysgrif y dydd** | the day's inscription | the boot banner's rotating proverb — real Welsh, glossed, one per day |
 
 ## Welsh that executes
 
@@ -57,6 +61,20 @@ Every claw carries this, and it is the whole philosophy in one breath:
 
 > **Yn lleol yn gyntaf · Caniatâd dynol pan fo canlyniadau**
 > *Local first · Human consent where there are consequences*
+
+## The boot liturgy
+
+The terminal a downloader watches is a human-facing surface, so it speaks the
+Swyn: the doctrine line under the wordmark, the three wards (**y ffens**,
+**y llw**, **y sarff** — each naming a subsystem that is unconditionally
+active; no ward is printed that is not real), and the *arysgrif y dydd* — a
+genuine Welsh proverb rotated daily in `src/banner.ts`:
+
+> Dyfal donc a dyr y garreg · Deuparth gwaith yw ei ddechrau · A fo ben, bid
+> bont · Gwell dysg na golud · Nid aur popeth melyn · Hir yw pob ymaros ·
+> Gwell hwyr na hwyrach · Cenedl heb iaith, cenedl heb galon
+
+Each prints with its English gloss. The magic is that every riddle checks out.
 
 ## Rules for extending the Swyn
 
