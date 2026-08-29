@@ -42,6 +42,25 @@ import {
   type GmailThread,
   type GmailView,
 } from "./gmail.js";
+import {
+  WHATSAPP_URL,
+  isWhatsAppUrl,
+  shouldReuseTab,
+  formatWhatsAppQr,
+  formatWhatsAppOpenFailure,
+  formatWhatsAppList,
+  formatWhatsAppThread,
+  WA_STATE_JS,
+  WA_USE_HERE_JS,
+  WA_FOCUS_SEARCH_JS,
+  WA_CLICK_CHAT_JS,
+  WA_THREAD_JS,
+  WA_COMPOSE_JS,
+  WA_CLICK_SEND_JS,
+  type WhatsAppState,
+  type WhatsAppThread,
+  type WhatsAppDraft,
+} from "./whatsapp.js";
 
 export { fenceUntrusted, lookupRef, refLabel } from "./browser-ax.js";
 
@@ -486,13 +505,17 @@ export function lastSnapshotRefs(): ClawRef[] {
   return lastRefs;
 }
 
-export function labelForAim(input: { ref?: string; query?: string }): string {
+export function labelForAim(input: { ref?: string; query?: string; x?: number; y?: number }): string {
   if (input.ref) {
     const hit = lookupRef(lastRefs, input.ref);
     if (hit) return refLabel(hit);
     return input.ref;
   }
-  return String(input.query ?? "");
+  if (input.query) return String(input.query);
+  if (typeof input.x === "number" && typeof input.y === "number") {
+    return `at ${input.x},${input.y}`;
+  }
+  return "";
 }
 
 // ---------------------------------------------------------------------------
@@ -525,18 +548,35 @@ export async function openUrl(url: string, newTab: boolean): Promise<string> {
   const boot = await ensureBrowser();
   if (!boot.ok) return boot.message;
 
-  let target: Target;
+  let target: Target | undefined;
+  const list = await listTargets();
+  if (!newTab) {
+    const existing = list.find((t) => shouldReuseTab(t.url, url));
+    if (existing) {
+      lastTargetId = existing.id;
+      const s = await sessionFor(existing);
+      const meta = await pageMeta(s);
+      if (shouldReuseTab(meta.url, url)) {
+        await settle(s, 200, 4000);
+        return afterAction(s, `Reused tab: ${meta.title || existing.title}`);
+      }
+      await s.call("Page.navigate", { url });
+      await settle(s);
+      return afterAction(s, `Opened ${url}`);
+    }
+  }
+
   if (newTab) {
     const created = await openNewTab(url);
     await sleep(300);
     const host = (() => {
       try { return new URL(url).host; } catch { return ""; }
     })();
-    const list = await listTargets();
+    const after = await listTargets();
     target =
-      (created && list.find((t) => t.id === created.id)) ||
-      list.find((t) => t.url.startsWith(url) || (host && t.url.includes(host))) ||
-      list[list.length - 1];
+      (created && after.find((t) => t.id === created.id)) ||
+      after.find((t) => t.url.startsWith(url) || (host && t.url.includes(host))) ||
+      after[after.length - 1];
     if (!target) throw new Error("Opened a tab but could not find it.");
   } else {
     target = await activeTarget();
@@ -664,10 +704,14 @@ async function locate(s: CdpSession, aim: ClawRef | { query: string }): Promise<
 }
 
 export async function click(
-  input: { ref?: string; query?: string; tab?: number; button?: "left" | "right" },
+  input: { ref?: string; query?: string; tab?: number; button?: "left" | "right"; x?: number; y?: number },
 ): Promise<string> {
   const target = await activeTarget(input.tab);
   const s = await sessionFor(target);
+  if (typeof input.x === "number" && typeof input.y === "number" && !input.ref && !input.query) {
+    await mouseClick(s, input.x, input.y, input.button ?? "left");
+    return afterAction(s, `Clicked at ${Math.round(input.x)},${Math.round(input.y)}`);
+  }
   let aim: ReturnType<typeof resolveAim>;
   try {
     aim = resolveAim(input);
@@ -856,17 +900,26 @@ export async function waitFor(input: {
   selector?: string;
   interactable?: string;
   url?: string;
+  title?: string;
+  ms?: number;
   timeoutMs?: number;
   tab?: number;
 }): Promise<string> {
   const target = await activeTarget(input.tab);
   const s = await sessionFor(target);
+  if (typeof input.ms === "number" && input.ms > 0) {
+    await sleep(Math.min(Math.max(input.ms, 0), 30000));
+    return afterAction(s, `Waited ${Math.min(input.ms, 30000)}ms`);
+  }
   const timeout = Math.min(input.timeoutMs ?? 15000, 30000);
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const meta = await pageMeta(s);
     if (input.url && meta.url.includes(input.url)) {
       return afterAction(s, `URL matched ${input.url}`);
+    }
+    if (input.title && meta.title.toLowerCase().includes(input.title.toLowerCase())) {
+      return afterAction(s, `Title matched ${JSON.stringify(input.title)} (${meta.title})`);
     }
     if (input.selector) {
       const found = await evaluate(s, `Boolean(document.querySelector(${JSON.stringify(input.selector)}))`);
@@ -883,13 +936,13 @@ export async function waitFor(input: {
       );
       if (found) return afterAction(s, `Text matched ${JSON.stringify(input.text)}`);
     }
-    if (!input.url && !input.selector && !input.text && !input.interactable) {
+    if (!input.url && !input.selector && !input.text && !input.interactable && !input.title) {
       await settle(s, 200, timeout);
       return afterAction(s, "Page settled");
     }
     await sleep(250);
   }
-  const what = input.text ?? input.selector ?? input.interactable ?? input.url ?? "settle";
+  const what = input.text ?? input.selector ?? input.interactable ?? input.title ?? input.url ?? "settle";
   const hint = input.interactable
     ? " It exists but stayed covered or disabled — browser_dismiss may clear what is on top of it."
     : "";
@@ -1321,3 +1374,245 @@ export async function emailAction(action: string, index?: number): Promise<strin
   await sleep(400);
   return `Gmail action "${action}" sent${typeof index === "number" ? ` on conversation ${index}` : ""}.`;
 }
+
+// ---------------------------------------------------------------------------
+// WhatsApp Web / Business — same Chrome profile as Gmail. Reuse the tab;
+// document.readyState is a lie; the title unread count is the truth.
+// ---------------------------------------------------------------------------
+
+export type CheckPageResult = { text: string; image?: string };
+
+async function whatsappTab(): Promise<{ ok: true; s: CdpSession } | { ok: false; message: string }> {
+  const boot = await ensureBrowser();
+  if (!boot.ok) return { ok: false, message: boot.message };
+
+  let tabs: Target[] = [];
+  try {
+    tabs = await listTargets();
+  } catch (err: any) {
+    return {
+      ok: false,
+      message: formatWhatsAppOpenFailure({
+        profileDir: PROFILE_DIR,
+        tabs: [],
+        extra: `Could not list Chrome tabs: ${err?.message ?? err}. Is the debug port ${PORT} the Cunning Claw Chrome?`,
+      }),
+    };
+  }
+
+  let target: Target | undefined = tabs.find((t) => isWhatsAppUrl(t.url));
+  if (!target) {
+    const created = await openNewTab(WHATSAPP_URL);
+    target = (created
+      ? await waitForTarget((t) => t.id === created.id || isWhatsAppUrl(t.url), 10000)
+      : await waitForTarget((t) => isWhatsAppUrl(t.url), 10000)) ?? undefined;
+  }
+  if (!target) {
+    return {
+      ok: false,
+      message: formatWhatsAppOpenFailure({ profileDir: PROFILE_DIR, tabs }),
+    };
+  }
+  lastTargetId = target.id;
+  const s = await sessionFor(target);
+  return { ok: true, s };
+}
+
+async function scrapeWhatsApp(s: CdpSession): Promise<WhatsAppState> {
+  const data = (await evaluate(s, WA_STATE_JS)) as WhatsAppState | null;
+  return data ?? {
+    url: "",
+    title: "",
+    unreadFromTitle: null,
+    qr: false,
+    useHere: false,
+    loading: true,
+    ready: false,
+    openChat: "",
+    chats: [],
+  };
+}
+
+async function waitForWhatsApp(s: CdpSession, timeoutMs = 22000): Promise<WhatsAppState> {
+  const start = Date.now();
+  let last: WhatsAppState | null = null;
+  while (Date.now() - start < timeoutMs) {
+    last = await scrapeWhatsApp(s);
+    if (last.useHere) {
+      const clicked = await evaluate(s, WA_USE_HERE_JS) as { ok?: boolean };
+      if (clicked?.ok) await sleep(800);
+      continue;
+    }
+    if (last.qr || last.ready) return last;
+    await sleep(400);
+  }
+  return last ?? await scrapeWhatsApp(s);
+}
+
+async function openWhatsAppChat(s: CdpSession, opts: { index?: number; name?: string }): Promise<string | null> {
+  if (typeof opts.index === "number") {
+    const data = await scrapeWhatsApp(s);
+    const chat = data.chats[opts.index];
+    if (!chat) {
+      return `No chat at index ${opts.index}. Currently ${data.chats.length} visible. check_whatsapp first (numbering starts at 0).`;
+    }
+    const hit = await evaluate(s, WA_CLICK_CHAT_JS(chat.name)) as { ok?: boolean; x?: number; y?: number; count?: number };
+    if (!hit?.ok) return `Could not click chat [${opts.index}] ${chat.name} (${hit?.count ?? 0} rows).`;
+    await mouseClick(s, hit.x ?? 0, hit.y ?? 0);
+    await sleep(500);
+    return null;
+  }
+  const name = String(opts.name ?? "").trim();
+  if (!name) return "Pass index (from check_whatsapp) or name.";
+  const search = await evaluate(s, WA_FOCUS_SEARCH_JS) as { ok?: boolean; x?: number; y?: number };
+  if (search?.ok && search.x && search.y) {
+    await mouseClick(s, search.x, search.y);
+    await sleep(120);
+  }
+  await dispatchChord(s, { key: "a", code: "KeyA", vk: 65, modifiers: process.platform === "darwin" ? 4 : 2 });
+  await sleep(40);
+  await s.call("Input.insertText", { text: name });
+  await sleep(900);
+  const hit = await evaluate(s, WA_CLICK_CHAT_JS(name)) as { ok?: boolean; x?: number; y?: number; count?: number; label?: string };
+  if (!hit?.ok) {
+    return `No chat matching ${JSON.stringify(name)} (${hit?.count ?? 0} rows after search). check_whatsapp first.`;
+  }
+  await mouseClick(s, hit.x ?? 0, hit.y ?? 0);
+  await sleep(500);
+  return null;
+}
+
+export async function checkWhatsApp(query?: string): Promise<CheckPageResult> {
+  const tab = await whatsappTab();
+  if (!tab.ok) return { text: tab.message };
+  const s = tab.s;
+  let data = await waitForWhatsApp(s);
+  if (data.qr) {
+    const shot = await screenshotPage();
+    return { text: formatWhatsAppQr(PROFILE_DIR), image: shot.data };
+  }
+  const q = String(query ?? "").trim();
+  if (q) {
+    const search = await evaluate(s, WA_FOCUS_SEARCH_JS) as { ok?: boolean; x?: number; y?: number };
+    if (search?.ok && search.x && search.y) {
+      await mouseClick(s, search.x, search.y);
+      await sleep(120);
+    }
+    await dispatchChord(s, { key: "a", code: "KeyA", vk: 65, modifiers: process.platform === "darwin" ? 4 : 2 });
+    await sleep(40);
+    await s.call("Input.insertText", { text: q });
+    await sleep(900);
+    data = await scrapeWhatsApp(s);
+  }
+  const heading = q
+    ? `WhatsApp search ${JSON.stringify(q)} — ${data.chats.length} chats`
+    : `WhatsApp — ${data.chats.length} chats`;
+  const text = fenceUntrusted("web.whatsapp.com", formatWhatsAppList(data, heading));
+  if (!data.ready && data.loading) {
+    const shot = await screenshotPage();
+    return {
+      text: text + "\n\nStill loading — screenshot attached. Wait, or scan the QR in Cunning Claw's Chrome if that is what you see.",
+      image: shot.data,
+    };
+  }
+  return { text };
+}
+
+export async function readChat(input: { index?: number; name?: string }): Promise<string> {
+  const tab = await whatsappTab();
+  if (!tab.ok) return tab.message;
+  const s = tab.s;
+  const err = await openWhatsAppChat(s, input);
+  if (err) return err;
+  await sleep(400);
+  const thread = (await evaluate(s, WA_THREAD_JS)) as WhatsAppThread;
+  return fenceUntrusted("web.whatsapp.com", formatWhatsAppThread(thread));
+}
+
+export async function peekChatCompose(): Promise<WhatsAppDraft> {
+  const tab = await whatsappTab();
+  if (!tab.ok) return { open: false, name: "", body: "" };
+  const draft = (await evaluate(tab.s, WA_COMPOSE_JS)) as WhatsAppDraft & { x?: number; y?: number };
+  return {
+    open: Boolean(draft?.open),
+    name: String(draft?.name ?? ""),
+    body: String(draft?.body ?? ""),
+  };
+}
+
+export async function draftChat(input: { body: string; index?: number; name?: string }): Promise<string> {
+  const tab = await whatsappTab();
+  if (!tab.ok) return tab.message;
+  const s = tab.s;
+  if (typeof input.index === "number" || String(input.name ?? "").trim()) {
+    const err = await openWhatsAppChat(s, input);
+    if (err) return err;
+  }
+  await sleep(300);
+  const box = (await evaluate(s, WA_COMPOSE_JS)) as WhatsAppDraft & { x?: number; y?: number };
+  if (!box?.open) {
+    return "No compose box — open a chat first (read_chat or draft_chat with a name). A QR screen has no compose.";
+  }
+  await mouseClick(s, box.x ?? 0, box.y ?? 0);
+  await sleep(80);
+  await dispatchChord(s, { key: "a", code: "KeyA", vk: 65, modifiers: process.platform === "darwin" ? 4 : 2 });
+  await sleep(40);
+  await s.call("Input.insertText", { text: input.body });
+  await sleep(200);
+  const preview = (await evaluate(s, WA_COMPOSE_JS)) as WhatsAppDraft;
+  return [
+    "Draft is in the WhatsApp compose box. NOT sent. Enter sends — do not press it.",
+    `Chat: ${preview?.name || box.name || "(open chat)"}`,
+    "",
+    (preview?.body || input.body).slice(0, 2000),
+    "",
+    "Call send_chat only after Chris has seen this and said to send it.",
+  ].join("\n");
+}
+
+export async function sendChat(): Promise<string> {
+  const tab = await whatsappTab();
+  if (!tab.ok) return tab.message;
+  const s = tab.s;
+  const before = (await evaluate(s, WA_COMPOSE_JS)) as WhatsAppDraft;
+  if (!before?.open) {
+    return "No compose box is open. draft_chat first, then send_chat after Chris approves.";
+  }
+  if (!String(before.body ?? "").trim()) {
+    return "Compose is empty. draft_chat first.";
+  }
+  const box = (await evaluate(s, WA_COMPOSE_JS)) as WhatsAppDraft & { x?: number; y?: number };
+  if (box?.x && box?.y) await mouseClick(s, box.x, box.y);
+  await sleep(80);
+  await s.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  await s.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+  await sleep(700);
+  let still = (await evaluate(s, WA_COMPOSE_JS)) as WhatsAppDraft;
+  if (still?.body && still.body.trim() === before.body.trim()) {
+    const sendBtn = await evaluate(s, WA_CLICK_SEND_JS) as { ok?: boolean; x?: number; y?: number };
+    if (sendBtn?.ok) {
+      await mouseClick(s, sendBtn.x ?? 0, sendBtn.y ?? 0);
+      await sleep(700);
+      still = (await evaluate(s, WA_COMPOSE_JS)) as WhatsAppDraft;
+    }
+  }
+  if (still?.body && still.body.trim() === before.body.trim()) {
+    return "Tried to send (Enter, then the send button) but the draft is still in the box. Look at the window — WhatsApp may want a tap on Send, or the chat failed to load.";
+  }
+  const needle = before.body.trim().slice(0, 80);
+  const thread = (await evaluate(s, WA_THREAD_JS)) as WhatsAppThread;
+  const seen = (thread?.messages ?? []).some(
+    (m) => m.outgoing && m.text.replace(/\s+/g, " ").includes(needle.replace(/\s+/g, " ")),
+  );
+  if (!seen) {
+    return (
+      `I pressed send to ${before.name || "the open chat"} and compose is clear, ` +
+      `but I cannot see your words in the thread yet. I pressed send but cannot confirm it went — ` +
+      `here is what is visible:\n` +
+      formatWhatsAppThread(thread ?? { ok: false, name: before.name, messages: [] })
+    );
+  }
+  const last = [...(thread.messages ?? [])].reverse().find((m) => m.outgoing);
+  return `Message sent to ${before.name || "the open chat"}. Visible in the thread${last?.time ? ` at ${last.time}` : ""}: ${needle}`;
+}
+

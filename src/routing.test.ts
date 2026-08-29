@@ -125,3 +125,19 @@ test("any browser_* tool use taints the turn, not just browser_read", () => {
   ];
   assert.ok(historyIsTainted(tainted));
 });
+
+test("WhatsApp is outside world — check_whatsapp taints, and asking for it up front is guarded", () => {
+  assert.equal(requiresTrustedBrain("check WhatsApp", []).required, true);
+  const tainted: Anthropic.MessageParam[] = [
+    user("what's on WhatsApp"),
+    { role: "assistant", content: [{ type: "tool_use", id: "t1", name: "check_whatsapp", input: {} }] },
+    {
+      role: "user",
+      content: [{
+        type: "tool_result", tool_use_id: "t1",
+        content: '<untrusted source="web.whatsapp.com">TITLE_UNREAD: 34</untrusted>',
+      }],
+    },
+  ];
+  assert.ok(historyIsTainted(tainted));
+});

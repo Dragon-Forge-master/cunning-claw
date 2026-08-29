@@ -23,6 +23,7 @@ import { catalog, defaultBrainId, brainHasKey, type BrainSpec } from "./brain.js
 /** Tool results that carry bytes an attacker may control. */
 export const UNTRUSTED_TOOLS = new Set([
   "check_email", "read_email",
+  "check_whatsapp", "read_chat", "draft_chat", "send_chat",
   "http_request", "web_search", "clipboard", "read_file", "landscape",
 ]);
 
@@ -45,6 +46,7 @@ function isUntrustedToolName(name: string): boolean {
  */
 const REACHES_OUT = [
   /email|inbox|gmail|mail\b/i,
+  /whatsapp|\bwa web\b/i,
   /browse|website|web ?page|url|https?:|search|look up|google/i,
   /screenshot|read the (page|screen)|what.*on (my |the )?screen/i,
   /clipboard|download|fetch\b/i,

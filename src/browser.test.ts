@@ -44,6 +44,16 @@ test("flattenAx assigns e1.. in document order and skips ignored nodes", () => {
   assert.ok(!refs.some((r) => r.name === "hidden"), "ignored nodes stay off the glass");
 });
 
+test("chat rows are listitems — WhatsApp's left pane is otherwise invisible", () => {
+  const refs = flattenAx([
+    { nodeId: "1", role: { value: "RootWebArea" }, childIds: ["2", "3"] },
+    { nodeId: "2", role: { value: "listitem" }, name: { value: "Ffion, 2 unread" }, backendDOMNodeId: 8 },
+    { nodeId: "3", role: { value: "row" }, name: { value: "Dave" }, backendDOMNodeId: 9 },
+  ]);
+  assert.equal(refs.map((r) => r.role).join(","), "listitem,row");
+  assert.equal(refs[0].name, "Ffion, 2 unread");
+});
+
 test("nameless headings are dropped, nameless buttons are kept because they are aimable", () => {
   const refs = flattenAx([
     { nodeId: "1", role: { value: "RootWebArea" }, childIds: ["2", "3"] },

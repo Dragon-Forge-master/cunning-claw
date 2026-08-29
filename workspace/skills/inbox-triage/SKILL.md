@@ -94,5 +94,5 @@ If compose does not open, say so and ask Chris to turn shortcuts on. Do not star
 - Drive Gmail with `browser_click` on remembered CSS. Use the email tools; fall back to `browser_snapshot` refs only when a tool has failed.
 - Report unread from the Primary tab when `TITLE_UNREAD` disagrees.
 - Send because you drafted. Draft is the work; send is a decision.
-- Open WhatsApp with these tools. WhatsApp on this machine is native — see `whatsapp-desk`.
+- Open WhatsApp with these Gmail tools. WhatsApp Web is `check_whatsapp` — see `whatsapp-desk`.
 - Handle passwords. If Gmail asks for sign-in, stop and tell Chris the Cunning Claw Chrome window (not the everyday one) needs him once.

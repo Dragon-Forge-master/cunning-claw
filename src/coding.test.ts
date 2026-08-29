@@ -52,8 +52,17 @@ test("list_repos names this install; glob skipping .git is why a naive hunt fail
 test("an absolute path that only exists under the repo root gets one act of grace", () => {
   // "/workspace/MEMORY.md" is container-speak for the repo's workspace/ — he
   // asked for exactly this, got ENOENT, and concluded he had never been changed.
-  const inRoot = resolveWorkPath("/workspace/MEMORY.md");
-  assert.equal(inRoot, path.join(ROOT, "workspace/MEMORY.md"));
+  // Use a unique file so the test still holds when this process itself lives at
+  // /workspace (then /workspace/MEMORY.md is the repo root, not workspace/).
+  const unique = `claw-grace-${process.pid}.md`;
+  const onlyHere = path.join(ROOT, "workspace", unique);
+  fs.mkdirSync(path.dirname(onlyHere), { recursive: true });
+  fs.writeFileSync(onlyHere, "grace\n");
+  try {
+    assert.equal(resolveWorkPath(`/workspace/${unique}`), onlyHere);
+  } finally {
+    fs.unlinkSync(onlyHere);
+  }
   // A real absolute path is untouched.
   assert.equal(resolveWorkPath("/tmp"), "/tmp");
   // A path that exists nowhere stays as given, for an honest error downstream.
