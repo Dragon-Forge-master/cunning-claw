@@ -49,40 +49,94 @@ const CX = canvas.width / 2, CY = canvas.height / 2;
 let t = 0;
 
 function drawReactor() {
-  t += state === "STANDBY" ? 0.008 : 0.03;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const pulse = 1 + Math.sin(t * 2.2) * (state === "STANDBY" ? 0.02 : 0.06);
+  const idle = state === "STANDBY";
+  t += idle ? 0.0036 : 0.026;
+
+  // Standby keeps a faint afterimage so the rings trail; working states snap clean.
+  if (idle) {
+    ctx.fillStyle = "rgba(4, 8, 15, 0.07)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  const breath = Math.sin(t * (idle ? 0.42 : 2.15));
+  const pulse = 1 + breath * (idle ? 0.055 : 0.07);
   const glow = state === "LISTENING" ? "255, 84, 112" : "53, 214, 237";
 
-  // Core
-  const coreR = 34 * pulse;
-  const grad = ctx.createRadialGradient(CX, CY, 2, CX, CY, coreR * 2.6);
-  grad.addColorStop(0, `rgba(${glow}, 0.95)`);
-  grad.addColorStop(0.35, `rgba(${glow}, 0.35)`);
+  // Deep well — a second, slower breath so the core never quite sits still.
+  const well = 1 + Math.sin(t * 0.19 + 1.2) * (idle ? 0.03 : 0.02);
+  const coreR = 36 * pulse * well;
+  const grad = ctx.createRadialGradient(CX, CY, 1, CX, CY, coreR * 3.1);
+  grad.addColorStop(0, `rgba(${glow}, ${idle ? 0.55 : 0.95})`);
+  grad.addColorStop(0.22, `rgba(${glow}, ${idle ? 0.22 : 0.38})`);
+  grad.addColorStop(0.55, `rgba(${glow}, 0.06)`);
   grad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = grad;
-  ctx.beginPath(); ctx.arc(CX, CY, coreR * 2.6, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = `rgba(${glow}, 0.9)`;
-  ctx.beginPath(); ctx.arc(CX, CY, coreR * 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(CX, CY, coreR * 3.1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = `rgba(${glow}, ${idle ? 0.55 + breath * 0.2 : 0.9})`;
+  ctx.beginPath(); ctx.arc(CX, CY, coreR * 0.38, 0, Math.PI * 2); ctx.fill();
 
-  // Rotating arc rings
-  const rings = [
-    { r: 70, segs: 3, w: 5, speed: 1.0, gap: 0.5 },
-    { r: 98, segs: 8, w: 2.5, speed: -0.6, gap: 0.25 },
-    { r: 126, segs: 4, w: 7, speed: 0.35, gap: 0.8 },
-    { r: 152, segs: 24, w: 2, speed: -0.15, gap: 0.12 },
-  ];
+  // Quiet rails so the moving arcs have something to ride.
+  if (idle) {
+    for (const r of [56, 78, 102, 126, 150, 168]) {
+      ctx.strokeStyle = `rgba(${glow}, 0.06)`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(CX, CY, r * pulse, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // Counter-rotating rings at incommensurate speeds — the beat is the trance.
+  const rings = idle
+    ? [
+        { r: 56, segs: 2, w: 3, speed: 0.18, gap: 0.38 },
+        { r: 78, segs: 5, w: 2, speed: -0.27, gap: 0.16 },
+        { r: 102, segs: 3, w: 7, speed: 0.13, gap: 0.58 },
+        { r: 126, segs: 11, w: 1.6, speed: -0.41, gap: 0.22 },
+        { r: 150, segs: 4, w: 9, speed: 0.08, gap: 0.74 },
+        { r: 168, segs: 48, w: 1.15, speed: -0.055, gap: 0.42 },
+      ]
+    : [
+        { r: 70, segs: 3, w: 5, speed: 1.0, gap: 0.5 },
+        { r: 98, segs: 8, w: 2.5, speed: -0.6, gap: 0.25 },
+        { r: 126, segs: 4, w: 7, speed: 0.35, gap: 0.8 },
+        { r: 152, segs: 24, w: 2, speed: -0.15, gap: 0.12 },
+      ];
+  ctx.lineCap = "round";
   for (const ring of rings) {
     const span = (Math.PI * 2) / ring.segs;
     for (let i = 0; i < ring.segs; i++) {
       const start = i * span + t * ring.speed;
-      ctx.strokeStyle = `rgba(${glow}, ${0.25 + 0.5 * Math.abs(Math.sin(t + i))})`;
+      const flicker = idle
+        ? 0.16 + 0.38 * (0.5 + 0.5 * Math.sin(t * 0.7 + i * 0.9))
+        : 0.25 + 0.5 * Math.abs(Math.sin(t + i));
+      ctx.strokeStyle = `rgba(${glow}, ${flicker})`;
       ctx.lineWidth = ring.w;
       ctx.beginPath();
       ctx.arc(CX, CY, ring.r * pulse, start, start + span * (1 - ring.gap));
       ctx.stroke();
     }
   }
+
+  // Two opposing spirals — the eye follows one and loses the other.
+  if (idle) {
+    for (let arm = 0; arm < 2; arm++) {
+      const dir = arm === 0 ? 1 : -1;
+      for (let i = 0; i < 42; i++) {
+        const a = dir * (t * 0.11 + i * 0.31) + arm * Math.PI;
+        const r = 22 + (i / 42) * 148;
+        const x = CX + Math.cos(a) * r * pulse;
+        const y = CY + Math.sin(a) * r * pulse;
+        ctx.fillStyle = `rgba(${glow}, ${0.04 + 0.22 * (i / 42)})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 1.15, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
   requestAnimationFrame(drawReactor);
 }
 drawReactor();
@@ -90,6 +144,8 @@ drawReactor();
 function setState(s) {
   state = s;
   stateLabel.textContent = s;
+  const center = $("center");
+  if (center) center.dataset.state = s;
   const stop = $("stop-btn");
   if (stop) stop.style.display = s === "THINKING" ? "" : "none";
 }

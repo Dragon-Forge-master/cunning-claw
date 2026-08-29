@@ -72,7 +72,20 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
   flex: 0 0 380px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 12px;
 }
+#reactor {
+  filter: drop-shadow(0 0 22px rgba(53, 214, 237, 0.22));
+}
+#center[data-state="STANDBY"] #reactor {
+  filter: drop-shadow(0 0 28px rgba(53, 214, 237, 0.38));
+}
 #state-label { color: var(--cyan); letter-spacing: 6px; font-size: 12px; text-shadow: 0 0 10px var(--cyan-glow); }
+#center[data-state="STANDBY"] #state-label {
+  animation: trance 8.5s ease-in-out infinite;
+}
+@keyframes trance {
+  0%, 100% { opacity: 0.42; letter-spacing: 6px; text-shadow: 0 0 8px var(--cyan-glow); }
+  50% { opacity: 1; letter-spacing: 9px; text-shadow: 0 0 18px var(--cyan-glow); }
+}
 
 #chat-panel {
   flex: 1; display: flex; flex-direction: column; min-width: 0;
