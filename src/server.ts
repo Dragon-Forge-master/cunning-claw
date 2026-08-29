@@ -61,6 +61,11 @@ app.get(["/board", "/board.html"], (_req, res) => {
   res.sendFile(path.join(ROOT, "public", "board.html"));
 });
 
+app.get(["/docs", "/docs.html"], (_req, res) => {
+  issueSession(res);
+  res.sendFile(path.join(ROOT, "public", "docs.html"));
+});
+
 app.get(["/", "/index.html"], (_req, res) => {
   issueSession(res);
   res.sendFile(path.join(ROOT, "public", "index.html"));
@@ -234,6 +239,65 @@ app.get("/api/history", (_req, res) => {
 app.post("/api/reset", (_req, res) => {
   resetHistory();
   res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// The Desk — local documents, shared ground between Chris and the claw.
+//
+// Plain markdown files in ~/Documents/CunningClaw: the HUD's Docs page edits
+// them, and the assistant reads and drafts the very same files with its file
+// tools. A local Google-Docs feeling with the AI as co-author — no cloud.
+// Names are jailed hard; deletion is a move to .trash, never destruction.
+// ---------------------------------------------------------------------------
+
+import os from "node:os";
+
+const DOCS_DIR = path.join(os.homedir(), "Documents", "CunningClaw");
+
+function docPath(name: string): string | null {
+  if (!/^[A-Za-z0-9][A-Za-z0-9 _'()&-]{0,80}$/.test(name)) return null;
+  const p = path.join(DOCS_DIR, `${name}.md`);
+  return p.startsWith(DOCS_DIR + path.sep) ? p : null;
+}
+
+app.get("/api/docs", (_req, res) => {
+  fs.mkdirSync(DOCS_DIR, { recursive: true });
+  const items = fs.readdirSync(DOCS_DIR)
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => {
+      const st = fs.statSync(path.join(DOCS_DIR, f));
+      return { name: f.slice(0, -3), modified: st.mtime.toISOString(), bytes: st.size };
+    })
+    .sort((a, b) => (a.modified < b.modified ? 1 : -1));
+  res.json({ dir: DOCS_DIR, items });
+});
+
+app.get("/api/docs/:name", (req, res) => {
+  const p = docPath(String(req.params.name ?? ""));
+  if (!p) return res.status(400).json({ error: "bad document name" });
+  if (!fs.existsSync(p)) return res.status(404).json({ error: "no such document" });
+  res.json({ name: req.params.name, content: fs.readFileSync(p, "utf-8") });
+});
+
+app.put("/api/docs/:name", (req, res) => {
+  const p = docPath(String(req.params.name ?? ""));
+  if (!p) return res.status(400).json({ error: "bad document name" });
+  const content = String(req.body?.content ?? "");
+  if (content.length > 2_000_000) return res.status(413).json({ error: "document too large" });
+  fs.mkdirSync(DOCS_DIR, { recursive: true });
+  const tmp = p + ".tmp";
+  fs.writeFileSync(tmp, content);
+  fs.renameSync(tmp, p);
+  res.json({ ok: true, saved: new Date().toISOString() });
+});
+
+app.delete("/api/docs/:name", (req, res) => {
+  const p = docPath(String(req.params.name ?? ""));
+  if (!p || !fs.existsSync(p)) return res.status(404).json({ error: "no such document" });
+  const trash = path.join(DOCS_DIR, ".trash");
+  fs.mkdirSync(trash, { recursive: true });
+  fs.renameSync(p, path.join(trash, `${Date.now()}-${path.basename(p)}`));
+  res.json({ ok: true, note: "moved to .trash, not destroyed" });
 });
 
 app.get("/api/board", async (_req, res) => {
