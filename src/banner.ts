@@ -7,21 +7,26 @@
  */
 
 /**
- * The Forge Claw's ASCII kin: talons gripping the anvil, per the brand mark
- * (docs/assets/forge-mark.svg). Horn left, face wide, waist, base — with the
- * claw hooking over the face from above.
+ * The Forge Claw's ASCII kin — not drawn by hand but DERIVED: the actual
+ * brand mark (docs/assets/forge-mark.svg) rendered small and translated
+ * pixel-for-pixel into half-block glyphs. Same dragon, same anvil, same
+ * grip; the terminal and the letterhead share one ancestor file.
  */
 const MARK = [
-  "           ▗▄▄▟█▛▀▘ ",
-  "       ▄▄▟██████▛   ",
-  "     ▗▟█▛▘▜█▛▜██▖   ",
-  "     ▝▜█▙ ▜█▖▝█▙▚   ",
-  " ▄▄▄▄▄▄▟██▄▄██▄▄█▙▄ ",
-  " ▀▀▜████████████▛▀▘ ",
-  "     ▀▜████████▛▀   ",
-  "       ▐██████▌     ",
-  "     ▄▟████████▙▄   ",
-  "     ▀▀▀▀▀▀▀▀▀▀▀▀   ",
+  "                     ▄▀  ▄▄   ",
+  "                  ▄▄▀   ▄███  ",
+  "               ▄▄█▀    ████▀  ",
+  "        ▄▄█▀█████▀     ███    ",
+  "       ██▀██▀▄█▀▀ ▄▄▄  █▄     ",
+  "      █ █▀▀▄██▀▄▄▀▀▀▀▀  ▀▀    ",
+  "▄▄▄▄▄▄██▄███ ██▀▄█████████████",
+  " █████▄ ████▄▀▄███████████▀▀▀ ",
+  "   ▀███████▄▀▀████████▀▄▄█▀   ",
+  "         ▀▀███████▀██▄▀███    ",
+  "            ████████▀▀▀▀      ",
+  "           ▄█████████▄        ",
+  "        ▄▄█████████████▄▄     ",
+  "        █████▀▀   ▀▀█████     ",
 ];
 
 const WORDMARK = [
