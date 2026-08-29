@@ -29,13 +29,21 @@ const MARK = [
   "        █████▀▀   ▀▀█████     ",
 ];
 
+/**
+ * "CUNNING" in tall condensed half-blocks (derived like the mark), because
+ * the banner is a rebus: the word CUNNING, and the dragon IS the claw.
+ */
 const WORDMARK = [
-  " ██████╗██╗      █████╗ ██╗    ██╗",
-  "██╔════╝██║     ██╔══██╗██║    ██║",
-  "██║     ██║     ███████║██║ █╗ ██║",
-  "██║     ██║     ██╔══██║██║███╗██║",
-  "╚██████╗███████╗██║  ██║╚███╔███╔╝",
-  " ╚═════╝╚══════╝╚═╝  ╚═╝ ╚══╝╚══╝ ",
+  " ▄███▄ ▄█   █▄ █▄  ▄█ ██   █ ▄█ ██   █  ▄███▄ ",
+  " ██▀██ ██   ██ ██  ██ ██   █ ██ ██▄  █  ██▀██▄",
+  "██   █ ██   ██ ██▄ ██ ███  █ ██ ███  █ ▄█   ██",
+  "██     ██   ██ ███ ██ ███  █ ██ ███  █ ██     ",
+  "██     ██   ██ █▀█ ██ █▀█▄ █ ██ ████ █ ██  ▄▄▄",
+  "██     ██   ██ █ ████ █ ▀█ █ ██ ██▀█ █ ██  ███",
+  "██   ▄ ██   ██ █ ▀███ █▄ ███ ██ ██ ███ ██  ▀▀█",
+  "██   █▀ █   █▀ █  ███ ██ ███ ██ ██ ███ ▀█   ▄█",
+  " ██▄██  ██▄██  █  ███ ██  ██ ██ ██  ██  ██▄███",
+  " ▀███▀  ▀███▀  █   ██ █▀  ██ ██ ██  ██  ▀███▀ ",
 ];
 
 /** Cyan ramp, dim at the edges and bright at the core. */
@@ -87,20 +95,22 @@ export function banner(info: BannerInfo): string {
   const c = useColour();
   const out: string[] = [""];
 
-  // Brightest through the middle, so the talons appear to catch the light.
+  // CUNNING on the left, the dragon completing the name on the right.
+  // Brightest through the middle, so the grip appears to catch the light.
   const height = Math.max(MARK.length, WORDMARK.length);
   const padTop = Math.floor((height - WORDMARK.length) / 2);
+  const wordWidth = WORDMARK[0].length;
 
   for (let i = 0; i < height; i++) {
-    const distance = Math.abs(i - (MARK.length - 1) / 2);
-    const markColour = RAMP[Math.max(0, RAMP.length - 1 - Math.round(distance * 1.6))];
-    const left = MARK[i] ?? " ".repeat(19);
-
     const wordIndex = i - padTop;
-    const right = WORDMARK[wordIndex] ?? "";
-    const wordColour = RAMP[Math.min(RAMP.length - 1, 3 + wordIndex)] ?? 51;
+    const left = WORDMARK[wordIndex] ?? " ".repeat(wordWidth);
+    const wordColour = RAMP[Math.min(RAMP.length - 1, 2 + Math.max(0, wordIndex))] ?? 51;
 
-    out.push("  " + paint(left, markColour, c) + "  " + paint(right, wordColour, c));
+    const distance = Math.abs(i - (MARK.length - 1) / 2);
+    const markColour = RAMP[Math.max(0, RAMP.length - 1 - Math.round(distance * 1.1))];
+    const right = MARK[i] ?? "";
+
+    out.push("  " + paint(left.padEnd(wordWidth), wordColour, c) + "  " + paint(right, markColour, c));
   }
 
   const dim = (s: string) => paint(s, 24, c);
