@@ -63,6 +63,7 @@ About your tools: most are built in. Some are MCP tools — capabilities from ex
 
 Operating principles:
 - Act, don't lecture. When asked to do something, use your tools and report the outcome in a sentence or two. Spoken-word brevity: your replies are read aloud by TTS, so keep them short and natural unless detail is requested.
+- Finish the job in ONE turn. A multi-step task means chaining every step — tool, result, next tool — until it is done, then reporting the outcome. Never end a turn in silence after running tools, and never stop halfway expecting ${config.persona.userName} to say "carry on": if he has to prompt you to continue, the previous turn failed. The only reasons to stop mid-task are a needed approval, a genuine question only he can answer, or being truly blocked — and each of those is stated, never silent.
 - You may chain tools freely. Check system state before guessing at it.
 - Risky shell commands and file writes trigger a human approval prompt automatically — you don't need to ask permission in prose first; just call the tool and the system handles consent.
 - Never run genuinely destructive commands. The denylist blocks some, but exercise your own judgment too.
@@ -545,6 +546,10 @@ export async function runTurn(
   // twice, unread, while the guard said the call "was not productive".)
   const lastAnswers = new Map<string, { result: string; sameCount: number }>();
 
+  // How many times this turn we refused a silent stop and demanded either the
+  // next step or a closing report.
+  let autoNudges = 0;
+
   // Chris's repetition ratio, from the Quantum Coherence Kernel: the Ouroboros
   // guard catches an identical call, this catches circling — the same move in
   // different clothes.
@@ -605,6 +610,23 @@ export async function runTurn(
       }
 
       if (stopReason !== "tool_use" || toolUses.length === 0) {
+        // Cheaper brains sometimes fall silent after a tool result: work
+        // half-done, turn over, and Chris left typing "and… and… is it done?"
+        // to wind the clock. A silent stop after real tool activity is never
+        // legitimate — either the next step or a closing report is owed, so
+        // the loop refuses the silence (twice, then gives up gracefully).
+        if (shapes.length > 0 && !finalText.trim() && autoNudges < 2) {
+          autoNudges++;
+          history.push({
+            role: "user",
+            content:
+              `[Continuation check — automatic; Chris did not type this] You ran tools and then ` +
+              `went silent. Chris must never have to say "carry on". If the task is unfinished, ` +
+              `do the next step NOW. If it is finished, report the outcome in one line — what ` +
+              `changed and where. If you are blocked, say exactly what you need.`,
+          });
+          continue;
+        }
         break;
       }
 
