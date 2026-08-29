@@ -55,7 +55,7 @@ header {
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); display: inline-block; }
 .dot.online { background: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
 
-main { display: flex; flex: 1; gap: 14px; min-height: 0; }
+main { display: flex; flex: 1; gap: 14px; min-height: 0; position: relative; }
 
 .panel-title {
   color: var(--cyan-dim); font-size: 10px; letter-spacing: 3px;
@@ -69,10 +69,18 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
 #sys-status { font-size: 11px; line-height: 1.7; white-space: pre-wrap; color: var(--text); }
 
 #center {
-  flex: 0 0 380px; display: flex; flex-direction: column;
+  flex: 0 0 320px;
+  display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 12px;
+  background: none; border: none;
+  overflow: visible;
+  pointer-events: none;
 }
 #reactor {
+  display: block;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
   filter: drop-shadow(0 0 22px rgba(53, 214, 237, 0.22));
 }
 #center[data-state="STANDBY"] #reactor {
@@ -98,7 +106,7 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
   box-shadow: 0 0 24px var(--cyan-glow); padding: 8px 10px 10px;
 }
 #hud.previewing #preview-panel { display: flex; }
-#hud.previewing #center { flex: 0 0 0; width: 0; min-width: 0; overflow: hidden; opacity: 0; pointer-events: none; }
+#hud.previewing #center { flex: 0 0 0; width: 0; min-width: 0; overflow: hidden; opacity: 0; pointer-events: none; visibility: hidden; }
 #hud.previewing #sys-panel { width: 200px; }
 
 .preview-chrome { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
@@ -169,7 +177,7 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; }
   #hud { height: auto; min-height: 100dvh; }
   main { flex-direction: column; }
   #sys-panel { width: 100%; max-height: 160px; }
-  #center { flex: 0 0 auto; width: 100%; }
+  #center { flex: 0 0 auto; width: 100%; pointer-events: none; }
   #hud.previewing #center { display: none; }
   #hud.previewing #sys-panel { width: 100%; max-height: 120px; }
   #preview-panel { min-height: 45vh; width: 100%; }

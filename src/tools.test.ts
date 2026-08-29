@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyCommand, isSensitivePath, resolveCommandCwd, freeWriteZone } from "./tools.js";
+import { classifyCommand, isSensitivePath, resolveCommandCwd, freeWriteZone, toolDefinitions } from "./tools.js";
 import { ROOT } from "./config.js";
 import fs from "node:fs";
 import os from "node:os";
@@ -89,4 +89,13 @@ test("free write zones: the claw's ground is free, consequences still ask", () =
   assert.equal(freeWriteZone(path.join(home, ".config/autostart/evil.desktop"), false), false);
   // Outside home entirely: ask.
   assert.equal(freeWriteZone("/etc/motd", false), false);
+});
+
+test("look is on the roster and does not take a device path from the model", () => {
+  const look = toolDefinitions.find((t) => t.name === "look");
+  assert.ok(look);
+  const props = (look.input_schema as { properties?: Record<string, unknown> }).properties ?? {};
+  assert.ok("source" in props);
+  assert.ok("entityId" in props);
+  assert.ok(!("device" in props), "the model must not name a webcam path");
 });

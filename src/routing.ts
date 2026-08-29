@@ -25,6 +25,7 @@ export const UNTRUSTED_TOOLS = new Set([
   "check_email", "read_email",
   "check_whatsapp", "read_chat", "draft_chat", "send_chat",
   "http_request", "web_search", "clipboard", "read_file", "landscape",
+  "look",
 ]);
 
 /**
@@ -49,6 +50,7 @@ const REACHES_OUT = [
   /whatsapp|\bwa web\b/i,
   /browse|website|web ?page|url|https?:|search|look up|google/i,
   /screenshot|read the (page|screen)|what.*on (my |the )?screen/i,
+  /webcam|how do I look|how(?:'s| is) the room|look at me\b|glance at (?:me|the room|the desk)/i,
   /clipboard|download|fetch\b/i,
   // A bare domain is a request to go and look at something.
   /\b[a-z0-9-]+\.(com|co\.uk|org|net|io|dev|ai|app|cloud|uk|me|xyz|pages\.dev|workers\.dev)\b/i,

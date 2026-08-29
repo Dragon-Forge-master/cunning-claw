@@ -78,6 +78,11 @@ export interface ClawConfig {
   };
   http: { allowlist: string[]; timeoutMs: number; maxResponseChars: number };
   homeAssistant: { enabled: boolean; baseUrl: string; tokenEnv: string };
+  /**
+   * Butler eyes — one webcam still on demand. Off unless enabled is true.
+   * device is /dev/videoN on Linux, an avfoundation index on macOS.
+   */
+  eyes?: { enabled?: boolean; device?: string; maxImageWidth?: number };
   coherence: {
     ouroborosLimit: number;
     maxIterations: number;

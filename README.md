@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-172%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-217%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -145,7 +145,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 
 | | |
 |---|---|
-| **Sees** | Screenshots the desktop and *looks* at it — reads UI state, verifies its own work |
+| **Sees** | Screenshots the desktop, and can *glance* at the room through a webcam or a Home Assistant camera — mood is a hypothesis, never a reason to act |
 | **Operates** | Shell, files, apps, volume, media, clipboard, notifications, window focus, keystrokes |
 | **Browses** | Owns a Chrome profile over CDP — accessibility refs, real mouse/keys, snapshot after every action, Gmail, WhatsApp Web |
 | **Reads mail** | Gmail through that Chrome session — search operators, category tabs, whole threads, drafts. Send is always an approval. No credentials handled |
@@ -172,6 +172,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 |---|---|---|---|
 | Shell, files, browser, email, HTTP, MCP | ✅ | ✅ | ✅ |
 | Screenshots | `gnome-screenshot` / `ffmpeg` | `screencapture` | PowerShell + System.Drawing |
+| Webcam glance | `ffmpeg` + `/dev/video0` | `ffmpeg` + avfoundation | not wired yet |
 | Windows, keystrokes | `wmctrl`, `xdotool` | `osascript` | PowerShell SendKeys |
 | Clipboard | `xclip` | `pbcopy` | `Get-/Set-Clipboard` |
 | Notifications | `notify-send` | `osascript` | balloon tip |
@@ -181,6 +182,12 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 Windows needs nothing installed for the desktop tools — PowerShell ships with the OS.
 Each platform's paths live in `src/platform.ts`, `src/windows.ts` and `src/desktop.ts`;
 a missing tool always produces a message naming the fix, never a silent no-op.
+
+**Butler eyes.** `look` takes one still from the desk webcam, or from a Home
+Assistant `camera.*` entity. It is on in `claw.config.json` (`eyes.enabled`,
+device `/dev/video0` on Linux). Mood is a hypothesis, never a diagnosis and
+never a reason to act without asking. Not a live stream. Not a heartbeat.
+Frames are not kept.
 
 Honesty about maturity: **Linux** is where CUNNING CLAW lives every day. **macOS** and
 **Windows** are coded and doctor-checked but far younger — expect rough edges, and please

@@ -14,4 +14,6 @@ When a heartbeat fires, check in this order:
 
 Do not invent chores. Silence is a feature: a heartbeat that manufactures
 helpfulness to seem busy is worse than one that says nothing. Do not search the
-web on a heartbeat unless HEARTBEAT.md is later edited to ask for it.
+web on a heartbeat unless HEARTBEAT.md is later edited to ask for it. Do not
+glance at the webcam or a house camera on a heartbeat unless this file later
+asks for it.

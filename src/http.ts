@@ -120,3 +120,43 @@ export async function haCall(domain: string, service: string, entityId: string, 
     return `Could not reach Home Assistant: ${err?.message}`;
   }
 }
+
+/**
+ * One JPEG/PNG still from /api/camera_proxy/<entity_id>.
+ * Caller must already have validated the entity id as camera.something.
+ */
+export async function haCameraStill(entityId: string): Promise<
+  { ok: true; bytes: Buffer; mediaType: "image/jpeg" | "image/png" } | { ok: false; error: string }
+> {
+  const h = haHeaders();
+  if (!config.homeAssistant.enabled || !h) {
+    return {
+      ok: false,
+      error:
+        `Home Assistant is not configured. Set homeAssistant.enabled and baseUrl in claw.config.json, ` +
+        `and put a long-lived access token in .env as ${config.homeAssistant.tokenEnv}.`,
+    };
+  }
+  if (!/^camera\.[a-z0-9_]+$/.test(entityId)) {
+    return { ok: false, error: "That is not a camera entity id." };
+  }
+  try {
+    const base = config.homeAssistant.baseUrl.replace(/\/+$/, "");
+    const res = await fetch(`${base}/api/camera_proxy/${entityId}`, {
+      headers: { Authorization: h.Authorization },
+      signal: AbortSignal.timeout(config.http.timeoutMs),
+    });
+    if (!res.ok) {
+      return { ok: false, error: `Home Assistant camera ${entityId} returned HTTP ${res.status}.` };
+    }
+    const bytes = Buffer.from(await res.arrayBuffer());
+    const declared = (res.headers.get("content-type") ?? "").toLowerCase();
+    const mediaType = declared.includes("png") ? "image/png" as const : "image/jpeg" as const;
+    if (bytes.length < 800) {
+      return { ok: false, error: `Home Assistant camera ${entityId} returned an empty still.` };
+    }
+    return { ok: true, bytes, mediaType };
+  } catch (err: any) {
+    return { ok: false, error: `Could not reach Home Assistant: ${err?.message}` };
+  }
+}

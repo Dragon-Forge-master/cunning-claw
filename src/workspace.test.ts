@@ -28,6 +28,7 @@ test("ships agentskills.io skills", () => {
     "mcp-hands",
     "web-research",
     "house-control",
+    "butler-eyes",
     "security-pass",
     "spend-aware",
     "auto-care",

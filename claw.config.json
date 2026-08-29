@@ -111,6 +111,11 @@
     "baseUrl": "http://homeassistant.local:8123",
     "tokenEnv": "HA_TOKEN"
   },
+  "eyes": {
+    "enabled": true,
+    "device": "/dev/video0",
+    "maxImageWidth": 1280
+  },
   "coherence": {
     "ouroborosLimit": 2,
     "maxIterations": 25,

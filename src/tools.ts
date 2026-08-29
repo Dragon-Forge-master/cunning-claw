@@ -8,6 +8,7 @@ import { config, ROOT } from "./config.js";
 import { remember, forget, searchMemory } from "./memory.js";
 import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
+import * as eyes from "./eyes.js";
 import * as http from "./http.js";
 import * as mcp from "./mcp.js";
 import * as tax from "./tax.js";
@@ -789,6 +790,30 @@ export const toolDefinitions: Anthropic.Tool[] = [
           description:
             "Part of a window title. With target 'window': capture that window. With target " +
             "'screen': front that window first, then capture the whole screen.",
+        },
+      },
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    name: "look",
+    description:
+      "Glance once: the desk webcam (default) or a named Home Assistant camera. " +
+      "Use when Chris asks how the room is, how he looks, or to have a look. " +
+      "One still, then stop. Mood is a hypothesis — never act on it without asking. " +
+      "Not a live stream. Not a heartbeat. take_screenshot is for the screen, not the room.",
+    input_schema: {
+      type: "object",
+      properties: {
+        source: {
+          type: "string",
+          enum: ["desk", "house"],
+          description: "desk = this machine's webcam. house = a Home Assistant camera.* entity.",
+        },
+        entityId: {
+          type: "string",
+          description: "Required for source house. A camera entity such as camera.front_door — never a URL.",
         },
       },
       additionalProperties: false,
@@ -1592,6 +1617,10 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         return await browser.sendChat();
       }
       case "take_screenshot": return await desktop.screenshot(input.target ?? "screen", input.windowName);
+      case "look": {
+        const source = input.source === "house" ? "house" : "desk";
+        return await eyes.look(source, input.entityId ? String(input.entityId) : undefined);
+      }
       case "click_at": {
         // "Allow for this task" on the approval card covers the whole
         // sequence — otherwise every click bounces Chris to the HUD, and the

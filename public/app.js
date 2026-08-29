@@ -52,11 +52,23 @@ let t = 0;
 function drawReactor() {
   const idle = state === "STANDBY";
   t += idle ? 0.0036 : 0.026;
+  const disk = Math.min(CX, CY) - 1;
 
-  // Standby keeps a faint afterimage so the rings trail; working states snap clean.
+  // Clip to a circle so the canvas never paints a square. Standby fades
+  // existing pixels (destination-out) instead of laying down a dark rect.
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(CX, CY, disk, 0, Math.PI * 2);
+  ctx.clip();
+
   if (idle) {
-    ctx.fillStyle = "rgba(4, 8, 15, 0.07)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
+    ctx.beginPath();
+    ctx.arc(CX, CY, disk, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   } else {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
@@ -145,6 +157,7 @@ function drawReactor() {
     }
   }
 
+  ctx.restore();
   requestAnimationFrame(drawReactor);
 }
 drawReactor();

@@ -3,6 +3,7 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config, DATA_DIR, ROOT } from "./config.js";
+import { allowedDeskDevice, eyesSettings } from "./eyes.js";
 import { brainHasKey, brainKeyEnv, catalog, envLooksSet, isLocalEndpoint } from "./brain.js";
 import { hasBin, host, missing } from "./platform.js";
 import { findChromeBinary } from "./browser.js";
@@ -264,6 +265,23 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
       : row("desktop", "warn", false, "powershell.exe not on PATH — desktop tools need it"));
   } else {
     out.push(row("desktop", "warn", false, "Desktop tools support Linux, macOS and Windows — this platform is unknown"));
+  }
+
+  const eyes = eyesSettings();
+  if (eyes.enabled) {
+    const cam = await hasBin("ffmpeg");
+    const deviceOk = h === "linux"
+      ? allowedDeskDevice(eyes.device, "linux") && fs.existsSync(eyes.device)
+      : allowedDeskDevice(eyes.device, h === "darwin" ? "darwin" : "linux");
+    if (cam && (h === "darwin" || deviceOk)) {
+      out.push(row("eyes", "ok", false, `Butler eyes: ${eyes.device}`));
+    } else if (!cam) {
+      out.push(row("eyes", "warn", false, `${missing("ffmpeg")} Needed for a webcam glance.`));
+    } else {
+      out.push(row("eyes", "warn", false, `No webcam at ${eyes.device} — set eyes.device in claw.config.json or plug a camera in`));
+    }
+  } else {
+    out.push(row("eyes", "ok", false, "Butler eyes off (eyes.enabled is not true)"));
   }
 
   const chrome = await findChrome();

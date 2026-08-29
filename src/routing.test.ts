@@ -29,6 +29,14 @@ test("requests that reach outside require a trusted brain up front", () => {
   }
 });
 
+test("a webcam glance is vision, so it needs a trusted brain", () => {
+  for (const q of ["how do I look", "how's the room", "look at me", "glance at the desk"]) {
+    assert.equal(requiresTrustedBrain(q, []).required, true, q);
+  }
+  // "look up" is search, already guarded; a clock question is not a glance.
+  assert.equal(requiresTrustedBrain("what's the time", []).required, false);
+});
+
 test("taint is sticky — a past email pins later trivial turns", () => {
   const tainted: Anthropic.MessageParam[] = [
     user("check my email"),

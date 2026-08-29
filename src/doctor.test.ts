@@ -61,7 +61,7 @@ test("Linux doctor names apt packages for missing desktop tools", async () => {
   resetVoiceDetectForTests();
   const checks = await runDoctor();
   const ids = checks.map((c) => c.id);
-  for (const required of ["node", "env", "brains", "voice", "ollama", "screenshot", "xdotool", "wmctrl", "xclip", "pactl", "chrome", "port", "history"]) {
+  for (const required of ["node", "env", "brains", "voice", "ollama", "screenshot", "eyes", "xdotool", "wmctrl", "xclip", "pactl", "chrome", "port", "history"]) {
     assert.ok(ids.includes(required), `doctor must include ${required}`);
   }
   const xdotool = checks.find((c) => c.id === "xdotool");
