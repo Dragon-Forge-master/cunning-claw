@@ -50,3 +50,19 @@ test("y Gymraeg: Welsh day names parse and fire as first-class syntax", () => {
   assert.deepEqual(entries[1].days, [5], "gwener is Friday");
   assert.deepEqual([...entries[2].days].sort(), [0, 1, 6], "sad-llun wraps through Sunday");
 });
+
+test("penblwydd: annual DD/MM dates parse, with and without a time", () => {
+  const { entries, bad } = parseSchedule(
+    "- [x] schedule: `08:30:20/04` | target: `penblwydd` | instruction: Penblwydd hapus.\n" +
+    "- [x] schedule: `25/12` | target: `nadolig` | instruction: Nadolig llawen.\n" +
+    "- [x] schedule: `09:00:32/04` | target: `bad` | instruction: no such day.\n" +
+    "- [x] schedule: `09:00:20/13` | target: `bad` | instruction: no such month.",
+  );
+  assert.equal(entries.length, 2, "impossible dates are rejected, real ones parse");
+  assert.equal(bad.length, 2);
+  assert.deepEqual(entries[0].date, { d: 20, mo: 4 });
+  assert.equal(entries[0].hh, 8);
+  assert.equal(entries[0].mm, 30);
+  assert.deepEqual(entries[1].date, { d: 25, mo: 12 }, "bare DD/MM works");
+  assert.equal(entries[1].hh, 9, "bare date defaults to 09:00");
+});

@@ -25,6 +25,7 @@ export interface ScheduleEntry {
   hh: number;
   mm: number;
   days: number[]; // 0=Sun … 6=Sat
+  date?: { d: number; mo: number }; // annual: fire only on this day/month
   target: string;
   instruction: string;
 }
@@ -60,10 +61,23 @@ function parseDays(spec: string): number[] | null {
   return out.size ? [...out] : null;
 }
 
-/** `08:00` · `17:00:fri` · `09:30:mon-fri` · `friday` */
-function parseWhen(spec: string): { hh: number; mm: number; days: number[] } | null {
+/**
+ * `08:00` · `17:00:fri` · `09:30:mon-fri` · `friday` — and annual dates:
+ * `20/04` (fires 09:00) or `09:00:20/04`. Birthdays taught the spellbook
+ * about years.
+ */
+function parseWhen(spec: string): { hh: number; mm: number; days: number[]; date?: { d: number; mo: number } } | null {
   const s = spec.trim().toLowerCase();
   if (s in DAY_NAMES) return { hh: 9, mm: 0, days: [DAY_NAMES[s]] };
+  const annual = s.match(/^(?:(\d{1,2}):(\d{2}):)?(\d{1,2})\/(\d{1,2})$/);
+  if (annual) {
+    const hh = annual[1] ? Number(annual[1]) : 9;
+    const mm = annual[2] ? Number(annual[2]) : 0;
+    const d = Number(annual[3]);
+    const mo = Number(annual[4]);
+    if (hh > 23 || mm > 59 || d < 1 || d > 31 || mo < 1 || mo > 12) return null;
+    return { hh, mm, days: [0, 1, 2, 3, 4, 5, 6], date: { d, mo } };
+  }
   const m = s.match(/^(\d{1,2}):(\d{2})(?::(.+))?$/);
   if (!m) return null;
   const hh = Number(m[1]);
@@ -134,11 +148,12 @@ export function scheduleStatus(): { entries: number; enabled: number; next: stri
   let best: Date | null = null;
   const now = new Date();
   for (const e of enabled) {
-    for (let ahead = 0; ahead < 8; ahead++) {
+    for (let ahead = 0; ahead < (e.date ? 366 : 8); ahead++) {
       const d = new Date(now);
       d.setDate(d.getDate() + ahead);
       d.setHours(e.hh, e.mm, 0, 0);
       if (d <= now || !e.days.includes(d.getDay())) continue;
+      if (e.date && (d.getDate() !== e.date.d || d.getMonth() + 1 !== e.date.mo)) continue;
       if (!best || d < best) best = d;
       break;
     }
@@ -165,6 +180,8 @@ export function startSchedule(events: AgentEvents): void {
     for (const e of entries) {
       if (!e.enabled) continue;
       if (!e.days.includes(now.getDay())) continue;
+      // Annual entries (`08:30:20/04`) fire on that calendar day only.
+      if (e.date && (now.getDate() !== e.date.d || now.getMonth() + 1 !== e.date.mo)) continue;
       // Fire in the minute it is due, or catch up within the following ten —
       // a busy turn or a restart at 08:00 must not silently eat the briefing.
       const dueMs = new Date(now).setHours(e.hh, e.mm, 0, 0);

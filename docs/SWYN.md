@@ -26,6 +26,8 @@ curious, which is exactly the intended ratio.
 | **awen** | poetic inspiration | the creative pipeline — images, films, music |
 | **yr efail** | the forge | the build system; the Board is *Bwrdd yr Efail* |
 | **nos da** | good night | a clean shutdown |
+| **yr Archdderwydd** | the Archdruid | the operator — the cunning folk were always human; the claw is only the familiar |
+| **penblwydd** | birthday | an annual swyn (`08:30:20/04`) — the spellbook learned about years for this |
 
 ## Welsh that executes
 
@@ -41,6 +43,13 @@ Days: `sul` (Sun) · `llun` (Mon) · `maw`/`mawrth` (Tue) · `mer`/`mercher` (We
 · `iau` (Thu) · `gwe`/`gwener` (Fri) · `sad`/`sadwrn` (Sat). Ranges wrap:
 `sad-llun` is the weekend and Monday. English names work equally; the machine is
 bilingual, like its country.
+
+Annual dates also parse — `20/04` (fires 09:00) or `08:30:20/04` — so a
+penblwydd is a spell like any other, cast once a year:
+
+```
+- [x] schedule: `08:30:20/04` | target: `penblwydd` | instruction: Penblwydd hapus, Archdderwydd.
+```
 
 ## The doctrine line
 
