@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyCommand, isSensitivePath, resolveCommandCwd, freeWriteZone, toolDefinitions } from "./tools.js";
+import { classifyCommand, isSensitivePath, resolveCommandCwd, freeWriteZone, isIdentityFile, toolDefinitions } from "./tools.js";
 import { ROOT } from "./config.js";
 import fs from "node:fs";
 import os from "node:os";
@@ -89,6 +89,17 @@ test("free write zones: the claw's ground is free, consequences still ask", () =
   assert.equal(freeWriteZone(path.join(home, ".config/autostart/evil.desktop"), false), false);
   // Outside home entirely: ask.
   assert.equal(freeWriteZone("/etc/motd", false), false);
+});
+
+test("identity files always ask: a persuasive page cannot rewrite the soul", () => {
+  assert.equal(isIdentityFile(path.join(ROOT, "workspace/SOUL.md")), true);
+  assert.equal(isIdentityFile(path.join(ROOT, "workspace/IDENTITY.md")), true);
+  assert.equal(isIdentityFile(path.join(ROOT, "workspace/HEARTBEAT.md")), true);
+  // The spellbook stays free — the schedule-keeper appends entries routinely.
+  assert.equal(isIdentityFile(path.join(ROOT, "workspace/SCHEDULE.md")), false);
+  assert.equal(isIdentityFile(path.join(ROOT, "workspace/MEMORY.md")), false);
+  // A similarly named file elsewhere is not an identity file.
+  assert.equal(isIdentityFile(path.join(os.homedir(), "Documents/CunningClaw/SOUL.md")), false);
 });
 
 test("look is on the roster and does not take a device path from the model", () => {

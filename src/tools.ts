@@ -1206,6 +1206,19 @@ async function readFileTool(input: { path: string; offset?: number; limit?: numb
  * undo); overwriting existing files elsewhere, and anything hidden or dotted,
  * still asks. Sending, spending, deleting: untouched — those always ask.
  */
+/**
+ * The claw's identity files. A persuasive page — or a persuasive AI on a page —
+ * must not be able to talk the claw into rewriting its own epistemic firewall,
+ * so writes here always raise an approval card, task grant or not. Same logic
+ * as the camera: some doors need a human hand on them every single time.
+ */
+export function isIdentityFile(p: string): boolean {
+  const abs = path.resolve(p);
+  return ["SOUL.md", "IDENTITY.md", "HEARTBEAT.md"].some(
+    (f) => abs === path.join(ROOT, "workspace", f),
+  );
+}
+
 export function freeWriteZone(p: string, exists: boolean): boolean {
   const abs = path.resolve(p);
   const zones = [
@@ -1237,7 +1250,13 @@ async function writeFileTool(
     );
   }
   const action = input.append ? "Append to" : "Write";
-  if (!taskGrantActive() && !freeWriteZone(p, fs.existsSync(p))) {
+  if (isIdentityFile(p)) {
+    const ok = await ctx.requestApproval(
+      `${action} identity file ${p} — this changes who the claw is`,
+      input.content.slice(0, 2000) + (input.content.length > 2000 ? "\n…(truncated preview)" : ""),
+    );
+    if (!ok) return "The user declined the identity-file write.";
+  } else if (!taskGrantActive() && !freeWriteZone(p, fs.existsSync(p))) {
     const ok = await ctx.requestApproval(
       `${action} file ${p}`,
       input.content.slice(0, 2000) + (input.content.length > 2000 ? "\n…(truncated preview)" : ""),
@@ -1378,7 +1397,12 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         // Same freedom as writes: the claw's own ground edits freely, and
         // "Allow for this task" covers a whole session of surgery. The undo
         // snapshot below runs regardless — freedom is not amnesia.
-        if (!taskGrantActive() && !freeWriteZone(plan.path, true)) {
+        if (isIdentityFile(plan.path)) {
+          const ok = await ctx.requestApproval(
+            `Edit identity file ${plan.path} — this changes who the claw is`, plan.preview,
+          );
+          if (!ok) return "The user declined the identity-file edit.";
+        } else if (!taskGrantActive() && !freeWriteZone(plan.path, true)) {
           const ok = await ctx.requestApproval(`Edit ${plan.path}`, plan.preview);
           if (!ok) return "The user declined the edit.";
         }
