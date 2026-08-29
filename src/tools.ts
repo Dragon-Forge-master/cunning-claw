@@ -1058,6 +1058,17 @@ function isShellSpawnFailure(err: any): boolean {
 }
 
 async function execIn(command: string, cwd: string): Promise<string> {
+  // cmd.exe treats every newline as a new command — a multi-line quoted
+  // python -c that bash swallows whole gets shredded here, "succeeding" into
+  // phantom files and half-run scripts. Refuse before the mangling.
+  if (process.platform === "win32" && /\r?\n/.test(command.trim())) {
+    return (
+      `(cwd ${cwd})\nRefused: this is a multi-line command, and cmd.exe cannot run those — ` +
+      `each newline becomes a separate command and the script silently shreds. ` +
+      `Write the script to a file with write_file (e.g. script.py) and run "py script.py", ` +
+      `or collapse it to a genuine one-liner.`
+    );
+  }
   for (;;) {
     try {
       const { stdout, stderr } = await execAsync(command, {

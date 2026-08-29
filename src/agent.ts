@@ -49,7 +49,10 @@ function windowsShellNote(): string {
   return (
     ` The shell behind run_command is cmd.exe: use dir, type, copy, del — not ls, cat, cp, rm. ` +
     `Paths use backslashes but forward slashes also work in most tools. Python is usually ` +
-    `"py" (so "py -m pip install …"); "python3" often is not a thing here.`
+    `"py" (so "py -m pip install …"); "python3" often is not a thing here. And cmd CANNOT run ` +
+    `multi-line commands — a multi-line python -c that works on Linux silently shreds here ` +
+    `(the tool now refuses them). For any script longer than one line: write_file it as ` +
+    `script.py, then run "py script.py".`
   );
 }
 
