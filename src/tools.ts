@@ -40,6 +40,13 @@ export interface ToolContext {
   requestApproval(summary: string, detail: string): Promise<boolean>;
   /** Push an out-of-band event to the UI (e.g. a timer firing). */
   emit(event: string, data: unknown): void;
+  /**
+   * Whether untrusted content is in the conversation window RIGHT NOW —
+   * evaluated live, because a fetch mid-turn can taint a window that was
+   * clean when the turn began. Memories saved under taint carry the mark
+   * forever: a fact learned while a stranger was talking is testimony.
+   */
+  tainted?: () => boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -1500,7 +1507,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       }
       case "set_volume": return await desktop.setVolume(input);
       case "get_weather": return await getWeather(input);
-      case "memory_save": return remember(input.key, input.value);
+      case "memory_save": return remember(input.key, input.value, ctx.tainted?.() ?? false);
       case "memory_forget": return forget(input.key);
       case "memory_search": return searchMemory(String(input.query ?? ""));
       case "browser_open": return await browser.openUrl(input.url, Boolean(input.newTab));

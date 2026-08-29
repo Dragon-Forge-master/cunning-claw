@@ -544,6 +544,7 @@ export async function runTurn(
   const ctx: ToolContext = {
     requestApproval: events.requestApproval,
     emit: events.emit,
+    tainted: () => historyIsTainted(history),
   };
 
   // Ouroboros guard (from the Quantum Coherence Kernel): an agent that retries
