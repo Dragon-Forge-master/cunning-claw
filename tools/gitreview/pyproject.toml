@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gitreview"
+version = "0.1.0"
+description = "Local, fail-open git review: deterministic gates that block, a local model that only advises"
+requires-python = ">=3.9"
+
+[project.scripts]
+gitreview = "gitreview.cli:main"
+
+[tool.setuptools]
+packages = ["gitreview"]

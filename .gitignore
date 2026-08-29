@@ -19,3 +19,5 @@ workspace/USER.md
 workspace/MEMORY.md
 workspace/*.log
 workspace/*.html
+
+.gitreview/cache/

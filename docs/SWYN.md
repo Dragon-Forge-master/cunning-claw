@@ -26,7 +26,7 @@ curious, which is exactly the intended ratio.
 | **awen** | poetic inspiration | the creative pipeline — images, films, music |
 | **yr efail** | the forge | the build system; the Board is *Bwrdd yr Efail* |
 | **nos da** | good night | a clean shutdown |
-| **yr Archdderwydd** | the Archdruid | the operator — the cunning folk were always human; the claw is only the familiar |
+| **yr Archdderwydd** | the Archdruid | an honorific, never a default — the claw does not presume titles on strangers. The cunning folk were always human; the claw is only the familiar, and an owner takes a title only by claiming one themself |
 | **penblwydd** | birthday | an annual swyn (`08:30:20/04`) — the spellbook learned about years for this |
 
 ## Welsh that executes

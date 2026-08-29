@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+GR_PY="${GITREVIEW_PYTHON:-/usr/bin/python3}"
+export PYTHONPATH="/home/chris/Game Dev/jarvis/tools/gitreview${PYTHONPATH:+:$PYTHONPATH}"
+if ! command -v "$GR_PY" >/dev/null 2>&1 || \
+   ! "$GR_PY" -c 'import gitreview' >/dev/null 2>&1; then
+  echo "gitreview: not runnable, skipping hook (fix with: gitreview install-hooks)" >&2
+  exit 0
+fi
+[ -n "$GITREVIEW_SKIP" ] && exit 0
+export GITREVIEW_MODEL="${GITREVIEW_MODEL:-llama3.2:latest}"
+
+case "$2" in
+  message|merge|squash|commit) exit 0 ;;
+esac
+"$GR_PY" -m gitreview.cli commit-msg --file "$1" || true
+exit 0
