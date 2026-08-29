@@ -73,8 +73,10 @@ the wordmark height.
    the triskele's first knuckle sits upper-left. Never rotate, mirror, or
    animate either spinning.
 2. **Clear space**: a quarter of the mark's width on all sides.
-3. **Right mark for the size.** Forge Claw at 48px and above; triskele from
-   16–48px; the bare spark below 16px.
+3. **The Forge Claw is the face everywhere it can be seen** — founder's
+   ruling: navs, banners, sites, print, down to ~24px. The triskele serves
+   only the square tiny formats (favicons, app icons, 16–48px squares); the
+   bare spark below 16px.
 4. **One colour at a time.** The Forge Claw is always a single colour — ink
    on light grounds (the stamp), cyan on ink. Never gradients, never outlines
    added. (Note: `currentColor` does not inherit through an `<img>` tag;
