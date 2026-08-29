@@ -20,6 +20,7 @@ import {
   retryConnector,
 } from "./connectors.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
+import { startSchedule, scheduleStatus } from "./schedule.js";
 import { listSkills, readSkill, skillCatalog } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
 import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, missingKeyHint, sessionSpend, lastTurnCost } from "./brain.js";
@@ -368,6 +369,7 @@ app.get("/api/status", async (_req, res) => {
     skills: listSkills().length,
     skillCatalog: skillCatalog(),
     heartbeat: hb,
+    schedule: scheduleStatus(),
     landscapeUpdated: landscape.updated,
     landscapeCount: landscape.systems.length,
     telegram: telegramStatus(),
@@ -528,6 +530,7 @@ app.listen(port, host, async () => {
   }
 
   startHeartbeat(agentEvents);
+  startSchedule(agentEvents);
   startTelegram(agentEvents, { resolveApproval: settleApproval });
   for (const line of bootBrainLines()) console.log(line);
   if (!brainReady()) {
