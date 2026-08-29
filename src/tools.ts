@@ -801,7 +801,7 @@ export const toolDefinitions: Anthropic.Tool[] = [
     description:
       "Glance once: the desk webcam (default) or a named Home Assistant camera. " +
       "Use when Chris asks how the room is, how he looks, or to have a look. " +
-      "One still, then stop. Mood is a hypothesis — never act on it without asking. " +
+      "One still, then stop, and it ALWAYS asks Chris first — every glance, no task grant. Mood is a hypothesis — never act on it without asking. " +
       "Not a live stream. Not a heartbeat. take_screenshot is for the screen, not the room.",
     input_schema: {
       type: "object",
@@ -1619,6 +1619,19 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "take_screenshot": return await desktop.screenshot(input.target ?? "screen", input.windowName);
       case "look": {
         const source = input.source === "house" ? "house" : "desk";
+        // The camera is the one read that never rides a blanket grant: a
+        // screenshot shows the screen Chris chose to share with this machine;
+        // a webcam shows the room, and people in it who consented to nothing.
+        // One ask per glance, every time — deliberately ignoring
+        // taskGrantActive(), and cheap because glances are rare by doctrine.
+        const what = source === "house"
+          ? `the house camera ${input.entityId ?? "(unnamed)"}`
+          : "the desk webcam";
+        const ok = await ctx.requestApproval(
+          "Glance through the camera",
+          `One still from ${what}. The image stays on this machine.`,
+        );
+        if (!ok) return "The user declined the glance.";
         return await eyes.look(source, input.entityId ? String(input.entityId) : undefined);
       }
       case "click_at": {
