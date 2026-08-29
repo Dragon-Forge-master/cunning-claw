@@ -235,8 +235,25 @@ export async function screenshot(target: "screen" | "window" = "screen", windowN
   }
 
   const final = await downscale(raw, out);
+
+  // A capture tool can "succeed" into a zero-byte or truncated file — which
+  // then rides to the model as an undecodable image and 400s the entire turn
+  // ("Failed to decode image data"). No frame leaves here without a valid PNG
+  // header and a sane size.
+  const bytes = fs.existsSync(final) ? fs.statSync(final).size : 0;
+  const probe = imageSize(final);
+  if (!probe || bytes < 1024) {
+    return [{
+      type: "text",
+      text:
+        `Screenshot came back broken (${bytes} bytes, ${probe ? "odd header" : "not a valid PNG"}) — ` +
+        `the capture glitched (window minimised or mid-redraw, perhaps). Take it again; ` +
+        `if a window capture keeps failing, use target "screen" instead.`,
+    }];
+  }
+
   const data = fs.readFileSync(final).toString("base64");
-  const kb = Math.round(fs.statSync(final).size / 1024);
+  const kb = Math.round(bytes / 1024);
 
   // Report the geometry rather than leaving it to be worked out.
   //

@@ -57,6 +57,26 @@ Do not drive WhatsApp with twelve `browser_click`s when these tools exist. Fall
 back to `browser_snapshot` / `browser_screenshot` / `browser_click` `{x,y}` only
 when a tool has failed — same as Gmail.
 
+## Photos in chats — how to actually look at one
+
+`read_chat` returns TEXT; a photo shows as a placeholder. To analyse a picture
+(a meal, a part, a document): open the thread (`read_chat` / `check_whatsapp`),
+then **`browser_screenshot`** — the tab image includes the photo, and you can
+see it directly. That is the whole workflow. Do NOT fall back to desktop
+`take_screenshot` + `click_at` for this: the photo is in Chrome, and Chrome is
+where your reliable eyes and hands are.
+
+## When a tool disappoints, STOP — never improvise with the desktop
+
+The worst message this desk ever sent happened exactly this way: a dedicated
+tool didn't show what was wanted, the fallback became blind desktop clicks, a
+name was typed into the wrong chat's message box, and Enter sent it — to the
+wrong person. The rule since: if `check_whatsapp` / `read_chat` / `draft_chat`
+give you something unexpected, **report the exact result and ask** — do not
+reach for `click_at` / `type_on_desktop` while a Chrome session is live. The
+message box and the search box are three centimetres apart and Enter is SEND
+in one of them.
+
 ## The miss
 
 The tab title `(34)` counts unread **messages**, including muted chats the list

@@ -48,6 +48,22 @@ function imagesFromToolContent(content: unknown): OpenAiChatMessage[] {
   if (!Array.isArray(content)) return [];
   const parts = content
     .filter((b: any) => b?.type === "image" && b?.source?.type === "base64" && b.source.data)
+    // The provider hard-fails the WHOLE request over one undecodable image
+    // ("Failed to decode image data"), so nothing leaves without a real
+    // PNG/JPEG/WebP header and a sane size. A dropped frame costs a retake;
+    // a poisoned request costs the turn.
+    .filter((b: any) => {
+      try {
+        const head = Buffer.from(String(b.source.data).slice(0, 32), "base64");
+        const png = head.length > 7 && head.readUInt32BE(0) === 0x89504e47;
+        const jpg = head.length > 2 && head[0] === 0xff && head[1] === 0xd8;
+        const webp = head.length > 11 && head.toString("ascii", 0, 4) === "RIFF" && head.toString("ascii", 8, 12) === "WEBP";
+        const sane = b.source.data.length > 1024 && b.source.data.length < 9_000_000;
+        return (png || jpg || webp) && sane;
+      } catch {
+        return false;
+      }
+    })
     .map((b: any) => ({
       type: "image_url" as const,
       image_url: { url: `data:${b.source.media_type || "image/png"};base64,${b.source.data}` },
