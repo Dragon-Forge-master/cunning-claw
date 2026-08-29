@@ -16,3 +16,5 @@ data/mcp-oauth.json
 # Personal to each install — .example templates are tracked instead.
 workspace/USER.md
 workspace/MEMORY.md
+workspace/*.log
+workspace/*.html
