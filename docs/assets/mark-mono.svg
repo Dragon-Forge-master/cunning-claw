@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Cunning Claw">
+  <!-- Single-colour triskele claw. Inherits currentColor: stamp it on paper,
+       embroider it on a polo, print it on an invoice. See docs/BRAND.md. -->
+  <g fill="currentColor">
+    <g id="cc-tm">
+      <path d="M 132 118
+               C 214 62, 318 84, 352 168
+               C 362 194, 360 220, 340 244
+               C 346 210, 334 180, 310 162
+               C 278 138, 200 128, 132 118 Z"/>
+    </g>
+    <use href="#cc-tm" transform="rotate(120 256 256)"/>
+    <use href="#cc-tm" transform="rotate(240 256 256)"/>
+  </g>
+  <circle cx="256" cy="256" r="30" fill="none" stroke="currentColor" stroke-width="9"/>
+  <circle cx="256" cy="256" r="10" fill="currentColor"/>
+</svg>
