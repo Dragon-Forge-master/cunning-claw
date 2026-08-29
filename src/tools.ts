@@ -10,6 +10,7 @@ import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
 import * as http from "./http.js";
 import * as mcp from "./mcp.js";
+import * as tax from "./tax.js";
 import { classifyBrowserAction, needsApproval as browserNeedsApproval, taskGrantActive } from "./consequence.js";
 import { snapshot, record } from "./filewatch.js";
 import { readSkill, writeSkill } from "./workspace.js";
@@ -217,6 +218,36 @@ export const toolDefinitions: Anthropic.Tool[] = [
     description:
       "Get live system telemetry: CPU load, memory, disk usage, uptime, install path, and MCP servers.",
     input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "tax_jurisdiction",
+    description:
+      "Show or set the tax jurisdiction Cunning Claw will use (uk, ie, us, au, de, or a packed id). " +
+      "A country without a pack is a refusal — it will not invent foreign rates. Default is UK.",
+    input_schema: {
+      type: "object",
+      properties: {
+        country: { type: "string", description: "Country name or id (uk, ireland, us). Omit to list packs." },
+      },
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    name: "tax_lookup",
+    description:
+      "Read packed tax facts for a jurisdiction and topic (vat, gst, payroll, self-assessment, " +
+      "corporation-tax, income-tax, sales-tax). These are dated fact sheets, not a filing. " +
+      "Missing topic or country means say so. Books (Xero) are a separate connector.",
+    input_schema: {
+      type: "object",
+      properties: {
+        topic: { type: "string", description: "vat, payroll, self-assessment, income-tax, …" },
+        jurisdiction: { type: "string", description: "Defaults to the active jurisdiction" },
+      },
+      additionalProperties: false,
+    },
+    strict: true,
   },
   {
     name: "mcp_status",
@@ -1345,6 +1376,13 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       }
       case "open": return await openTool(input);
       case "system_status": return `${await systemStatusText()}\n${mcp.mcpStatusText()}`;
+      case "tax_jurisdiction":
+        return input.country ? tax.taxSetText(String(input.country)) : tax.taxStatusText();
+      case "tax_lookup":
+        return tax.taxLookupText({
+          topic: input.topic,
+          jurisdiction: input.jurisdiction,
+        });
       case "mcp_status": return mcp.mcpStatusText();
       case "mcp_describe": return mcp.describeTools(input.server, input.tool);
       case "mcp_schema": return mcp.describeMcpTool(String(input.tool ?? ""));

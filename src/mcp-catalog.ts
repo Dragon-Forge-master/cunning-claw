@@ -56,6 +56,19 @@ function sse(
   return { id, label, blurb, category, popular: false, entry: { type: "sse", url } };
 }
 
+function stdio(
+  id: string,
+  label: string,
+  blurb: string,
+  category: (typeof MCP_CATEGORIES)[number],
+  command: string,
+  args: string[],
+  env?: Record<string, string>,
+  popular = false,
+): CatalogueEntry {
+  return { id, label, blurb, category, popular, entry: { command, args, env } };
+}
+
 export const MCP_CATALOGUE: CatalogueEntry[] = [
   // Popular — names people already know they have.
   http("canva", "Canva", "Designs, exports, brand kit", "Create", "https://mcp.canva.com/mcp", true),
@@ -128,6 +141,17 @@ export const MCP_CATALOGUE: CatalogueEntry[] = [
   http("ramp", "Ramp", "Spend and cards", "Money", "https://ramp-mcp-remote.ramp.com/mcp"),
   http("mercury", "Mercury", "Business banking", "Money", "https://mcp.mercury.com/mcp"),
   http("gocardless", "GoCardless", "Direct debit payments", "Money", "https://mcp.gocardless.com"),
+  // Official Xero server is local stdio, not a hosted mcp.xero.com.
+  stdio(
+    "xero",
+    "Xero",
+    "Invoices, contacts, payroll (official @xeroapi/xero-mcp-server; XERO_CLIENT_ID/SECRET in .env)",
+    "Money",
+    "npx",
+    ["-y", "@xeroapi/xero-mcp-server@latest"],
+    { XERO_CLIENT_ID: "${XERO_CLIENT_ID}", XERO_CLIENT_SECRET: "${XERO_CLIENT_SECRET}" },
+    true,
+  ),
 
   // Data
   http("supabase", "Supabase", "Database, auth, storage", "Data", "https://mcp.supabase.com/mcp"),

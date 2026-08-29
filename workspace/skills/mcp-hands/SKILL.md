@@ -9,7 +9,7 @@ written: 2026-08-27
 
 # MCP hands
 
-Claude Code's client is `mcpServers` in `.mcp.json` / `~/.claude.json` / Cursor's `~/.cursor/mcp.json`. Same shape here. Hosted tools (Canva, Notion, Figma) are Streamable HTTP plus OAuth, not a local install.
+Claude Code's client is `mcpServers` in `.mcp.json` / `~/.claude.json` / Cursor's `~/.cursor/mcp.json`. Same shape here. Hosted tools (Canva, Notion, Figma) are Streamable HTTP plus OAuth, not a local install. Xero is official but **local**: `npx @xeroapi/xero-mcp-server` with `XERO_CLIENT_ID` / `XERO_CLIENT_SECRET` in `.env` — see `docs/mcp.xero.example.json`. Do not invent `mcp.xero.com`.
 
 `npx @canva/cli mcp` is Canva *developer docs*. The design product is `https://mcp.canva.com/mcp`.
 

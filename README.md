@@ -150,6 +150,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **Browses** | Owns a Chrome profile over CDP — accessibility refs, real mouse/keys, snapshot after every action, Gmail, WhatsApp Web |
 | **Reads mail** | Gmail through that Chrome session — search operators, category tabs, whole threads, drafts. Send is always an approval. No credentials handled |
 | **WhatsApp** | WhatsApp Web / Business in the same Chrome — chat list, title unread count, draft, send. Send is always an approval. QR is scanned in that window |
+| **Accounts** | Jurisdiction packs (UK first; IE, US, AU, DE as stubs) plus Xero via the official local MCP. It will not invent a foreign tax rate or file a return |
 | **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Claw" wake word |
 | **Remembers** | Markdown memory and a dated journal that survive restarts |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |

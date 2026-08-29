@@ -21,6 +21,8 @@ test("the catalogue uses vendor Streamable HTTP URLs, not invented ones", () => 
   assert.equal(catalogueById("hubspot")?.entry.url, "https://mcp.hubspot.com/anthropic");
   assert.equal(catalogueById("zapier")?.entry.url, "https://mcp.zapier.com/api/v1/connect");
   assert.equal(catalogueById("square")?.entry.type, "sse");
+  assert.equal(catalogueById("xero")?.entry.command, "npx");
+  assert.ok(catalogueById("xero")?.entry.args?.some((a) => a.includes("@xeroapi/xero-mcp-server")));
   assert.ok(MCP_CATALOGUE.filter((c) => c.popular).length >= 4);
 });
 
@@ -38,7 +40,7 @@ test("the catalogue is a directory people can browse, not five lonely rows", () 
     assert.ok(c.label && c.blurb && c.category, `${c.id} needs label, blurb, category`);
   }
   const names = MCP_CATALOGUE.map((c) => c.label.toLowerCase());
-  for (const must of ["slack", "hubspot", "canva", "github", "stripe", "notion"]) {
+  for (const must of ["slack", "hubspot", "canva", "github", "stripe", "notion", "xero"]) {
     assert.ok(names.includes(must), `people look for ${must} in a connectors list`);
   }
 });

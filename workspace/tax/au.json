@@ -1,0 +1,23 @@
+{
+  "id": "au",
+  "name": "Australia",
+  "authority": "ATO",
+  "currency": "AUD",
+  "asOf": "2026-07-01",
+  "sources": ["https://www.ato.gov.au/"],
+  "taxYear": { "label": "1 July to 30 June", "startMonth": 7, "startDay": 1 },
+  "topics": {
+    "gst": {
+      "summary": "Australia's VAT-equivalent is GST, generally 10%. Registration threshold and what is GST-free are ATO questions.",
+      "facts": [
+        { "key": "standard-rate", "value": "10%", "note": "GST, not VAT. Confirm registration threshold on ato.gov.au." }
+      ]
+    },
+    "payroll": {
+      "summary": "Australian payroll includes PAYG withholding and Superannuation Guarantee. Super is not optional pocket money.",
+      "facts": [
+        { "key": "system", "value": "PAYG + Super", "note": "Super guarantee rate changes by statute. Read the payroll product or ATO, do not invent the percent." }
+      ]
+    }
+  }
+}

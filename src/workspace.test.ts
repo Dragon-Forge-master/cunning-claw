@@ -16,6 +16,7 @@ test("ships agentskills.io skills", () => {
   // Skills are meant to be added, so assert the shipped set is present rather
   // than pinning an exclusive list.
   for (const required of [
+    "accountant",
     "cardiff-briefing",
     "forge-doctrine",
     "landscape-watch",
