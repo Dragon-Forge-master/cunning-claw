@@ -80,13 +80,51 @@ export function approvalSettled(id: string, approved: boolean): void {
   void send(ref.chatId, approved ? "Authorised." : "Denied.");
 }
 
+/**
+ * Setup-mode listener: replies to every message with the sender's chat id and
+ * nothing else. It carries no tools, reads no instructions, and dies the
+ * moment the real loop can start (after .env gains the id and a restart).
+ */
+async function bootstrapWhoamiLoop(token: string): Promise<void> {
+  let offset = 0;
+  for (;;) {
+    try {
+      const updates = (await api(token, "getUpdates", {
+        timeout: 50,
+        offset,
+        allowed_updates: ["message"],
+      })) as any[];
+      for (const u of updates) {
+        offset = u.update_id + 1;
+        const chatId = u.message?.chat?.id;
+        if (!chatId) continue;
+        await api(token, "sendMessage", {
+          chat_id: chatId,
+          text:
+            `Your chat id is: ${chatId}\n\n` +
+            `Ask Chris to put TELEGRAM_CHAT_ID=${chatId} in .env and restart Cunning Claw. ` +
+            `Until then I take no instructions here.`,
+        }).catch(() => {});
+      }
+    } catch {
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+  }
+}
+
 export function startTelegram(events: AgentEvents, hooks: { resolveApproval: ResolveApproval }): void {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const allow = process.env.TELEGRAM_CHAT_ID;
   if (!token) return;
   if (!allow) {
-    console.warn("  ⚠ TELEGRAM_BOT_TOKEN set but TELEGRAM_CHAT_ID missing — ignoring Telegram (safety).");
-    console.warn("    Message the bot /whoami from your phone, then put that chat id in .env.");
+    // The old behaviour was a chicken-and-egg: no chat id -> no polling at
+    // all -> the advertised /whoami could never be answered. Now a bootstrap
+    // listener runs that does exactly one thing: tell whoever messages the
+    // bot what their chat id is, so it can be put in .env. No instruction of
+    // any kind is processed until the allowlist exists.
+    console.warn("  ⚠ TELEGRAM_BOT_TOKEN set but TELEGRAM_CHAT_ID missing — commands disabled (safety).");
+    console.warn("    Message the bot anything from your phone; it replies with the chat id for .env.");
+    void bootstrapWhoamiLoop(token);
     return;
   }
   botToken = token;
