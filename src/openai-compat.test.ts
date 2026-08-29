@@ -49,7 +49,9 @@ test("the tool message notes the screenshot rather than carrying it", () => {
       content: [{
         type: "tool_result",
         tool_use_id: "img",
-        content: [{ type: "image", source: { type: "base64", media_type: "image/png", data: "xxx" } }],
+        // A real 1x1 PNG: the guard verifies magic bytes now, so the fixture
+        // must be a decodable image, exactly as production frames are.
+        content: [{ type: "image", source: { type: "base64", media_type: "image/png", data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" } }],
       }],
     },
   ] as any);
