@@ -33,6 +33,10 @@ const DAY_NAMES: Record<string, number> = {
   sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2,
   wed: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4,
   fri: 5, friday: 5, sat: 6, saturday: 6,
+  // Y Gymraeg — the schedule speaks Welsh as a first-class tongue. `08:00:llun-gwe`
+  // is not a joke entry; it parses, fires, and is documented in docs/SWYN.md.
+  sul: 0, llun: 1, maw: 2, mawrth: 2, mer: 3, mercher: 3,
+  iau: 4, gwe: 5, gwener: 5, sad: 6, sadwrn: 6,
 };
 
 function parseDays(spec: string): number[] | null {

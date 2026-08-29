@@ -39,3 +39,14 @@ test("no-days spec means every day", () => {
   const { entries } = parseSchedule("- [x] schedule: `06:15` | target: `t` | instruction: daily.");
   assert.equal(entries[0].days.length, 7);
 });
+
+test("y Gymraeg: Welsh day names parse and fire as first-class syntax", () => {
+  const { entries } = parseSchedule(
+    "- [x] schedule: `08:00:llun-gwe` | target: `briefing` | instruction: Bore da.\n" +
+    "- [x] schedule: `17:00:gwener` | target: `nudge` | instruction: Gwener.\n" +
+    "- [x] schedule: `07:00:sad-llun` | target: `t` | instruction: weekend wrap, yn Gymraeg.",
+  );
+  assert.deepEqual(entries[0].days, [1, 2, 3, 4, 5], "llun-gwe is the working week");
+  assert.deepEqual(entries[1].days, [5], "gwener is Friday");
+  assert.deepEqual([...entries[2].days].sort(), [0, 1, 6], "sad-llun wraps through Sunday");
+});

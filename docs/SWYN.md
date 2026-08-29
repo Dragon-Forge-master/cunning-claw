@@ -1,0 +1,60 @@
+# Y Swyn — the claw's Welsh
+
+Cunning Claw is named for the *dynion hysbys*, the Welsh cunning folk — and a
+cunning man's tools had proper names. This is the official lexicon: real Welsh,
+naming real subsystems, doing real work. Nothing here is obfuscation; everything
+here is documented. It reads as magic to the hurried and as a glossary to the
+curious, which is exactly the intended ratio.
+
+## The lexicon
+
+| Welsh | Says | Names |
+|---|---|---|
+| **y dyn hysbys** | the knowing one | the assistant itself |
+| **y crafanc** | the claw | the whole system |
+| **y ffens** | the fence | the `<untrusted>` quarantine around outside words |
+| **y llw** | the oath | the approval system — consequences wait for a human |
+| **y sarff** | the serpent | the Ouroboros guard that stops tail-chasing |
+| **y curiad** | the heartbeat | the 30-minute pulse |
+| **y ddesg** | the desk | shared documents in ~/Documents/CunningClaw |
+| **y llygaid** | the eyes | screenshots, and the always-asking camera glance |
+| **swyn** (pl. **swynion**) | a spell/charm | a scheduled task — a working left to fire on its own |
+| **y llyfr swynion** | the spellbook | workspace/SCHEDULE.md |
+| **gramadeg** | grammar | a skill — a learned way of working |
+| **y llyfrgell** | the library | workspace/skills |
+| **cof** | memory | MEMORY.md and the journal |
+| **awen** | poetic inspiration | the creative pipeline — images, films, music |
+| **yr efail** | the forge | the build system; the Board is *Bwrdd yr Efail* |
+| **nos da** | good night | a clean shutdown |
+
+## Welsh that executes
+
+The spellbook takes Welsh day names as first-class syntax — these parse and fire:
+
+```
+- [x] schedule: `08:00:llun-gwe` | target: `briefing` | instruction: Morning briefing on the Desk.
+- [x] schedule: `17:00:gwener`   | target: `nudge`    | instruction: Friday invoices check.
+- [x] schedule: `12:00:mer`      | target: `reminder` | instruction: Stretch, water, walk.
+```
+
+Days: `sul` (Sun) · `llun` (Mon) · `maw`/`mawrth` (Tue) · `mer`/`mercher` (Wed)
+· `iau` (Thu) · `gwe`/`gwener` (Fri) · `sad`/`sadwrn` (Sat). Ranges wrap:
+`sad-llun` is the weekend and Monday. English names work equally; the machine is
+bilingual, like its country.
+
+## The doctrine line
+
+Every claw carries this, and it is the whole philosophy in one breath:
+
+> **Yn lleol yn gyntaf · Caniatâd dynol pan fo canlyniadau**
+> *Local first · Human consent where there are consequences*
+
+## Rules for extending the Swyn
+
+1. Welsh appears on **human-facing surfaces** — logs, docs, the HUD, film
+   endcards — never in model-facing tool results, where a cheap brain might
+   trip over it.
+2. Every Welsh term lands in this table the day it enters the code. Magic that
+   cannot be looked up is just bad documentation.
+3. Real Welsh only — checked against a dictionary, not invented. The audience
+   this must never embarrass is Wales.
