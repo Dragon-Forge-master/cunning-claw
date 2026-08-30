@@ -127,6 +127,17 @@ export function textToDarwinScript(text: string): string {
 // Vision
 // ---------------------------------------------------------------------------
 
+/**
+ * Which capture backend this platform uses — one value, so exactly one branch
+ * of screenshot() can run. The bug this replaces was a control-flow
+ * fallthrough that ran two.
+ */
+export function captureBackend(platform: string = host()): "windows" | "darwin" | "x11" {
+  if (platform === "win32") return "windows";
+  if (platform === "darwin") return "darwin";
+  return "x11";
+}
+
 async function captureLinux(raw: string, target: "screen" | "window"): Promise<boolean> {
   if (await hasBin("gnome-screenshot")) {
     try {
@@ -142,10 +153,14 @@ async function captureLinux(raw: string, target: "screen" | "window"): Promise<b
       const { stdout } = await execFileAsync("xdotool", ["getdisplaygeometry"]);
       geom = stdout.trim().replace(/\s+/g, "x");
     } catch { /* use default */ }
-    await execFileAsync("ffmpeg", [
-      "-f", "x11grab", "-video_size", geom, "-i", process.env.DISPLAY || ":0",
-      "-frames:v", "1", "-y", raw,
-    ], { timeout: 20000 });
+    // Unguarded, this rejection escaped screenshot() entirely and killed the
+    // tool call rather than falling through to the message that names the fix.
+    try {
+      await execFileAsync("ffmpeg", [
+        "-f", "x11grab", "-video_size", geom, "-i", process.env.DISPLAY || ":0",
+        "-frames:v", "1", "-y", raw,
+      ], { timeout: 20000 });
+    } catch { /* no X display, or ffmpeg without x11grab — say so below */ }
     return fs.existsSync(raw);
   }
   return false;
@@ -212,14 +227,22 @@ export async function screenshot(target: "screen" | "window" = "screen", windowN
     await new Promise((r) => setTimeout(r, target === "window" ? 600 : 350));
   }
 
+  // Exactly one backend runs, chosen from one value. This used to read
+  // `if (win32) {…}` followed by `if (!captured && darwin) {…} else {x11}` —
+  // so on Windows the first branch succeeded, `!captured` was then false, and
+  // control fell into the ELSE and ran the X11 path anyway, throwing away a
+  // perfectly good capture. With ffmpeg installed that meant an unhandled
+  // x11grab rejection killing the tool call; without it, "no working
+  // screenshot tool" plus a macOS hint, on Windows. A working subsystem
+  // reported failure.
+  const backend = captureBackend();
   let captured = false;
-  if (host() === "win32") {
+  if (backend === "windows") {
     try {
       await win.screenshot(raw);
       captured = fs.existsSync(raw);
     } catch { /* fall through to the shared failure message */ }
-  }
-  if (!captured && host() === "darwin") {
+  } else if (backend === "darwin") {
     const result = await captureDarwin(raw);
     if (!result.ok) return [{ type: "text", text: result.error ?? missing("screencapture") }];
     captured = true;
@@ -228,9 +251,11 @@ export async function screenshot(target: "screen" | "window" = "screen", windowN
   }
 
   if (!captured) {
-    const hint = host() === "linux"
+    const hint = backend === "x11"
       ? `${missing("gnome-screenshot")} (or ${installOr("ffmpeg")})`
-      : missing("screencapture");
+      : backend === "windows"
+        ? "PowerShell's System.Drawing capture failed — check that this session has a desktop to photograph."
+        : missing("screencapture");
     return [{ type: "text", text: `Screen capture failed — no working screenshot tool. ${hint}` }];
   }
 
@@ -302,7 +327,40 @@ function imageSize(file: string): { w: number; h: number } | null {
   }
 }
 
+/**
+ * Screen size, per platform.
+ *
+ * This asked xdotool and nothing else, so on macOS it always returned null —
+ * which nulled lastShot even after a perfectly good screencapture, suppressed
+ * the geometry hint, and made every click_at answer "No full-screen screenshot
+ * to measure against. Take one with take_screenshot first." That is advice the
+ * caller has already followed, so it loops. The capture worked; only the
+ * measurement was missing.
+ */
 async function displaySize(): Promise<{ w: number; h: number } | null> {
+  if (host() === "darwin") {
+    try {
+      // AppleScript reports the desktop's logical bounds, which is the space
+      // screencapture and `cliclick`-style coordinates both live in.
+      const { stdout } = await execFileAsync("osascript", [
+        "-e",
+        'tell application "Finder" to get bounds of window of desktop',
+      ], { timeout: 5000 });
+      const nums = stdout.trim().split(",").map((n) => Number(n.trim()));
+      const w = nums[2];
+      const h = nums[3];
+      return w && h ? { w, h } : null;
+    } catch {
+      return null;
+    }
+  }
+  if (host() === "win32") {
+    try {
+      return await win.displaySize();
+    } catch {
+      return null;
+    }
+  }
   try {
     const { stdout } = await execFileAsync("xdotool", ["getdisplaygeometry"], { timeout: 5000 });
     const [w, h] = stdout.trim().split(/\s+/).map(Number);

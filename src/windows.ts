@@ -108,6 +108,21 @@ export async function screenshot(outPath: string): Promise<void> {
   await runPs(screenshotScript(outPath), 30000);
 }
 
+/**
+ * Primary screen bounds — the same rectangle screenshotScript captures, so a
+ * coordinate read off that image converts against the right numbers.
+ */
+export async function displaySize(): Promise<{ w: number; h: number } | null> {
+  const stdout = await runPs(
+    "Add-Type -AssemblyName System.Windows.Forms;" +
+      "$b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds;" +
+      'Write-Output "$($b.Width) $($b.Height)"',
+    10000,
+  );
+  const [w, h] = stdout.trim().split(/\s+/).map(Number);
+  return w && h ? { w, h } : null;
+}
+
 export async function listWindows(): Promise<string> {
   const stdout = await runPs(
     "Get-Process | Where-Object {$_.MainWindowTitle} | ForEach-Object {$_.MainWindowTitle}",
