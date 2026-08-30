@@ -378,6 +378,7 @@ async function callBrain(
   spec: BrainSpec,
   _events: AgentEvents,
   onText: (delta: string) => void,
+  signal?: AbortSignal,
 ): Promise<{
   content: Anthropic.ContentBlock[];
   toolUses: { id: string; name: string; input: unknown }[];
@@ -395,6 +396,7 @@ async function callBrain(
       system: `${buildStableSystem(spec)}\n\n${volatileSystem(spec)}`,
       history: trimHistory(history),
       onText,
+      signal,
     });
     return {
       content: completion.blocks as Anthropic.ContentBlock[],
@@ -425,7 +427,10 @@ async function callBrain(
     (params as any).output_config = { effort: spec.effort ?? config.effort };
   }
 
-  const stream = client.messages.stream(params);
+  // Without the signal, cancelTurn() freed the agent to take new work while
+  // the abandoned turn kept streaming underneath and could still write to
+  // history beneath the next one. "Stop" has to reach the request.
+  const stream = client.messages.stream(params, { signal });
   stream.on("text", onText);
   const message = await stream.finalMessage();
   const toolUses = message.content
@@ -588,7 +593,7 @@ export async function runTurn(
           const step = await callBrain(spec, events, (delta) => {
             finalText += delta;
             events.emit("text", { delta });
-          });
+          }, abortTurn?.signal);
           toolUses = step.toolUses;
           stopReason = step.stopReason;
           recordUsage(spec, step.usage);
@@ -598,6 +603,9 @@ export async function runTurn(
           }
           break;
         } catch (err) {
+          // An abandoned turn must not quietly resurrect itself on another
+          // brain: cancelTurn() means stop, not "try somewhere else".
+          if (abortTurn?.signal.aborted) throw err;
           let nxt = isFailoverError(err) ? nextBrain(spec, kind) : null;
 
           // Failover must not quietly demote a guarded turn. If hostile text is
@@ -649,6 +657,11 @@ export async function runTurn(
         }
         break;
       }
+
+      // Nothing new starts once the turn has been abandoned. Tools are the
+      // expensive, world-changing half — a stopped turn firing one more shell
+      // command is exactly what "stop" is supposed to prevent.
+      if (abortTurn?.signal.aborted) break;
 
       // Execute all requested tools (concurrently), return results in ONE user message.
       const results = await Promise.all(
@@ -733,6 +746,7 @@ export async function runTurn(
         }),
       );
       history.push({ role: "user", content: results });
+      if (abortTurn?.signal.aborted) break;
     }
 
     history = trimHistory(history);

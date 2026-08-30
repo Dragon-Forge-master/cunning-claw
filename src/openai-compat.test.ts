@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import test from "node:test";
-import { toOpenAiMessages, openAiToolSchema } from "./openai-compat.js";
+import { toOpenAiMessages, openAiToolSchema, completeOpenAi } from "./openai-compat.js";
 import { activeProvider } from "./brain.js";
 
 test("the default brain is one that can actually run", () => {
@@ -109,4 +111,43 @@ test("a tool result with no image adds no stray user message", () => {
     { role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: "load 0.4" }] },
   ] as any);
   assert.equal(msgs.filter((m) => m.role === "user").length, 0, "no phantom image message");
+});
+
+test("stopping a turn actually reaches the model request", { timeout: 10_000 }, () => {
+  // cancelTurn() built an AbortController and aborted it, but the signal was
+  // never handed to the request — so "stop" freed the agent to take new work
+  // while the abandoned turn kept streaming underneath and could still write
+  // to history beneath the next one.
+  const server = http.createServer(() => {
+    // Accept the request and never answer: exactly the stall this guards.
+  });
+  return new Promise<void>((resolve, reject) => {
+    server.listen(0, "127.0.0.1", async () => {
+      const { port } = server.address() as AddressInfo;
+      const controller = new AbortController();
+      const call = completeOpenAi({
+        spec: {
+          id: "test",
+          label: "test",
+          provider: "openai",
+          model: "test-model",
+          baseUrl: `http://127.0.0.1:${port}/v1`,
+        } as any,
+        system: "system",
+        history: [{ role: "user", content: "hello" }],
+        onText: () => {},
+        signal: controller.signal,
+      });
+      setTimeout(() => controller.abort(), 50);
+      try {
+        await call;
+        reject(new Error("the request should have been aborted"));
+      } catch (err) {
+        assert.match(String((err as Error).name + (err as Error).message), /abort/i);
+        resolve();
+      } finally {
+        server.close();
+      }
+    });
+  });
 });

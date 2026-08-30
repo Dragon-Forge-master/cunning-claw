@@ -154,6 +154,8 @@ export async function completeOpenAi(opts: {
   system: string;
   history: Anthropic.MessageParam[];
   onText: (delta: string) => void;
+  /** Aborted when the operator says stop, or the watchdog gives up on the turn. */
+  signal?: AbortSignal;
 }): Promise<OpenAiCompletion> {
   const brain = openAiEndpoint(opts.spec);
   const key = process.env[brain.apiKeyEnv];
@@ -179,6 +181,7 @@ export async function completeOpenAi(opts: {
     method: "POST",
     headers,
     body: JSON.stringify({ ...payload, stream: true }),
+    signal: opts.signal,
   });
 
   if (!res.ok) {
@@ -189,6 +192,7 @@ export async function completeOpenAi(opts: {
         method: "POST",
         headers,
         body: JSON.stringify({ ...payload, stream: false }),
+        signal: opts.signal,
       });
       if (!res.ok) {
         const again = await res.text();
