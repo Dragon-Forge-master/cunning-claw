@@ -392,7 +392,7 @@ async function callBrain(
   if (spec.provider === "openai") {
     const completion = await completeOpenAi({
       spec,
-      system: SYSTEM_PROMPT,
+      system: `${buildStableSystem(spec)}\n\n${volatileSystem(spec)}`,
       history: trimHistory(history),
       onText,
     });
@@ -409,7 +409,12 @@ async function callBrain(
     model: spec.model,
     max_tokens: spec.maxTokens ?? config.maxTokens,
     system: [
-      { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+      // Stable half (persona + memory + skills + workspace + journal), cached
+      // by Anthropic; volatile half (time, live MCP roster) appended fresh so
+      // it never invalidates the cache. Without these the model never actually
+      // saw its own memory or skills — the prompt promised context it wasn't given.
+      { type: "text", text: buildStableSystem(spec), cache_control: { type: "ephemeral" } },
+      { type: "text", text: volatileSystem(spec) },
     ],
     tools: buildTools(spec),
     messages: repairHistory(trimHistory(history)),
