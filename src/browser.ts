@@ -282,6 +282,61 @@ export async function findChromeBinary(): Promise<string | null> {
   return null;
 }
 
+/**
+ * Flags config must never be able to set, however tempting.
+ *
+ * Same rule as HARD_DENY in tools.ts and COMMITTING in consequence.ts: config
+ * can add to the floor, never cut through it. Each of these hands the
+ * logged-in profile to something that is not us.
+ */
+const FORBIDDEN_FLAGS = [
+  "--remote-allow-origins",
+  "--remote-debugging-address",
+  "--remote-debugging-pipe",
+  "--disable-web-security",
+  "--disable-site-isolation-trials",
+];
+
+/**
+ * The argv Chrome is launched with — a pure function so it can be tested
+ * without spawning a browser.
+ *
+ * This used to carry `--remote-allow-origins=*` on a profile that stays logged
+ * into Gmail and WhatsApp indefinitely. That flag re-enables exactly what
+ * Chrome disabled after the DevTools origin bypass: it tells Chrome to accept
+ * a DevTools WebSocket handshake carrying ANY Origin, so any page the operator
+ * happens to visit, in any browser, could drive this profile — Runtime.evaluate
+ * on a mail.google.com target, with no approval card anywhere in the path,
+ * because the gates live in tools.ts and not in Chrome.
+ *
+ * It bought nothing. Chrome only rejects a handshake that carries a disallowed
+ * Origin, and Node's global WebSocket (undici) sends no Origin header at all —
+ * verified against a local upgrade listener on Node 22: the handshake carries
+ * host, connection, upgrade, sec-websocket-*, accept*, user-agent and nothing
+ * else. Plain fetch() to /json/list is the same. So the wildcard was pure
+ * exposure, and CdpSession keeps working without it.
+ */
+export function chromeLaunchArgs(opts: { port?: number; profileDir?: string; extra?: string[] } = {}): string[] {
+  const extra = (opts.extra ?? config.browser.extraFlags ?? []).filter((f) => {
+    const forbidden = FORBIDDEN_FLAGS.some((bad) => f === bad || f.startsWith(bad + "="));
+    if (forbidden) {
+      console.warn(`  ⚠ Ignoring browser.extraFlags entry "${f}" — it would open the debug port up.`);
+    }
+    return !forbidden;
+  });
+  return [
+    `--remote-debugging-port=${opts.port ?? PORT}`,
+    // Explicit, so the port is never reachable off this machine and no config
+    // flag can quietly move it. This is the default; saying it documents it.
+    "--remote-debugging-address=127.0.0.1",
+    `--user-data-dir=${opts.profileDir ?? PROFILE_DIR}`,
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--restore-last-session",
+    ...extra,
+  ];
+}
+
 /** Launch Chrome with remote debugging on a Cunning Claw-owned profile. Idempotent. */
 export async function ensureBrowser(): Promise<{ ok: boolean; message: string }> {
   if (await isUp()) return { ok: true, message: "Browser already running." };
@@ -290,19 +345,7 @@ export async function ensureBrowser(): Promise<{ ok: boolean; message: string }>
   if (!bin) return { ok: false, message: "No Chrome/Chromium binary found. Install Chrome or set browser.binary in claw.config.json." };
 
   fs.mkdirSync(PROFILE_DIR, { recursive: true });
-  const child = spawn(
-    bin,
-    [
-      `--remote-debugging-port=${PORT}`,
-      `--user-data-dir=${PROFILE_DIR}`,
-      "--remote-allow-origins=*",
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--restore-last-session",
-      ...config.browser.extraFlags,
-    ],
-    { detached: true, stdio: "ignore" },
-  );
+  const child = spawn(bin, chromeLaunchArgs(), { detached: true, stdio: "ignore" });
   child.unref();
 
   for (let i = 0; i < 40; i++) {

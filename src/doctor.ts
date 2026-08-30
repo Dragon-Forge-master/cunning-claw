@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import net from "node:net";
+import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config, DATA_DIR, ROOT } from "./config.js";
@@ -117,6 +118,51 @@ async function portFree(port: number, listenHost: string): Promise<boolean> {
 // installed. One finder, the real one, shared with the launcher.
 async function findChrome(): Promise<string | null> {
   return findChromeBinary();
+}
+
+/**
+ * Is a running Chrome still accepting DevTools handshakes from any origin?
+ *
+ * The launch flag is fixed, but ensureBrowser() reuses a Chrome that is already
+ * up — so a machine that had the wildcard keeps it until that window closes,
+ * and nothing would say so. Probe with a foreign Origin: a refusal is the
+ * hardened behaviour, a 101 upgrade means the old flag is still in force.
+ * "unknown" covers the ordinary case where no debug port is listening at all.
+ */
+async function debugPortAcceptsForeignOrigin(
+  port: number,
+): Promise<"open" | "hardened" | "unknown"> {
+  return new Promise((resolve) => {
+    const req = http.request(
+      {
+        host: "127.0.0.1",
+        port,
+        path: "/devtools/browser",
+        headers: {
+          Connection: "Upgrade",
+          Upgrade: "websocket",
+          "Sec-WebSocket-Version": "13",
+          "Sec-WebSocket-Key": Buffer.from("cunningclaw-probe").toString("base64"),
+          Origin: "https://claw-probe.invalid",
+        },
+      },
+      (res) => {
+        // Anything but an upgrade means the handshake was turned away.
+        resolve(res.statusCode === 101 ? "open" : "hardened");
+        res.destroy();
+      },
+    );
+    req.on("upgrade", (_res, socket) => {
+      resolve("open");
+      socket.destroy();
+    });
+    req.on("error", () => resolve("unknown"));
+    req.setTimeout(1500, () => {
+      req.destroy();
+      resolve("unknown");
+    });
+    req.end();
+  });
 }
 
 async function ollamaUp(): Promise<boolean> {
@@ -289,6 +335,23 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
     out.push(row("chrome", "ok", false, `Chrome: ${chrome}`));
   } else {
     out.push(row("chrome", "warn", false, missing("google-chrome")));
+  }
+
+  // A Chrome already running from before the origin fix keeps the old flag
+  // until it is closed, and ensureBrowser() reuses it rather than relaunching —
+  // so the hole would stay open silently on exactly the machines that had it.
+  const origins = await debugPortAcceptsForeignOrigin(config.browser.debugPort);
+  if (origins === "open") {
+    out.push(row(
+      "chrome-origins",
+      "warn",
+      false,
+      "Cunning Claw's Chrome is running with the old --remote-allow-origins=* flag, so any " +
+        "page could drive its logged-in Gmail/WhatsApp session. Close that Chrome window; " +
+        "the next launch drops the flag.",
+    ));
+  } else if (origins === "hardened") {
+    out.push(row("chrome-origins", "ok", false, "Chrome's debug port refuses foreign origins"));
   }
 
   const { port, host: listenHost } = config.server;
