@@ -150,7 +150,15 @@ async function loop(events: AgentEvents): Promise<void> {
           await handleCallback(upd.callback_query);
           continue;
         }
-        await handleMessage(upd.message, events);
+        // Do NOT await the turn inside the poll loop. A turn that parks on an
+        // approval is released only by a callback_query (the EXECUTE button) —
+        // which this same loop must stay free to fetch. Awaiting handleMessage
+        // froze getUpdates until the approval timed out, so the button press
+        // never arrived and every Telegram approval silently expired. Run the
+        // turn alongside the poll; runTurn's own `busy` guard serialises them.
+        void handleMessage(upd.message, events).catch((err) =>
+          console.error("  Telegram message handler error:", err?.message ?? err),
+        );
       }
     } catch (err: any) {
       console.error("  Telegram poll error:", err?.message ?? err);
