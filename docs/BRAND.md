@@ -34,8 +34,11 @@ Three hooked talons in rotation around the spark
 squares the Forge Claw cannot survive: favicons, app icons, avatars, 16–48px.
 Below 16px, the spark (ring + dot) stands alone.
 
-The terminal glyph `▟█▙` is the ASCII kin — correct in monospace contexts
-(boot banner, nav bars, commit art) where an image cannot go.
+The Forge Claw has its own ASCII kin for monospace contexts where an image
+cannot go: the boot banner's block-glyph art (`src/banner.ts`), derived
+pixel-for-pixel from `forge-mark.svg` — same dragon, same anvil, same grip.
+Where even that is too tall (nav bars, commit art, one-line contexts), the
+triskele's glyph `▟█▙` stands in.
 
 ## Palette
 
