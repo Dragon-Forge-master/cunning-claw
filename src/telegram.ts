@@ -1,4 +1,5 @@
 import { config } from "./config.js";
+import { redact } from "./redact.js";
 import type { AgentEvents } from "./agent.js";
 import { runTurn } from "./agent.js";
 import { systemStatusText } from "./tools.js";
@@ -35,11 +36,33 @@ async function api(token: string, method: string, body?: unknown) {
   return json.result;
 }
 
+/**
+ * Everything this module says out loud, cleaned before it leaves the machine.
+ *
+ * server.ts pipes every SSE event through redactDeep and agent.ts redacts
+ * before history.json is written — but Telegram imported no redaction at all,
+ * so a shell command carrying a pasted key, or a file preview of .env, went to
+ * api.telegram.org in clear while the HUD showed the same card redacted. This
+ * is the one place every outbound message passes, so nothing added later has
+ * to remember.
+ *
+ * Order matters: redact the whole text, THEN truncate. Truncating first leaves
+ * a key that straddles the cut unmatched, and redact() can lengthen the string.
+ */
+export function outboundText(text: string): string {
+  return redact(String(text ?? "")).slice(0, 3900);
+}
+
+/** The approval card's body, redacted before its own truncation for the same reason. */
+export function approvalCardText(summary: string, detail: string): string {
+  return `⚠ APPROVAL REQUIRED\n${redact(String(summary ?? ""))}\n\n${redact(String(detail ?? "")).slice(0, 2800)}`;
+}
+
 async function send(chatId: string, text: string, extra?: Record<string, unknown>): Promise<any> {
   if (!botToken) return null;
   return api(botToken, "sendMessage", {
     chat_id: Number(chatId) || chatId,
-    text: text.slice(0, 3900),
+    text: outboundText(text),
     ...extra,
   });
 }
@@ -47,7 +70,7 @@ async function send(chatId: string, text: string, extra?: Record<string, unknown
 /** Push a card to every allowlisted chat so the phone can authorise HUD-less turns. */
 export async function sendApprovalCard(id: string, summary: string, detail: string): Promise<void> {
   if (!botToken || !allowed.size) return;
-  const text = `⚠ APPROVAL REQUIRED\n${summary}\n\n${detail.slice(0, 2800)}`;
+  const text = approvalCardText(summary, detail);
   for (const chatId of allowed) {
     try {
       const msg = await send(chatId, text, {
