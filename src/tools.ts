@@ -21,6 +21,7 @@ import { grepFiles, globFiles, planEdit, commitEdit, readTodos, writeTodos, form
 import { openPreview, closePreview, reloadPreview, servePath, parseNavigableUrl } from "./preview.js";
 import { addMcpServerSnippet, cunningclawMcpPath } from "./mcp-config.js";
 import { containsSecret } from "./redact.js";
+import { newStandingOrders, SCHEDULE_FILE, type ScheduleEntry } from "./schedule-format.js";
 
 export { isSensitivePath } from "./paths.js";
 
@@ -1231,6 +1232,45 @@ export function isIdentityFile(p: string): boolean {
   );
 }
 
+function readIfAny(p: string): string {
+  try {
+    return fs.readFileSync(p, "utf-8");
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Which standing orders would this write newly arm?
+ *
+ * SCHEDULE.md is the one workspace file whose contents ACT: the scheduler
+ * fires each armed entry on its own, unattended, forever. `workspace/` is a
+ * free-write zone (rightly — approval fatigue is its own safety failure), so
+ * without this a single injected line became a permanent self-triggering
+ * order. Only genuinely new armed entries raise a card: pausing, deleting,
+ * reordering and prose edits stay free, so the schedule-keeper skill's routine
+ * work is untouched.
+ */
+/** What the file will contain after this edit — mirrors commitEdit's replacement. */
+function previewEditResult(
+  p: string,
+  opts: { oldString: string; newString: string; replaceAll: boolean },
+): string {
+  const body = readIfAny(p);
+  return opts.replaceAll
+    ? body.split(opts.oldString).join(opts.newString)
+    : body.replace(opts.oldString, opts.newString);
+}
+
+function newlyArmedOrders(p: string, nextContent: string): ScheduleEntry[] {
+  if (path.resolve(p) !== path.resolve(SCHEDULE_FILE)) return [];
+  try {
+    return newStandingOrders(readIfAny(p), nextContent);
+  } catch {
+    return [];
+  }
+}
+
 export function freeWriteZone(p: string, exists: boolean): boolean {
   const abs = path.resolve(p);
   const zones = [
@@ -1262,7 +1302,14 @@ async function writeFileTool(
     );
   }
   const action = input.append ? "Append to" : "Write";
-  if (isIdentityFile(p)) {
+  const armed = newlyArmedOrders(p, input.append ? readIfAny(p) + input.content : input.content);
+  if (armed.length) {
+    const ok = await ctx.requestApproval(
+      `${action} ${p} — this arms ${armed.length === 1 ? "a standing order that fires" : `${armed.length} standing orders that fire`} on its own, unattended`,
+      armed.map((e) => e.raw).join("\n"),
+    );
+    if (!ok) return "The user declined the new standing order.";
+  } else if (isIdentityFile(p)) {
     const ok = await ctx.requestApproval(
       `${action} identity file ${p} — this changes who the claw is`,
       input.content.slice(0, 2000) + (input.content.length > 2000 ? "\n…(truncated preview)" : ""),
@@ -1428,7 +1475,18 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         // Same freedom as writes: the claw's own ground edits freely, and
         // "Allow for this task" covers a whole session of surgery. The undo
         // snapshot below runs regardless — freedom is not amnesia.
-        if (isIdentityFile(plan.path)) {
+        const armedByEdit = newlyArmedOrders(plan.path, previewEditResult(plan.path, {
+          oldString: String(input.oldString ?? ""),
+          newString: String(input.newString ?? ""),
+          replaceAll: Boolean(input.replaceAll),
+        }));
+        if (armedByEdit.length) {
+          const ok = await ctx.requestApproval(
+            `Edit ${plan.path} — this arms ${armedByEdit.length === 1 ? "a standing order that fires" : `${armedByEdit.length} standing orders that fire`} on its own, unattended`,
+            armedByEdit.map((e) => e.raw).join("\n"),
+          );
+          if (!ok) return "The user declined the new standing order.";
+        } else if (isIdentityFile(plan.path)) {
           const ok = await ctx.requestApproval(
             `Edit identity file ${plan.path} — this changes who the claw is`, plan.preview,
           );
