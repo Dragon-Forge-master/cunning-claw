@@ -12,7 +12,7 @@ single image — a trade sign, in the tradition of hanging an anvil over the
 smithy door.
 
 Provenance, stated per the epistemic firewall: the illustration was generated
-by Gemini at Chris's direction (original plate kept at
+by Gemini at the operator's direction (original plate kept at
 [`assets/forge-mark-original.jpeg`](assets/forge-mark-original.jpeg)) and
 traced to vector locally with vtracer. The claw grips the anvil; it does not
 crush it — the forge serves the work.

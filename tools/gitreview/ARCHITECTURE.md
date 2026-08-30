@@ -1,6 +1,6 @@
 # Local Git Review Skill — Architecture
 
-Automated commit and branch review on Chris's machine, using local models through
+Automated commit and branch review on the operator's machine, using local models through
 git hooks. No code leaves the box.
 
 ---

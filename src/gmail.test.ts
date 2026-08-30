@@ -44,7 +44,7 @@ test("Gmail-related URLs include the account picker, not just mail.google.com", 
   assert.equal(isGmailMailboxUrl("https://accounts.google.com/ServiceLogin"), false);
   assert.equal(isGmailRelatedUrl("https://news.ycombinator.com"), false);
   const msg = formatGmailOpenFailure({
-    profileDir: "/home/chris/.config/cunningclaw/chrome-profile",
+    profileDir: "/home/owner/.config/cunningclaw/chrome-profile",
     tabs: [{ title: "New Tab", url: "chrome://newtab" }],
   });
   assert.match(msg, /everyday Chrome/);
@@ -122,7 +122,7 @@ test("a thread formats every message, not just the last body", () => {
     subj: "Re: Quote",
     messages: [
       { from: "a@x", fromName: "Ann", date: "Mon", text: "Can you quote the Golf?" },
-      { from: "chris@y", fromName: "Chris", date: "Tue", text: "Yes — sending today." },
+      { from: "sam@y", fromName: "Sam", date: "Tue", text: "Yes — sending today." },
     ],
   });
   assert.match(text, /2 message\(s\) in thread/);
@@ -144,7 +144,7 @@ test("gmail tools are on the roster, including draft and send", () => {
     assert.ok(names.includes(n), n);
   }
   const send = toolDefinitions.find((t) => t.name === "send_email");
-  assert.match(String(send?.description), /asks Chris first|Always asks/i);
+  assert.match(String(send?.description), /asks the operator first|Always asks/i);
   const action = toolDefinitions.find((t) => t.name === "email_action");
   const schema = action?.input_schema as { properties?: { action?: { enum?: string[] } } };
   for (const a of GMAIL_ACTIONS) {

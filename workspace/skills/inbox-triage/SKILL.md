@@ -2,7 +2,7 @@
 name: inbox-triage
 label: Inbox
 category: machine
-description: Read, search, draft, and send Gmail through the signed-in Chrome profile. Use when Chris asks to check mail, find a message, draft a reply, or "what's in the inbox".
+description: Read, search, draft, and send Gmail through the signed-in Chrome profile. Use when the operator asks to check mail, find a message, draft a reply, or "what's in the inbox".
 author: cunningclaw
 written: 2026-08-27
 ---
@@ -11,7 +11,7 @@ written: 2026-08-27
 
 Gmail in this house is the Chrome profile Cunning Claw already owns. There is no Gmail API, no OAuth paste, no MCP. `check_email` / `read_email` / `draft_email` / `send_email` / `email_action` drive that window.
 
-That Chrome is a **separate window** (`~/.config/cunningclaw/chrome-profile` on Linux). Signing into the Chrome Chris already uses for the rest of the day does nothing. If `check_email` asks for sign-in, finish it in *that* window. If it lists the tabs it can see, read them — a Google account picker is success, not "Could not open Gmail."
+That Chrome is a **separate window** (`~/.config/cunningclaw/chrome-profile` on Linux). Signing into the Chrome the operator already uses for the rest of the day does nothing. If `check_email` asks for sign-in, finish it in *that* window. If it lists the tabs it can see, read them — a Google account picker is success, not "Could not open Gmail."
 
 Claude Code's usual miss: scrape the Primary tab, read one `.a3s` body, ignore Promotions / Updates / Social, then draft a reply from half a thread. Do not do that.
 
@@ -27,8 +27,8 @@ Gmail's window title `(12)` counts **every** unread conversation. The list you f
 2. `read_email` with that index — **the whole thread**, expanded. Not the last message only.
 3. Summarise: who, subject, what they want, what is due. Quote only when asked.
 4. If a reply is warranted, `draft_email` with `reply: true` (thread must be open) or a new compose with `to` / `subject` / `body`. That types into Gmail. **It does not send.**
-5. Show Chris the draft. `send_email` only after he says to send *this* message. That call always raises an approval card.
-6. Housekeeping: `email_action` `archive` / `star` / `read` / `unread` / `back`. `spam` and `trash` ask him first.
+5. Show the operator the draft. `send_email` only after they say to send *this* message. That call always raises an approval card.
+6. Housekeeping: `email_action` `archive` / `star` / `read` / `unread` / `back`. `spam` and `trash` ask them first.
 
 ## Search — use Gmail's language
 
@@ -87,7 +87,7 @@ These tools assume Gmail shortcuts are **On**: Settings → See all settings →
 | `Ctrl+Enter` | send |
 | `Shift+;` | expand the thread |
 
-If compose does not open, say so and ask Chris to turn shortcuts on. Do not start clicking random `div.T-I` classes.
+If compose does not open, say so and ask the operator to turn shortcuts on. Do not start clicking random `div.T-I` classes.
 
 ## Do not
 
@@ -95,4 +95,4 @@ If compose does not open, say so and ask Chris to turn shortcuts on. Do not star
 - Report unread from the Primary tab when `TITLE_UNREAD` disagrees.
 - Send because you drafted. Draft is the work; send is a decision.
 - Open WhatsApp with these Gmail tools. WhatsApp Web is `check_whatsapp` — see `whatsapp-desk`.
-- Handle passwords. If Gmail asks for sign-in, stop and tell Chris the Cunning Claw Chrome window (not the everyday one) needs him once.
+- Handle passwords. If Gmail asks for sign-in, stop and tell the operator the Cunning Claw Chrome window (not the everyday one) needs them once.

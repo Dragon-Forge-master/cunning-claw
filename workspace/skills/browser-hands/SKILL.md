@@ -17,7 +17,7 @@ Claude Code's browser asks for a snapshot, then a click, then another snapshot. 
 2. `browser_click` / `browser_type` / `browser_fill` with `ref: "e3"`. Do not invent CSS. If the tree is empty, `browser_wait` (`title` or `ms`) then `browser_screenshot`, then click `x`/`y` from that image.
 3. Read the snapshot that came back. TITLE is data (`(34) WhatsApp Business` = logged in, 34 unread). If the tree looks stale or the page is a canvas, `browser_screenshot`.
 4. `browser_wait` with `text`, `selector`, `title`, `url`, or `ms` instead of sleeping in prose.
-5. Committing clicks (Send, Pay, Delete) still need Chris. Navigational ones do not.
+5. Committing clicks (Send, Pay, Delete) still need the operator. Navigational ones do not.
 
 ## What beats a CSS guess
 

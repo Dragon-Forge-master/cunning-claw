@@ -2,7 +2,7 @@
 name: business-platform
 label: Business platform
 category: forge
-description: Build a complete multi-tenant business platform on Cloudflare — auth, database, storage, payments, email, dashboard. Use when Chris asks for a SaaS, a client portal, a booking or quoting system, or anything a business would run on rather than a brochure site.
+description: Build a complete multi-tenant business platform on Cloudflare — auth, database, storage, payments, email, dashboard. Use when the operator asks for a SaaS, a client portal, a booking or quoting system, or anything a business would run on rather than a brochure site.
 ---
 
 # Build a business platform
@@ -12,7 +12,7 @@ description: Build a complete multi-tenant business platform on Cloudflare — a
 > onto Vercel + Postgres + S3, Fly, Railway, or a plain VPS. Read the stack the user
 > already has and translate the shape; only the binding names change.
 
-Chris has already shipped one of these. **Read `Dragon-Forge-master/estimatic` before you
+The operator has already shipped one of these. **Read `Dragon-Forge-master/estimatic` before you
 start** — it is the reference implementation, not a hypothetical: multi-tenant SaaS on
 Workers, D1 for data, R2 for photos, vanilla front end with no build step, AI vision for the
 core feature, Resend for email, and CJVS as tenant #1.
@@ -59,16 +59,16 @@ Retrofitting tenancy is painful; assume it immediately.
 ## Rules
 
 - **Auth and payments get human review before launch.** Scaffold them, then say plainly that
-  Chris should read them. An AI-written session check is exactly the code that must not be
+  The operator should read them. An AI-written session check is exactly the code that must not be
   trusted on a first pass.
 - Secrets go in `wrangler secret put`. Never in `wrangler.toml`, never in the repo.
 - Turnstile on every public form. A quote form without it becomes a spam relay in days.
 - Test locally against `npx wrangler dev` with a seeded local D1 before deploying.
-- Deploy to a `*.workers.dev` URL first. A customer domain needs Chris to say so explicitly.
+- Deploy to a `*.workers.dev` URL first. A customer domain needs the operator to say so explicitly.
 - After deploying, open the live URL and check it — a deploy log is not proof.
 
 ## Where you stop
 
 You can build the platform. You cannot decide whether the business works. Pricing, market,
-terms, liability and anything touching real customer money are Chris's calls. Build the
-thing, show him what you built, and say what you were unsure about.
+terms, liability and anything touching real customer money are the operator's calls. Build the
+thing, show them what you built, and say what you were unsure about.

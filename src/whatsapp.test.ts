@@ -92,7 +92,7 @@ test("an open thread is numbered, with YOU vs the contact", () => {
 });
 
 test("QR copy names the Claw Chrome profile, not everyday Chrome", () => {
-  const text = formatWhatsAppQr("/home/chris/.config/cunningclaw/chrome-profile");
+  const text = formatWhatsAppQr("/home/owner/.config/cunningclaw/chrome-profile");
   assert.match(text, /QR code/);
   assert.match(text, /cunningclaw\/chrome-profile/);
   assert.match(text, /everyday/);
@@ -119,5 +119,5 @@ test("whatsapp tools are on the roster, and send always asks", () => {
     assert.ok(names.includes(n), n);
   }
   const send = toolDefinitions.find((t) => t.name === "send_chat");
-  assert.match(String(send?.description), /asks Chris first|Always asks/i);
+  assert.match(String(send?.description), /asks the operator first|Always asks/i);
 });

@@ -1,7 +1,7 @@
 import { config } from "./config.js";
 
 /**
- * Repetition ratio, from Chris's own Quantum Coherence Kernel.
+ * Repetition ratio, from the Quantum Coherence Kernel.
  *
  *   repetitionRatio = 1 - (uniqueSteps / totalSteps)
  *

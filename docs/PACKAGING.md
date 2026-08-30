@@ -15,9 +15,9 @@ A **Tauri** shell (Rust-based, ~10MB, uses the OS webview) wrapping three things
    none needs bundling. Voice's optional Piper setup is the one Python-adjacent
    piece, and on Windows SAPI already covers it.)
 3. **A first-run wizard** — the piece that kills two birds:
-   - asks the new owner's **name** and **town** (fixing the shipped-config
-     problem where every fresh claw greets its owner as "Chris" and reports
-     Cardiff weather),
+   - asks the new owner's **name** and **town** (the shipped config now
+     carries a neutral placeholder, so the wizard is what makes a fresh claw
+     greet its actual owner and report its actual local weather),
    - collects the **OpenRouter key** (or offers "fully offline" via a
      one-click Ollama model pull),
    - creates data folders, `.env` (mode 600), and the per-machine token.

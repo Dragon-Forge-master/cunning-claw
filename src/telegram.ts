@@ -102,7 +102,7 @@ async function bootstrapWhoamiLoop(token: string): Promise<void> {
           chat_id: chatId,
           text:
             `Your chat id is: ${chatId}\n\n` +
-            `Ask Chris to put TELEGRAM_CHAT_ID=${chatId} in .env and restart Cunning Claw. ` +
+            `Ask the operator to put TELEGRAM_CHAT_ID=${chatId} in .env and restart Cunning Claw. ` +
             `Until then I take no instructions here.`,
         }).catch(() => {});
       }

@@ -7,9 +7,9 @@ description: Build a website or web app in any stack — plain HTML, React, Vue,
 
 # Ship a site
 
-The experience to deliver: Chris speaks, a good-looking site appears on the glass,
-he says "make the header bigger", and it changes in front of him. Lovable and v0
-sell exactly this — you do it locally, on his machine, in whatever stack fits.
+The experience to deliver: The operator speaks, a good-looking site appears on the glass,
+they say "make the header bigger", and it changes in front of them. Lovable and v0
+sell exactly this — you do it locally, on their machine, in whatever stack fits.
 
 ## The loop — show early, change live
 
@@ -23,7 +23,7 @@ sell exactly this — you do it locally, on his machine, in whatever stack fits.
 4. **Iterate conversationally.** Every change request is an `edit_file`, then
    `preview` reload, then one phrase about what changed. He must never have to
    ask "can I see it?" — reload after every edit, always.
-5. **Deploy only when he says so** (deploy sections below).
+5. **Deploy only when they say so** (deploy sections below).
 
 ## Any stack — pick by the job, not by habit
 
@@ -31,9 +31,9 @@ sell exactly this — you do it locally, on his machine, in whatever stack fits.
 |---|---|---|
 | Landing page, portfolio, menu, brochure, invite | **One `index.html`, embedded CSS, Google Fonts** — the default; no toolchain to rot | `preview` the folder |
 | "React" / "Vue" / "Svelte" / interactive app / SPA | `npm create vite@latest <name> -- --template react` (or `vue`, `svelte`, `react-ts`…), `npm install`, `npm run build` | `preview` the **`dist/`** folder |
-| Multi-page content site, docs, blog | Plain HTML pages, or Astro when he names it | `preview` the folder / `dist/` |
-| A backend (Flask, Express, APIs) | Write the code honestly — but local hosting of long-running servers is not possible yet (run_command reaps them). Target **Cloudflare Workers** and deploy there, or hand Chris the run command for his own terminal | Deployed URL |
-| Any other language he names | You have a shell: if its toolchain emits static files, build them | `preview` the output |
+| Multi-page content site, docs, blog | Plain HTML pages, or Astro when they name it | `preview` the folder / `dist/` |
+| A backend (Flask, Express, APIs) | Write the code honestly — but local hosting of long-running servers is not possible yet (run_command reaps them). Target **Cloudflare Workers** and deploy there, or hand the operator the run command for their own terminal | Deployed URL |
+| Any other language they name | You have a shell: if its toolchain emits static files, build them | `preview` the output |
 
 Framework iteration has no dev server here — the cycle is **edit `src/` →
 `npm run build` → `preview` reload**. Vite builds in seconds; that is fast
@@ -77,9 +77,9 @@ for c in vercel netlify wrangler flyctl railway gh; do which $c 2>/dev/null; don
 | Vercel | `npx vercel --prod` | Next.js, React, anything v0 generated |
 | Netlify | `npx netlify deploy --prod` | Static sites, Jamstack |
 | GitHub Pages | `gh` + Actions, or push to `gh-pages` | Docs, zero cost |
-| A plain server | `rsync -avz ./dist user@host:/var/www/` | Chris already has a box |
+| A plain server | `rsync -avz ./dist user@host:/var/www/` | the operator already has a box |
 
-**If nothing is configured, recommend Cloudflare and say why.** Then let him
+**If nothing is configured, recommend Cloudflare and say why.** Then let them
 overrule you.
 
 ## Deploy is a shell job, not a tool hunt
@@ -90,11 +90,11 @@ the shell you already have. `wrangler` is already logged in on the Linux machine
 
 ### Mind what the URL says out loud
 
-A `*.workers.dev` URL is prefixed with the **account's** subdomain — Chris's
+A `*.workers.dev` URL is prefixed with the **account's** subdomain — the operator's
 business name. For anything public, **prefer Pages**:
 `npx wrangler pages deploy <dir> --project-name cunningclaw` →
 `cunningclaw.pages.dev`, no business name anywhere. Confirm the public name with
-Chris before shipping — the name is part of what goes live.
+The operator before shipping — the name is part of what goes live.
 
 Then verify: open the returned URL, screenshot it, and only then report success —
 a deploy that 200s on a blank page is a failure.
@@ -102,7 +102,7 @@ a deploy that 200s on a blank page is a failure.
 ## Rules
 
 - First render on the glass early; reload after every edit, unprompted.
-- Staging URL first; a custom or client domain needs Chris to say so explicitly.
+- Staging URL first; a custom or client domain needs the operator to say so explicitly.
 - Credentials come from `.env` as `${VAR}` — reference them, never read or print them.
 - Do not register domains, change DNS, or touch billing.
 - Two identical failures means the approach is wrong. Stop and report rather than retry.

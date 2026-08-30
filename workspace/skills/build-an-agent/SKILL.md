@@ -2,13 +2,13 @@
 name: build-an-agent
 label: Build an agent
 category: forge
-description: Build and deploy an AI agent for someone on Cloudflare, using the Agents SDK. Use when Chris asks you to build an agent, assistant, chatbot, or automation for a client or for one of the Forge properties.
+description: Build and deploy an AI agent for someone on Cloudflare, using the Agents SDK. Use when the operator asks you to build an agent, assistant, chatbot, or automation for a client or for one of the Forge properties.
 ---
 
 # Build an agent on Cloudflare
 
-Cloudflare is the default target unless Chris says otherwise. One CLI deploys everything,
-the free tier is generous, and he already runs estimatic, awen-ai and forgenet-api there.
+Cloudflare is the default target unless the operator says otherwise. One CLI deploys everything,
+the free tier is generous, and they already run estimatic, awen-ai and forgenet-api there.
 An opinionated default is a feature — fewer decisions means fewer ways to fail.
 
 ## The model

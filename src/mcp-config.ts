@@ -9,7 +9,7 @@
  *   4. ~/.claude.json  (user-scope Claude Code)
  *   5. ~/.cursor/mcp.json
  *
- * A stdio entry is still a subprocess. These files are ones Chris already
+ * A stdio entry is still a subprocess. These files are ones the operator already
  * trusted to another client, or wrote himself — not discovery from the web.
  */
 import fs from "node:fs";

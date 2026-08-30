@@ -194,7 +194,7 @@ export function startSchedule(events: AgentEvents): void {
       saveState(state);
       void runTurn(
         `[scheduled:${e.target}] ${e.instruction}\n` +
-          `(This fired from workspace/SCHEDULE.md — the schedule you keep for Chris. ` +
+          `(This fired from workspace/SCHEDULE.md — the schedule you keep for the operator. ` +
           `Prepare and inform; anything consequential still needs his approval now.)`,
         events,
         { kind: "user" },

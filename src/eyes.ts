@@ -101,7 +101,7 @@ async function lookDesk(): Promise<ToolResultContent[]> {
     return [{
       type: "text",
       text:
-        "Butler eyes are off. Set eyes.enabled to true in claw.config.json if Chris wants the webcam.",
+        "Butler eyes are off. Set eyes.enabled to true in claw.config.json if the operator wants the webcam.",
     }];
   }
   const h = host();

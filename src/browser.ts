@@ -1317,7 +1317,7 @@ export async function draftEmail(input: {
     "",
     (preview?.body || input.body).slice(0, 2000),
     "",
-    "Call send_email only after Chris has seen this and said to send it.",
+    "Call send_email only after the operator has seen this and said to send it.",
   ].join("\n");
 }
 
@@ -1327,7 +1327,7 @@ export async function sendEmail(): Promise<string> {
   const s = tab.s;
   const before = await evaluate(s, GMAIL_COMPOSE_OPEN_JS) as { composeOpen?: boolean };
   if (!before?.composeOpen) {
-    return "No compose window is open. draft_email first, then send_email after Chris approves.";
+    return "No compose window is open. draft_email first, then send_email after the operator approves.";
   }
   const modifiers = process.platform === "darwin" ? 4 : 2;
   await dispatchChord(s, { key: "Enter", code: "Enter", vk: 13, modifiers });
@@ -1566,7 +1566,7 @@ export async function draftChat(input: { body: string; index?: number; name?: st
     "",
     (preview?.body || input.body).slice(0, 2000),
     "",
-    "Call send_chat only after Chris has seen this and said to send it.",
+    "Call send_chat only after the operator has seen this and said to send it.",
   ].join("\n");
 }
 
@@ -1576,7 +1576,7 @@ export async function sendChat(): Promise<string> {
   const s = tab.s;
   const before = (await evaluate(s, WA_COMPOSE_JS)) as WhatsAppDraft;
   if (!before?.open) {
-    return "No compose box is open. draft_chat first, then send_chat after Chris approves.";
+    return "No compose box is open. draft_chat first, then send_chat after the operator approves.";
   }
   if (!String(before.body ?? "").trim()) {
     return "Compose is empty. draft_chat first.";

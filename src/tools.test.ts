@@ -32,7 +32,7 @@ test("safe commands still auto-approve and unknown ones still ask", () => {
   // Read-only inspection stopped asking in the approval-fatigue purge:
   assert.equal(classifyCommand("git status"), "auto");
   assert.equal(classifyCommand("git log --oneline -5"), "auto");
-  assert.equal(classifyCommand("mkdir -p /home/chris/sites/new"), "auto");
+  assert.equal(classifyCommand("mkdir -p /home/owner/sites/new"), "auto");
   // Anything that installs, mutates beyond a fresh dir, or chains still asks:
   assert.equal(classifyCommand("npm install"), "approve");
   assert.equal(classifyCommand("git push"), "approve");
@@ -44,7 +44,7 @@ test("file tools refuse shadow, sudoers and ssh keys", () => {
   assert.equal(isSensitivePath("/etc/shadow"), true);
   assert.equal(isSensitivePath("/etc/sudoers"), true);
   assert.equal(isSensitivePath("~/.ssh/id_rsa"), true);
-  assert.equal(isSensitivePath("/home/chris/notes.txt"), false);
+  assert.equal(isSensitivePath("/home/owner/notes.txt"), false);
 });
 
 test("shell cwd defaults to this install, not the home folder", () => {
@@ -82,9 +82,9 @@ test("free write zones: the claw's ground is free, consequences still ask", () =
   assert.equal(freeWriteZone(path.join(ROOT, "workspace/SCHEDULE.md"), true), true);
   assert.equal(freeWriteZone(path.join(home, "sites/garage/index.html"), true), true);
   // A brand-new, non-hidden file under home: creation is near-consequence-free.
-  assert.equal(freeWriteZone(path.join(home, "quotes/jenkins-quote.md"), false), true);
+  assert.equal(freeWriteZone(path.join(home, "quotes/customer-quote.md"), false), true);
   // Overwriting an existing file outside the zones still asks.
-  assert.equal(freeWriteZone(path.join(home, "quotes/jenkins-quote.md"), true), false);
+  assert.equal(freeWriteZone(path.join(home, "quotes/customer-quote.md"), true), false);
   // Hidden paths never get the new-file grace — autostarts live in dotdirs.
   assert.equal(freeWriteZone(path.join(home, ".config/autostart/evil.desktop"), false), false);
   // Outside home entirely: ask.

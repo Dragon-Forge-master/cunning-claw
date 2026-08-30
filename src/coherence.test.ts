@@ -3,7 +3,7 @@ import test from "node:test";
 import { signature, read, notice } from "./coherence.js";
 
 /**
- * The repetition ratio comes from Chris's Quantum Coherence Kernel:
+ * The repetition ratio comes from the Quantum Coherence Kernel:
  *   repetitionRatio = 1 - (uniqueSteps / totalSteps)
  *
  * The Ouroboros guard blocks a call repeated identically. This exists for the

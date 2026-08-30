@@ -61,7 +61,7 @@ const VIEWS: Record<GmailView, string> = {
   important: "imp",
 };
 
-/** Phrases Chris actually says, mapped onto Gmail's search language. */
+/** Phrases operators actually say, mapped onto Gmail's search language. */
 const PHRASES: Record<string, string> = {
   unread: "is:unread",
   "unread mail": "is:unread",

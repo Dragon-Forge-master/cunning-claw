@@ -70,7 +70,7 @@ if ($needsKey) {
 
 # --- Workspace --------------------------------------------------------------
 # Personal workspace files are per-install, so seed them from the templates.
-foreach ($f in @("USER", "MEMORY")) {
+foreach ($f in @("USER", "MEMORY", "SCHEDULE")) {
   if (-not (Test-Path "workspace/$f.md") -and (Test-Path "workspace/$f.md.example")) {
     Copy-Item "workspace/$f.md.example" "workspace/$f.md"
     Say "Created workspace/$f.md - edit it so it knows who you are."

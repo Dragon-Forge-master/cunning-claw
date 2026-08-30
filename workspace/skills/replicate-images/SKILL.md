@@ -2,7 +2,7 @@
 name: replicate-images
 label: Replicate images
 category: forge
-description: Generate images (and other model outputs) through the Replicate MCP server — create a prediction, poll it, show the result. Use when Chris asks to generate, draw, or render an image, or to run a Replicate model.
+description: Generate images (and other model outputs) through the Replicate MCP server — create a prediction, poll it, show the result. Use when the operator asks to generate, draw, or render an image, or to run a Replicate model.
 ---
 
 # Generate images with Replicate
@@ -20,18 +20,18 @@ success, not failure.** The image does not exist yet; you go back for it.
    `mcp__replicate__create_prediction` with:
    ```json
    { "model": "black-forest-labs/flux-schnell",
-     "input": { "prompt": "what Chris asked for, in vivid concrete detail" } }
+     "input": { "prompt": "what the operator asked for, in vivid concrete detail" } }
    ```
    The reply reads `Created prediction <id>`. Note the id.
 
 2. **Poll:** `mcp__replicate__get_prediction` with `{ "prediction_id": "<id>" }`.
    The reply is plain text lines — `Status: starting`, then `processing`, then
    `succeeded`. Wait a few seconds between polls; flux-schnell usually finishes
-   in under ten seconds. Give up and tell Chris only after ~60 seconds or a
-   `Status: failed` (the failure text says why — read it to him).
+   in under ten seconds. Give up and tell the operator only after ~60 seconds or a
+   `Status: failed` (the failure text says why — read it to them).
 
 3. **Show it:** on `succeeded`, the `Output:` block holds image URL(s). Put one
-   on the glass with `preview` (or `browser_open`). If Chris wants the file,
+   on the glass with `preview` (or `browser_open`). If the operator wants the file,
    download it with your shell to `~/` and say where you put it.
 
 ## The classic mistake — where the prompt goes
@@ -49,7 +49,7 @@ And read failures before reporting them: a `Status: failed` reply with an
 ## Choosing a model — never from memory
 
 - Default: `black-forest-labs/flux-schnell` — fast, good, about a penny, and
-  **verified working on this machine**. Use it unless Chris names another.
+  **verified working on this machine**. Use it unless the operator names another.
 - Higher quality when asked: `black-forest-labs/flux-1.1-pro` (slower, dearer).
 - Anything else: the slug MUST come from `search_models` or `get_model` in this
   session — **never from your training memory**. Invented slugs
@@ -70,4 +70,4 @@ And read failures before reporting them: a `Status: failed` reply with an
   If replicate ever shows disconnected in your turn header, say so — do not
   edit any config file (mcp.json is blocked anyway; mcp_add is the only door).
 - Each image costs real money (pennies). Generate what was asked, not a
-  gallery of variants — unless Chris asks for options.
+  gallery of variants — unless the operator asks for options.

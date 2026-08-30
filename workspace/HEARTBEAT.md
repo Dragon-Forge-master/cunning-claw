@@ -8,7 +8,7 @@ When a heartbeat fires, check in this order:
 2. Is the machine in obvious trouble (disk full, load extreme)? Say so once.
 3. From the journal tail already in your context (no extra tool calls): is there
    ONE clearly stalled thread the operator plainly meant to continue — a task
-   left mid-flight, a question he asked that never got its answer? If so, offer
+   left mid-flight, a question they asked that never got its answer? If so, offer
    it in a single line, at most once per day. Preparing is allowed; acting is not.
 4. Otherwise do nothing.
 

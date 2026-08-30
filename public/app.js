@@ -285,7 +285,7 @@ if (!SR) {
 
   // Sending must wipe the dictaphone's memory too. It used to clear only the
   // box — then the next repaint (another word, or just switching the mic off)
-  // resurrected the sent message, and Chris had to delete it by hand. Again.
+  // resurrected the sent message, and the operator had to delete it by hand. Again.
   resetDictation = () => { dictationBase = ""; finalSpeech = ""; };
 
   const paint = (interim) => {

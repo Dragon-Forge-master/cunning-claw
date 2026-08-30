@@ -83,12 +83,29 @@ fi
 
 # Personal workspace files are per-install, so seed them from the templates.
 # (Unconditionally — a healthy install deserves a USER.md too.)
-for f in USER MEMORY; do
+for f in USER MEMORY SCHEDULE; do
   if [ ! -f "workspace/$f.md" ] && [ -f "workspace/$f.md.example" ]; then
     cp "workspace/$f.md.example" "workspace/$f.md"
     say "Created workspace/$f.md — edit it so it knows who you are."
   fi
 done
+
+# Who is the claw working for? The shipped config carries a neutral placeholder
+# so no clone greets its new owner by the previous one's name. Ask once, here,
+# rather than leaving everyone to find persona.userName in the JSON.
+CURRENT_OWNER=$(node -e 'process.stdout.write(require("./claw.config.json").persona.userName)' 2>/dev/null || echo "Owner")
+if [ "$CURRENT_OWNER" = "Owner" ] && [ -t 0 ]; then
+  printf "  What should the claw call you? [Owner] "
+  read -r OWNER_NAME
+  if [ -n "$OWNER_NAME" ]; then
+    node -e '
+      const fs = require("fs");
+      const cfg = JSON.parse(fs.readFileSync("claw.config.json", "utf8"));
+      cfg.persona.userName = process.argv[1];
+      fs.writeFileSync("claw.config.json", JSON.stringify(cfg, null, 2) + "\n");
+    ' "$OWNER_NAME" && say "The claw will address you as $OWNER_NAME."
+  fi
+fi
 
 say "npm run doctor"
 set +e

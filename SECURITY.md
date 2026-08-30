@@ -5,8 +5,8 @@ inbox. A hole in it is a hole in your machine. Reports are genuinely welcome.
 
 ## Reporting
 
-Email **cjvehiclespecialist@gmail.com** with `SECURITY` in the subject, or open a
-[private advisory](https://github.com/Dragon-Forge-master/cunning-claw/security/advisories/new).
+Open a [private security advisory](https://github.com/Dragon-Forge-master/cunning-claw/security/advisories/new)
+— it reaches the maintainers directly and stays private until a fix ships.
 
 Please don't open a public issue for anything exploitable. Expect a reply within a
 few days — this is maintained by one person.

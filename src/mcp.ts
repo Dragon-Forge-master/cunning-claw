@@ -33,7 +33,7 @@ function mcpConfig() {
  * SECURITY. An MCP server is third-party code, and connecting to one is a
  * larger trust decision than it looks:
  *   - A stdio server is a subprocess you spawn. That is arbitrary code
- *     execution, which is why servers come only from config files Chris owns
+ *     execution, which is why servers come only from config files the operator owns
  *     (claw.config.json, .mcp.json, Claude/Cursor mcp.json) — never the web.
  *   - Tool *descriptions* are written by the server and land in the system
  *     prompt. A hostile server can put instructions there, so they are
@@ -227,7 +227,7 @@ class McpConnection {
       if (!retried && tokenFor(this.cfg.id)) {
         return this.httpRpc(method, params, true);
       }
-      throw new Error(`MCP "${this.cfg.id}" HTTP ${res.status} — needs OAuth. Ask Chris to connect it (mcp_login).`);
+      throw new Error(`MCP "${this.cfg.id}" HTTP ${res.status} — needs OAuth. Ask the operator to connect it (mcp_login).`);
     }
     if (!res.ok) throw new Error(`MCP "${this.cfg.id}" HTTP ${res.status}`);
     const text = await res.text();
@@ -649,7 +649,7 @@ export async function loginMcp(serverId: string, log: (line: string) => void = (
       return (
         `GitHub refuses self-registered OAuth clients, so browser sign-in cannot work. ` +
         `Use a Personal Access Token instead: create one at github.com/settings/tokens ` +
-        `(classic; scopes: repo, read:org), ask Chris to add GITHUB_TOKEN=ghp_... to .env ` +
+        `(classic; scopes: repo, read:org), ask the operator to add GITHUB_TOKEN=ghp_... to .env ` +
         `— never paste it in chat — then restart. The connector sends it automatically.`
       );
     }
@@ -777,7 +777,7 @@ export async function callTool(localToolName: string, input: unknown): Promise<s
   } catch (err: any) {
     const msg = String(err?.message ?? err);
     if (/HTTP 401|needs OAuth/i.test(msg)) {
-      return `${msg}\nCall mcp_login with server "${tool.serverId}" so Chris can sign in in the browser.`;
+      return `${msg}\nCall mcp_login with server "${tool.serverId}" so the operator can sign in in the browser.`;
     }
     return `MCP call failed: ${msg}`;
   }

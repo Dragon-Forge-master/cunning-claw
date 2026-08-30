@@ -1,5 +1,5 @@
 /**
- * Known hosted MCP endpoints. This is a directory Chris can browse, not
+ * Known hosted MCP endpoints. This is a directory the operator can browse, not
  * discovery from the web — every URL is a vendor's published Streamable HTTP
  * (or legacy SSE) address, the same ones Claude Code's
  * `claude mcp add --transport http` list uses.

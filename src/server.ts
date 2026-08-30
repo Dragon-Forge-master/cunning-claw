@@ -243,7 +243,7 @@ app.post("/api/reset", (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// The Desk — local documents, shared ground between Chris and the claw.
+// The Desk — local documents, shared ground between the operator and the claw.
 //
 // Plain markdown files in ~/Documents/CunningClaw: the HUD's Docs page edits
 // them, and the assistant reads and drafts the very same files with its file
@@ -263,7 +263,7 @@ function docPath(name: string): string | null {
 
 /**
  * The chat paperclip. Files land in the Desk's uploads folder, where both
- * Chris and the assistant can reach them; the chat message carries the path.
+ * The operator and the assistant can reach them; the chat message carries the path.
  */
 app.post("/api/upload", express.json({ limit: "30mb" }), (req, res) => {
   const name = String(req.body?.name ?? "").replace(/[^A-Za-z0-9 ._()-]/g, "_").slice(0, 100);
