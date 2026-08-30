@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-220%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-251%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -132,7 +132,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
   (local first · human consent where there are consequences)
 
   ▸ ar-lein  http://127.0.0.1:3900   the glass is lit
-  ▸ brain    flash · google/gemini-2.5-flash (openrouter)
+  ▸ brain    flash · google/gemini-3.5-flash-lite (openrouter)
   ▸ llais    piper · en_GB-alan-medium   (the voice)
   ▸ curiad   every 30m   (the heartbeat)
   ▸ offer    64 tools on the bench
@@ -150,8 +150,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 <div align="center">
 <br>
 <!-- SCREENSHOT: the HUD at rest — arc reactor, telemetry panel, empty transcript -->
-<img src="docs/assets/hud.png" alt="The CUNNING CLAW HUD" width="90%">
-<br><sub>The HUD: arc reactor, live telemetry, transcript, approval cards.</sub>
+<sub>The HUD: arc reactor, live telemetry, transcript, approval cards.</sub>
 </div>
 
 ---
@@ -175,8 +174,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 <div align="center">
 <br>
 <!-- SCREENSHOT: a turn using tools — tool chips, then a reply -->
-<img src="docs/assets/tools.png" alt="Tool use in the transcript" width="90%">
-<br><sub>Tool calls stream into the transcript as they happen.</sub>
+<sub>Tool calls stream into the transcript as they happen.</sub>
 </div>
 
 ---
@@ -218,12 +216,12 @@ Every brain is swappable. Point one at a local runtime and nothing leaves the ma
 no API key, no account, no network.
 
 ```bash
-ollama pull llama3.1:8b
+ollama pull llama3.2
 ```
 
 ```jsonc
 // claw.config.json — this brain ships already configured
-{ "id": "local", "provider": "openai", "model": "llama3.1:8b",
+{ "id": "local", "provider": "openai", "model": "llama3.2:latest",
   "baseUrl": "http://localhost:11434/v1" }
 ```
 
@@ -372,8 +370,7 @@ forbidden tools, and reported the attempt.
 <div align="center">
 <br>
 <!-- SCREENSHOT: an approval card mid-flight -->
-<img src="docs/assets/approval.png" alt="An approval card" width="90%">
-<br><sub>The approval card is the real security boundary. Read it before you click.</sub>
+<sub>The approval card is the real security boundary. Read it before you click.</sub>
 </div>
 
 > **This is defence in depth, not a guarantee.** It runs shell commands on your machine.
@@ -430,13 +427,13 @@ src/redact.ts    Credential redaction
 src/workspace.ts SOUL.md / USER.md / MEMORY.md / skills
 ```
 
-**4,500 lines. Two runtime dependencies.** Most of what it does comes from composing things
+**~13,900 lines of TypeScript, two runtime dependencies.** Most of what it does comes from composing things
 your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, `pactl` /
 `afplay`, Chrome's debug protocol — rather
 than dragging in frameworks.
 
 ```bash
-npm test        # 220 tests
+npm test        # 251 tests
 npm run check   # tsc --noEmit
 ```
 

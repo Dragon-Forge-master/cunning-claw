@@ -21,5 +21,7 @@ on this Cloudflare account.
 - `cunningclaw-demo.mp4` is 11MB. Pages serves it fine. If it ever needs to be
   smaller, re-encode at CRF 24 rather than dropping to 720p — the text in the
   frames is what suffers first.
-- The numbers on the page (4 brains, 36 tools, 111 tests, 2 dependencies) are
-  real. Update them here when they change, or don't state them.
+- The numbers on the page (6 brains, 64 tools, 251 tests, 2 dependencies) are
+  real. Update them here when they change, or don't state them. Count them:
+  brains from `claw.config.json`, tools with `grep -c '^    name: "' src/tools.ts`,
+  tests from what `npm test` reports.

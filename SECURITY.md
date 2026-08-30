@@ -44,15 +44,23 @@ Especially interested in:
 
 ## Design notes for anyone auditing
 
-Four claims are load-bearing. Breaking any of them is a real finding:
+Six claims are load-bearing. Breaking any of them is a real finding:
 
 1. `HARD_DENY` cannot be weakened by config.
-2. Untrusted content is fenced as data and the fence cannot be closed from inside it.
+2. Untrusted content is fenced as data, and the fence cannot be closed from inside
+   it — attribute included, not just the body.
 3. Agent-written files are data; only human-authored workspace files carry authority.
+   SCHEDULE.md is the sharp case: its entries fire unattended, so arming a new one
+   raises an approval card and what fires is marked as a recollection, not an order.
 4. A turn that can see untrusted content runs on a trusted brain, and taint is sticky.
+5. The file denylist covers this install's own credentials — `.env`, the OAuth token
+   store, the Chrome profile's cookies — and no tool may route around it. A browser
+   navigation is a file read too: `browser_open` takes http(s) only.
+6. Credentials are redacted on every path that leaves the machine, Telegram included.
 
-Tests for all four live in `src/tools.test.ts`, `src/provenance.test.ts` and
-`src/routing.test.ts`. If you break one, a test should have caught it — a passing
+Tests live beside the code they guard: `src/tools.test.ts`, `src/provenance.test.ts`,
+`src/routing.test.ts`, `src/paths.test.ts`, `src/telegram.test.ts`, `src/schedule.test.ts`,
+`src/browser.test.ts` and `src/mcp.test.ts`. If you break one, a test should have caught it — a passing
 test suite alongside a working exploit is itself worth reporting.
 
 ## Scope

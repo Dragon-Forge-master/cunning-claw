@@ -5,16 +5,17 @@ This is a local assistant that can run a shell, see the screen, and drive a brow
 ## Layout
 
 ```
-public/            HUD (vanilla JS). Claude owns public/app.js — do not edit it
-                   while auth work is in flight; check before you touch it.
-src/server.ts      HTTP + SSE. Same ownership rule as app.js.
+public/            HUD (vanilla JS)
+src/server.ts      HTTP + SSE, the approval registry, the Desk document API
 src/boot.ts        First-run gate, then loads the server
 src/agent.ts       Streaming tool loop
 src/brain.ts       Named brains, failover, spend
 src/tools.ts       Tool schemas + dispatcher + HARD_DENY
 src/browser.ts     Chrome via CDP; fences page/email as <untrusted>
 src/gmail.ts       Gmail search language, list/thread scrapers, compose helpers
-src/desktop.ts     Screen, keys, clipboard — Linux and macOS via src/platform.ts
+src/desktop.ts     Screen, keys, clipboard — per-platform paths via src/platform.ts
+src/windows.ts     The Windows half: PowerShell, SendKeys, System.Drawing
+src/paths.ts       expandHome + the sensitive-file denylist every file tool obeys
 src/voice.ts       Piper / spd-say / say
 src/doctor.ts      npm run doctor
 src/workspace.ts   SOUL.md / MEMORY.md / skills
