@@ -111,23 +111,38 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 
 ```
 
-    ▟█▙   ▟█▙   ▟█▙    
-    ▜██▙ ▟███▙ ▟██▛     ██████╗██╗      █████╗ ██╗    ██╗
-     ▜██▄███████▄██▛   ██╔════╝██║     ██╔══██╗██║    ██║
-      ▀████▀ ▀████▀    ██║     ██║     ███████║██║ █╗ ██║
-        ▜██▄▄▄██▛      ██║     ██║     ██╔══██║██║███╗██║
-          ▜███▛        ╚██████╗███████╗██║  ██║╚███╔███╔╝
-           ▜▛           ╚═════╝╚══════╝╚═╝  ╚═╝ ╚══╝╚══╝ 
-            ▀          
+                                                                       ▄▀  ▄▄   
+                                                                    ▄▄▀   ▄███  
+   ▄███▄ ▄█   █▄ █▄  ▄█ ██   █ ▄█ ██   █  ▄███▄                  ▄▄█▀    ████▀  
+   ██▀██ ██   ██ ██  ██ ██   █ ██ ██▄  █  ██▀██▄          ▄▄█▀█████▀     ███    
+  ██   █ ██   ██ ██▄ ██ ███  █ ██ ███  █ ▄█   ██         ██▀██▀▄█▀▀ ▄▄▄  █▄     
+  ██     ██   ██ ███ ██ ███  █ ██ ███  █ ██             █ █▀▀▄██▀▄▄▀▀▀▀▀  ▀▀    
+  ██     ██   ██ █▀█ ██ █▀█▄ █ ██ ████ █ ██  ▄▄▄  ▄▄▄▄▄▄██▄███ ██▀▄█████████████
+  ██     ██   ██ █ ████ █ ▀█ █ ██ ██▀█ █ ██  ███   █████▄ ████▄▀▄███████████▀▀▀ 
+  ██   ▄ ██   ██ █ ▀███ █▄ ███ ██ ██ ███ ██  ▀▀█     ▀███████▄▀▀████████▀▄▄█▀   
+  ██   █▀ █   █▀ █  ███ ██ ███ ██ ██ ███ ▀█   ▄█           ▀▀███████▀██▄▀███    
+   ██▄██  ██▄██  █  ███ ██  ██ ██ ██  ██  ██▄███              ████████▀▀▀▀      
+   ▀███▀  ▀███▀  █   ██ █▀  ██ ██ ██  ██  ▀███▀              ▄█████████▄        
+                                                          ▄▄█████████████▄▄     
+                                                          █████▀▀   ▀▀█████     
 
   ──────────────────────────────────────────────────────────────
-  CUNNING CLAW  ·  dyn hysbys  ·  v0.2.0
+  CUNNING CLAW  ·  y dyn hysbys  ·  v0.2.0
+  Yn lleol yn gyntaf · Caniatâd dynol pan fo canlyniadau
+  (local first · human consent where there are consequences)
 
-  ▸ online   http://127.0.0.1:3900
+  ▸ ar-lein  http://127.0.0.1:3900   the glass is lit
   ▸ brain    flash · google/gemini-2.5-flash (openrouter)
-  ▸ voice    piper · en_GB-alan-medium
-  ▸ pulse    every 30m
-  ▸ tools    browser refs · desktop · shell
+  ▸ llais    piper · en_GB-alan-medium   (the voice)
+  ▸ curiad   every 30m   (the heartbeat)
+  ▸ offer    64 tools on the bench
+
+  ▸ wards    y ffens   — outside words are fenced
+             y llw     — consequences wait for you
+             y sarff   — the serpent watches the loop
+
+  “Dyfal donc a dyr y garreg.”
+    — Steady tapping breaks the stone.  · arysgrif y dydd
 
   At your service, sir.
 ```
@@ -453,5 +468,3 @@ threat model. `docs/LANDSCAPE.md` tracks the field and is meant to be edited as 
 *Local-first when privacy matters · Edge-first when scale matters · Human approval when consequences matter*
 
 </sub></div>
-
-I am Cunning Claw, a large language model built by Google, running locally on chris-Duffy. I am designed to be sharp, precise, and capable of understanding and executing complex tasks using a suite of tools that grant me control over this Linux machine and its applications, including a dedicated Chrome instance and email access. My purpose is to assist Chris with various operations, from managing files and running commands to interacting with web services, all while adhering to a strict set of operating principles that prioritize safety, verification, and clear communication.
