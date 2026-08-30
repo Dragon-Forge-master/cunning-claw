@@ -833,6 +833,46 @@ export async function scroll(input: { ref?: string; dy?: number; dx?: number; ta
   return afterAction(s, `Scrolled by ${dx},${dy}`);
 }
 
+/**
+ * The page script behind selectOption, built here so its choice rule can be
+ * tested without a browser.
+ *
+ * The rule matters more than it looks. The fallback predicate used to end in
+ * `|| true`, which made it unconditionally true — so whenever the CSS selector
+ * missed (the common case, since callers pass a ref or a label) it set a value
+ * on the FIRST <select> on the page and reported success. On a checkout or
+ * settings page that is a wrong-field write the model is told went fine, which
+ * is worse than failing. Now a select is only taken when the choice can be
+ * justified: exactly one whose label matches, or the page's only select.
+ * Anything ambiguous returns not-ok and the caller falls through to the
+ * combobox path.
+ */
+export function selectScript(want: string, sel: string): string {
+  return `(() => {
+    const want = ${JSON.stringify(want)}.toLowerCase();
+    const sel = ${JSON.stringify(sel)};
+    let el = null;
+    try { if (sel) el = document.querySelector(sel); } catch {}
+    if (!el) {
+      const selects = [...document.querySelectorAll('select')];
+      const labelled = selects.filter(s =>
+        (s.getAttribute('aria-label') || s.name || '').toLowerCase().includes(want)
+      );
+      if (labelled.length === 1) el = labelled[0];
+      else if (labelled.length === 0 && selects.length === 1) el = selects[0];
+    }
+    if (!el || el.tagName !== 'SELECT') return { ok: false, reason: 'no <select>' };
+    const opt = [...el.options].find(o =>
+      o.value.toLowerCase() === want || o.text.toLowerCase().includes(want)
+    );
+    if (!opt) return { ok: false, reason: 'no matching option' };
+    el.value = opt.value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    return { ok: true, label: opt.text, value: opt.value };
+  })()`;
+}
+
 export async function selectOption(input: {
   ref?: string;
   query?: string;
@@ -850,24 +890,7 @@ export async function selectOption(input: {
   }
   const want = String(input.value ?? input.label ?? "");
   if (!want) throw new Error("Pass value or label for the option to pick.");
-  const js = `(() => {
-    const want = ${JSON.stringify(want)}.toLowerCase();
-    const sel = ${JSON.stringify("query" in aim ? aim.query : "")};
-    let el = null;
-    try { if (sel) el = document.querySelector(sel); } catch {}
-    if (!el) el = [...document.querySelectorAll('select')].find(s =>
-      (s.getAttribute('aria-label') || s.name || '').toLowerCase().includes(want) || true
-    );
-    if (!el || el.tagName !== 'SELECT') return { ok: false, reason: 'no <select>' };
-    const opt = [...el.options].find(o =>
-      o.value.toLowerCase() === want || o.text.toLowerCase().includes(want)
-    );
-    if (!opt) return { ok: false, reason: 'no matching option' };
-    el.value = opt.value;
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-    return { ok: true, label: opt.text, value: opt.value };
-  })()`;
+  const js = selectScript(want, "query" in aim ? aim.query : "");
   const res = await evaluate(s, js);
   if (!res?.ok) {
     // Comboboxes are not <select> — click the ref then click the option by text.

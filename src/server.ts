@@ -53,7 +53,17 @@ const app = express();
 // both read it, and a request can arrive the instant listen() resolves.
 const { generated: tokenGenerated } = ensureToken();
 
-app.use(express.json({ limit: "1mb" }));
+// 1MB is right for chat and control traffic. The paperclip route is not:
+// it carries a base64 file. body-parser sets req._body after the FIRST parse,
+// so the route-level express.json({limit:"30mb"}) on /api/upload was a silent
+// no-op — every upload over 1MB died here instead, answering with
+// body-parser's HTML error page (absolute node_modules paths and all) rather
+// than the route's own JSON. Skip the global parser for that one path and let
+// the route's larger one actually run.
+const smallJson = express.json({ limit: "1mb" });
+app.use((req, res, next) =>
+  req.path === "/api/upload" ? next() : smallJson(req, res, next),
+);
 
 // Loading the HUD hands the browser its session, so EventSource — which cannot
 // set headers — can authenticate on the stream that follows.
@@ -263,7 +273,7 @@ function docPath(name: string): string | null {
 
 /**
  * The chat paperclip. Files land in the Desk's uploads folder, where both
- * The operator and the assistant can reach them; the chat message carries the path.
+ * the operator and the assistant can reach them; the chat message carries the path.
  */
 app.post("/api/upload", express.json({ limit: "30mb" }), (req, res) => {
   const name = String(req.body?.name ?? "").replace(/[^A-Za-z0-9 ._()-]/g, "_").slice(0, 100);

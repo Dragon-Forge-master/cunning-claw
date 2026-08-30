@@ -118,6 +118,22 @@ function openBrowser(url: string): void {
   child.unref();
 }
 
+/**
+ * Does the callback's state match the one we sent?
+ *
+ * The old guard read `if (parsed.state && parsed.state !== state) throw` — so a
+ * callback that simply OMITTED the parameter skipped the check altogether, and
+ * anything able to reach the loopback listener could inject its own
+ * authorization code and have the claw store the attacker's tokens. Absent
+ * state is a mismatch, not an exemption.
+ *
+ * Plain `===` is right here: state is 128 bits of randomBytes compared once, so
+ * timing is not the threat model that matters.
+ */
+export function callbackStateOk(expected: string, received: string | null | undefined): boolean {
+  return typeof received === "string" && received.length > 0 && received === expected;
+}
+
 function waitForCode(portHint = 0): Promise<{ port: number; code: Promise<string> }> {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
@@ -126,6 +142,17 @@ function waitForCode(portHint = 0): Promise<{ port: number; code: Promise<string
         const err = u.searchParams.get("error");
         const code = u.searchParams.get("code");
         const state = u.searchParams.get("state") ?? "";
+        // Only a genuine callback settles this listener. It used to resolve on
+        // the FIRST request of any path, so a browser asking for /favicon.ico
+        // could win the race and settle the sign-in with an empty code — and
+        // now that the state check is strict (below), an empty state is a hard
+        // refusal rather than a skipped check. Anything that is not the
+        // callback gets a 404 and the listener keeps waiting.
+        if (u.pathname !== "/callback" || (!code && !err)) {
+          res.writeHead(404);
+          res.end("not the OAuth callback");
+          return;
+        }
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
         if (err) {
           res.end(`<p>Cunning Claw could not finish sign-in (${err}). You can close this tab.</p>`);
@@ -289,7 +316,9 @@ export async function authorizeMcp(serverId: string, mcpUrl: string, wwwAuthenti
   openBrowser(authUrl.toString());
   const raw = await codeP;
   const parsed = JSON.parse(raw) as { code: string; state: string };
-  if (parsed.state && parsed.state !== state) throw new Error("OAuth state mismatch — refusing the callback.");
+  if (!callbackStateOk(state, parsed.state)) {
+    throw new Error("OAuth state mismatch — refusing the callback.");
+  }
   if (!parsed.code) throw new Error("OAuth callback had no code.");
 
   const tokenBody = new URLSearchParams({

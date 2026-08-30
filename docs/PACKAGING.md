@@ -11,8 +11,9 @@ A **Tauri** shell (Rust-based, ~10MB, uses the OS webview) wrapping three things
 2. **The engine** — the Node/TypeScript server, compiled to a single
    self-contained binary with Node's **Single Executable Application** support
    (or `pkg`/Bun compile). No Node install, no `npm install`, no terminal.
-   (Note: the engine is Node — there is no Python runtime in Cunning Claw and
-   none needs bundling. Voice's optional Piper setup is the one Python-adjacent
+   (Note: the engine is Node. Python appears only in developer tooling —
+   `tools/gitreview/`, wired in through `core.hooksPath` — which a shipped app
+   does not carry. Voice's optional Piper setup is the other Python-adjacent
    piece, and on Windows SAPI already covers it.)
 3. **A first-run wizard** — the piece that kills two birds:
    - asks the new owner's **name** and **town** (the shipped config now
