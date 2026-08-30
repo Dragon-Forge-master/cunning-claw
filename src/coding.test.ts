@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { planEdit, commitEdit, grepFiles, globFiles, listLocalRepos, resolveWorkPath } from "./coding.js";
 import { ROOT } from "./config.js";
-import { parsePreviewUrl, openPreview, closePreview } from "./preview.js";
+import { parsePreviewUrl, parseNavigableUrl, openPreview, closePreview } from "./preview.js";
 
 test("preview URLs rewrite 0.0.0.0 and reject script/file schemes", () => {
   const ok = parsePreviewUrl("http://0.0.0.0:5173/app");
@@ -85,4 +85,43 @@ test("relative file paths agree with the shell about where 'here' is", () => {
   }
   // A bare new filename keeps the old home-default.
   assert.equal(resolveWorkPath("brand-new-notes.md"), path.join(os.homedir(), "brand-new-notes.md"));
+});
+
+test("parseNavigableUrl refuses every scheme that is not http(s)", () => {
+  // A navigation to file:/// is a file read that walks straight past
+  // isSensitivePath, which guards read_file and knows nothing about the browser.
+  for (const bad of [
+    "file:///etc/passwd",
+    "file:///home/owner/.ssh/id_rsa",
+    "data:text/html,<script>fetch('/x')</script>",
+    "javascript:alert(1)",
+    "view-source:https://example.com",
+    "chrome://settings",
+  ]) {
+    const res = parseNavigableUrl(bad);
+    assert.equal(res.ok, false, `${bad} should be refused`);
+  }
+});
+
+test("parseNavigableUrl says whether an address is public, this machine, or this network", () => {
+  const scope = (u: string) => {
+    const r = parseNavigableUrl(u);
+    return r.ok ? r.scope : `refused:${r.error}`;
+  };
+  assert.equal(scope("https://example.com/page"), "public");
+  assert.equal(scope("http://localhost:5173"), "loopback");
+  assert.equal(scope("http://127.0.0.1:9222/json/list"), "loopback");
+  // The classic SSRF prize, and the router.
+  assert.equal(scope("http://169.254.169.254/latest/meta-data/"), "private");
+  assert.equal(scope("http://192.168.1.1/admin"), "private");
+  assert.equal(scope("http://10.0.0.5:8080"), "private");
+  assert.equal(scope("http://nas.local/files"), "private");
+  assert.equal(scope("http://intranet"), "private", "a single-label host is on this network");
+  // The wildcard address is still rewritten, and lands as loopback.
+  const wild = parseNavigableUrl("http://0.0.0.0:5173/app");
+  assert.equal(wild.ok, true);
+  if (wild.ok) {
+    assert.match(wild.url, /127\.0\.0\.1:5173/);
+    assert.equal(wild.scope, "loopback");
+  }
 });

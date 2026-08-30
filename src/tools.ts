@@ -18,7 +18,7 @@ import { readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
 import { expandHome, isSensitivePath } from "./paths.js";
 import { grepFiles, globFiles, planEdit, commitEdit, readTodos, writeTodos, formatTodos, numberLines, resolveWorkPath, listLocalRepos } from "./coding.js";
-import { openPreview, closePreview, reloadPreview, servePath } from "./preview.js";
+import { openPreview, closePreview, reloadPreview, servePath, parseNavigableUrl } from "./preview.js";
 import { addMcpServerSnippet, cunningclawMcpPath } from "./mcp-config.js";
 import { containsSecret } from "./redact.js";
 
@@ -1192,7 +1192,12 @@ async function execIn(command: string, cwd: string): Promise<string> {
 async function readFileTool(input: { path: string; offset?: number; limit?: number }): Promise<string> {
   const p = resolveWorkPath(input.path);
   if (isSensitivePath(p)) {
-    return "BLOCKED: that path is on the sensitive-file denylist and will never be read.";
+    return (
+      "BLOCKED: that path is on the sensitive-file denylist and will never be read. " +
+      "It holds credentials — keys, tokens, cookies or a private key. For configuration " +
+      "shape, read the .env.example template instead; to USE a secret, reference it as " +
+      "${VAR_NAME} in an http_request header, which injects it without either of us seeing it."
+    );
   }
   const stat = fs.statSync(p);
   if (stat.size > 100 * 1024) return `File is ${(stat.size / 1024).toFixed(0)}KB — too large. Use grep, or run_command with head.`;
@@ -1279,8 +1284,27 @@ async function writeFileTool(
   return `Wrote ${input.content.length} chars to ${p}.`;
 }
 
+/** The HUD's own origin, which the claw serves and may always reach. */
+function isOwnHud(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return (
+      (u.hostname === "127.0.0.1" || u.hostname === "localhost") &&
+      u.port === String(config.server.port)
+    );
+  } catch {
+    return false;
+  }
+}
+
 async function openTool(input: { target: string }): Promise<string> {
   const t = input.target;
+  // Handing a path to xdg-open/rundll32 is not a read the model can see, but
+  // the denylist is about what this machine's private files are for, not only
+  // about what reaches the transcript. It cost one line to check.
+  if (isSensitivePath(expandHome(t))) {
+    return "BLOCKED: that path is on the sensitive-file denylist and will never be opened.";
+  }
   // Any URI scheme (https:, file:, mailto:, microsoft-edge:, a bare C:\ drive)
   // or path is a thing to OPEN; only bare words are programs to launch. The
   // old test knew only http(s) and Unix paths, so "file:///C:/…" was spawned
@@ -1510,7 +1534,24 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "memory_save": return remember(input.key, input.value, ctx.tainted?.() ?? false);
       case "memory_forget": return forget(input.key);
       case "memory_search": return searchMemory(String(input.query ?? ""));
-      case "browser_open": return await browser.openUrl(input.url, Boolean(input.newTab));
+      case "browser_open": {
+        const parsed = parseNavigableUrl(String(input.url ?? ""));
+        if (!parsed.ok) return parsed.error;
+        // Reaching this machine or the network it sits on — a dev server, the
+        // router's admin page, the cloud metadata address — is not obviously
+        // wrong, but it is not something to do unasked either: the HTTP tool
+        // has an allowlist for exactly this and the browser had nothing. The
+        // claw's own HUD is exempt; it hands out that origin itself.
+        if (parsed.scope !== "public" && !isOwnHud(parsed.url)) {
+          const ok = await ctx.requestApproval(
+            "Open a local address in the browser",
+            `${parsed.url}\n\n(${parsed.scope === "loopback" ? "this machine" : "this private network"} — ` +
+              `not a public web address)`,
+          );
+          if (!ok) return "The user declined to open that address.";
+        }
+        return await browser.openUrl(parsed.url, Boolean(input.newTab));
+      }
       case "browser_snapshot": return await browser.snapshot(input.tab);
       case "browser_read": return await browser.readPage(input.tab);
       case "browser_screenshot": {

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { config } from "./config.js";
+import { parseNavigableUrl } from "./preview.js";
 import {
   flattenAx,
   formatSnapshot,
@@ -66,16 +67,11 @@ export { fenceUntrusted, lookupRef, refLabel } from "./browser-ax.js";
 
 const execFileAsync = promisify(execFile);
 
-const PROFILE_DIR =
-  process.platform === "darwin"
-    ? path.join(os.homedir(), "Library", "Application Support", "cunningclaw", "chrome-profile")
-    : process.platform === "win32"
-      ? path.join(os.homedir(), "AppData", "Local", "cunningclaw", "chrome-profile")
-      : path.join(os.homedir(), ".config", "cunningclaw", "chrome-profile");
-
-export function chromeProfileDir(): string {
-  return PROFILE_DIR;
-}
+// Lives in paths.ts so the sensitive-path denylist can cover the cookie jar
+// without dragging CDP, Gmail and WhatsApp in behind it. Re-exported here
+// because this is where callers expect to find it.
+import { PROFILE_DIR, chromeProfileDir } from "./paths.js";
+export { chromeProfileDir };
 
 const PORT = config.browser.debugPort;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
@@ -545,6 +541,15 @@ export async function readPage(index?: number, maxChars = 8000): Promise<string>
 }
 
 export async function openUrl(url: string, newTab: boolean): Promise<string> {
+  // Validate BEFORE spawning anything: this used to hand the string straight to
+  // Page.navigate, so browser_open("file:///…/.ssh/id_rsa") followed by
+  // browser_read returned the file — past isSensitivePath, which guards
+  // read_file and knows nothing about the browser. Same rule as the HUD
+  // viewport, so both surfaces refuse in the same words.
+  const parsed = parseNavigableUrl(url);
+  if (!parsed.ok) return parsed.error;
+  url = parsed.url;
+
   const boot = await ensureBrowser();
   if (!boot.ok) return boot.message;
 
