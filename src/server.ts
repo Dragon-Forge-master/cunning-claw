@@ -21,6 +21,7 @@ import {
 } from "./connectors.js";
 import { startHeartbeat, heartbeatStatus } from "./heartbeat.js";
 import { startSchedule, scheduleStatus } from "./schedule.js";
+import { startRemoteWatch } from "./remote-watch.js";
 import { listSkills, readSkill, skillCatalog } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
 import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, missingKeyHint, sessionSpend, lastTurnCost } from "./brain.js";
@@ -567,6 +568,7 @@ app.listen(port, host, async () => {
 
   startHeartbeat(agentEvents);
   startSchedule(agentEvents);
+  startRemoteWatch(agentEvents);
   startTelegram(agentEvents, { resolveApproval: settleApproval });
   for (const line of bootBrainLines()) console.log(line);
   if (!brainReady()) {

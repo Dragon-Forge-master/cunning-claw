@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-275%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-284%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -285,6 +285,11 @@ read by `ssh` itself, so it never enters this process's memory.
 - **The box holds no secrets and receives none.** `remote_copy` refuses to push
   anything on the sensitive-file denylist, in either direction.
 
+**Finished jobs find you.** A watcher checks running jobs every 45 seconds and reports
+completions on its own — the claw tells you the build finished while you were asleep,
+rather than waiting to be asked. The fact (exit code) is stated plainly; the log is
+fenced as untrusted, because a build log is other people's code talking.
+
 Setup is one command each: make the key, copy it over, `ssh user@host true` once to
 verify the fingerprint, then add the block above. `npm run doctor` checks every box —
 reachable, key present, key mode, host key known, workdir writable — and names the fix
@@ -494,7 +499,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 275 tests
+npm test        # 284 tests
 npm run check   # tsc --noEmit
 ```
 
