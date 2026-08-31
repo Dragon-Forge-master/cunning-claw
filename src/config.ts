@@ -151,6 +151,22 @@ export interface ClawConfig {
    * keeps asking individually, which is the old behaviour.
    */
   workOrder?: { enabled?: boolean; expiryMinutes?: number };
+  /**
+   * Second machines the claw may work on. Boxes are named here and chosen by
+   * id — the model never supplies a host, a user or an ssh option.
+   */
+  remote?: {
+    enabled?: boolean;
+    defaultBox?: string;
+    connectTimeoutSec?: number;
+    runTimeoutMs?: number;
+    maxOutputChars?: number;
+    boxes?: {
+      id: string; label?: string; host: string; user: string; port?: number;
+      identityFile?: string; workdir?: string; jobsDir?: string;
+      allowSudo?: boolean; allowReboot?: boolean; note?: string;
+    }[];
+  };
   board?: { githubOwner?: string; weatherPlace?: string; staleAfterDays?: number };
   server: { port: number; host: string };
   /**

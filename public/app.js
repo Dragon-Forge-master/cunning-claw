@@ -411,6 +411,19 @@ es.addEventListener("brain_guard", (e) => {
 
 // A plan was approved: from here, its listed steps run without cards. Say so
 // once, plainly, so the quiet that follows is understood rather than eerie.
+// A job started, finished or died on a box. The floor view lives on /board;
+// this is the one-line notice on the glass so the operator is not surprised.
+es.addEventListener("remote_job", (e) => {
+  const { name, box, state, command } = sseData(e);
+  const div = document.createElement("div");
+  div.className = "guard-chip";
+  const mark = state === "finished" ? "\u2713" : state === "died" ? "\u2717" : "\u25b8";
+  div.textContent = `${mark} ${box} \u00b7 ${name} \u00b7 ${state}`;
+  if (command) div.title = command;
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+});
+
 es.addEventListener("plan_active", (e) => {
   const { title, total, minutesLeft } = sseData(e);
   const div = document.createElement("div");

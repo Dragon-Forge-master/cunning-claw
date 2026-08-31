@@ -34,7 +34,16 @@ export const UNTRUSTED_TOOLS = new Set([
  * Every browser_* result is page content (snapshots included), so they all taint.
  */
 function isUntrustedToolName(name: string): boolean {
-  return UNTRUSTED_TOOLS.has(name) || name.startsWith("mcp__") || name.startsWith("browser_");
+  return (
+    UNTRUSTED_TOOLS.has(name) ||
+    name.startsWith("mcp__") ||
+    name.startsWith("browser_") ||
+    // Anything a second machine prints is a build log, a fetched repo, or some
+    // package's README — other people's words, arriving on our machine. The
+    // fence on the output taints the turn that READS it; this taints the turn
+    // that calls, which is the one that can still be steered.
+    name.startsWith("remote_")
+  );
 }
 
 /**

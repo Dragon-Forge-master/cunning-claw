@@ -51,6 +51,29 @@
     margin-bottom:2px;line-height:1.45}
   .dot2{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px}
   .up{background:#5ddc8c}.down{background:var(--red)}
+
+/* The floor: one strip per box, a tile per job. State reads at a glance. */
+.box-strip{border:1px solid rgba(26,108,122,.3);margin-bottom:12px}
+.box-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+          padding:8px 12px;border-bottom:1px solid rgba(26,108,122,.22);background:rgba(10,22,38,.5)}
+.box-name{color:#35d6ed;letter-spacing:.12em;font-size:.78rem}
+.box-where{color:#4f8fa0;font-size:.68rem}
+.jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;padding:10px 12px}
+.job{border:1px solid rgba(26,108,122,.28);border-left:3px solid #4f8fa0;padding:8px 10px;
+     display:flex;flex-direction:column;gap:4px;background:rgba(10,22,38,.35)}
+.job.running{border-left-color:#35d6ed}
+.job.finished{border-left-color:#5ddc8c}
+.job.died{border-left-color:#ff5470}
+.job.unknown{border-left-color:#ffb454}
+.job-name{color:#c9e8f2;font-size:.76rem;letter-spacing:.04em}
+.job-state{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase}
+.job.running .job-state{color:#35d6ed}
+.job.finished .job-state{color:#5ddc8c}
+.job.died .job-state{color:#ff5470}
+.job.unknown .job-state{color:#ffb454}
+.job-cmd{color:#4f8fa0;font-size:.66rem;word-break:break-all;line-height:1.45}
+.floor-empty{color:#4f8fa0;font-size:.8rem;line-height:1.6}
+.floor-empty code{color:#35d6ed}
 </style>
 </head>
 <body>
@@ -62,6 +85,7 @@
   </div>
 
   <div class="grid">
+    <div class="panel wide"><h2>THE FLOOR</h2><div id="floor"></div></div>
     <div class="panel"><h2>TODAY</h2><div id="today"></div></div>
     <div class="panel"><h2>THE CLAW</h2><div id="claw"></div></div>
     <div class="panel"><h2>THIS MACHINE</h2><div id="machine"></div></div>
@@ -78,6 +102,42 @@ const esc = (s) => { const d = document.createElement("div"); d.textContent = s 
 
 /** A failure must look like a failure, not like an empty panel. */
 function fail(el, msg) { el.innerHTML = `<div class="err">⚠ ${esc(msg)}</div>`; }
+
+function ago(ms) {
+  const m = Math.round((Date.now() - ms) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return m + "m ago";
+  const h = Math.round(m / 60);
+  return h < 24 ? h + "h ago" : Math.round(h / 24) + "d ago";
+}
+
+function drawFloor(floor) {
+  const el = $("floor");
+  if (!floor || !floor.length) {
+    el.innerHTML = `<div class="floor-empty">No boxes configured yet. Add one under
+      <code>remote.boxes</code> in claw.config.json — a spare machine or any cloud VM —
+      and the work running on it appears here.</div>`;
+    return;
+  }
+  el.innerHTML = floor.map((b) => {
+    const jobs = (b.jobs || []).length
+      ? b.jobs.map((j) => `
+          <div class="job ${esc(j.state)}">
+            <div class="job-name">${esc(j.name)}</div>
+            <div class="job-state">${esc(j.state)} · ${esc(ago(j.startedAt))}</div>
+            <div class="job-cmd">${esc(j.command)}</div>
+          </div>`).join("")
+      : `<div class="floor-empty">idle</div>`;
+    return `
+      <div class="box-strip">
+        <div class="box-head">
+          <span class="box-name">${esc(b.label)}</span>
+          <span class="box-where">${esc(b.where)}${b.note ? " · " + esc(b.note) : ""}</span>
+        </div>
+        <div class="jobs">${jobs}</div>
+      </div>`;
+  }).join("");
+}
 
 function ageClass(d) { return d <= 2 ? "fresh" : d <= 14 ? "warm" : d <= 60 ? "stale" : "cold"; }
 function ageText(d)  { return d === 0 ? "today" : d === 1 ? "yesterday" : d < 60 ? `${d}d` : `${Math.floor(d/30)}mo`; }
@@ -104,6 +164,8 @@ async function draw() {
 
   fetch("/api/board").then(r => r.json()).then(b => {
     $("when").textContent = new Date(b.at).toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" });
+
+    drawFloor(b.floor);
 
     const w = b.weather || {};
     $("today").innerHTML = w.error

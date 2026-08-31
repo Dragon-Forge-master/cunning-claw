@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
 import { config, DATA_DIR, ROOT } from "./config.js";
+import { boxes, loadJobs, type JobRecord } from "./remote.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -171,6 +172,33 @@ export async function weather(): Promise<{ place: string; now?: string; today?: 
   });
 }
 
+/**
+ * The floor: every configured box and the jobs on it.
+ *
+ * Read from the local index rather than by reaching out to each machine — the
+ * board redraws on a timer and must not turn into a burst of ssh connections
+ * every minute. State here is as of the last time something looked; the job
+ * directory on the box remains the truth.
+ */
+function floor() {
+  const jobs = loadJobs();
+  return boxes().map((b) => ({
+    id: b.id,
+    label: b.label ?? b.id,
+    where: `${b.user}@${b.host}`,
+    note: b.note ?? "",
+    jobs: jobs
+      .filter((j: JobRecord) => j.box === b.id)
+      .sort((x: JobRecord, y: JobRecord) => y.startedAt - x.startedAt)
+      .map((j: JobRecord) => ({
+        name: j.name,
+        state: j.lastState ?? "unknown",
+        command: j.command.slice(0, 120),
+        startedAt: j.startedAt,
+      })),
+  }));
+}
+
 /** Everything the board needs, gathered in parallel. */
 export async function board() {
   const [r, c, w] = await Promise.all([repos(), commits(), weather()]);
@@ -180,5 +208,6 @@ export async function board() {
     repos: r,
     commits: c,
     journal: journal(),
+    floor: floor(),
   };
 }

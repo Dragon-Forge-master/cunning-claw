@@ -8,6 +8,12 @@ import { allowedDeskDevice, eyesSettings } from "./eyes.js";
 import { brainHasKey, brainKeyEnv, catalog, envLooksSet, isLocalEndpoint } from "./brain.js";
 import { hasBin, host, missing } from "./platform.js";
 import { findChromeBinary } from "./browser.js";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { boxes as remoteBoxes, sshArgs, shQuote, type Box as RemoteBox } from "./remote.js";
+import { expandHome } from "./paths.js";
+
+const execFileAsync = promisify(execFile);
 import { detect } from "./voice.js";
 
 export type CheckStatus = "ok" | "fail" | "warn";
@@ -111,6 +117,39 @@ async function portFree(port: number, listenHost: string): Promise<boolean> {
     });
     server.listen(port, listenHost);
   });
+}
+
+/**
+ * Is this box actually reachable, and is its workdir writable?
+ *
+ * One ssh call answers both, and each failure gets the line that fixes it —
+ * an unreachable box with a bare "failed" is the doctor doing nothing useful.
+ */
+async function probeBox(box: RemoteBox): Promise<{ ok: boolean; line: string }> {
+  if (!(await hasBin("ssh"))) return { ok: false, line: `ssh is not installed. ${missing("ssh")}` };
+  try {
+    const { stdout } = await execFileAsync(
+      "ssh",
+      sshArgs(box, `test -w ${shQuote(box.workdir)} && echo WRITABLE || echo NOWRITE`),
+      { timeout: 12000 },
+    );
+    if (/NOWRITE/.test(String(stdout))) {
+      return { ok: false, line: `reachable, but ${box.user} cannot write to ${box.workdir}` };
+    }
+    return { ok: true, line: `reachable, ${box.workdir} writable` };
+  } catch (err: any) {
+    const text = String(err?.stderr ?? err?.message ?? "").trim();
+    if (/Host key verification failed|not known/i.test(text)) {
+      return { ok: false, line: `host key not verified. Run once by hand: ssh -p ${box.port ?? 22} ${box.user}@${box.host} true` };
+    }
+    if (/Permission denied/i.test(text)) {
+      return { ok: false, line: `key refused — check the public key is in ${box.user}@${box.host}:~/.ssh/authorized_keys` };
+    }
+    if (/timed out|Connection refused|No route/i.test(text)) {
+      return { ok: false, line: `no answer on ${box.host}:${box.port ?? 22} — is the machine up?` };
+    }
+    return { ok: false, line: text.slice(0, 140) || "unreachable" };
+  }
 }
 
 // The doctor once kept its own private Chrome finder with no Windows paths in
@@ -352,6 +391,32 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
     ));
   } else if (origins === "hardened") {
     out.push(row("chrome-origins", "ok", false, "Chrome's debug port refuses foreign origins"));
+  }
+
+  // Boxes are optional, so every check here warns and none is essential.
+  for (const box of remoteBoxes()) {
+    const id = `box-${box.id}`;
+    const key = box.identityFile ? expandHome(box.identityFile) : "";
+    if (key && !fs.existsSync(key)) {
+      out.push(row(id, "warn", false, `Box ${box.id}: identity file ${key} is missing`));
+      continue;
+    }
+    if (key) {
+      try {
+        const mode = fs.statSync(key).mode & 0o777;
+        if (mode & 0o077) {
+          // ssh refuses a group- or world-readable key with a confusing error;
+          // catching it here saves the afternoon that costs.
+          const fix = host() === "win32"
+            ? `icacls "${key}" /inheritance:r /grant:r "%USERNAME%:R"`
+            : `chmod 600 ${key}`;
+          out.push(row(id, "warn", false, `Box ${box.id}: ${key} is mode ${mode.toString(8)} — ssh will refuse it. Fix: ${fix}`));
+          continue;
+        }
+      } catch { /* unreadable stat is not worth failing over */ }
+    }
+    const probe = await probeBox(box);
+    out.push(row(id, probe.ok ? "ok" : "warn", false, `Box ${box.id}: ${probe.line}`));
   }
 
   const { port, host: listenHost } = config.server;

@@ -87,6 +87,7 @@ const SENSITIVE_PREFIXES = [
   path.join(DATA_DIR, "mcp-oauth.json"),
   path.join(DATA_DIR, "history.json"),
   path.join(DATA_DIR, "memory.json"),
+  path.join(DATA_DIR, "remote-jobs.json"),
   path.join(ROOT, ".env"),
   // The cookie jar IS the logged-in Gmail and WhatsApp session.
   PROFILE_DIR,

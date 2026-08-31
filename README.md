@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-251%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-275%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -135,7 +135,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
   ▸ brain    flash · google/gemini-3.5-flash-lite (openrouter)
   ▸ llais    piper · en_GB-alan-medium   (the voice)
   ▸ curiad   every 30m   (the heartbeat)
-  ▸ offer    64 tools on the bench
+  ▸ offer    68 tools on the bench
 
   ▸ wards    y ffens   — outside words are fenced
              y llw     — consequences wait for you
@@ -169,6 +169,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **Remembers** | Markdown memory and a dated journal that survive restarts |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
 | **Reaches you** | Telegram, so it isn't trapped at your desk |
+| **Works elsewhere** | Any other machine you own over ssh — a spare PC or a cloud VM. Long jobs run **detached**: builds and servers survive the conversation ending and your laptop closing, which they cannot do here |
 | **Extends** | Skills as `SKILL.md` files ([agentskills.io](https://agentskills.io)). Click **SKILLS** on the HUD to arm them, the same idea as Claude’s capabilities list |
 
 <div align="center">
@@ -232,6 +233,66 @@ API; loopback and private-range hosts skip the key check entirely.
 > code guarantee, and small models are measurably worse at it. So turns that can see
 > untrusted content are forced onto a trusted brain — see below. Offline is for privacy and
 > cost, not for handing your inbox to a 7B model.
+
+---
+
+## A second machine
+
+`run_command` waits for a command to finish and stops it at the timeout. That is
+right for a desk machine and it means one thing plainly: **servers, builds, watchers
+and long scrapes cannot run here at all.** The code says so to the model itself.
+
+A box fixes that. Point Cunning Claw at any other computer you own — a spare PC, an
+EC2 instance, a GCE VM, a Hetzner or DigitalOcean droplet, Oracle's free tier — and
+he can work on it.
+
+```jsonc
+// claw.config.json
+"remote": {
+  "defaultBox": "forge",
+  "boxes": [{
+    "id": "forge",
+    "label": "Build box",
+    "host": "203.0.113.10",
+    "user": "claw",
+    "identityFile": "~/.ssh/claw_forge",
+    "workdir": "/home/claw/work"
+  }]
+}
+```
+
+Three tools: `remote_run` for something short, `remote_job` for anything long, and
+`remote_copy` for files. A started job is **detached** — it survives the turn, the
+conversation, and Cunning Claw restarting. Close the laptop; the build carries on.
+The Forge Board grows a **floor** panel showing every box and what is running on it.
+
+Transport is plain `ssh`, shelled out to the system binary. No provider SDK, no new
+dependency, works with every cloud and every spare machine — and the private key is
+read by `ssh` itself, so it never enters this process's memory.
+
+**The safety rules are not decoration:**
+
+- **The model never supplies a host, a user, or an ssh option.** Boxes are chosen by
+  id from your config. `-o ProxyCommand=…` is local code execution; it is unreachable
+  because nothing model-supplied reaches the argv.
+- `BatchMode=yes`, `StrictHostKeyChecking=yes`, `ForwardAgent=no`. You verify the host
+  key once, by hand — automating that away deletes the only proof of *which machine*
+  you are talking to.
+- **The same command floor applies out there.** `rm -rf` is refused on a box exactly
+  as it is here. `sudo` and `reboot` are per-box opt-ins, and even then they ask.
+- **Everything a box prints is untrusted and redacted** — a build log is other people's
+  code talking — and a turn that touches a box takes a trusted brain.
+- **The box holds no secrets and receives none.** `remote_copy` refuses to push
+  anything on the sensitive-file denylist, in either direction.
+
+Setup is one command each: make the key, copy it over, `ssh user@host true` once to
+verify the fingerprint, then add the block above. `npm run doctor` checks every box —
+reachable, key present, key mode, host key known, workdir writable — and names the fix
+for each failure.
+
+> A box is **not** a sandbox. It has *less* protection than your own machine: no undo
+> snapshots, and the sensitive-path denylist cannot follow you onto it. Treat it as a
+> machine you would not mind rebuilding.
 
 ---
 
@@ -427,13 +488,13 @@ src/redact.ts    Credential redaction
 src/workspace.ts SOUL.md / USER.md / MEMORY.md / skills
 ```
 
-**~13,900 lines of TypeScript, two runtime dependencies.** Most of what it does comes from composing things
+**~14,700 lines of TypeScript, two runtime dependencies.** Most of what it does comes from composing things
 your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, `pactl` /
 `afplay`, Chrome's debug protocol — rather
 than dragging in frameworks.
 
 ```bash
-npm test        # 251 tests
+npm test        # 275 tests
 npm run check   # tsc --noEmit
 ```
 

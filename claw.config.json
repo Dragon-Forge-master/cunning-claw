@@ -285,6 +285,14 @@
     "enabled": true,
     "expiryMinutes": 30
   },
+  "remote": {
+    "enabled": true,
+    "defaultBox": "",
+    "connectTimeoutSec": 10,
+    "runTimeoutMs": 120000,
+    "maxOutputChars": 20000,
+    "boxes": []
+  },
   "board": {
     "weatherPlace": "Cardiff",
     "staleAfterDays": 30
