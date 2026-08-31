@@ -3,7 +3,20 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-export const ROOT = path.resolve(here, "..");
+
+/**
+ * Where this install lives, and where its state goes.
+ *
+ * Both were derived from this file's own location with no way to override
+ * them, which meant one machine could only ever run one claw: a second one
+ * would share history.json, memory, the journal, the todo list and the brain
+ * pin with the first. That is the blocker for workers — a worker is a claw
+ * with its own state — so both are now overridable, and nothing changes for an
+ * ordinary install where neither variable is set.
+ */
+export const ROOT = process.env.CLAW_ROOT
+  ? path.resolve(process.env.CLAW_ROOT)
+  : path.resolve(here, "..");
 
 // Load .env before anything else reads process.env (the Anthropic client is
 // constructed at module import time, so this must happen first).
@@ -20,7 +33,14 @@ if (fs.existsSync(envPath)) {
     process.env[m[1]] = value.replace(/^["']|["']$/g, "");
   }
 }
-export const DATA_DIR = path.join(ROOT, "data");
+export const DATA_DIR = process.env.CLAW_DATA_DIR
+  ? path.resolve(process.env.CLAW_DATA_DIR)
+  : path.join(ROOT, "data");
+
+/** The config file, so two claws on one machine can differ (port, persona, brain). */
+export const CONFIG_FILE = process.env.CLAW_CONFIG
+  ? path.resolve(process.env.CLAW_CONFIG)
+  : path.join(ROOT, "claw.config.json");
 
 export interface ClawConfig {
   model: string;
@@ -180,7 +200,7 @@ export interface ClawConfig {
 }
 
 export const config: ClawConfig = JSON.parse(
-  fs.readFileSync(path.join(ROOT, "claw.config.json"), "utf-8"),
+  fs.readFileSync(CONFIG_FILE, "utf-8"),
 );
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });

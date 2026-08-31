@@ -16,6 +16,8 @@ src/gmail.ts       Gmail search language, list/thread scrapers, compose helpers
 src/desktop.ts     Screen, keys, clipboard — per-platform paths via src/platform.ts
 src/windows.ts     The Windows half: PowerShell, SendKeys, System.Drawing
 src/paths.ts       expandHome + the sensitive-file denylist every file tool obeys
+src/remote.ts      ssh to another machine: boxes, detached jobs, file transfer
+src/workorder.ts   approve a plan once instead of every step of it
 src/voice.ts       Piper / spd-say / say
 src/doctor.ts      npm run doctor
 src/workspace.ts   SOUL.md / MEMORY.md / skills
@@ -79,3 +81,18 @@ description: One line for the skill index. When to use it.
 ## Pull requests
 
 Small, one reason each. Say *why* in the commit message, not just what changed. Run `npm test` and `npm run check` before you push.
+
+## Running a second claw on one machine
+
+`DATA_DIR` and the config file are overridable, so two installs can coexist —
+this is what a worker will be built on:
+
+```bash
+CLAW_DATA_DIR=~/claw-worker/data \
+CLAW_CONFIG=~/claw-worker/worker.json \
+npm run dev
+```
+
+Give the second one its own port, and turn its voice off unless you enjoy two
+of them talking over each other. `CLAW_ROOT` moves the install directory too,
+but you rarely want that — the code is the code.
