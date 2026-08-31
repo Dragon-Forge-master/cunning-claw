@@ -19,7 +19,21 @@ from pathlib import Path
 from .checks import Finding, run_all
 from .diff import (GitError, branch_diff, commits_between, current_branch,
                    merge_base, repo_root, staged_diff)
-from .engine import ModelUnavailable, draft_commit_message, model_from_env, review_files
+from .engine import (IgnoreList, ModelUnavailable, draft_commit_message,
+                     model_from_env, review_files)
+
+
+def checked(files, root) -> list[Finding]:
+    """
+    Deterministic findings, honouring the committed ignore ledger.
+
+    The ledger used to be consulted only for model findings, so a dismissed
+    deterministic finding (a documented example key in a redaction test)
+    blocked every commit forever with no recourse but --no-verify — which is
+    the habit this whole tool exists to prevent.
+    """
+    ignores = IgnoreList(root)
+    return [f for f in run_all(files, cwd=str(root)) if f not in ignores]
 
 BOLD, DIM, RED, YEL, CYA, OFF = (
     "\033[1m", "\033[2m", "\033[31m", "\033[33m", "\033[36m", "\033[0m"
@@ -60,7 +74,7 @@ def cmd_staged(args) -> int:
         print(f"{DIM}gitreview: nothing staged{OFF}")
         return 0
 
-    findings = run_all(files, cwd=str(root))
+    findings = checked(files, root)
     notes: list[str] = []
 
     if not args.fast:
@@ -98,7 +112,7 @@ def cmd_branch(args) -> int:
     print(f"{BOLD}{current_branch()}{OFF} vs {base} — "
           f"{len(commits)} commit(s), {len(files)} file(s)")
 
-    findings = run_all(files, cwd=str(root))
+    findings = checked(files, root)
     notes: list[str] = []
     if not args.fast:
         model_findings, notes = review_files(
