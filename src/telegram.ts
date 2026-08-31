@@ -193,6 +193,9 @@ async function loop(events: AgentEvents): Promise<void> {
 async function handleCallback(cb: any): Promise<void> {
   const data = String(cb.data ?? "");
   const chatId = String(cb.message?.chat?.id ?? "");
+  // Field debugging left in on purpose: "the button does nothing" is only
+  // diagnosable if button presses are visible in the journal at all.
+  console.log(`  Telegram callback: ${data.slice(0, 12)}… from ${chatId} (allowed: ${allowed.has(chatId)})`);
   try {
     await api(botToken!, "answerCallbackQuery", { callback_query_id: cb.id });
   } catch { /* already answered */ }
