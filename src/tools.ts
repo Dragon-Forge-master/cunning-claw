@@ -21,8 +21,9 @@ import { expandHome, isSensitivePath } from "./paths.js";
 import { grepFiles, globFiles, planEdit, commitEdit, readTodos, writeTodos, formatTodos, numberLines, resolveWorkPath, listLocalRepos } from "./coding.js";
 import { openPreview, closePreview, reloadPreview, servePath, parseNavigableUrl } from "./preview.js";
 import { addMcpServerSnippet, cunningclawMcpPath } from "./mcp-config.js";
-import { containsSecret } from "./redact.js";
+import { containsSecret, redact } from "./redact.js";
 import { newStandingOrders, SCHEDULE_FILE, type ScheduleEntry } from "./schedule-format.js";
+import { CONFIG_FILE } from "./config.js";
 import * as workorder from "./workorder.js";
 import * as remote from "./remote.js";
 
@@ -1703,7 +1704,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         if (verdict === "approve") {
           const ok = await gate(
             ctx,
-            { tool: "remote_run", match: `${box.id}: ${command}` },
+            { tool: "remote_run", match: `${box.id}:${input.cwd ? ` [${input.cwd}]` : ""} ${command}` },
             `Run on ${box.label ?? box.id} (${box.user}@${box.host})`,
             why ? `${command}\n\n(${why})` : command,
           );
@@ -1754,7 +1755,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
               id, name, box: box.id, dir, command,
               startedAt: Date.now(), lastState: "running",
             });
-            ctx.emit("remote_job", { name, box: box.id, state: "running", command });
+            ctx.emit("remote_job", { name, box: box.id, state: "running", command: redact(command) });
             return (
               `Started "${name}" on ${box.id} (pid ${String(stdout).trim() || "?"}). ` +
               `It is detached: it survives this turn, this conversation and the claw restarting. ` +
@@ -1856,6 +1857,25 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         if (isSensitivePath(localPath)) {
           return "BLOCKED: that local path is on the sensitive-file denylist. A box holds no secrets and receives none.";
         }
+        if (direction !== "push" && direction !== "pull") {
+          return `Unknown direction "${direction}" — push sends local to the box, pull fetches from it.`;
+        }
+        // A pull WRITES to this machine, so it must not be a way round the
+        // guards write_file obeys. Without this, "pull SCHEDULE.md from the
+        // forge" silently installs whatever standing orders a compromised box
+        // wrote — the exact thing workorder.ts claims cannot happen, reached
+        // through a tool that only ever showed two path strings on its card.
+        if (direction === "pull") {
+          if (isIdentityFile(localPath) || path.resolve(localPath) === path.resolve(SCHEDULE_FILE)) {
+            return (
+              `BLOCKED: ${localPath} defines who the claw is or what it does unattended. ` +
+              `A box is never the source of that — edit it here, deliberately.`
+            );
+          }
+          if (path.resolve(localPath) === path.resolve(CONFIG_FILE)) {
+            return "BLOCKED: claw.config.json is the policy itself. A box does not get to rewrite it.";
+          }
+        }
         const remoteAbs = remote.remoteResolve(box, remoteRaw);
         const target = `${box.user}@${box.host}:${remoteAbs}`;
         const [from, to] = direction === "pull" ? [target, localPath] : [localPath, target];
@@ -1866,8 +1886,29 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
           `${from}\n  →  ${to}`,
         );
         if (!ok) return "The user declined the copy.";
+        // The string check cannot see the far filesystem, and the attacker owns
+        // files there: `ln -s ~/.ssh work/artifacts` puts a key textually inside
+        // the workdir and scp follows it. Ask the box where the path really goes.
+        try {
+          const { stdout } = await execFileAsync(
+            "ssh",
+            remote.sshArgs(box, remote.realpathCheckScript(box, remoteAbs)),
+            { timeout: 20000 },
+          );
+          if (!/INSIDE/.test(String(stdout))) {
+            return `BLOCKED: on ${box.id}, ${remoteAbs} resolves outside ${box.workdir} — it is a link out of the working directory.`;
+          }
+        } catch {
+          return `Could not check where ${remoteAbs} resolves on ${box.id}. Not copying.`;
+        }
+        const beforeCopy = direction === "pull" ? snapshot(localPath) : "";
         try {
           await execFileAsync("scp", remote.scpArgs(box, from, to), { timeout: 120000 });
+          if (direction === "pull") {
+            // Same undo net every other local write gets.
+            const change = record(localPath, "write", beforeCopy);
+            if (change) ctx.emit("file_change", change);
+          }
           return `Copied ${from} → ${to}`;
         } catch (err: any) {
           return `Copy failed: ${String(err?.stderr ?? err?.message ?? err).slice(0, 400)}`;
@@ -2088,7 +2129,10 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         if (!preview.open) return "No compose window is open. draft_email first.";
         const ok = await gate(
           ctx,
-          { tool: "send_email", match: preview.to || "(unknown)" },
+          // The recipient alone would let an approved "email the accountant"
+          // step carry ANY body — including whatever the model read this
+          // session. Pin the subject too, and show the body on the step event.
+          { tool: "send_email", match: `${preview.to || "(unknown)"} :: ${preview.subject || "(none)"}` },
           "Send this email",
           `To: ${preview.to || "(unknown)"}\nSubject: ${preview.subject || "(none)"}\n\n${preview.body || "(empty body)"}`,
         );
@@ -2131,7 +2175,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         if (!preview.body.trim()) return "Compose is empty. draft_chat first.";
         const ok = await gate(
           ctx,
-          { tool: "send_chat", match: preview.name || "(open chat)" },
+          { tool: "send_chat", match: `${preview.name || "(open chat)"} :: ${preview.body.slice(0, 80)}` },
           "Send this WhatsApp message",
           `To: ${preview.name || "(open chat)"}\n\n${preview.body}`,
         );
