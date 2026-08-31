@@ -409,6 +409,30 @@ es.addEventListener("brain_guard", (e) => {
   chatLog.scrollTop = chatLog.scrollHeight;
 });
 
+// A plan was approved: from here, its listed steps run without cards. Say so
+// once, plainly, so the quiet that follows is understood rather than eerie.
+es.addEventListener("plan_active", (e) => {
+  const { title, total, minutesLeft } = sseData(e);
+  const div = document.createElement("div");
+  div.className = "guard-chip";
+  div.textContent = `\u25b8 plan approved \u00b7 ${title} \u00b7 ${total} step(s), ${minutesLeft}m`;
+  div.title = "These steps run without asking again. Anything else still raises a card.";
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+});
+
+// Each step as it is spent. This is the audit trail: the card is gone, the
+// record is not.
+es.addEventListener("plan_step", (e) => {
+  const { plan, step, tool, match } = sseData(e);
+  const div = document.createElement("div");
+  div.className = "guard-chip";
+  div.textContent = `\u2713 plan step ${step} \u00b7 ${tool}: ${match}`;
+  div.title = `Pre-approved under "${plan}".`;
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+});
+
 es.addEventListener("heartbeat_ok", (e) => {
   const { at } = sseData(e);
   const chip = $("hb-chip");

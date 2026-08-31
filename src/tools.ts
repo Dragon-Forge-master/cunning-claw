@@ -22,6 +22,7 @@ import { openPreview, closePreview, reloadPreview, servePath, parseNavigableUrl 
 import { addMcpServerSnippet, cunningclawMcpPath } from "./mcp-config.js";
 import { containsSecret } from "./redact.js";
 import { newStandingOrders, SCHEDULE_FILE, type ScheduleEntry } from "./schedule-format.js";
+import * as workorder from "./workorder.js";
 
 export { isSensitivePath } from "./paths.js";
 
@@ -184,6 +185,52 @@ export const toolDefinitions: Anthropic.Tool[] = [
               status: { type: "string", enum: ["pending", "in_progress", "completed"] },
             },
             required: ["content", "status"],
+            additionalProperties: false,
+          },
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "plan",
+    description:
+      "Propose a plan and get it approved ONCE, instead of raising a card for every step. " +
+      "Use this whenever a job needs more than about two approvals — installs, a deploy, a " +
+      "tidy-up, anything with a sequence. List the REAL steps: the exact command, the exact " +
+      "path, the exact recipient. The operator reads the whole thing and approves it once; " +
+      "those exact steps then run without interrupting them again. Anything you did not " +
+      "write down still asks, so plan honestly rather than broadly. action 'status' reports " +
+      "what is left, 'cancel' tears the plan up.",
+    input_schema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["propose", "status", "cancel"], description: "Default propose" },
+        title: { type: "string", description: "What this job is, in one line" },
+        steps: {
+          type: "array",
+          description: "The steps to pre-authorise, in order",
+          items: {
+            type: "object",
+            properties: {
+              tool: {
+                type: "string",
+                description: "Which tool, e.g. run_command, write_file, edit_file, send_email, send_chat, http_request",
+              },
+              match: {
+                type: "string",
+                description:
+                  "The EXACT thing this step does — the full command line, the resolved file path, " +
+                  "the recipient. It is matched exactly at run time, so write it as you will call it.",
+              },
+              summary: { type: "string", description: "One plain line the operator will read" },
+              committing: {
+                type: "boolean",
+                description: "True if this cannot be undone — a send, a spend, a delete, a publish",
+              },
+              uses: { type: "number", description: "How many times this step may run (default 1)" },
+            },
+            required: ["tool", "match", "summary"],
             additionalProperties: false,
           },
         },
@@ -1053,13 +1100,45 @@ export function classifyCommand(command: string): Verdict {
   return "approve";
 }
 
+/**
+ * Ask — unless an approved plan already covers this exact action.
+ *
+ * Every consequential tool goes through here instead of calling
+ * ctx.requestApproval directly, so a work order is honoured in one place and
+ * cannot be half-applied. A covered step emits an event rather than a card, so
+ * the HUD still shows what ran and under which plan: quieter, not hidden.
+ */
+async function gate(
+  ctx: ToolContext,
+  step: { tool: string; match: string },
+  summary: string,
+  detail: string,
+): Promise<boolean> {
+  const covered = workorder.consume(step.tool, step.match);
+  if (covered.covered) {
+    ctx.emit("plan_step", {
+      plan: covered.title,
+      step: (covered.step ?? 0) + 1,
+      tool: step.tool,
+      match: step.match,
+    });
+    return true;
+  }
+  return ctx.requestApproval(summary, detail);
+}
+
 async function runCommand(input: { command: string; cwd?: string }, ctx: ToolContext): Promise<string> {
   const verdict = classifyCommand(input.command);
   if (verdict === "deny") {
     return "BLOCKED: this command matches the destructive-command denylist and will never be run.";
   }
   if (verdict === "approve") {
-    const ok = await ctx.requestApproval("Run shell command", input.command);
+    const ok = await gate(
+      ctx,
+      { tool: "run_command", match: input.command },
+      "Run shell command",
+      input.command,
+    );
     if (!ok) return "The user declined to run this command.";
   }
   const cwd = resolveCommandCwd(input.cwd);
@@ -1316,7 +1395,9 @@ async function writeFileTool(
     );
     if (!ok) return "The user declined the identity-file write.";
   } else if (!taskGrantActive() && !freeWriteZone(p, fs.existsSync(p))) {
-    const ok = await ctx.requestApproval(
+    const ok = await gate(
+      ctx,
+      { tool: "write_file", match: p },
       `${action} file ${p}`,
       input.content.slice(0, 2000) + (input.content.length > 2000 ? "\n…(truncated preview)" : ""),
     );
@@ -1492,7 +1573,12 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
           );
           if (!ok) return "The user declined the identity-file edit.";
         } else if (!taskGrantActive() && !freeWriteZone(plan.path, true)) {
-          const ok = await ctx.requestApproval(`Edit ${plan.path}`, plan.preview);
+          const ok = await gate(
+            ctx,
+            { tool: "edit_file", match: plan.path },
+            `Edit ${plan.path}`,
+            plan.preview,
+          );
           if (!ok) return "The user declined the edit.";
         }
         const beforeEdit = snapshot(plan.path);
@@ -1520,6 +1606,41 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
           return formatTodos(next);
         }
         return formatTodos();
+      }
+      case "plan": {
+        const action = String(input.action ?? "propose");
+        if (action === "cancel") {
+          return workorder.cancel()
+            ? "Plan cancelled. Everything asks individually again."
+            : "There is no plan running.";
+        }
+        if (action === "status") {
+          const st = workorder.status();
+          return st.active
+            ? `Plan "${st.title}": ${st.done} of ${st.total} steps used, ${st.minutesLeft} minutes left.`
+            : "No plan is running. Everything asks individually.";
+        }
+        if (!workorder.workOrderEnabled()) {
+          return "Plans are switched off in claw.config.json (workOrder.enabled). Every step will ask individually.";
+        }
+        const prepared = workorder.prepare(
+          String(input.title ?? ""),
+          (input.steps ?? []) as workorder.PlanStep[],
+          (command) => classifyCommand(command) === "deny",
+        );
+        if (!prepared.ok) return prepared.error;
+        const order = prepared.order;
+        const ok = await ctx.requestApproval(
+          `Plan: ${order.title} — ${order.steps.length} step(s)`,
+          workorder.orderCard(order),
+        );
+        if (!ok) return "The operator declined the plan. Nothing has been done; ask what to change.";
+        workorder.activate(order);
+        ctx.emit("plan_active", workorder.status());
+        return (
+          `Plan approved: ${order.steps.length} step(s) are now cleared to run without asking again. ` +
+          `Get on with it, and report the outcome when the job is done.`
+        );
       }
       case "preview": {
         const action = String(input.action ?? "open");
@@ -1698,7 +1819,9 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "send_email": {
         const preview = await browser.peekCompose();
         if (!preview.open) return "No compose window is open. draft_email first.";
-        const ok = await ctx.requestApproval(
+        const ok = await gate(
+          ctx,
+          { tool: "send_email", match: preview.to || "(unknown)" },
           "Send this email",
           `To: ${preview.to || "(unknown)"}\nSubject: ${preview.subject || "(none)"}\n\n${preview.body || "(empty body)"}`,
         );
@@ -1739,7 +1862,9 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         const preview = await browser.peekChatCompose();
         if (!preview.open) return "No compose box is open. draft_chat first.";
         if (!preview.body.trim()) return "Compose is empty. draft_chat first.";
-        const ok = await ctx.requestApproval(
+        const ok = await gate(
+          ctx,
+          { tool: "send_chat", match: preview.name || "(open chat)" },
           "Send this WhatsApp message",
           `To: ${preview.name || "(open chat)"}\n\n${preview.body}`,
         );
@@ -1808,7 +1933,9 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "http_request": {
         const method = (input.method ?? "GET").toUpperCase();
         if (method !== "GET" && method !== "HEAD") {
-          const ok = await ctx.requestApproval(
+          const ok = await gate(
+            ctx,
+            { tool: "http_request", match: `${method} ${input.url}` },
             `HTTP ${method} request`,
             `${input.url}\n\n${String(input.body ?? "").slice(0, 1000)}`,
           );

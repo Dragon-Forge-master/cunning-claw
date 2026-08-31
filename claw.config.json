@@ -281,6 +281,10 @@
   "agent": {
     "maxTurnMinutes": 10
   },
+  "workOrder": {
+    "enabled": true,
+    "expiryMinutes": 30
+  },
   "board": {
     "weatherPlace": "Cardiff",
     "staleAfterDays": 30

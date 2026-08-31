@@ -146,6 +146,11 @@ export interface ClawConfig {
     }[];
   };
   agent?: { maxTurnMinutes?: number };
+  /**
+   * Approve the plan once instead of every step of it. Off means every action
+   * keeps asking individually, which is the old behaviour.
+   */
+  workOrder?: { enabled?: boolean; expiryMinutes?: number };
   board?: { githubOwner?: string; weatherPlace?: string; staleAfterDays?: number };
   server: { port: number; host: string };
   /**
