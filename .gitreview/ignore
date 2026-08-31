@@ -1,0 +1,2 @@
+95c0a5700bfc  # telegram.test.ts: the AWS documentation example key (redaction test fixture)
+1a6c33b0dc6c  # telegram.test.ts: truncated synthetic private key testing that redact() catches the real shape
