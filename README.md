@@ -515,6 +515,10 @@ a local model that only ever advises — was designed and written by Cunning Cla
 reviewed, corrected, and merged by Claude Code. Several commits in the log are co-authored
 by the software they change. The workshop reviews everything, including its own apprentice.
 
+Where it is going: [`docs/OFFICE-BLOCK.md`](docs/OFFICE-BLOCK.md) — the design for a
+floor of workers, each on its own machine, with the foreman out front. Phase 1 (a
+second machine) is built; the rest is written down and not yet started.
+
 Want to change it? [CONTRIBUTING.md](CONTRIBUTING.md) is the contract: denylist floor, fences, approval, and how to add a tool or a skill.
 
 ---

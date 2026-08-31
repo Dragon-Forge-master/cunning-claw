@@ -96,3 +96,10 @@ npm run dev
 Give the second one its own port, and turn its voice off unless you enjoy two
 of them talking over each other. `CLAW_ROOT` moves the install directory too,
 but you rarely want that — the code is the code.
+
+## Where this is heading
+
+`docs/OFFICE-BLOCK.md` is the live design for the multi-machine work: what is built,
+what is deliberately not, and why each safety decision went the way it did. Read it
+before extending `src/remote.ts` — several of its choices look arbitrary until you
+know what they are defending against.
