@@ -80,6 +80,25 @@ test("a plan cannot pre-authorise the identity or standing-order files", () => {
   }
 });
 
+test("no plan may pre-authorise keystroke injection — a send in disguise", () => {
+  for (const cmd of [
+    'xdotool type "Hi Dave"',
+    "xdotool search --name WhatsApp windowactivate && xdotool key Return",
+    'python3 -c "import pyautogui; pyautogui.click(1, 2)"',
+  ]) {
+    const verdict = stepIsPermitted(
+      { tool: "run_command", match: cmd, summary: "desktop automation" },
+      isDenied,
+    );
+    assert.equal(verdict.ok, false, `${cmd} must ask every time, plan or no plan`);
+  }
+  const focusOnly = stepIsPermitted(
+    { tool: "run_command", match: "wmctrl -i -a 0x123", summary: "raise window" },
+    isDenied,
+  );
+  assert.equal(focusOnly.ok, true, "focus without typing is plannable");
+});
+
 test("a step must name something concrete", () => {
   const vague = prepare("Do the thing", steps(
     { tool: "run_command", match: "   ", summary: "sort it out" },

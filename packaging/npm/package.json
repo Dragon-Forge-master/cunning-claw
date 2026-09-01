@@ -1,0 +1,30 @@
+{
+  "name": "cunningclaw",
+  "version": "0.2.0",
+  "description": "Y dyn hysbys — a local-first AI butler that owns the glass and the hands. This package is the one-command installer: npx cunningclaw",
+  "bin": {
+    "cunningclaw": "bin/cunningclaw.js"
+  },
+  "files": [
+    "bin/"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "ai",
+    "assistant",
+    "local-first",
+    "agent",
+    "privacy",
+    "butler",
+    "wales"
+  ],
+  "author": "Dragon Forge AI (https://github.com/Dragon-Forge-master)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dragon-Forge-master/cunning-claw.git"
+  },
+  "homepage": "https://github.com/Dragon-Forge-master/cunning-claw"
+}

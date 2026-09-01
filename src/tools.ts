@@ -1211,12 +1211,38 @@ async function gate(
   return ctx.requestApproval(summary, detail);
 }
 
+/**
+ * Shell commands that inject synthetic input into whatever window has focus.
+ *
+ * Learned from the field (WhatsApp_Incident_Report.md, 31 Aug): the claw
+ * drafted a message properly, then drove `xdotool type` at the WhatsApp window
+ * through run_command — which is a SEND with none of send_chat's approval,
+ * verification, or honesty. A task grant covered the shell calls, so the oath
+ * never fired. Keystroke and click injection is a message-send in disguise:
+ * it gets the camera's rule — a human hand, every single time, no grant and
+ * no work order riding over it.
+ */
+export const SYNTHETIC_INPUT_RE =
+  /\b(?:xdotool\s+(?:[^|;&]*\b)?(?:type|key|click)\b|ydotool\s+(?:type|key|click)\b|wtype\b|dotool\b|import\s+pyautogui|pyautogui\.|keyboard\.(?:write|press|send)|osascript\b[^|;&]*keystroke)/i;
+
 async function runCommand(input: { command: string; cwd?: string }, ctx: ToolContext): Promise<string> {
   const verdict = classifyCommand(input.command);
   if (verdict === "deny") {
     return "BLOCKED: this command matches the destructive-command denylist and will never be run.";
   }
-  if (verdict === "approve") {
+  if (SYNTHETIC_INPUT_RE.test(input.command)) {
+    const ok = await ctx.requestApproval(
+      "Inject keystrokes/clicks into the focused window — this can type into and submit ANYTHING, including messengers",
+      `${input.command}\n\nIf this is aimed at WhatsApp, email, or any compose box: use the dedicated ` +
+        `draft/send tools instead — they verify delivery and never lie about it.`,
+    );
+    if (!ok) {
+      return (
+        "The user declined the synthetic input. If you were trying to send a message, use the " +
+        "dedicated tool (draft_chat + send_chat, send_email) — it verifies the send actually happened."
+      );
+    }
+  } else if (verdict === "approve") {
     const ok = await gate(
       ctx,
       { tool: "run_command", match: input.command },

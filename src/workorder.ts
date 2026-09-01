@@ -84,6 +84,9 @@ export function stepIsPermitted(
   if (step.tool === "run_command" && isDenied(step.match)) {
     return { ok: false, why: `"${step.match}" is on the destructive-command denylist and no plan can authorise it` };
   }
+  if (step.tool === "run_command" && /\b(?:xdotool\s+(?:[^|;&]*\b)?(?:type|key|click)\b|ydotool\s+(?:type|key|click)\b|wtype\b|import\s+pyautogui|pyautogui\.|keyboard\.(?:write|press|send)|osascript\b[^|;&]*keystroke)/i.test(step.match)) {
+    return { ok: false, why: "keystroke/click injection is a send in disguise — it asks every time, and no plan may pre-authorise it" };
+  }
   if (step.tool === "write_file" || step.tool === "edit_file" || step.tool === "remote_copy") {
     // Not anchored to the end: a remote_copy match is a compound string
     // ("pull <local> <box>:<remote>"), so the protected name can sit in the
