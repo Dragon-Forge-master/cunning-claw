@@ -27,3 +27,6 @@ workspace/*.html
 .gitreview/cache/
 __pycache__/
 *.pyc
+
+# Marketing video is served straight from the Pages deploy, never git.
+site/*.mp4
