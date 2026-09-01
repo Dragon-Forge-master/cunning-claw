@@ -16,6 +16,14 @@ on this Cloudflare account.
 
 ## Notes
 
+- **The two films are not in git.** `index.html` plays `brand-film.mp4` and
+  `cunningclaw-demo.mp4` from this folder, but neither is committed (they are
+  large and change often). Whoever runs `wrangler pages deploy` must have both
+  files in `site/` on that machine first, or the players show a black box.
+- Scripts live in their own files (`launch.js`). `_headers` sets a CSP with no
+  `script-src`, so `default-src 'self'` applies and an inline `<script>` is
+  silently refused by the browser — it will look fine locally and be dead live.
+
 - `_headers` sets CSP, `X-Frame-Options: DENY` and `nosniff`. Pages applies it
   automatically; other hosts will ignore it, so re-do those headers if you move.
 - `cunningclaw-demo.mp4` is 11MB. Pages serves it fine. If it ever needs to be
