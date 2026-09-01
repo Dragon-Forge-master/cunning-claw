@@ -6,6 +6,16 @@
   let category = "all";
   let search = "";
   let busy = "";
+  /**
+   * The result of the last button press.
+   *
+   * It has to live outside render(), because render() rewrites the banner from
+   * the snapshot every time it runs — and act() calls render() in its finally
+   * block. Holding the outcome here is what stops "Added canva", "needs sign-in"
+   * and "no browser opened" being painted and wiped in the same tick, which made
+   * every button look dead.
+   */
+  let notice = null;
 
   function setOpen(open) {
     const overlay = $("mcp-overlay");
@@ -17,6 +27,7 @@
       const skills = $("skills-overlay");
       if (skills) skills.hidden = true;
       $("skills-toggle")?.classList.remove("active");
+      notice = null;
       load();
     }
   }
@@ -30,7 +41,24 @@
       return;
     }
     el.hidden = false;
-    el.textContent = text;
+    el.textContent = "";
+    // Sign-in links have to be clickable: openBrowser cannot be relied on, so
+    // the banner is the fallback path for finishing OAuth by hand. Built as
+    // nodes rather than innerHTML — the text includes server-supplied detail.
+    for (const part of String(text).split(/(https?:\/\/[^\s]+)/g)) {
+      if (!part) continue;
+      if (/^https?:\/\//.test(part)) {
+        const a = document.createElement("a");
+        a.href = part;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = part;
+        a.style.textDecoration = "underline";
+        el.appendChild(a);
+      } else {
+        el.appendChild(document.createTextNode(part));
+      }
+    }
     el.style.color = isError ? "var(--red)" : "var(--amber)";
   }
 
@@ -87,8 +115,11 @@
     } else if (c.status === "failed") {
       add("Retry", "Try connecting again", () => act("connect", c.id));
       if (c.url) add("Reconnect", "Sign in in the system browser", () => act("login", c.id));
-    } else if (c.status === "connected" && c.url) {
-      add("Reconnect", "Sign in again", () => act("login", c.id));
+    } else if (c.status === "connected") {
+      if (c.url) add("Reconnect", "Sign in again", () => act("login", c.id));
+      // A connected local server had no button at all unless it was removable,
+      // so a card that was working looked identical to a card that was broken.
+      else add("Refresh", "Restart this local server and reload its tools", () => act("connect", c.id));
     }
     if (c.owned) add("Remove", "Remove from ~/.config/cunningclaw/mcp.json", () => act("remove", c.id));
     return wrap;
@@ -218,7 +249,8 @@
   function render() {
     paintBadge();
     if (!$("mcp-overlay") || $("mcp-overlay").hidden) return;
-    if (!snapshot.enabled) setBanner("MCP is disabled in claw.config.json (mcp.enabled).");
+    if (notice) setBanner(notice.text, notice.isError);
+    else if (!snapshot.enabled) setBanner("MCP is disabled in claw.config.json (mcp.enabled).");
     else if (snapshot.needsAuth) setBanner(`${snapshot.needsAuth} connector${snapshot.needsAuth === 1 ? "" : "s"} need sign-in. Reconnect opens the system browser.`);
     else if ((snapshot.sources || []).length) {
       setBanner("Reading " + snapshot.sources.map((s) => s.file).join(" · "));
@@ -243,7 +275,17 @@
   async function act(kind, id) {
     if (busy) return;
     if (kind === "remove" && !confirm(`Remove connector "${id}" from ${snapshot.path}?`)) return;
+    notice = null;
     busy = id + (kind === "login" ? "Reconnect" : kind === "remove" ? "Remove" : "Connect");
+    // OAuth blocks for up to three minutes while it waits for the callback, and
+    // every button is disabled for the duration. Saying so up front is the
+    // difference between "it is working" and "this button is broken".
+    if (kind === "login") {
+      notice = {
+        text: `Signing in to ${id} — a browser tab should open. If none does, the sign-in link appears in the transcript. Waits up to 3 minutes.`,
+        isError: false,
+      };
+    }
     render();
     const url =
       kind === "remove" ? `/api/mcp/${encodeURIComponent(id)}` :
@@ -254,12 +296,15 @@
       const res = await fetch(url, opts);
       const data = await res.json();
       if (data.snapshot) snapshot = data.snapshot;
-      setBanner(data.message || "", !data.ok);
+      let text = data.message || (data.error ? String(data.error) : "");
       if (kind === "login" && !data.ok) {
-        setBanner((data.message || "Sign-in did not finish.") + " If no browser opened, use the mcp-remote snippet under ADD.", true);
+        text = (text || "Sign-in did not finish.") +
+          " If no browser opened, use the mcp-remote snippet under ADD.";
       }
+      if (!text) text = data.ok ? `${id}: done.` : `${id}: that did not work, and said nothing about why.`;
+      notice = { text, isError: !data.ok };
     } catch (err) {
-      setBanner(String(err.message || err), true);
+      notice = { text: String(err.message || err), isError: true };
     } finally {
       busy = "";
       render();
@@ -276,7 +321,8 @@
         const json = JSON.parse(paste);
         body = json.mcpServers ? json : { mcpServers: json };
       } catch {
-        setBanner("Paste valid JSON — the same mcpServers object Claude Code uses.", true);
+        notice = { text: "Paste valid JSON — the same mcpServers object Claude Code uses.", isError: true };
+        render();
         return;
       }
     } else {
@@ -295,13 +341,16 @@
       });
       const data = await res.json();
       if (data.snapshot) snapshot = data.snapshot;
-      setBanner(data.message || "", !data.ok);
+      notice = {
+        text: data.message || (data.error ? String(data.error) : (data.ok ? "Added." : "That did not work.")),
+        isError: !data.ok,
+      };
       if (data.ok) {
         form.reset();
         $("mcp-add-form").hidden = true;
       }
     } catch (err) {
-      setBanner(String(err.message || err), true);
+      notice = { text: String(err.message || err), isError: true };
     } finally {
       busy = "";
       render();

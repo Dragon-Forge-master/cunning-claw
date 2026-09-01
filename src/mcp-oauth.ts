@@ -264,7 +264,12 @@ function defaultAsMeta(origin: string): any {
  * Full browser OAuth for one remote MCP URL. Returns a bearer token or throws.
  * Does not run at boot — systemd has no browser. Call from mcp_login.
  */
-export async function authorizeMcp(serverId: string, mcpUrl: string, wwwAuthenticate: string | null): Promise<McpToken> {
+export async function authorizeMcp(
+  serverId: string,
+  mcpUrl: string,
+  wwwAuthenticate: string | null,
+  log: (line: string) => void = () => {},
+): Promise<McpToken> {
   const resourceParam = mcpUrl.split("?")[0];
   const headerMeta = parseResourceMetadataUrl(wwwAuthenticate, mcpUrl);
   const resource = await firstJson([
@@ -313,6 +318,17 @@ export async function authorizeMcp(serverId: string, mcpUrl: string, wwwAuthenti
   if (Array.isArray(scopes) && scopes.length) authUrl.searchParams.set("scope", scopes.join(" "));
   authUrl.searchParams.set("resource", resourceParam);
 
+  /**
+   * Say the URL out loud before opening it.
+   *
+   * openBrowser is fire-and-forget: xdg-open with no desktop session, a Windows
+   * install with no default browser, a headless or SSH login — all fail
+   * silently, and the flow then blocked for three minutes with the operator
+   * given nothing to act on. The authorization URL is the whole flow; if it is
+   * only ever passed to a process that may not exist, sign-in is unfinishable.
+   */
+  log(`Sign in to ${serverId}: ${authUrl.toString()}`);
+  log(`Waiting up to 3 minutes for the callback. If no browser opened, paste that link into one.`);
   openBrowser(authUrl.toString());
   const raw = await codeP;
   const parsed = JSON.parse(raw) as { code: string; state: string };

@@ -89,6 +89,7 @@ export const MCP_CATALOGUE: CatalogueEntry[] = [
   },
   http("notion", "Notion", "Pages, databases, search", "Docs", "https://mcp.notion.com/mcp", true),
   http("figma", "Figma", "Files, components, comments", "Create", "https://mcp.figma.com/mcp", true),
+  http("storyblok", "Storyblok", "Headless CMS content and components", "Create", "https://mcp.storyblok.com/mcp"),
   http("slack", "Slack", "Messages, canvases, workspace search", "Chat", "https://mcp.slack.com/mcp", true),
   http("linear", "Linear", "Issues and projects", "Work", "https://mcp.linear.app/mcp", true),
   http("stripe", "Stripe", "Payments and billing", "Money", "https://mcp.stripe.com", true),
@@ -158,6 +159,8 @@ export const MCP_CATALOGUE: CatalogueEntry[] = [
   http("airtable", "Airtable", "Bases and records", "Data", "https://mcp.airtable.com/mcp"),
   http("neon", "Neon", "Serverless Postgres", "Data", "https://mcp.neon.tech/mcp"),
   http("prisma", "Prisma", "Database schema and queries", "Data", "https://mcp.prisma.io/mcp"),
+  http("convex", "Convex", "Reactive backend and database", "Data", "https://mcp.convex.dev/mcp"),
+  http("appwrite", "Appwrite", "Backend: auth, database, storage", "Data", "https://mcp.appwrite.io/mcp"),
   http("amplitude", "Amplitude", "Product analytics", "Data", "https://mcp.amplitude.com/mcp"),
   http("mixpanel", "Mixpanel", "Events and funnels", "Data", "https://mcp.mixpanel.com/mcp"),
   http("posthog", "PostHog", "Product analytics and flags", "Data", "https://mcp.posthog.com/mcp"),
@@ -166,8 +169,17 @@ export const MCP_CATALOGUE: CatalogueEntry[] = [
   http("motherduck", "MotherDuck", "DuckDB in the cloud", "Data", "https://api.motherduck.com/mcp"),
   http("planetscale", "PlanetScale", "Postgres and MySQL", "Data", "https://mcp.pscale.dev/mcp/planetscale"),
 
+  // Prompt-to-app builders — the "describe it and it builds it" tier.
+  http("lovable", "Lovable", "Build and edit full-stack apps by prompt", "Code", "https://mcp.lovable.dev/mcp", true),
+  http("v0", "v0", "Vercel's generative UI — components and pages", "Code", "https://mcp.v0.dev/", true),
+  http("magic-patterns", "Magic Patterns", "Generate and iterate on UI designs", "Code", "https://mcp.magicpatterns.com/mcp"),
+  http("expo", "Expo", "React Native builds and updates", "Code", "https://mcp.expo.dev/mcp"),
+
   // Ship
   http("vercel", "Vercel", "Projects and deployments", "Ship", "https://mcp.vercel.com"),
+  http("railway", "Railway", "Deploy and manage services", "Ship", "https://mcp.railway.com/mcp"),
+  http("render", "Render", "Services, deploys, logs", "Ship", "https://mcp.render.com/mcp"),
+  http("squarespace", "Squarespace", "Sites, pages, domains", "Ship", "https://mcp.squarespace.com/mcp"),
   http("cloudflare", "Cloudflare", "Workers, storage, bindings", "Ship", "https://bindings.mcp.cloudflare.com/mcp"),
   http("netlify", "Netlify", "Sites, deploys, forms", "Ship", "https://netlify-mcp.netlify.app/mcp"),
   http("godaddy", "GoDaddy", "Domain search and availability", "Ship", "https://api.godaddy.com/v1/domains/mcp"),

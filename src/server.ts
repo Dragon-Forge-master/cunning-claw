@@ -511,7 +511,12 @@ app.delete("/api/mcp/:id", async (req, res) => {
 });
 
 app.post("/api/mcp/:id/login", async (req, res) => {
-  const result = await loginConnector(String(req.params.id ?? ""));
+  // The HUD presses this one, not /api/mcp/login — so this is the route that
+  // has to narrate the flow. Without the callback the sign-in URL and the
+  // three-minute wait were invisible, and the button looked broken.
+  const result = await loginConnector(String(req.params.id ?? ""), (line) =>
+    broadcast("notice", { message: line.trim() }),
+  );
   res.status(result.ok ? 200 : 400).json(result);
 });
 

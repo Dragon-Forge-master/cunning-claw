@@ -151,6 +151,25 @@ async function attach(cfg: McpServerConfig): Promise<ConnectorRow | undefined> {
   return connectorSnapshot().connectors.find((c) => c.id === cfg.id);
 }
 
+/**
+ * What actually happened, in the operator's words.
+ *
+ * "Added canva." was reported for a server that had answered 401 and connected
+ * nothing, so pressing Connect on a hosted connector looked like a no-op even
+ * when the request had worked perfectly. Writing a file is not the outcome the
+ * person pressing the button cares about.
+ */
+export function outcome(id: string, row?: ConnectorRow): string {
+  if (!row) return `Added ${id}, but it is not showing up — check ${userFile()}.`;
+  if (row.status === "connected") {
+    return `Connected ${id} — ${row.tools} tool${row.tools === 1 ? "" : "s"}.`;
+  }
+  if (row.status === "needs_auth") return `Added ${id} — press Reconnect to sign in.`;
+  if (row.status === "failed") return `Added ${id}, but it did not connect: ${row.detail || "no reason given"}`;
+  if (row.status === "disabled") return `Added ${id}, but MCP is switched off in claw.config.json.`;
+  return `Added ${id}.`;
+}
+
 export async function addConnector(entry: {
   id?: string;
   catalogId?: string;
@@ -197,11 +216,13 @@ export async function addConnector(entry: {
   if (!toAdd.length) return { ok: false, message: "Nothing to add.", snapshot: connectorSnapshot() };
 
   const notes: string[] = [];
+  let failed = false;
   for (const cfg of toAdd) {
     const already = existingById(cfg.id);
     if (already?.source && already.source !== userFile() && already.source === "claw.config.json") {
-      notes.push(`${cfg.id} already lives in claw.config.json — connecting that copy.`);
-      await attach(already);
+      const row = await attach(already);
+      if (row?.status === "failed") failed = true;
+      notes.push(`${cfg.id} already lives in claw.config.json — ${outcome(cfg.id, row).replace(/^Added /, "connected that copy: ").replace(/^Connected /, "connecting that copy — ")}`);
       continue;
     }
     const cat = catalogueById(cfg.id);
@@ -216,10 +237,11 @@ export async function addConnector(entry: {
           headers: cfg.headers,
         };
     upsertUserMcpServer(cfg.id, raw);
-    await attach({ ...cfg, source: userFile() });
-    notes.push(`Added ${cfg.id}.`);
+    const row = await attach({ ...cfg, source: userFile() });
+    if (row?.status === "failed") failed = true;
+    notes.push(outcome(cfg.id, row));
   }
-  return { ok: true, message: notes.join(" "), snapshot: connectorSnapshot() };
+  return { ok: !failed, message: notes.join(" "), snapshot: connectorSnapshot() };
 }
 
 export async function removeConnector(id: string): Promise<{ ok: boolean; message: string; snapshot: ReturnType<typeof connectorSnapshot> }> {
@@ -237,7 +259,10 @@ export async function removeConnector(id: string): Promise<{ ok: boolean; messag
   return { ok: true, message: `Removed ${id}.`, snapshot: connectorSnapshot() };
 }
 
-export async function loginConnector(id: string): Promise<{ ok: boolean; message: string; snapshot: ReturnType<typeof connectorSnapshot> }> {
+export async function loginConnector(
+  id: string,
+  log: (line: string) => void = () => {},
+): Promise<{ ok: boolean; message: string; snapshot: ReturnType<typeof connectorSnapshot> }> {
   const already = existingById(id);
   if (!already) {
     const cat = catalogueById(id);
@@ -259,7 +284,7 @@ export async function loginConnector(id: string): Promise<{ ok: boolean; message
     }
     return { ok: false, message: `No remote MCP server named "${id}".`, snapshot: connectorSnapshot() };
   }
-  const message = await loginMcp(id);
+  const message = await loginMcp(id, log);
   const row = connectorSnapshot().connectors.find((c) => c.id === id);
   return { ok: row?.status === "connected", message, snapshot: connectorSnapshot() };
 }

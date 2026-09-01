@@ -645,7 +645,7 @@ export async function loginMcp(serverId: string, log: (line: string) => void = (
   const cfg = conn?.cfg ?? loadAllMcpServers(mcpConfig().servers ?? []).servers.find((s) => s.id === serverId);
   if (!cfg?.url) return `No remote MCP server named "${serverId}". mcp_status lists them.`;
   try {
-    await authorizeMcp(serverId, cfg.url, conn?.lastWwwAuth ?? null);
+    await authorizeMcp(serverId, cfg.url, conn?.lastWwwAuth ?? null, log);
   } catch (err: any) {
     // GitHub does not allow self-registered OAuth clients, so the browser
     // flow can never work there — say what does, instead of an OAuth riddle.

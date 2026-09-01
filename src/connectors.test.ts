@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { MCP_CATALOGUE, catalogueById } from "./mcp-catalog.js";
-import { connectorSnapshot } from "./connectors.js";
+import { connectorSnapshot, outcome } from "./connectors.js";
 import {
   parseMcpServersBlock,
   readUserMcpServers,
@@ -73,4 +73,44 @@ test("connector snapshot lists catalogue entries so the HUD is not an empty JSON
   assert.ok(snap.connectors.find((c) => c.id === "hubspot"), "HubSpot must be in the directory");
   assert.ok((snap.categories || []).includes("Sales"));
   assert.ok(snap.catalogueSize >= 50);
+});
+
+test("a Connect that wrote a file but connected nothing does not claim success", () => {
+  // The panel reported "Added canva." for a server that had answered 401 and
+  // loaded no tools, so a hosted connector looked like a dead button even when
+  // the request had worked. What the operator needs is the connection result.
+  const row = (over: Record<string, unknown>) =>
+    ({ id: "canva", tools: 0, detail: "", ...over }) as unknown as Parameters<typeof outcome>[1];
+
+  assert.match(outcome("canva", row({ status: "needs_auth" })), /press Reconnect to sign in/);
+  assert.doesNotMatch(outcome("canva", row({ status: "needs_auth" })), /^Added canva\.$/);
+
+  const failed = outcome("canva", row({ status: "failed", detail: "HTTP 500" }));
+  assert.match(failed, /did not connect/);
+  assert.match(failed, /HTTP 500/, "the reason must survive into the message");
+
+  assert.match(outcome("canva", row({ status: "connected", tools: 7 })), /Connected canva — 7 tools\./);
+  assert.match(outcome("canva", row({ status: "connected", tools: 1 })), /1 tool\./, "singular, not '1 tools'");
+  assert.match(outcome("canva", undefined), /not showing up/);
+});
+
+test("catalogue ids are unique, so no entry silently shadows another", () => {
+  const ids = MCP_CATALOGUE.map((c) => c.id);
+  const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+  assert.deepEqual(dupes, [], `duplicate catalogue ids: ${dupes.join(", ")}`);
+});
+
+test("the prompt-to-app builders are in the directory, at their probed URLs", () => {
+  // Every URL here answered a real MCP initialize call. Builders that answered
+  // with a web page or a 404 (Bolt, Replit, Framer, Builder.io) are left out on
+  // purpose — a listed connector that cannot connect is worse than an absent one.
+  assert.equal(catalogueById("lovable")?.entry.url, "https://mcp.lovable.dev/mcp");
+  assert.equal(catalogueById("v0")?.entry.url, "https://mcp.v0.dev/");
+  assert.equal(catalogueById("magic-patterns")?.entry.url, "https://mcp.magicpatterns.com/mcp");
+  assert.equal(catalogueById("convex")?.entry.url, "https://mcp.convex.dev/mcp");
+  assert.equal(catalogueById("railway")?.entry.url, "https://mcp.railway.com/mcp");
+  assert.equal(catalogueById("render")?.entry.url, "https://mcp.render.com/mcp");
+  for (const id of ["bolt", "replit", "framer", "builder-io"]) {
+    assert.equal(catalogueById(id), undefined, `${id} has no working MCP endpoint`);
+  }
 });
