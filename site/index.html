@@ -162,6 +162,63 @@ footer .mono{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em}
   </div>
 </header>
 
+<section id="watch">
+  <div class="wrap">
+    <div class="eyebrow">Thirty seconds, no edits</div>
+    <h2>Ask for a website. <em>Watch it appear on the glass.</em></h2>
+    <video controls preload="metadata" poster="poster.png" style="border:1px solid var(--line);background:#000;width:100%;border-radius:8px"><source src="cunningclaw-demo.mp4" type="video/mp4"></video>
+    <p class="note">One real request, one continuous take: the claw builds a garage site and previews it in the glass. Nothing staged, nothing sped up.</p>
+  </div>
+</section>
+
+<section id="launch">
+  <div class="wrap">
+    <div class="eyebrow">Open-source launch</div>
+    <h2>The forge opens to everyone <em>soon.</em></h2>
+    <p class="lede">Cunning Claw goes fully open source — source, installer, the lot. Watch this countdown, or star the repo and be there when it lands.</p>
+    <div id="countdown" class="countdown" role="timer" aria-live="polite">
+      <div class="unit"><span class="n" id="cd-d">–</span><span class="l">days</span></div>
+      <div class="unit"><span class="n" id="cd-h">–</span><span class="l">hours</span></div>
+      <div class="unit"><span class="n" id="cd-m">–</span><span class="l">mins</span></div>
+      <div class="unit"><span class="n" id="cd-s">–</span><span class="l">secs</span></div>
+    </div>
+    <div class="cta" style="justify-content:center;margin-top:8px">
+      <a class="btn" href="https://github.com/Dragon-Forge-master/cunning-claw">STAR THE REPO</a>
+    </div>
+  </div>
+</section>
+<style>
+  .countdown{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin:28px 0 20px}
+  .countdown .unit{min-width:88px;background:var(--panel,rgba(10,22,38,.5));border:1px solid var(--line,#1a2c40);border-radius:10px;padding:16px 10px}
+  .countdown .n{display:block;font-family:var(--mono,monospace);font-size:2.4rem;font-weight:700;color:var(--cyan,#35d6ed);line-height:1;font-variant-numeric:tabular-nums}
+  .countdown .l{display:block;margin-top:8px;font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim,#4f8fa0)}
+  .countdown.live{gap:0}
+  .countdown.live .live-msg{font-family:var(--mono,monospace);font-size:1.4rem;color:var(--cyan,#35d6ed)}
+</style>
+<script>
+  (function(){
+    var target = new Date("2026-09-03T15:00:00+01:00").getTime();
+    var d=document.getElementById("cd-d"),h=document.getElementById("cd-h"),
+        m=document.getElementById("cd-m"),s=document.getElementById("cd-s"),
+        box=document.getElementById("countdown");
+    function pad(n){return (n<10?"0":"")+n;}
+    function tick(){
+      var left=target-Date.now();
+      if(left<=0){
+        box.classList.add("live");
+        box.innerHTML='<div class="live-msg">The forge is open — run <b>npx cunningclaw</b></div>';
+        clearInterval(timer);return;
+      }
+      var sec=Math.floor(left/1000);
+      d.textContent=Math.floor(sec/86400);
+      h.textContent=pad(Math.floor(sec%86400/3600));
+      m.textContent=pad(Math.floor(sec%3600/60));
+      s.textContent=pad(sec%60);
+    }
+    tick();var timer=setInterval(tick,1000);
+  })();
+</script>
+
 <section>
   <div class="wrap">
     <div class="eyebrow">What it says when it wakes</div>
@@ -201,13 +258,7 @@ footer .mono{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em}
   </div>
 </section>
 
-<section>
-  <div class="wrap">
-    <div class="eyebrow">Sixty seconds, in his own voice</div>
-    <video controls preload="metadata" poster="poster.png" style="border:1px solid var(--line);background:#000"><source src="cunningclaw-demo.mp4" type="video/mp4"></video>
-    <p class="note">Narrated by Cunning Claw himself. Every line quoted is from a real run.</p>
-  </div>
-</section>
+<!-- video section relocated to directly under the hero -->
 
 <section id="attack">
   <div class="wrap">
