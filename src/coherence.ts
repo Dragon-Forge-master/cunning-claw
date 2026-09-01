@@ -1,4 +1,6 @@
-import { config } from "./config.js";
+import fs from "node:fs";
+import path from "node:path";
+import { config, DATA_DIR } from "./config.js";
 
 /**
  * Repetition ratio, from the Quantum Coherence Kernel.
@@ -90,5 +92,87 @@ export function notice(r: CoherenceReading): string {
     `[Coherence] ${pct}% of this turn's ${r.total} tool calls have been variations of the ` +
     `same move. Before the next one: is this actually a different approach, or the same ` +
     `one wearing a different flag? If it is the same one, change tack or ask.`
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Across turns
+// ---------------------------------------------------------------------------
+
+/**
+ * The same guard, but with a memory.
+ *
+ * Everything above is scoped to ONE turn: `shapes` is local to runTurn, so it
+ * starts empty every time the operator speaks. That leaves the commonest real
+ * failure completely invisible — the operator says "the controls don't work",
+ * the claw rewrites the file and declares it fixed; the operator says "still
+ * not working", and the claw rewrites the same file the same way and declares
+ * it fixed again. Three turns, three identical approaches, three confident
+ * reports, and not one guard fired, because each turn was a fresh start.
+ *
+ * This remembers what shape of work each turn was mostly made of, and says so
+ * when the same shape comes round for the third time. It is a NUDGE and never
+ * a block: repeating an edit across turns is often exactly right, and the cost
+ * of a false positive must stay at one sentence of advice.
+ */
+const SHAPES_FILE = path.join(DATA_DIR, "turn-shapes.json");
+const KEEP_TURNS = 6;
+
+/** The move a turn was mostly made of, or "" when it did nothing much. */
+export function dominantShape(signatures: string[]): string {
+  if (!signatures.length) return "";
+  const counts = new Map<string, number>();
+  for (const s of signatures) counts.set(s, (counts.get(s) ?? 0) + 1);
+  let best = "";
+  let n = 0;
+  for (const [sig, count] of counts) {
+    if (count > n) { best = sig; n = count; }
+  }
+  return best;
+}
+
+function loadShapes(): string[] {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(SHAPES_FILE, "utf-8"));
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function recordTurnShape(signatures: string[]): void {
+  const shape = dominantShape(signatures);
+  if (!shape) return;
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(SHAPES_FILE, JSON.stringify([...loadShapes(), shape].slice(-KEEP_TURNS)));
+  } catch { /* advisory only — never fail a turn over it */ }
+}
+
+export function forgetTurnShapes(): void {
+  try { fs.rmSync(SHAPES_FILE, { force: true }); } catch { /* ignore */ }
+}
+
+/**
+ * Has the claw spent the last few turns doing the same thing?
+ *
+ * Returns the line to put in front of the model, or "" when there is nothing
+ * to say. Deliberately phrased as a question about diagnosis rather than an
+ * instruction to stop — the operator may well want a fourth attempt, just an
+ * informed one.
+ */
+export function repeatedAcrossTurns(recent = loadShapes()): string {
+  const need = config.coherence?.repeatTurnsBeforeWarning ?? 3;
+  if (recent.length < need) return "";
+  const tail = recent.slice(-need);
+  if (new Set(tail).size !== 1) return "";
+  const [what] = tail;
+  const verb = what.split(":").slice(1).join(":") || what;
+  return (
+    ` Careful — the last ${need} turns have all been the same move (${verb}), which means ` +
+    `the previous ${need - 1} attempts did not work. Do NOT simply do it again: say what you ` +
+    `actually changed last time, what you expected, and what happened instead. If you cannot ` +
+    `test it yourself, say so and ask ${config.persona.userName} what they are seeing rather ` +
+    `than declaring it fixed a third time.`
   );
 }

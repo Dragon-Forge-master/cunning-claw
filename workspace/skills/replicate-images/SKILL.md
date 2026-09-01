@@ -71,3 +71,19 @@ And read failures before reporting them: a `Status: failed` reply with an
   edit any config file (mcp.json is blocked anyway; mcp_add is the only door).
 - Each image costs real money (pennies). Generate what was asked, not a
   gallery of variants — unless the operator asks for options.
+
+## What a generated image must never be used for
+
+An image model cannot spell. It produces convincing-looking gibberish wherever
+words should be, and it will do it confidently. So it is never the tool for:
+
+- a logo, an advert, a poster, a flyer, a banner — anything where text appears
+- a screenshot, a chart, a diagram, a UI mock — anything where a label must be right
+- anything carrying a brand name, including this one
+
+Those go to Canva, or to HTML where the text is real text. An illustration used
+as a background behind real text is fine.
+
+If the operator asked for a design tool by name, use that tool. Reaching for
+Replicate because a template search came back empty answers a question nobody
+asked — say the search found nothing and ask what they want instead.

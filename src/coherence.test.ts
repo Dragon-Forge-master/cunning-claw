@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { signature, read, notice } from "./coherence.js";
+import { signature, read, notice, repeatedAcrossTurns, dominantShape } from "./coherence.js";
 
 /**
  * The repetition ratio comes from the Quantum Coherence Kernel:
@@ -77,4 +77,32 @@ test("the notice tells it what to do, not just that it is wrong", () => {
 
   const warn = notice(read(["a", "b", "c", "a", "b", "c"]));
   assert.match(warn, /change tack or ask/);
+});
+
+test("three turns of the same move is noticed, where the in-turn guard cannot see it", () => {
+  // The real failure this exists for: "the controls don't work" → rewrite the
+  // file, declare it fixed. "Still not working" → rewrite it again, declare it
+  // fixed again. Three turns, three identical approaches, three confident
+  // reports — and the in-turn guard saw nothing, because `shapes` starts empty
+  // every time the operator speaks.
+  assert.equal(repeatedAcrossTurns([]), "");
+  assert.equal(repeatedAcrossTurns(["run_command:cat"]), "");
+  assert.equal(repeatedAcrossTurns(["run_command:cat", "run_command:cat"]), "", "twice is not yet a pattern");
+
+  const warning = repeatedAcrossTurns(["run_command:cat", "run_command:cat", "run_command:cat"]);
+  assert.match(warning, /last 3 turns/);
+  assert.match(warning, /did not work/);
+  assert.match(warning, /rather than declaring it fixed/);
+});
+
+test("ordinary varied work raises nothing", () => {
+  assert.equal(repeatedAcrossTurns(["run_command:git status", "read_file:{path}", "edit_file:{newString,oldString,path}"]), "");
+  // Two the same then something else is not circling either.
+  assert.equal(repeatedAcrossTurns(["run_command:cat", "run_command:cat", "browser_open:{url}"]), "");
+});
+
+test("a turn's shape is whatever it mostly did", () => {
+  assert.equal(dominantShape([]), "");
+  assert.equal(dominantShape(["a", "b", "a", "a"]), "a");
+  assert.equal(dominantShape(["only"]), "only");
 });

@@ -88,6 +88,10 @@ Operating principles:
 - You may chain tools freely. Check system state before guessing at it.
 - Risky shell commands and file writes trigger a human approval prompt automatically — you don't need to ask permission in prose first; just call the tool and the system handles consent. Much runs free now: read-only inspection (git status/log/diff, gh listings, mkdir, wc…), writing anywhere in your own ground (the Desk, workspace/, ~/sites, tmp), and creating brand-new non-hidden files under home. What always asks: overwriting existing files elsewhere, installs, chained commands, and every send/spend/delete/publish. When a job will need more than about two approvals, do NOT grind through them one at a time — call \`plan\` first, list the real steps (the exact command, the exact path, the exact recipient), and get the whole thing approved in one reading. Then work straight through without stopping. Clicking card after card is how the card that matters gets clicked on reflex, so a plan is the safer habit as well as the quicker one. Write it honestly: anything you did not put in the plan still asks, and a plan cannot authorise a denylisted command or a change to your own identity files.
 - Never run genuinely destructive commands. The denylist blocks some, but exercise your own judgment too.
+- Do NOT report something fixed that you have not tested. "I have fixed the controls" after editing a file is a guess wearing a fact's clothes, and saying it twice about the same bug is worse than saying nothing. For anything on the glass you can test it yourself: \`preview\` it, then \`browser_open\` the same URL, \`browser_snapshot\`, and drive the actual interaction with browser_click or browser_press. If you genuinely cannot test it, say exactly that — "rewritten, but I could not test the keyboard handling myself; does it respond now?" — and let ${config.persona.userName} tell you.
+- When the same complaint comes back a second time, the rewrite was not the answer. Do not rewrite the file again. Read what you actually wrote, form a specific hypothesis about why it fails, and test that one thing. A third identical attempt is not persistence, it is a loop.
+- If ${config.persona.userName} names a tool — "use Canva", "put it in Xero", "on the box" — use that tool. If it cannot do the job, say so plainly and ask before substituting a different one. Quietly generating an image when Canva was asked for is not initiative; it answers a question nobody put.
+- Generated images cannot spell. An image model will produce plausible-looking gibberish wherever text should be, so never use one for a logo, a poster, an advert or anything where the words matter — that work belongs in Canva or in HTML where the text is real. An illustration behind real text is fine.
 - Use memory_save for durable facts about the user, their machine, or standing preferences ("always", "remember", "from now on"). Saved memories appear in your context each turn and in workspace/MEMORY.md. Past turns are journaled under data/journal; use memory_search when today's log is not enough.
 - You are versioned software living in a git repository. What changed in you is \`git log\` in the repo; what you did is data/journal; what you know is workspace/MEMORY.md. When asked what changed, what is new, or what you have been doing, read those — never answer from impression. "I have no record of changes" is only sayable after git log has been looked at.
 - The operator may speak from the HUD or from Telegram. Same person. Same approval rules.
@@ -183,7 +187,7 @@ function buildStableSystem(spec: BrainSpec): string {
 /** The volatile half — just what genuinely changes each turn. Kept tiny. */
 function volatileSystem(spec: BrainSpec): string {
   const now = new Date().toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" });
-  return `[This turn — time: ${now}; brain: ${describeBrain(spec)} (${spec.id}).${mcpRosterLine()}${boxRosterLine()}]`;
+  return `[This turn — time: ${now}; brain: ${describeBrain(spec)} (${spec.id}).${mcpRosterLine()}${boxRosterLine()}${coherence.repeatedAcrossTurns()}]`;
 }
 
 /**
@@ -397,6 +401,9 @@ export function getHistory(): Msg[] {
 export function resetHistory(): void {
   history = [];
   saveHistory(history);
+  // A cleared conversation starts a fresh count: whatever it was circling on
+  // is not what the next one is about.
+  coherence.forgetTurnShapes();
 }
 
 function buildTools(spec: BrainSpec): Anthropic.ToolUnion[] {
@@ -787,6 +794,11 @@ export async function runTurn(
       history.push({ role: "user", content: results });
       if (abortTurn?.signal.aborted) break;
     }
+
+    // What was this turn mostly made of? The in-turn guard resets every time
+    // the operator speaks, so without this the third identical attempt looks
+    // exactly like the first.
+    if (opts?.kind !== "heartbeat") coherence.recordTurnShape(shapes);
 
     history = trimHistory(history);
     saveHistory(history);

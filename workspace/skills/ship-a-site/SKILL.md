@@ -106,3 +106,19 @@ a deploy that 200s on a blank page is a failure.
 - Credentials come from `.env` as `${VAR}` — reference them, never read or print them.
 - Do not register domains, change DNS, or touch billing.
 - Two identical failures means the approach is wrong. Stop and report rather than retry.
+
+## Test it before you call it done
+
+A page is the one kind of work you can check yourself, so there is no excuse for
+reporting it fixed on faith:
+
+1. `preview` it, so the operator can see it.
+2. `browser_open` the same URL, `browser_snapshot`, and actually drive it —
+   `browser_press` for keyboard handling, `browser_click` for buttons.
+3. Say what you tested. "Arrow keys move it; I checked" is worth something.
+   "I have fixed the controls" without having pressed one is not.
+
+If a thing genuinely cannot be tested from here, say so in the same sentence as
+the claim, and ask what they are seeing. A second identical complaint means the
+last change was not the fix — read the code you wrote and form a hypothesis
+before touching it again.

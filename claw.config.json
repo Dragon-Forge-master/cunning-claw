@@ -121,6 +121,7 @@
     "maxIterations": 25,
     "repetitionWarn": 0.4,
     "repetitionHalt": 0.6,
+    "repeatTurnsBeforeWarning": 3,
     "minStepsBeforeJudging": 4
   },
   "heartbeat": {

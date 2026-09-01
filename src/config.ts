@@ -109,6 +109,8 @@ export interface ClawConfig {
     /** Repetition ratio at which to nudge, and at which to stop. */
     repetitionWarn?: number;
     repetitionHalt?: number;
+    /** How many identical turns in a row before the claw is warned it is circling. */
+    repeatTurnsBeforeWarning?: number;
     minStepsBeforeJudging?: number;
   };
   heartbeat: { enabled: boolean; intervalMinutes: number };
