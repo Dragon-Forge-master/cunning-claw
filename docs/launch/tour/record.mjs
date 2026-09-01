@@ -23,7 +23,7 @@ const say = async (name, cap, pad = 700) => { if (cap) await caption(cap); marks
 
 await p.goto(`file://${CARDS}/title-frame.html`); await wait(400);
 await say("01-title", null, 1400);
-await p.goto("${BASE}/", { waitUntil: "domcontentloaded" }); await wait(6500);
+await p.goto(`${BASE}/`, { waitUntil: "domcontentloaded" }); await wait(6500);
 await say("02-glass", "The glass. Your machine, loopback only, behind a token.");
 await p.click("#mcp-toggle", { timeout: 3000 }); await wait(1200);
 await say("03-connect", "Ninety connectors. Seeing a name does not connect it — Connect does.", 300);
@@ -34,9 +34,9 @@ await p.click("#mcp-close", { timeout: 3000 }); await wait(500);
 await p.click("#skills-toggle", { timeout: 3000 }); await wait(1100);
 await say("05-skills", "Twenty-four skills. Click one to arm it for the next thing you say.");
 await p.locator("#skills-close, #skills-overlay button:has-text(\"CLOSE\")").first().click({ timeout: 3000 }).catch(() => p.keyboard.press("Escape")); await wait(500);
-await p.goto("${BASE}/board", { waitUntil: "domcontentloaded" }); await wait(2300);
+await p.goto(`${BASE}/board`, { waitUntil: "domcontentloaded" }); await wait(2300);
 await say("06-board", "The Forge Board — the machine, the spend, the work.");
-await p.goto("${BASE}/docs", { waitUntil: "domcontentloaded" }); await wait(1800);
+await p.goto(`${BASE}/docs`, { waitUntil: "domcontentloaded" }); await wait(1800);
 await p.locator("text=Morning briefing").first().click({ timeout: 3000 }).catch(() => {}); await wait(1200);
 await say("07-desk", "The Desk — his documents and yours, on disk, as markdown.");
 await p.goto(`file://${CARDS}/end-frame.html`); await wait(500);
