@@ -83,6 +83,15 @@ export function resetVoiceDetectForTests(): void {
  * spd-say (espeak) is the Linux fallback; `say` is the macOS fallback.
  * Never report an engine that cannot actually produce audio.
  */
+/**
+ * What detect() found, without waiting on it. The prompt is assembled per turn
+ * and cannot await; the server ran detect() at boot, so by the first turn this
+ * is filled in. Null means "not looked yet", never "no voice".
+ */
+export function detected(): { engine: VoiceEngine; detail: string } | null {
+  return availability ? { engine: availability.engine, detail: availability.detail } : null;
+}
+
 export async function detect(): Promise<{ engine: VoiceEngine; detail: string; player?: string }> {
   if (availability) return availability;
 
