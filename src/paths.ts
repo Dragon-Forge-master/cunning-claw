@@ -36,6 +36,17 @@ export function expandHome(p: string): string {
 }
 
 /**
+ * The inverse, for anything shown on the glass. A full path under the home
+ * directory carries the operator's username, and the HUD gets screenshotted
+ * and filmed. `home` is a parameter so the collapse can be tested on a box
+ * whose real home is somewhere else.
+ */
+export function collapseHome(p: string, home = os.homedir()): string {
+  if (p === home) return "~";
+  return p.startsWith(home + path.sep) ? "~" + p.slice(home.length) : p;
+}
+
+/**
  * One shape to match against: absolute, forward-slashed, lowercased.
  *
  * Lowercasing is correct on Windows and macOS and a deliberate

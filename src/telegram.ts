@@ -18,10 +18,18 @@ export function parseChatAllowlist(raw: string): Set<string> {
   return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
 }
 
+/**
+ * A chat id is a personal identifier, and the telemetry panel it lands on gets
+ * filmed. The last four digits are enough to tell two allowed chats apart.
+ */
+export function maskChatId(id: string): string {
+  return `…${id.slice(-4)}`;
+}
+
 export function telegramStatus() {
   return {
     enabled: Boolean(botToken && allowed.size),
-    chats: [...allowed],
+    chats: [...allowed].map(maskChatId),
   };
 }
 
@@ -153,7 +161,7 @@ export function startTelegram(events: AgentEvents, hooks: { resolveApproval: Res
   botToken = token;
   allowed = parseChatAllowlist(allow);
   resolveApproval = hooks.resolveApproval;
-  console.log(`  Telegram: polling (allow ${[...allowed].join(", ")})`);
+  console.log(`  Telegram: polling (allow ${[...allowed].map(maskChatId).join(", ")})`);
   void send([...allowed][0], `CUNNING CLAW online. HUD at http://${config.server.host}:${config.server.port}`).catch(() => {});
   void loop(events);
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { approvalCardText, outboundText, parseChatAllowlist } from "./telegram.js";
+import { approvalCardText, maskChatId, outboundText, parseChatAllowlist, telegramStatus } from "./telegram.js";
 
 /**
  * Telegram is the one surface that leaves the machine entirely.
@@ -61,4 +61,12 @@ test("ordinary text goes through untouched", () => {
 
 test("the chat allowlist ignores blanks and whitespace", () => {
   assert.deepEqual([...parseChatAllowlist(" 123 , 456,, ")], ["123", "456"]);
+});
+
+test("the HUD sees only the last four digits of a chat id", () => {
+  // The telemetry panel is filmed for the launch video; a chat id is a
+  // personal identifier and the full one was on screen.
+  assert.equal(maskChatId("1646988243"), "…8243");
+  assert.doesNotMatch(maskChatId("1646988243"), /1646988243/);
+  for (const c of telegramStatus().chats) assert.match(c, /^…\d{0,4}$/);
 });

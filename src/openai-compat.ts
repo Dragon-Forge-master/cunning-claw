@@ -177,23 +177,37 @@ export async function completeOpenAi(opts: {
     "Content-Type": "application/json",
   };
 
-  let res = await fetch(`${brain.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ ...payload, stream: true }),
-    signal: opts.signal,
-  });
+  // undici reports every network failure as a bare "fetch failed", which is
+  // what the HUD showed when Ollama was not running. Name the endpoint and,
+  // for a local runtime, the one command that fixes it. An abort is the
+  // operator's own doing and is passed through untouched.
+  const post = async (body: unknown): Promise<Response> => {
+    try {
+      return await fetch(`${brain.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        signal: opts.signal,
+      });
+    } catch (err: any) {
+      if (opts.signal?.aborted) throw err;
+      const code = err?.cause?.code ?? err?.message ?? String(err);
+      throw new Error(
+        isLocalEndpoint(brain.baseUrl)
+          ? `Nothing answered at ${brain.baseUrl} (${code}). Start the local runtime — \`ollama serve\` — or pick a cloud brain.`
+          : `Could not reach ${brain.baseUrl} (${code}). Check the network connection.`,
+        { cause: err },
+      );
+    }
+  };
+
+  let res = await post({ ...payload, stream: true });
 
   if (!res.ok) {
     const detail = await res.text();
     // Some local servers refuse stream+tools. Fall back once, non-streaming.
     if (res.status === 400 || res.status === 422) {
-      res = await fetch(`${brain.baseUrl}/chat/completions`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ ...payload, stream: false }),
-        signal: opts.signal,
-      });
+      res = await post({ ...payload, stream: false });
       if (!res.ok) {
         const again = await res.text();
         throw new Error(`OpenAI-compatible API ${res.status}: ${again.slice(0, 400)}`);

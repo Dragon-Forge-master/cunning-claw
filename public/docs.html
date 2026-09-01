@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>The Desk</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="stylesheet" href="hud.css">
 <style>
   body{overflow:hidden;padding:0}
@@ -36,6 +37,8 @@
   .bar button{background:transparent;border:1px solid var(--cyan-dim);color:var(--cyan-dim);
     font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:5px 10px;cursor:pointer}
   .bar button:hover,.bar button.on{border-color:var(--cyan);color:var(--cyan)}
+  .bar button:disabled{opacity:.35;cursor:default}
+  .bar button:disabled:hover{border-color:var(--cyan-dim);color:var(--cyan-dim)}
   .bar .saved{color:var(--cyan-dim);font-size:10px;letter-spacing:1px;min-width:70px;text-align:right}
   .editwrap{flex:1;display:flex;min-height:0}
   textarea{flex:1;background:transparent;border:none;outline:none;resize:none;
@@ -155,8 +158,7 @@ async function openDoc(name){
   current = name; dirty = false;
   $("title").textContent = name;
   $("editor").value = d.content;
-  $("empty").style.display = "none";
-  $("editor").parentElement.style.display = "flex";
+  showDocument(true);
   if ($("render").classList.contains("show")) $("render").innerHTML = md(d.content);
   $("saved").textContent = "";
   refreshList();
@@ -179,9 +181,22 @@ $("editor").addEventListener("input", () => {
   if ($("render").classList.contains("show")) $("render").innerHTML = md($("editor").value);
 });
 
+/** PREVIEW, PDF and BIN act on the open document; with none open they are off, not silent. */
+function showDocument(open){
+  $("empty").style.display = open ? "none" : "flex";
+  $("editor").parentElement.style.display = open ? "flex" : "none";
+  for (const id of ["viewbtn", "printbtn", "delbtn"]) $(id).disabled = !open;
+}
+
 $("newbtn").onclick = async () => {
   const name = $("newname").value.trim();
-  if (!name) return;
+  if (!name) {
+    // Pressing NEW with an empty name used to do nothing at all.
+    $("newname").setCustomValidity("Give the document a name first.");
+    $("newname").reportValidity();
+    $("newname").focus();
+    return;
+  }
   await fetch(`/api/docs/${encodeURIComponent(name)}`, {
     method: "PUT", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ content: `# ${name}\n\n` }),
@@ -190,6 +205,7 @@ $("newbtn").onclick = async () => {
   await refreshList(); openDoc(name);
 };
 $("newname").addEventListener("keydown", (e) => { if (e.key === "Enter") $("newbtn").onclick(); });
+$("newname").addEventListener("input", () => $("newname").setCustomValidity(""));
 
 $("viewbtn").onclick = () => {
   const show = !$("render").classList.contains("show");
@@ -210,8 +226,7 @@ $("delbtn").onclick = async () => {
   await fetch(`/api/docs/${encodeURIComponent(current)}`, { method: "DELETE" });
   current = null;
   $("title").textContent = "—"; $("editor").value = "";
-  $("editor").parentElement.style.display = "none";
-  $("empty").style.display = "flex";
+  showDocument(false);
   refreshList();
 };
 
@@ -220,7 +235,7 @@ window.addEventListener("beforeunload", () => { if (dirty) save(); });
 refreshList().then(async () => {
   const r = await fetch("/api/docs"); const d = await r.json();
   if (d.items.length) openDoc(d.items[0].name);
-  else { $("editor").parentElement.style.display = "none"; $("empty").style.display = "flex"; }
+  else showDocument(false);
 });
 </script>
 </body>

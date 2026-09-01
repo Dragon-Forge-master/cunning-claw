@@ -17,7 +17,7 @@ import { classifyBrowserAction, needsApproval as browserNeedsApproval, taskGrant
 import { snapshot, record } from "./filewatch.js";
 import { readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
-import { expandHome, isSensitivePath } from "./paths.js";
+import { collapseHome, expandHome, isSensitivePath } from "./paths.js";
 import { grepFiles, globFiles, planEdit, commitEdit, readTodos, writeTodos, formatTodos, numberLines, resolveWorkPath, listLocalRepos } from "./coding.js";
 import { openPreview, closePreview, reloadPreview, servePath, parseNavigableUrl } from "./preview.js";
 import { addMcpServerSnippet, cunningclawMcpPath } from "./mcp-config.js";
@@ -1565,7 +1565,7 @@ export async function systemStatusText(): Promise<string> {
     `Memory: ${memUsed}GB / ${memTotal}GB used`,
     `Disk /: ${disk || "unknown"}`,
     `Uptime: ${uptimeH}h`,
-    `Install (Cunning Claw repo): ${ROOT}`,
+    `Install (Cunning Claw repo): ${collapseHome(ROOT)}`,
     topProcs && `Top processes:\n${topProcs}`,
   ].filter(Boolean).join("\n");
 }

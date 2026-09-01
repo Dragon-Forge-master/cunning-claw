@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyCommand, isSensitivePath, resolveCommandCwd, freeWriteZone, isIdentityFile, toolDefinitions } from "./tools.js";
+import { classifyCommand, isSensitivePath, resolveCommandCwd, freeWriteZone, isIdentityFile, toolDefinitions, systemStatusText } from "./tools.js";
 import { ROOT } from "./config.js";
 import fs from "node:fs";
 import os from "node:os";
@@ -109,4 +109,19 @@ test("look is on the roster and does not take a device path from the model", () 
   assert.ok("source" in props);
   assert.ok("entityId" in props);
   assert.ok(!("device" in props), "the model must not name a webcam path");
+});
+
+test("the telemetry panel does not print the install path in full", async () => {
+  // The panel is filmed. Whatever this box's real home is, pretend the install
+  // sits directly under it so the collapse is actually exercised — otherwise
+  // a checkout outside $HOME would pass here with the leak intact.
+  const realHome = os.homedir;
+  os.homedir = () => path.dirname(ROOT);
+  try {
+    const text = await systemStatusText();
+    assert.match(text, new RegExp(`^Install \\(Cunning Claw repo\\): ~[\\\\/]${path.basename(ROOT)}$`, "m"));
+    assert.ok(!text.includes(`repo): ${ROOT}`), "full install path leaked");
+  } finally {
+    os.homedir = realHome;
+  }
 });

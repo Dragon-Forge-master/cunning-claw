@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { isSensitivePath, chromeProfileDir, expandHome } from "./paths.js";
+import { isSensitivePath, chromeProfileDir, expandHome, collapseHome } from "./paths.js";
 import { ROOT, DATA_DIR } from "./config.js";
 
 // Explicit absolute paths rather than ~/ throughout: a container running as
@@ -95,4 +95,15 @@ test("isSensitivePath never throws, whatever it is handed", () => {
     assert.doesNotThrow(() => isSensitivePath(p));
   }
   assert.equal(expandHome("~"), os.homedir());
+});
+
+test("collapseHome hides the username and touches nothing else", () => {
+  // The home is passed explicitly for the same reason as the comment at the
+  // top of this file: the real one here is /root, which proves nothing.
+  const home = path.join(path.sep, "home", "chris");
+  assert.equal(collapseHome(path.join(home, "Game Dev", "jarvis"), home), path.join("~", "Game Dev", "jarvis"));
+  assert.equal(collapseHome(home, home), "~");
+  // A sibling that merely shares the prefix is a different user's directory.
+  assert.equal(collapseHome(path.join(path.sep, "home", "chris2", "x"), home), path.join(path.sep, "home", "chris2", "x"));
+  assert.equal(collapseHome(path.join(path.sep, "opt", "claw"), home), path.join(path.sep, "opt", "claw"));
 });

@@ -548,7 +548,7 @@ app.post("/api/voice/sample", async (req, res) => {
 
 // --- Boot -------------------------------------------------------------------
 const { port, host } = config.server;
-app.listen(port, host, async () => {
+const httpServer = app.listen(port, host, async () => {
   const hb = heartbeatStatus();
   const v = await voice.detect();
   const active = catalogStatus();
@@ -579,4 +579,14 @@ app.listen(port, host, async () => {
   if (!brainReady()) {
     console.warn(`  ⚠ No brain has an API key. ${missingKeyHint()}\n`);
   }
+});
+
+// A port clash is the boot failure a first run is most likely to hit — a claw
+// from an earlier terminal still running, or a second install on the same
+// machine — and the raw EADDRINUSE stack the uncaughtException handler prints
+// says nothing about what to do. Same words as the doctor, which already knows.
+httpServer.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code !== "EADDRINUSE") throw err;
+  console.error(`\n  ✗ Port ${port} on ${host} is in use — stop the other process or change server.port in claw.config.json\n`);
+  process.exit(1);
 });

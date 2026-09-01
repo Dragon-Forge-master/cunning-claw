@@ -42,7 +42,7 @@ the claw already drives its *own* Chrome for automation.
 
 ## Order of work
 
-1. Node SEA build of the engine (`npm run bundle`) — proves the single-binary
+1. Node SEA build of the engine (a `bundle` script, not yet written) — proves the single-binary
    engine on all three platforms; useful on its own for a "portable zip".
 2. First-run wizard as a plain HUD page shown when `.env` is missing —
    valuable immediately, even before any app shell exists.

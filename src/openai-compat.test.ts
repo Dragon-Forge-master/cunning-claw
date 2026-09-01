@@ -3,7 +3,7 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
 import { toOpenAiMessages, openAiToolSchema, completeOpenAi } from "./openai-compat.js";
-import { activeProvider } from "./brain.js";
+import { activeProvider, isFailoverError } from "./brain.js";
 
 test("the default brain is one that can actually run", () => {
   // The default is config and may be any provider — what matters is that it
@@ -150,4 +150,30 @@ test("stopping a turn actually reaches the model request", { timeout: 10_000 }, 
       }
     });
   });
+});
+
+test("a local runtime that is not running is named, not 'fetch failed'", async () => {
+  // Pinned to Local with Ollama down, the HUD said "⚠ fetch failed" — undici's
+  // wording, which names neither the endpoint nor the fix. Nothing listens on
+  // this port: a fresh server bound to 0 gives one that is then closed.
+  const probe = http.createServer();
+  const port = await new Promise<number>((resolve) =>
+    probe.listen(0, "127.0.0.1", () => {
+      const { port } = probe.address() as AddressInfo;
+      probe.close(() => resolve(port));
+    }),
+  );
+  const spec = {
+    id: "local", label: "Local", provider: "openai", model: "llama3.2:latest",
+    baseUrl: `http://127.0.0.1:${port}/v1`, apiKeyEnv: "OLLAMA_NO_KEY",
+  } as any;
+  await assert.rejects(
+    completeOpenAi({ spec, system: "sys", history: [{ role: "user", content: "hi" }], onText: () => {} }),
+    (err: any) => {
+      assert.match(err.message, new RegExp(`^Nothing answered at http://127\\.0\\.0\\.1:${port}/v1`));
+      assert.match(err.message, /ollama serve/);
+      assert.equal(isFailoverError(err), true, "auto routing must still move on to the next brain");
+      return true;
+    },
+  );
 });

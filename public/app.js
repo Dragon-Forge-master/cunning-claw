@@ -23,7 +23,7 @@ let serverVoiceAvailable = false;
     else if (s.brain?.model) brain = `${s.brain.provider} / ${s.brain.model}`;
   } catch { /* boot copy is cosmetic */ }
   const BOOT_LINES = [
-    "Cunning Claw v0.3 — boot sequence initiated",
+    "Cunning Claw — boot sequence initiated",
     `loading cognitive cores ............. ${brain}`,
     "mounting tool interface ............. tools + search + skills",
     "loading workspace ................... SOUL / HEARTBEAT / skills",

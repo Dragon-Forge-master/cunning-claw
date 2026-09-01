@@ -228,6 +228,7 @@ export function isFailoverError(err: unknown): boolean {
   if (err instanceof Error) {
     const m = err.message;
     if (/rate limit|overloaded|ECONNRESET|ETIMEDOUT|fetch failed|socket hang up/i.test(m)) return true;
+    if (/^(Nothing answered at|Could not reach) /.test(m)) return true;
     if (/OpenAI-compatible API (401|402|403|408|429|5\d\d)/.test(m)) return true;
     if (/Missing \S+ for the OpenAI/.test(m)) return true;
     if (/authentication method|invalid.*api.?key/i.test(m)) return true;
