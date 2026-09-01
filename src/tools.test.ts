@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyCommand, isSensitivePath, resolveCommandCwd, freeWriteZone, isIdentityFile, toolDefinitions } from "./tools.js";
+import { classifyCommand, isSensitivePath, resolveCommandCwd, freeWriteZone, isIdentityFile, SYNTHETIC_INPUT_RE, toolDefinitions } from "./tools.js";
 import { ROOT } from "./config.js";
 import fs from "node:fs";
 import os from "node:os";
@@ -89,6 +89,24 @@ test("free write zones: the claw's ground is free, consequences still ask", () =
   assert.equal(freeWriteZone(path.join(home, ".config/autostart/evil.desktop"), false), false);
   // Outside home entirely: ask.
   assert.equal(freeWriteZone("/etc/motd", false), false);
+});
+
+test("keystroke injection always asks: a send in disguise gets the camera's rule", () => {
+  // The WhatsApp incident: draft_chat used properly, then xdotool driven at
+  // the window through run_command under a task grant — a send with no oath.
+  assert.match('xdotool search --name "WhatsApp Business" windowactivate && sleep 0.3 && xdotool type "Hi Dave"', SYNTHETIC_INPUT_RE);
+  assert.match("xdotool key --window 0x06000007 ctrl+f", SYNTHETIC_INPUT_RE);
+  assert.match("xdotool click 1", SYNTHETIC_INPUT_RE);
+  assert.match('python3 -c "import pyautogui, time; pyautogui.click(250, 350)"', SYNTHETIC_INPUT_RE);
+  assert.match("ydotool type hello", SYNTHETIC_INPUT_RE);
+  assert.match(`osascript -e 'tell application "System Events" to keystroke "hi"'`, SYNTHETIC_INPUT_RE);
+  // Window management without input injection stays ordinary — focus is not typing.
+  assert.doesNotMatch("wmctrl -l -x", SYNTHETIC_INPUT_RE);
+  assert.doesNotMatch("xdotool search --name Chrome windowactivate", SYNTHETIC_INPUT_RE);
+  assert.doesNotMatch("xdotool getactivewindow getwindowname", SYNTHETIC_INPUT_RE);
+  // And ordinary words in ordinary commands never trip it.
+  assert.doesNotMatch("git commit -m 'add keyboard shortcuts doc'", SYNTHETIC_INPUT_RE);
+  assert.doesNotMatch("grep -rn 'click' src/", SYNTHETIC_INPUT_RE);
 });
 
 test("identity files always ask: a persuasive page cannot rewrite the soul", () => {

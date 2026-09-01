@@ -2,10 +2,11 @@
 name: whatsapp-desk
 label: whatsapp
 category: machine
-description: Read and send WhatsApp Business through WhatsApp Web in Cunning Claw's Chrome. Use when the operator asks to check WhatsApp, triage unread chats, or message someone. Native-window xdotool is the fallback only.
+description: Read and send WhatsApp Business through WhatsApp Web in Cunning Claw's Chrome. Use when the operator asks to check WhatsApp, triage unread chats, or message someone. The browser tools are the ONLY route — there is no xdotool fallback.
 author: cunningclaw
 written: 2026-08-25
 revised: 2026-08-29 — dedicated tools after Claude Code's wait/screenshot loop, and after a blind-click session claimed a send that never happened
+revised: 2026-08-31 — the xdotool "fallback" clause removed after it licensed exactly the disaster it always would (WhatsApp_Incident_Report.md); run_command now hard-gates keystroke injection regardless
 ---
 
 # WhatsApp
@@ -13,7 +14,13 @@ revised: 2026-08-29 — dedicated tools after Claude Code's wait/screenshot loop
 Claude Code's loop on this site is: open (or reuse) the tab, wait because the
 shell is "complete" long before the chat list exists, screenshot when the tree
 is empty, and read `(34) WhatsApp Business` as the unread count. That is the
-craft here too. Do not reach for xdotool first.
+craft here too. Do not reach for xdotool AT ALL: `draft_chat` + `send_chat` is
+the only send path. It verifies the message actually landed in the thread and
+tells the truth when it cannot. Keystroke injection (`xdotool type/key`,
+pyautogui) through run_command is a send with no oath and no eyes — the code
+now raises a hard approval card for it every time, task grants included, and
+the honest answer when the browser tools fail is to SAY they failed, not to
+grope at the window with a robot arm.
 
 WhatsApp Business in this house is **https://web.whatsapp.com** inside Cunning
 Claw's Chrome (`~/.config/cunningclaw/chrome-profile`). Everyday Chrome and the
