@@ -21,7 +21,11 @@ on this Cloudflare account.
 - `cunningclaw-demo.mp4` is 11MB. Pages serves it fine. If it ever needs to be
   smaller, re-encode at CRF 24 rather than dropping to 720p — the text in the
   frames is what suffers first.
-- The numbers on the page (6 brains, 68 tools, 296 tests, 2 dependencies) are
+- The numbers on the page (6 brains, 68 tools, 90 connectors, 302 tests, 2 dependencies) are
   real. Update them here when they change, or don't state them. Count them:
   brains from `claw.config.json`, tools with `grep -c '^    name: "' src/tools.ts`,
-  tests from what `npm test` reports.
+  tests from what `npm test` reports, connectors from `MCP_CATALOGUE.length` in
+  `src/mcp-catalog.ts`.
+- `hud.png` is a real capture of the HUD at rest on a fresh install (no keys, no
+  Telegram). Re-shoot it from a clean data dir, never from a personal one.
+- Fonts come from Google Fonts; `_headers` allows exactly those two hosts.

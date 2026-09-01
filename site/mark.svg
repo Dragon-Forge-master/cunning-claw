@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Cunning Claw">
+  <!-- The triskele claw: three talons, one for each ward — y ffens, y llw,
+       y sarff — gripping the spark, which is the hearth: your machine.
+       Triskele geometry is older than Wales itself (Newgrange, ~3200 BC);
+       no forged lore required. Rules of use: docs/BRAND.md. -->
+  <defs>
+    <linearGradient id="cc-talon" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#7ff0ff"/>
+      <stop offset="0.6" stop-color="#35d6ed"/>
+      <stop offset="1" stop-color="#1a8ba0"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#cc-talon)">
+    <g id="cc-t">
+      <path d="M 132 118
+               C 214 62, 318 84, 352 168
+               C 362 194, 360 220, 340 244
+               C 346 210, 334 180, 310 162
+               C 278 138, 200 128, 132 118 Z"/>
+    </g>
+    <use href="#cc-t" transform="rotate(120 256 256)"/>
+    <use href="#cc-t" transform="rotate(240 256 256)"/>
+  </g>
+  <circle cx="256" cy="256" r="30" fill="none" stroke="#35d6ed" stroke-width="9"/>
+  <circle cx="256" cy="256" r="10" fill="#eafcff"/>
+</svg>
