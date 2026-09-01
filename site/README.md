@@ -26,6 +26,6 @@ on this Cloudflare account.
   brains from `claw.config.json`, tools with `grep -c '^    name: "' src/tools.ts`,
   tests from what `npm test` reports, connectors from `MCP_CATALOGUE.length` in
   `src/mcp-catalog.ts`.
-- `hud.png` is a real capture of the HUD at rest on a fresh install (no keys, no
-  Telegram). Re-shoot it from a clean data dir, never from a personal one.
+- `hud.png`, `connect.png`, `skills.png`, `board.png` and `desk.png` are real captures of the HUD at rest on a fresh install (no keys, no
+  Telegram). Re-shoot them from a clean data dir, never from a personal one.
 - Fonts come from Google Fonts; `_headers` allows exactly those two hosts.

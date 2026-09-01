@@ -230,9 +230,10 @@ Honesty about maturity: **Linux** is where CUNNING CLAW lives every day. **macOS
 **Windows** are coded and doctor-checked but far younger — expect rough edges, and please
 report what you find. Native install on Windows is `install.ps1` (see Install above).
 
-> **Honesty about testing:** Linux is exercised daily. macOS and Windows are written
-> against the documented APIs with their pure logic unit-tested, but neither has been run
-> on real hardware yet. If you try one, please open an issue with what broke.
+> **Honesty about testing:** Linux is exercised daily. Windows has been run on real
+> hardware by the author and works, but has had far fewer hours — hence the beta badge.
+> macOS is written against the documented APIs with its pure logic unit-tested and has
+> not been run on a real Mac yet. If you try one, please open an issue with what broke.
 
 ## Run it offline
 
