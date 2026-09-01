@@ -430,6 +430,11 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
       `Port ${port} on ${listenHost} is in use — stop the other process or change server.port in claw.config.json`,
     ));
 
+  // The phone lines. Off is fine; a token with no allowlist is the trap —
+  // the bot connects and answers nobody, which reads as broken.
+  out.push(channelRow("telegram", "Telegram", process.env.TELEGRAM_BOT_TOKEN, process.env.TELEGRAM_CHAT_ID, "TELEGRAM_CHAT_ID"));
+  out.push(channelRow("discord", "Discord", process.env.DISCORD_BOT_TOKEN, process.env.DISCORD_ALLOWED_USER_ID, "DISCORD_ALLOWED_USER_ID"));
+
   const historyFile = path.join(DATA_DIR, "history.json");
   let raw: string | null = null;
   if (fs.existsSync(historyFile)) {
@@ -438,6 +443,14 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
   out.push(checkHistoryJson(raw, "data/history.json"));
 
   return out;
+}
+
+function channelRow(id: string, label: string, token: string | undefined, allow: string | undefined, allowName: string): DoctorCheck {
+  if (!token?.trim()) return row(id, "ok", false, `${label}: off (optional — see .env.example)`);
+  if (!allow?.trim()) {
+    return row(id, "warn", false, `${label}: token set but ${allowName} is empty — commands are disabled until it is; message the bot /whoami to learn it`);
+  }
+  return row(id, "ok", false, `${label}: on`);
 }
 
 async function binCheck(bin: string, id: string, essential: boolean): Promise<DoctorCheck> {

@@ -107,6 +107,29 @@ npm run doctor
 npm run dev
 ```
 
+### Telegram and Discord
+
+Both optional, both a second phone line to the same butler: you message it, it
+replies, and approval cards arrive as buttons. Nothing is listened to until an
+allowlist exists — a leaked token alone cannot be talked to by strangers.
+
+**Telegram** — make a bot with @BotFather, put its token in `TELEGRAM_BOT_TOKEN`,
+message it `/whoami`, and put the id it replies with in `TELEGRAM_CHAT_ID`.
+
+**Discord** — in the [Developer Portal](https://discord.com/developers/applications):
+New Application → Bot → Reset Token (that is `DISCORD_BOT_TOKEN`). On the same
+page, under *Privileged Gateway Intents*, turn on **Message Content** — without it
+the bot hears silence. Under OAuth2 → URL Generator tick `bot`, then *Send
+Messages* and *Read Message History*, and open the URL to invite it to your server.
+Message it `/whoami` and put your user id in `DISCORD_ALLOWED_USER_ID`.
+`DISCORD_CHANNEL_ID` is optional: where cards for work started on the HUD should
+land; otherwise the last channel you spoke in.
+
+Only the allowlisted ids are heard, and only they can press EXECUTE. Everything
+sent out is redacted first, and the bot cannot @-mention anyone, so a hostile page
+summarised into a reply cannot make it ping your server. `npm run doctor` reports
+both lines.
+
 Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screencapture`, `osascript`, `pbcopy`, `afplay`/`say`) and **Windows** (PowerShell — nothing to install). Missing tools return a message naming what to install, never a silent no-op. See the platform table below.
 
 ```
@@ -168,7 +191,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Claw" wake word |
 | **Remembers** | Markdown memory and a dated journal that survive restarts |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
-| **Reaches you** | Telegram, so it isn't trapped at your desk |
+| **Reaches you** | Telegram or Discord, so it isn't trapped at your desk — approval cards arrive as buttons you press |
 | **Works elsewhere** | Any other machine you own over ssh — a spare PC or a cloud VM. Long jobs run **detached**: builds and servers survive the conversation ending and your laptop closing, which they cannot do here |
 | **Extends** | Skills as `SKILL.md` files ([agentskills.io](https://agentskills.io)). Click **SKILLS** on the HUD to arm them, the same idea as Claude’s capabilities list |
 

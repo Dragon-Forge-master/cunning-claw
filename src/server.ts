@@ -27,6 +27,7 @@ import { loadLandscape } from "./landscape.js";
 import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, missingKeyHint, sessionSpend, lastTurnCost } from "./brain.js";
 import { createRequire } from "node:module";
 import { startTelegram, sendApprovalCard, approvalSettled, telegramStatus } from "./telegram.js";
+import { startDiscord, sendApprovalCard as sendDiscordCard, approvalSettled as discordSettled, discordStatus } from "./discord.js";
 import { openPreview, closePreview, reloadPreview, previewState, servedDir } from "./preview.js";
 import fs from "node:fs";
 import { isSensitivePath } from "./paths.js";
@@ -159,12 +160,14 @@ function requestApproval(summary: string, detail: string): Promise<boolean> {
       clearTimeout(timer);
       broadcast("approval_resolved", { id, approved, timedOut });
       approvalSettled(id, approved);
+      discordSettled(id, approved);
       resolve(approved);
     };
     timer = setTimeout(() => finish(false, true), config.commandPolicy.approvalTimeoutMs);
     pendingApprovals.set(id, finish);
     broadcast("approval_request", { id, summary, detail });
     void sendApprovalCard(id, summary, detail);
+    void sendDiscordCard(id, summary, detail);
   });
 }
 
@@ -410,6 +413,7 @@ app.get("/api/status", async (_req, res) => {
     landscapeUpdated: landscape.updated,
     landscapeCount: landscape.systems.length,
     telegram: telegramStatus(),
+    discord: discordStatus(),
     toolCount: toolDefinitions.length,
     spend: sessionSpend(),
     turn: turnInFlight(),
@@ -575,6 +579,7 @@ const httpServer = app.listen(port, host, async () => {
   startSchedule(agentEvents);
   startRemoteWatch(agentEvents);
   startTelegram(agentEvents, { resolveApproval: settleApproval });
+  startDiscord(agentEvents, { resolveApproval: settleApproval });
   for (const line of bootBrainLines()) console.log(line);
   if (!brainReady()) {
     console.warn(`  ⚠ No brain has an API key. ${missingKeyHint()}\n`);
