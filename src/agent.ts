@@ -569,7 +569,7 @@ export async function runTurn(
       if (guarded.overridden) events.emit("brain_guard", { forcedTo: spec.id, reason: guard.reason });
     } else {
       events.emit("notice", {
-        message: `${spec.label} is pinned, so this turn stays on it even though it ${guard.reason}. ` +
+        message: `${spec.label} is pinned, so this turn stays on it even though ${guard.reason}. ` +
           `Approvals and the command floor still apply. Use AUTO to let the guard choose.`,
       });
     }
