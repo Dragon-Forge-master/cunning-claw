@@ -17,6 +17,7 @@ data/tax.json
 data/remote-jobs.json
 data/remote-jobs-state.json
 data/turn-shapes.json
+data/schedule-state.json
 
 # Personal to each install — .example templates are tracked instead.
 senses/devices.json
