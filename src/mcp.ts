@@ -5,6 +5,7 @@ import {
   loadAllMcpServers,
   type McpServerConfig,
 } from "./mcp-config.js";
+import { catalogueById } from "./mcp-catalog.js";
 import { authorizeMcp, refreshIfNeeded, tokenFor } from "./mcp-oauth.js";
 import { fenceAttr } from "./browser-ax.js";
 
@@ -555,7 +556,14 @@ async function attach(cfg: McpServerConfig, log: (line: string) => void): Promis
       tools: 0,
     });
     connections.set(cfg.id, conn);
-    log(`  MCP ${cfg.id}: ${needs ? "needs OAuth (mcp_login)" : "unavailable"} — ${msg}`);
+    // A token vendor's 401 is not an OAuth problem — telling the operator to
+    // sign in sends them down a road that cannot end (the GitHub boot line
+    // said "needs OAuth" for a year while the fix was a pasted token).
+    const tokenEnv = catalogueById(cfg.id)?.tokenEnv;
+    const why = tokenEnv
+      ? `needs ${tokenEnv} — paste it on the Keys page`
+      : needs ? "needs OAuth (mcp_login)" : "unavailable";
+    log(`  MCP ${cfg.id}: ${why} — ${msg}`);
   }
 }
 
