@@ -28,6 +28,10 @@
       if (skills) skills.hidden = true;
       $("skills-toggle")?.classList.remove("active");
       notice = null;
+      // Paint the cached snapshot NOW — load() only re-renders when the
+      // snapshot changed, and by open time the background poll has usually
+      // cached an identical one, which left the overlay blank on open.
+      render();
       load();
     }
   }

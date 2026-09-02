@@ -958,6 +958,7 @@ $("preview-pop").addEventListener("click", () => {
 // ---------------------------------------------------------------------------
 // System telemetry + history restore
 // ---------------------------------------------------------------------------
+let brainPickerPainted = "";
 function renderBrainPicker(payload) {
   const el = $("brain-picker");
   if (!el) return;
@@ -966,6 +967,12 @@ function renderBrainPicker(payload) {
   if (!catalog) return;
   const pin = data.pin ?? null;
   const activeId = data.active?.id;
+  // Rebuilding on every 5s poll destroyed the button under the cursor
+  // between mousedown and mouseup — a click on a brain silently died once
+  // in a while. Only rebuild when what the picker shows has changed.
+  const signature = JSON.stringify({ catalog, pin, activeId });
+  if (signature === brainPickerPainted) return;
+  brainPickerPainted = signature;
   el.innerHTML = "";
   const make = (label, title, active, offline, onClick) => {
     const btn = document.createElement("button");
