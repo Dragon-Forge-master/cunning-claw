@@ -19,6 +19,8 @@ data/remote-jobs-state.json
 data/turn-shapes.json
 
 # Personal to each install — .example templates are tracked instead.
+senses/devices.json
+workspace/senses/
 workspace/USER.md
 workspace/MEMORY.md
 workspace/SCHEDULE.md

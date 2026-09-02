@@ -1,0 +1,6 @@
+{
+  "_comment": "Copy to senses/devices.json and replace with your own devices. Find a MAC with `ip neigh` while the device is awake. These examples are locally-administered placeholder addresses, not real hardware.",
+  "02:00:00:00:00:01": "Chris's phone",
+  "02:00:00:00:00:02": "Living room TV",
+  "02:00:00:00:00:03": "Workshop laptop"
+}

@@ -239,6 +239,36 @@ export const MCP_CATALOGUE: CatalogueEntry[] = [
 
   // AI
   http("hugging-face", "Hugging Face", "Models, Hub, Gradio apps", "AI", "https://huggingface.co/mcp"),
+
+  // The senses — first-party local servers that ship in senses/. Plain Node
+  // ESM, zero dependencies, spoken to over stdio. The relative script paths
+  // work because src/mcp.ts spawns stdio servers with cwd = ROOT; no tokenEnv
+  // because nothing here signs in — adar reads GEMINI_API_KEY from the env it
+  // inherits, same as the rest of the process.
+  stdio(
+    "adar",
+    "Adar",
+    "Birdsong identification through the microphone — needs a mic and your Gemini key",
+    "AI",
+    "node",
+    ["senses/adar.mjs"],
+  ),
+  stdio(
+    "llygad",
+    "Llygad",
+    "Who's home — pings your own LAN and reads the neighbour table; never leaves the network",
+    "Data",
+    "node",
+    ["senses/llygad.mjs"],
+  ),
+  stdio(
+    "uwchben",
+    "Uwchben",
+    "What's overhead — nearby aircraft and the ISS from public feeds; needs nothing",
+    "Data",
+    "node",
+    ["senses/uwchben.mjs"],
+  ),
 ];
 
 export function catalogueById(id: string): CatalogueEntry | undefined {
