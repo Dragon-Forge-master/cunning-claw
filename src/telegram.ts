@@ -66,6 +66,16 @@ export function approvalCardText(summary: string, detail: string): string {
   return `⚠ APPROVAL REQUIRED\n${redact(String(summary ?? ""))}\n\n${redact(String(detail ?? "")).slice(0, 2800)}`;
 }
 
+/**
+ * The boot greeting. It is the butler announcing itself to its operator, not
+ * the software naming itself, so a renamed claw (config.persona.name) must
+ * greet under its own name. Read at call time, and exported, so the rename
+ * test can prove it.
+ */
+export function onlineText(): string {
+  return `${config.persona.name} online. HUD at http://${config.server.host}:${config.server.port}`;
+}
+
 async function send(chatId: string, text: string, extra?: Record<string, unknown>): Promise<any> {
   if (!botToken) return null;
   return api(botToken, "sendMessage", {
@@ -167,7 +177,7 @@ export function startTelegram(events: AgentEvents, hooks: { resolveApproval: Res
   allowed = parseChatAllowlist(allow);
   resolveApproval = hooks.resolveApproval;
   console.log(`  Telegram: polling (allow ${[...allowed].map(maskChatId).join(", ")})`);
-  void send([...allowed][0], `CUNNING CLAW online. HUD at http://${config.server.host}:${config.server.port}`).catch(() => {});
+  void send([...allowed][0], onlineText()).catch(() => {});
   void loop(events);
 }
 

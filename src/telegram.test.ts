@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { config } from "./config.js";
-import { approvalCardText, maskChatId, outboundText, parseChatAllowlist, startTelegram, telegramStatus } from "./telegram.js";
+import { approvalCardText, maskChatId, onlineText, outboundText, parseChatAllowlist, startTelegram, telegramStatus } from "./telegram.js";
 
 /**
  * Telegram is the one surface that leaves the machine entirely.
@@ -97,5 +97,20 @@ test("telegram.enabled=false in config beats the env token — the poller must n
     else process.env.TELEGRAM_BOT_TOKEN = savedToken;
     if (savedChat === undefined) delete process.env.TELEGRAM_CHAT_ID;
     else process.env.TELEGRAM_CHAT_ID = savedChat;
+  }
+});
+
+test("a renamed claw greets under its own name, not the brand", () => {
+  // "Name your claw": persona.name in claw.config.json renames the individual
+  // butler, and the boot greeting is the butler speaking. Hardcoding CUNNING
+  // CLAW here is invisible on a default install (the default name IS Cunning
+  // Claw), so the test renames first — reverting the fix fails it.
+  const saved = config.persona.name;
+  try {
+    config.persona.name = "Vera";
+    assert.match(onlineText(), /^Vera online\./);
+    assert.doesNotMatch(onlineText(), /CUNNING CLAW/i);
+  } finally {
+    config.persona.name = saved;
   }
 });

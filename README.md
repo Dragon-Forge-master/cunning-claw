@@ -131,6 +131,33 @@ the old folder aside, clone anew, copy `.env` across from the old folder, and
 `npm install`. Nothing is lost — the old folder holds everything until you
 delete it yourself.
 
+### Name your claw
+
+The software is Cunning Claw. *Your* claw answers to whatever you put in
+`claw.config.json`:
+
+```json
+"persona": {
+  "name": "Cunning Claw",
+  "addressUserAs": "sir",
+  "userName": "Owner"
+}
+```
+
+`name` is what it calls itself — in its own head, and when it announces itself
+on Telegram or Discord. `addressUserAs` is what it calls you; `userName` is who
+it understands you to be. Edit them, then relight (restart, as in
+[Updating](#updating)) — config is read once at boot. The HUD wordmark, the
+boot banner and the repo stay Cunning Claw: that is the software's name, the
+way the tin keeps its label whatever you christen what's inside.
+
+Only you can do the christening. The identity files (`SOUL.md`, `IDENTITY.md`,
+`HEARTBEAT.md`) raise an approval card on every write, and no plan may
+pre-authorise touching `claw.config.json` — so no web page, no email, and no
+approved plan can rename your claw behind your back.
+
+Yours to name. Ours to answer for.
+
 ### Telegram and Discord
 
 Both optional, both a second phone line to the same butler: you message it, it

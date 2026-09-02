@@ -138,6 +138,17 @@ export function approvalCardPayload(id: string, summary: string, detail: string)
   };
 }
 
+/**
+ * The boot greeting — the butler announcing itself to its operator, not the
+ * software naming itself, so a renamed claw (config.persona.name) greets under
+ * its own name. Same shape as Telegram's onlineText, deliberately: the phone
+ * lines are siblings. Read at call time, and exported, so the rename test can
+ * prove it.
+ */
+export function onlineText(): string {
+  return `${config.persona.name} online. HUD at http://${config.server.host}:${config.server.port}`;
+}
+
 export interface Interaction {
   id: string;
   token: string;
@@ -533,7 +544,7 @@ async function connect(events: AgentEvents): Promise<void> {
     onReady: () => {
       console.log(`  Discord: connected (allow ${[...allowed].map(maskUserId).join(", ") || "nobody yet"})`);
       if (configuredChannel && allowed.size) {
-        void send(configuredChannel, `CUNNING CLAW online. HUD at http://${config.server.host}:${config.server.port}`).catch(() => {});
+        void send(configuredChannel, onlineText()).catch(() => {});
       }
     },
     onMessage: (m) => void handleMessage(m, events).catch((err) =>

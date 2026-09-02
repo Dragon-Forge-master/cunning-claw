@@ -8,6 +8,7 @@ import {
   approvalCardPayload,
   discordStatus,
   maskUserId,
+  onlineText,
   outboundChunks,
   parseInteraction,
   parseUserAllowlist,
@@ -252,5 +253,20 @@ test("discord.enabled=false in config beats the env token — the Gateway must n
     else process.env.DISCORD_BOT_TOKEN = savedToken;
     if (savedUsers === undefined) delete process.env.DISCORD_ALLOWED_USER_ID;
     else process.env.DISCORD_ALLOWED_USER_ID = savedUsers;
+  }
+});
+
+test("a renamed claw greets under its own name, not the brand", () => {
+  // Sibling of the Telegram test: the boot greeting is the butler speaking,
+  // so it follows persona.name. Renaming first is what makes a hardcoded
+  // CUNNING CLAW visible — the default name is the brand, so a default-config
+  // assertion would pass either way.
+  const saved = config.persona.name;
+  try {
+    config.persona.name = "Vera";
+    assert.match(onlineText(), /^Vera online\./);
+    assert.doesNotMatch(onlineText(), /CUNNING CLAW/i);
+  } finally {
+    config.persona.name = saved;
   }
 });
