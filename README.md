@@ -107,6 +107,30 @@ npm run doctor
 npm run dev
 ```
 
+### Updating
+
+One command, same on every platform:
+
+```bash
+npm run update
+```
+
+That is `git pull` plus `npm install`, run by npm in its own shell — so it works
+identically in PowerShell, which does not accept `&&` on older versions, and in
+bash, which does. Your `.env`, your `data/` (memory, journal, history) and your
+workspace are untracked and survive every update untouched.
+
+Then relight it: `systemctl --user restart cunningclaw` if you use the autostart
+unit, or Ctrl+C and `npm run dev` again in a plain terminal. The claw tells you
+its version in the boot banner, and `npm run doctor` after an update names
+anything new it wants.
+
+If `git pull` refuses because you have edited tracked files, either keep your
+edits (`git stash`, update, `git stash pop`) or take the fresh-clone road: rename
+the old folder aside, clone anew, copy `.env` across from the old folder, and
+`npm install`. Nothing is lost — the old folder holds everything until you
+delete it yourself.
+
 ### Telegram and Discord
 
 Both optional, both a second phone line to the same butler: you message it, it
