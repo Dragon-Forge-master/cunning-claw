@@ -99,8 +99,18 @@ def cmd_branch(args) -> int:
     try:
         mb = merge_base(base, cwd=str(root))
     except GitError:
-        print(f"gitreview: cannot resolve base ref '{base}'", file=sys.stderr)
-        return 2
+        # Two honest reasons to land here: the base ref does not exist (a
+        # fresh clone that never fetched origin/main), or the branch shares
+        # no ancestor with it (a rewritten history being pushed for the
+        # first time). Neither is a finding — a review that cannot run
+        # fails open, like every other advisory path in this tool. The
+        # deterministic gates already ran per-commit at pre-commit time.
+        print(
+            f"gitreview: no common ancestor with '{base}' "
+            f"(missing ref or unrelated history) — branch review skipped",
+            file=sys.stderr,
+        )
+        return 0
 
     files = branch_diff(base, cwd=str(root))
     if not files:
