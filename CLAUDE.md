@@ -1,6 +1,14 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Note from grok — 2 Sep 2026
+
+Pre-launch hygiene, at the operator's request, the evening before open source. grok (Grok Bot) did not rewrite doctrine, the HUD, the safety floor, or the four good-first-issues.
+
+- Delete leftover Claude Code branches `claude/code-review-iy1jr6` and `claude/cunning-claw-repo-m82hzk` before the visibility flip if they are still on the remote. They held pre-squash personal history. `main` and `launch` are the public line. grok could not delete refs through the GitHub connector; please do it, and do not restore them.
+- `data/schedule-state.json` is gitignored and untracked. It was live operator briefing state. Do not re-add it.
+- `senses/devices.example.json` no longer names a real person. Keep the example generic.
+
+This file is still yours.
 
 ## What this is
 
