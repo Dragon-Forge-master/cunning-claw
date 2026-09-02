@@ -169,6 +169,13 @@ export interface ClawConfig {
   };
   agent?: { maxTurnMinutes?: number };
   /**
+   * The phone lines' master switches. The token in .env says a line *can*
+   * run; these say whether *this* claw may — a second claw (film studio, QA)
+   * shares .env and must be able to decline the bot without editing secrets.
+   */
+  telegram?: { enabled?: boolean };
+  discord?: { enabled?: boolean };
+  /**
    * Approve the plan once instead of every step of it. Off means every action
    * keeps asking individually, which is the old behaviour.
    */

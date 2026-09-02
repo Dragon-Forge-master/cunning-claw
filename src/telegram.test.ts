@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { approvalCardText, maskChatId, outboundText, parseChatAllowlist, telegramStatus } from "./telegram.js";
+import { config } from "./config.js";
+import { approvalCardText, maskChatId, outboundText, parseChatAllowlist, startTelegram, telegramStatus } from "./telegram.js";
 
 /**
  * Telegram is the one surface that leaves the machine entirely.
@@ -69,4 +70,32 @@ test("the HUD sees only the last four digits of a chat id", () => {
   assert.equal(maskChatId("5550001234"), "…1234");
   assert.doesNotMatch(maskChatId("5550001234"), /5550001234/);
   for (const c of telegramStatus().chats) assert.match(c, /^…\d{0,4}$/);
+});
+
+test("telegram.enabled=false in config beats the env token — the poller must not arm", () => {
+  // A second claw on the same machine shares .env via the repo, so the token
+  // is present; but Telegram allows one getUpdates poller per token, and two
+  // claws polling means both go deaf. The config switch must win outright:
+  // startTelegram returns before touching the token, the allowlist, or the
+  // network. Observable here: telegramStatus() stays dark.
+  const savedCfg = config.telegram;
+  const savedToken = process.env.TELEGRAM_BOT_TOKEN;
+  const savedChat = process.env.TELEGRAM_CHAT_ID;
+  try {
+    config.telegram = { enabled: false };
+    process.env.TELEGRAM_BOT_TOKEN = "123456789:EXAMPLEfakeTELEGRAMtoken00000000000";
+    process.env.TELEGRAM_CHAT_ID = "5550001234";
+    startTelegram(
+      { emit: () => {}, requestApproval: async () => false },
+      { resolveApproval: () => false },
+    );
+    assert.equal(telegramStatus().enabled, false, "disabled in config — the token must be ignored");
+    assert.deepEqual(telegramStatus().chats, [], "no allowlist armed, so no chat can be messaged");
+  } finally {
+    config.telegram = savedCfg;
+    if (savedToken === undefined) delete process.env.TELEGRAM_BOT_TOKEN;
+    else process.env.TELEGRAM_BOT_TOKEN = savedToken;
+    if (savedChat === undefined) delete process.env.TELEGRAM_CHAT_ID;
+    else process.env.TELEGRAM_CHAT_ID = savedChat;
+  }
 });

@@ -144,6 +144,11 @@ async function bootstrapWhoamiLoop(token: string): Promise<void> {
 }
 
 export function startTelegram(events: AgentEvents, hooks: { resolveApproval: ResolveApproval }): void {
+  // The config switch must win over the env token: a second claw on the same
+  // machine (the film studio, a QA stand-in) shares .env via the repo but must
+  // not fight the live claw for the bot — Telegram allows one getUpdates
+  // poller per token, so two claws polling means both go deaf.
+  if (config.telegram?.enabled === false) return;
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const allow = process.env.TELEGRAM_CHAT_ID;
   if (!token) return;

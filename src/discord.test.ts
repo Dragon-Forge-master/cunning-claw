@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { config } from "./config.js";
 import {
   Gateway,
   INTENTS,
@@ -10,6 +11,7 @@ import {
   outboundChunks,
   parseInteraction,
   parseUserAllowlist,
+  startDiscord,
   type GatewayDeps,
   type SocketLike,
 } from "./discord.js";
@@ -224,4 +226,31 @@ test("the allowlist ignores blanks, and the HUD sees only the last four digits o
   assert.equal(maskUserId("819273645501"), "…5501");
   assert.equal(discordStatus().enabled, false, "nothing configured in tests");
   for (const u of discordStatus().users) assert.match(u, /^…\d{0,4}$/);
+});
+
+test("discord.enabled=false in config beats the env token — the Gateway must not arm", () => {
+  // Same rule as Telegram: a second claw sharing .env must be able to decline
+  // the bot without editing secrets. startDiscord has to return before it
+  // stores the token or reaches for the gateway; discordStatus() staying dark
+  // is the observable, because enabled is Boolean(botToken && allowed.size).
+  const savedCfg = config.discord;
+  const savedToken = process.env.DISCORD_BOT_TOKEN;
+  const savedUsers = process.env.DISCORD_ALLOWED_USER_ID;
+  try {
+    config.discord = { enabled: false };
+    process.env.DISCORD_BOT_TOKEN = TOKEN; // synthetic, as everywhere in this file
+    process.env.DISCORD_ALLOWED_USER_ID = "819273645501";
+    startDiscord(
+      { emit: () => {}, requestApproval: async () => false },
+      { resolveApproval: () => false },
+    );
+    assert.equal(discordStatus().enabled, false, "disabled in config — the token must be ignored");
+    assert.deepEqual(discordStatus().users, [], "no allowlist armed");
+  } finally {
+    config.discord = savedCfg;
+    if (savedToken === undefined) delete process.env.DISCORD_BOT_TOKEN;
+    else process.env.DISCORD_BOT_TOKEN = savedToken;
+    if (savedUsers === undefined) delete process.env.DISCORD_ALLOWED_USER_ID;
+    else process.env.DISCORD_ALLOWED_USER_ID = savedUsers;
+  }
 });

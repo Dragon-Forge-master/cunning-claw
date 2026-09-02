@@ -500,6 +500,9 @@ async function handleMessage(m: InboundMessage, events: AgentEvents): Promise<vo
 // ── Boot ───────────────────────────────────────────────────────────────────
 
 export function startDiscord(events: AgentEvents, hooks: { resolveApproval: ResolveApproval }): void {
+  // Config switch beats env token — see startTelegram: a second claw sharing
+  // .env must be able to decline the bot without editing secrets.
+  if (config.discord?.enabled === false) return;
   const token = process.env.DISCORD_BOT_TOKEN?.trim();
   if (!token) return;
   botToken = token;

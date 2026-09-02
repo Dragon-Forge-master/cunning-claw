@@ -13,3 +13,4 @@ d12d257f2911  # redact.test.ts: synthetic JWT-shaped fixture
 330b04c022d4  # relay/test.mjs: synthetic bearer fixture in the parser test
 a17533623787  # connectors.test.ts: synthetic GitHub-shaped fixture, says EXAMPLEfake in the value
 fc65bb299695  # mcp-catalog.ts: tokenEnv holds an env var NAME, not a value
+17897a571b0e  # telegram.test.ts: synthetic Telegram-shaped fixture, says EXAMPLEfake in the value
