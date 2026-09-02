@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cunning Claw</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="hud.css">
+</head>
+<body>
+  <div id="boot-overlay">
+    <pre id="boot-text"></pre>
+  </div>
+
+  <div id="hud">
+    <header>
+      <div class="brand">CUNNING CLAW <span class="sub">dyn hysbys · Cardiff</span></div>
+      <div class="header-controls">
+        <div id="brain-picker" class="brain-picker" title="Which model thinks. Same tools on every brain."></div>
+        <button id="skills-toggle" class="ctl" title="Capabilities — click to arm a skill">SKILLS</button>
+        <button id="mcp-toggle" class="ctl" title="Connectors — MCP servers such as Canva, GitHub, Notion">CONNECT<span id="mcp-badge" class="hdr-badge" hidden></span></button>
+        <button id="preview-toggle" class="ctl" title="In-HUD browser viewport">VIEWPORT</button>
+        <button id="tts-toggle" class="ctl active" title="Voice output">VOICE</button>
+        <button id="wake-toggle" class="ctl" title="Always listening for 'Claw'">WAKE</button>
+        <a href="/board" class="ctl" title="The Forge Board" style="text-decoration:none;line-height:1.9">BOARD</a>
+        <a href="/docs" class="ctl" title="The Desk — notes and documents, shared with the claw" style="text-decoration:none;line-height:1.9">DESK</a>
+        <button id="stop-btn" class="ctl" title="Abandon the request in flight" style="display:none">STOP</button>
+        <button id="reset-btn" class="ctl" title="Clear conversation">RESET</button>
+        <span id="conn-dot" class="dot"></span>
+      </div>
+    </header>
+
+    <main>
+      <aside id="sys-panel">
+        <div class="panel-title">SYSTEM TELEMETRY</div>
+        <pre id="sys-status">initialising…</pre>
+      </aside>
+
+      <section id="center" data-state="STANDBY">
+        <canvas id="reactor" width="360" height="360"></canvas>
+        <div id="state-label">STANDBY</div>
+        <div id="hb-chip"></div>
+        <div id="route-chip"></div>
+        <div id="spend-chip"></div>
+      </section>
+
+      <section id="chat-panel">
+        <div class="panel-title">TRANSCRIPT</div>
+        <div id="chat-log"></div>
+        <div id="approval-area"></div>
+        <div id="armed-row" hidden></div>
+        <form id="input-bar">
+          <button type="button" id="mic-btn" title="Click to speak, click again to stop">◉</button>
+          <button type="button" id="attach-btn" title="Attach a file — it lands in the Desk's uploads folder">📎</button>
+          <input type="file" id="attach-input" style="display:none">
+          <input id="msg-input" type="text" placeholder="At your service, sir…" autocomplete="off">
+          <button type="submit" id="send-btn">SEND</button>
+        </form>
+      </section>
+
+      <section id="preview-panel">
+        <div class="preview-chrome">
+          <div class="vp-tabs">
+            <button type="button" class="vp-tab active" data-tab="live">LIVE</button>
+            <button type="button" class="vp-tab" data-tab="files">FILES<span id="files-count"></span></button>
+          </div>
+          <form id="preview-bar">
+            <input id="preview-url" type="text" spellcheck="false" placeholder="http://127.0.0.1:…">
+            <button type="submit" class="ctl" title="Load">GO</button>
+            <button type="button" id="preview-reload" class="ctl" title="Reload">RELOAD</button>
+            <span class="vp-devices">
+              <button type="button" class="ctl dev" data-w="390" title="iPhone width">390</button>
+              <button type="button" class="ctl dev" data-w="768" title="Tablet width">768</button>
+              <button type="button" class="ctl dev active" data-w="0" title="Full width">FULL</button>
+            </span>
+            <span id="vp-dims" class="vp-dims"></span>
+            <button type="button" id="preview-pop" class="ctl" title="Open in a real browser tab">POP</button>
+            <button type="button" id="preview-close" class="ctl" title="Close viewport">CLOSE</button>
+          </form>
+        </div>
+        <div id="preview-stage">
+          <iframe id="preview-frame" title="CUNNING CLAW viewport" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"></iframe>
+        </div>
+        <div id="files-stage">
+          <div id="files-list"></div>
+          <div id="files-diff"><span class="files-empty">Select a file to see what changed.</span></div>
+        </div>
+        <div id="preview-hint">If this pane is blank, the app refused to be framed. POP opens it in a tab.</div>
+      </section>
+    </main>
+  </div>
+
+  <div id="skills-overlay" hidden>
+    <div class="skills-sheet">
+      <div class="skills-head">
+        <div>
+          <div class="panel-title">CAPABILITIES</div>
+          <p class="skills-hint">Click a skill to arm it. Armed skills are loaded before the next thing you send — the same idea as Claude’s skills list.</p>
+        </div>
+        <button type="button" id="skills-close" class="ctl">CLOSE</button>
+      </div>
+      <div id="skills-list"></div>
+    </div>
+  </div>
+
+  <div id="mcp-overlay" hidden>
+    <div class="mcp-sheet">
+      <div class="mcp-head">
+        <div>
+          <div class="panel-title">CONNECTORS <span id="mcp-count" class="mcp-count"></span></div>
+          <p class="mcp-hint">A directory of MCP servers, the same idea as Claude’s Connectors list. Seeing Slack or HubSpot here does not connect them — Connect still writes <code>mcp.json</code> and signs in in the system browser.</p>
+        </div>
+        <div class="mcp-head-actions">
+          <input id="mcp-search" type="search" placeholder="Search connectors" autocomplete="off">
+          <button type="button" id="mcp-add-toggle" class="ctl">ADD</button>
+          <button type="button" id="mcp-close" class="ctl">CLOSE</button>
+        </div>
+      </div>
+      <p id="mcp-banner" class="mcp-banner" hidden></p>
+      <form id="mcp-add-form" class="mcp-add" hidden>
+        <div class="mcp-add-grid">
+          <label>Id <input name="id" placeholder="canva" spellcheck="false"></label>
+          <label>URL <input name="url" placeholder="https://mcp.canva.com/mcp" spellcheck="false"></label>
+          <label>Command <input name="command" placeholder="npx" spellcheck="false"></label>
+          <label>Args <input name="args" placeholder="-y mcp-remote@latest https://…" spellcheck="false"></label>
+        </div>
+        <label class="mcp-paste">Paste a Claude / Cursor snippet
+          <textarea name="paste" rows="6" placeholder='{ "mcpServers": { "canva": { "type": "http", "url": "https://mcp.canva.com/mcp" } } }' spellcheck="false"></textarea>
+        </label>
+        <div class="mcp-add-btns">
+          <button type="submit" class="ctl active">SAVE</button>
+          <button type="button" id="mcp-add-cancel" class="ctl">CANCEL</button>
+        </div>
+      </form>
+      <div id="mcp-tabs" class="mcp-tabs" role="tablist">
+        <button type="button" class="mcp-tab active" data-filter="all">All</button>
+        <button type="button" class="mcp-tab" data-filter="connected">Connected</button>
+        <button type="button" class="mcp-tab" data-filter="not_connected">Not connected</button>
+      </div>
+      <div id="mcp-cats" class="mcp-cats" role="tablist"></div>
+      <div class="mcp-popular-label">Popular</div>
+      <div id="mcp-popular" class="mcp-popular"></div>
+      <div id="mcp-table" class="mcp-table"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="connectors.js"></script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+{
+  "model": "google/gemini-2.5-flash",
+  "effort": "high",
+  "maxTokens": 8192,
+  "persona": {
+    "name": "Cunning Claw",
+    "addressUserAs": "sir",
+    "userName": "Owner"
+  },
+  "history": {
+    "maxMessages": 60,
+    "persist": true
+  },
+  "webSearch": {
+    "enabled": false,
+    "maxUses": 5
+  },
+  "commandPolicy": {
+    "autoApprovePatterns": [
+      "^(ls|cat|head|tail|grep|find|du|df|free|uptime|date|whoami|hostname|uname|ps|top -b -n 1|sensors|lsblk|ip addr|nmcli( .*)? (status|show)|xdg-open .*|pactl .*|playerctl .*|notify-send .*)( |$)",
+      "^git (status|log|diff|show|branch|remote|shortlog|blame)( |$)",
+      "^(pwd|wc|sort|uniq|file|stat|which|where|tree|less|more|readlink|basename|dirname)( |$)",
+      "^(node|py|python3?|npm|npx|git|ffmpeg|gh) (--version|-v)$",
+      "^npm (test|run test|ls|outdated|view)( |$)",
+      "^mkdir( -p)? [^;&|<>]*$",
+      "^touch [^;&|<>]*$",
+      "^gh (repo list|repo view|pr list|issue list)( |$)",
+      "^(tar -t|unzip -l|du -sh|df -h)( |$)?"
+    ],
+    "denyPatterns": [
+      "rm\\s+-rf\\s+/(\\s|$)",
+      "mkfs",
+      ">\\s*/dev/sd",
+      "dd\\s+if=",
+      ":\\(\\)\\s*\\{.*\\};:",
+      "shutdown|reboot|poweroff",
+      "passwd",
+      "chmod\\s+777\\s+/"
+    ],
+    "timeoutMs": 180000,
+    "approvalTimeoutMs": 180000
+  },
+  "server": {
+    "port": 3900,
+    "host": "127.0.0.1"
+  },
+  "voice": {
+    "enabled": true,
+    "engine": "auto",
+    "maxChars": 1200,
+    "say": {
+      "voice": "Daniel"
+    },
+    "piper": {
+      "model": "voices/en_GB-alan-medium.onnx",
+      "player": "paplay",
+      "sampleRate": 22050,
+      "lengthScale": 0.92,
+      "noiseScale": 0.667,
+      "noiseWScale": 0.8,
+      "sentenceSilence": 0.15,
+      "volume": 1.0
+    },
+    "spd": {
+      "language": "en-gb",
+      "voiceName": "English (Great Britain)+Edward",
+      "rate": -10,
+      "pitch": 0,
+      "volume": 0
+    }
+  },
+  "browser": {
+    "enabled": true,
+    "binary": "",
+    "debugPort": 9222,
+    "timeoutMs": 20000,
+    "extraFlags": [],
+    "requireApprovalFor": [
+      "browser_click",
+      "browser_type"
+    ],
+    "approveEveryAction": false,
+    "committingPatterns": []
+  },
+  "desktop": {
+    "enabled": true,
+    "maxImageWidth": 1400,
+    "requireApprovalFor": [
+      "press_keys",
+      "type_on_desktop"
+    ]
+  },
+  "http": {
+    "allowlist": [
+      "api.github.com",
+      "api.open-meteo.com",
+      "geocoding-api.open-meteo.com",
+      "*.googleapis.com",
+      "127.0.0.1",
+      "localhost",
+      "api.cloudflare.com",
+      "*.workers.dev",
+      "*.pages.dev",
+      "registry.npmjs.org"
+    ],
+    "timeoutMs": 20000,
+    "maxResponseChars": 12000
+  },
+  "homeAssistant": {
+    "enabled": false,
+    "baseUrl": "http://homeassistant.local:8123",
+    "tokenEnv": "HA_TOKEN"
+  },
+  "eyes": {
+    "enabled": true,
+    "device": "/dev/video0",
+    "maxImageWidth": 1280
+  },
+  "coherence": {
+    "ouroborosLimit": 2,
+    "maxIterations": 25,
+    "repetitionWarn": 0.4,
+    "repetitionHalt": 0.6,
+    "repeatTurnsBeforeWarning": 3,
+    "minStepsBeforeJudging": 4
+  },
+  "heartbeat": {
+    "enabled": true,
+    "intervalMinutes": 30
+  },
+  "brains": {
+    "default": "flash",
+    "heartbeat": "lite",
+    "fallbacks": [
+      "flash",
+      "lite",
+      "nano"
+    ],
+    "catalog": [
+      {
+        "id": "lite",
+        "label": "Lite",
+        "provider": "openai",
+        "model": "google/gemini-2.5-flash-lite",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKeyEnv": "OPENROUTER_API_KEY",
+        "thinking": false,
+        "price": {
+          "in": 0.1,
+          "out": 0.4
+        },
+        "note": "fastest and cheapest — chat, clock, telemetry"
+      },
+      {
+        "id": "flash",
+        "label": "Flash",
+        "provider": "openai",
+        "model": "google/gemini-3.5-flash-lite",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKeyEnv": "OPENROUTER_API_KEY",
+        "thinking": false,
+        "price": {
+          "in": 0.3,
+          "out": 2.5
+        },
+        "note": "the workhorse — tools, browsing, most jobs (Gemini 3.5 generation, same price as the old 2.5 flash)"
+      },
+      {
+        "id": "pro",
+        "label": "Pro",
+        "provider": "openai",
+        "model": "google/gemini-2.5-pro",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKeyEnv": "OPENROUTER_API_KEY",
+        "thinking": false,
+        "price": {
+          "in": 1.25,
+          "out": 10.0
+        },
+        "note": "harder reasoning, still a quarter of Opus"
+      },
+      {
+        "id": "nano",
+        "label": "Nano",
+        "provider": "openai",
+        "model": "openai/gpt-4.1-nano",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKeyEnv": "OPENROUTER_API_KEY",
+        "thinking": false,
+        "price": {
+          "in": 0.1,
+          "out": 0.4
+        },
+        "note": "OpenAI's cheapest — a second opinion"
+      },
+      {
+        "id": "deepseek",
+        "label": "DeepSeek",
+        "provider": "openai",
+        "model": "deepseek/deepseek-chat",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKeyEnv": "OPENROUTER_API_KEY",
+        "thinking": false,
+        "price": {
+          "in": 0.26,
+          "out": 1.03
+        },
+        "note": "strong at code for the money"
+      },
+      {
+        "id": "local",
+        "label": "Local",
+        "provider": "openai",
+        "model": "llama3.2:latest",
+        "baseUrl": "http://localhost:11434/v1",
+        "apiKeyEnv": "OLLAMA_API_KEY",
+        "thinking": false,
+        "price": {
+          "in": 0.0,
+          "out": 0.0
+        },
+        "note": "free and fully offline — Ollama llama3.2 3B, sized for this machine's RAM; chatty, not scholarly"
+      }
+    ]
+  },
+  "brain": {
+    "provider": "openai",
+    "openai": {
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "model": "google/gemini-2.5-flash",
+      "apiKeyEnv": "OPENROUTER_API_KEY"
+    }
+  },
+  "routing": {
+    "enforceTrustedBrain": true,
+    "trustedBrains": [
+      "pro",
+      "flash"
+    ],
+    "cheapWhenTrivial": true,
+    "cheapBrain": "lite",
+    "guardOverridesPin": false
+  },
+  "coding": {
+    "root": "~",
+    "skip": [
+      "node_modules",
+      ".git",
+      "dist",
+      ".venv",
+      "voices"
+    ]
+  },
+  "mcp": {
+    "enabled": true,
+    "timeoutMs": 30000,
+    "maxToolsPerServer": 80,
+    "maxResultChars": 12000,
+    "servers": []
+  },
+  "pricing": {
+    "currency": "USD",
+    "models": {
+      "claude-opus-5": {
+        "inputPerMillion": 15,
+        "outputPerMillion": 75
+      },
+      "claude-haiku-4-5": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 5
+      },
+      "gpt-4o-mini": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.6
+      },
+      "llama3.1:8b": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0
+      }
+    }
+  },
+  "agent": {
+    "maxTurnMinutes": 10
+  },
+  "workOrder": {
+    "enabled": true,
+    "expiryMinutes": 30
+  },
+  "remote": {
+    "enabled": true,
+    "defaultBox": "",
+    "connectTimeoutSec": 10,
+    "runTimeoutMs": 120000,
+    "maxOutputChars": 20000,
+    "boxes": []
+  },
+  "board": {
+    "weatherPlace": "Cardiff",
+    "staleAfterDays": 30
+  }
+}

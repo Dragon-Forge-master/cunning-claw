@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Desk</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="hud.css">
+<style>
+  body{overflow:hidden;padding:0}
+  .desk{display:flex;height:100vh}
+  .side{width:250px;min-width:250px;border-right:1px solid var(--cyan-dim);
+    display:flex;flex-direction:column;background:var(--panel)}
+  .side h1{color:var(--cyan);font-size:15px;letter-spacing:4px;padding:16px 14px 10px;
+    text-shadow:0 0 10px var(--cyan-glow)}
+  .side .sub{color:var(--cyan-dim);font-size:10px;letter-spacing:1px;padding:0 14px 10px;
+    border-bottom:1px solid rgba(26,108,122,.3)}
+  .side a.back{color:var(--cyan-dim);font-size:10px;letter-spacing:2px;text-decoration:none;
+    padding:8px 14px;display:block}
+  .side a.back:hover{color:var(--cyan)}
+  .newrow{display:flex;gap:6px;padding:8px 10px}
+  .newrow input{flex:1;background:rgba(53,214,237,.05);border:1px solid var(--cyan-dim);
+    color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 8px}
+  .newrow button{background:transparent;border:1px solid var(--cyan);color:var(--cyan);
+    font-family:var(--mono);font-size:11px;padding:6px 10px;cursor:pointer}
+  .list{flex:1;overflow-y:auto}
+  .doc{padding:9px 14px;border-bottom:1px solid rgba(26,108,122,.15);cursor:pointer;font-size:12px}
+  .doc:hover{background:rgba(53,214,237,.06)}
+  .doc.active{background:rgba(53,214,237,.1);border-left:2px solid var(--cyan);padding-left:12px}
+  .doc .n{color:var(--text)}
+  .doc .m{color:var(--cyan-dim);font-size:10px;margin-top:2px}
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .bar{display:flex;align-items:center;gap:8px;padding:10px 14px;
+    border-bottom:1px solid var(--cyan-dim)}
+  .bar .title{color:var(--cyan);font-size:14px;letter-spacing:1px;flex:1;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar button{background:transparent;border:1px solid var(--cyan-dim);color:var(--cyan-dim);
+    font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:5px 10px;cursor:pointer}
+  .bar button:hover,.bar button.on{border-color:var(--cyan);color:var(--cyan)}
+  .bar button:disabled{opacity:.35;cursor:default}
+  .bar button:disabled:hover{border-color:var(--cyan-dim);color:var(--cyan-dim)}
+  .bar .saved{color:var(--cyan-dim);font-size:10px;letter-spacing:1px;min-width:70px;text-align:right}
+  .editwrap{flex:1;display:flex;min-height:0}
+  textarea{flex:1;background:transparent;border:none;outline:none;resize:none;
+    color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.7;padding:20px 24px}
+  .render{flex:1;overflow-y:auto;padding:20px 28px;display:none;line-height:1.7;font-size:14px}
+  .render.show{display:block}
+  .render h1,.render h2,.render h3{color:var(--cyan);margin:1em 0 .4em;line-height:1.25}
+  .render h1{font-size:1.6em}.render h2{font-size:1.3em}.render h3{font-size:1.1em}
+  .render p{margin:.6em 0}
+  .render ul,.render ol{margin:.6em 0 .6em 1.4em}
+  .render code{background:rgba(53,214,237,.1);padding:.1em .35em;border-radius:2px;font-size:.9em}
+  .render pre{background:rgba(53,214,237,.07);border:1px solid rgba(26,108,122,.4);
+    padding:12px;overflow-x:auto;margin:.8em 0}
+  .render pre code{background:none;padding:0}
+  .render blockquote{border-left:3px solid var(--cyan-dim);margin:.8em 0;padding:.2em 0 .2em 1em;
+    color:var(--cyan-dim)}
+  .render a{color:var(--cyan)}
+  .render hr{border:none;border-top:1px solid var(--cyan-dim);margin:1.2em 0}
+  .render strong{color:#eafcff}
+  .empty{flex:1;display:flex;align-items:center;justify-content:center;
+    color:var(--cyan-dim);font-size:12px;letter-spacing:2px;text-align:center;line-height:2}
+  @media print{
+    .side,.bar{display:none!important}
+    body{overflow:visible;background:#fff}
+    .render{display:block!important;color:#111;padding:0}
+    .render h1,.render h2,.render h3{color:#111}
+    .render code,.render pre{background:#f2f2f2;border-color:#ccc}
+    textarea{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="desk">
+  <div class="side">
+    <h1>THE DESK</h1>
+    <div class="sub">local documents · yours and the claw's</div>
+    <a class="back" href="/">← BACK TO THE CLAW</a>
+    <div class="newrow">
+      <input id="newname" placeholder="new document name" maxlength="60">
+      <button id="newbtn">NEW</button>
+    </div>
+    <div class="list" id="list"></div>
+  </div>
+  <div class="main">
+    <div class="bar">
+      <span class="title" id="title">—</span>
+      <span class="saved" id="saved"></span>
+      <button id="viewbtn">PREVIEW</button>
+      <button id="printbtn" title="Print or save as PDF">PDF</button>
+      <button id="delbtn" title="Moves to .trash — nothing is destroyed">BIN</button>
+    </div>
+    <div class="editwrap">
+      <textarea id="editor" spellcheck="true" placeholder="Write, sir. Markdown works: # heading, **bold**, - lists…"></textarea>
+      <div class="render" id="render"></div>
+    </div>
+    <div class="empty" id="empty" style="display:none">
+      NO DOCUMENT OPEN<br>
+      <span style="font-size:10px">make one on the left — or ask the claw to draft something;<br>
+      it writes to this same desk</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let current = null, dirty = false, saveTimer = null;
+
+const esc = (s) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+
+/** Small, dependency-free markdown: headings, bold/italic, code, lists, quotes, links, rules. */
+function md(src){
+  const lines = src.split("\n");
+  let out = "", inCode = false, inList = null;
+  const closeList = () => { if (inList){ out += `</${inList}>`; inList = null; } };
+  const inline = (t) => esc(t)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  for (const line of lines){
+    if (line.startsWith("```")){ closeList(); out += inCode ? "</code></pre>" : "<pre><code>"; inCode = !inCode; continue; }
+    if (inCode){ out += esc(line) + "\n"; continue; }
+    const h = line.match(/^(#{1,3})\s+(.*)/);
+    if (h){ closeList(); out += `<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`; continue; }
+    if (/^(-{3,}|\*{3,})\s*$/.test(line)){ closeList(); out += "<hr>"; continue; }
+    if (/^>\s?/.test(line)){ closeList(); out += `<blockquote>${inline(line.replace(/^>\s?/,""))}</blockquote>`; continue; }
+    const ol = line.match(/^\s*\d+[.)]\s+(.*)/), ul = line.match(/^\s*[-*]\s+(.*)/);
+    if (ol || ul){
+      const want = ol ? "ol" : "ul";
+      if (inList !== want){ closeList(); out += `<${want}>`; inList = want; }
+      out += `<li>${inline((ol ?? ul)[1])}</li>`; continue;
+    }
+    closeList();
+    out += line.trim() ? `<p>${inline(line)}</p>` : "";
+  }
+  if (inCode) out += "</code></pre>";
+  closeList();
+  return out;
+}
+
+async function refreshList(){
+  const r = await fetch("/api/docs"); const d = await r.json();
+  $("list").innerHTML = d.items.map((it) =>
+    `<div class="doc${it.name === current ? " active" : ""}" data-n="${esc(it.name)}">
+       <div class="n">${esc(it.name)}</div>
+       <div class="m">${new Date(it.modified).toLocaleString("en-GB",{dateStyle:"short",timeStyle:"short"})}</div>
+     </div>`).join("") || `<div class="doc"><div class="m">nothing yet — write something</div></div>`;
+  for (const el of document.querySelectorAll(".doc[data-n]"))
+    el.onclick = () => openDoc(el.dataset.n);
+}
+
+async function openDoc(name){
+  if (dirty) await save();
+  const r = await fetch(`/api/docs/${encodeURIComponent(name)}`);
+  if (!r.ok) return;
+  const d = await r.json();
+  current = name; dirty = false;
+  $("title").textContent = name;
+  $("editor").value = d.content;
+  showDocument(true);
+  if ($("render").classList.contains("show")) $("render").innerHTML = md(d.content);
+  $("saved").textContent = "";
+  refreshList();
+}
+
+async function save(){
+  if (!current || !dirty) return;
+  dirty = false;
+  const r = await fetch(`/api/docs/${encodeURIComponent(current)}`, {
+    method: "PUT", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ content: $("editor").value }),
+  });
+  $("saved").textContent = r.ok ? "saved" : "save failed";
+  if (r.ok) setTimeout(() => { if (!dirty) $("saved").textContent = ""; }, 2000);
+}
+
+$("editor").addEventListener("input", () => {
+  dirty = true; $("saved").textContent = "…";
+  clearTimeout(saveTimer); saveTimer = setTimeout(save, 800);
+  if ($("render").classList.contains("show")) $("render").innerHTML = md($("editor").value);
+});
+
+/** PREVIEW, PDF and BIN act on the open document; with none open they are off, not silent. */
+function showDocument(open){
+  $("empty").style.display = open ? "none" : "flex";
+  $("editor").parentElement.style.display = open ? "flex" : "none";
+  for (const id of ["viewbtn", "printbtn", "delbtn"]) $(id).disabled = !open;
+}
+
+$("newbtn").onclick = async () => {
+  const name = $("newname").value.trim();
+  if (!name) {
+    // Pressing NEW with an empty name used to do nothing at all.
+    $("newname").setCustomValidity("Give the document a name first.");
+    $("newname").reportValidity();
+    $("newname").focus();
+    return;
+  }
+  await fetch(`/api/docs/${encodeURIComponent(name)}`, {
+    method: "PUT", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ content: `# ${name}\n\n` }),
+  });
+  $("newname").value = "";
+  await refreshList(); openDoc(name);
+};
+$("newname").addEventListener("keydown", (e) => { if (e.key === "Enter") $("newbtn").onclick(); });
+$("newname").addEventListener("input", () => $("newname").setCustomValidity(""));
+
+$("viewbtn").onclick = () => {
+  const show = !$("render").classList.contains("show");
+  $("render").classList.toggle("show", show);
+  $("viewbtn").classList.toggle("on", show);
+  $("editor").style.display = show ? "none" : "block";
+  if (show) $("render").innerHTML = md($("editor").value);
+};
+
+$("printbtn").onclick = () => {
+  $("render").innerHTML = md($("editor").value);
+  $("render").classList.add("show");
+  window.print();
+};
+
+$("delbtn").onclick = async () => {
+  if (!current || !confirm(`Move "${current}" to the bin? (kept in .trash, never destroyed)`)) return;
+  await fetch(`/api/docs/${encodeURIComponent(current)}`, { method: "DELETE" });
+  current = null;
+  $("title").textContent = "—"; $("editor").value = "";
+  showDocument(false);
+  refreshList();
+};
+
+window.addEventListener("beforeunload", () => { if (dirty) save(); });
+
+refreshList().then(async () => {
+  const r = await fetch("/api/docs"); const d = await r.json();
+  if (d.items.length) openDoc(d.items[0].name);
+  else showDocument(false);
+});
+</script>
+</body>
+</html>

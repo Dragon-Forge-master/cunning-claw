@@ -1,0 +1,24 @@
+{
+  "id": "ie",
+  "name": "Ireland",
+  "authority": "Revenue",
+  "currency": "EUR",
+  "asOf": "2026-01-01",
+  "sources": ["https://www.revenue.ie/"],
+  "taxYear": { "label": "calendar year", "startMonth": 1, "startDay": 1 },
+  "topics": {
+    "vat": {
+      "summary": "Irish VAT (TVA/CBL). Standard rate has been 23% for years — confirm on revenue.ie before quoting.",
+      "facts": [
+        { "key": "standard-rate", "value": "23%", "note": "Confirm current rate on Revenue." },
+        { "key": "authority", "value": "Revenue Commissioners", "note": "Not HMRC. A UK VAT number is not an Irish one." }
+      ]
+    },
+    "payroll": {
+      "summary": "Irish payroll is PAYE under Revenue, with USC and PRSI as well as income tax. Use the Irish payroll product, not a UK PAYE table.",
+      "facts": [
+        { "key": "system", "value": "PAYE + USC + PRSI", "note": "Three deductions, not one. Read the books." }
+      ]
+    }
+  }
+}

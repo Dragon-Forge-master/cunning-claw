@@ -1,0 +1,24 @@
+{
+  "id": "de",
+  "name": "Germany",
+  "authority": "Bundesfinanzministerium / local Finanzamt",
+  "currency": "EUR",
+  "asOf": "2026-01-01",
+  "sources": ["https://www.bundesfinanzministerium.de/"],
+  "taxYear": { "label": "calendar year", "startMonth": 1, "startDay": 1 },
+  "topics": {
+    "vat": {
+      "summary": "German VAT (Umsatzsteuer / Mehrwertsteuer). Standard 19%, reduced 7% — confirm before quoting a return.",
+      "facts": [
+        { "key": "standard-rate", "value": "19%", "note": "Regelsteuersatz. Confirm on official pages." },
+        { "key": "reduced-rate", "value": "7%", "note": "Ermäßigter Satz for specified goods." }
+      ]
+    },
+    "payroll": {
+      "summary": "German payroll is Lohnsteuer plus social insurance (KV, RV, AV, PV). Use DATEV / the payroll product. Do not apply UK PAYE tables.",
+      "facts": [
+        { "key": "system", "value": "Lohnsteuer + Sozialversicherung", "note": "Church tax may also apply. Read the books." }
+      ]
+    }
+  }
+}

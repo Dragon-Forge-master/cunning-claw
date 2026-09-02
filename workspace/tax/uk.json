@@ -1,0 +1,58 @@
+{
+  "id": "uk",
+  "name": "United Kingdom",
+  "authority": "HMRC",
+  "currency": "GBP",
+  "asOf": "2026-04-06",
+  "sources": [
+    "https://www.gov.uk/vat-rates",
+    "https://www.gov.uk/vat-registration-thresholds",
+    "https://www.gov.uk/self-assessment-tax-returns",
+    "https://www.gov.uk/government/organisations/hm-revenue-customs"
+  ],
+  "taxYear": {
+    "label": "6 April to 5 April",
+    "startMonth": 4,
+    "startDay": 6
+  },
+  "topics": {
+    "vat": {
+      "summary": "UK VAT. Standard 20%, reduced 5%, zero 0%. Used-car dealers often use the second-hand margin scheme — do not compute a margin from memory; read the books.",
+      "facts": [
+        { "key": "standard-rate", "value": "20%", "note": "Most goods and services" },
+        { "key": "reduced-rate", "value": "5%", "note": "Specified goods (domestic fuel, some energy-saving materials, etc.)" },
+        { "key": "zero-rate", "value": "0%", "note": "Specified goods (most food, books, children's clothes, etc.) — not the same as exempt" },
+        { "key": "registration-threshold", "value": "Confirm on GOV.UK", "note": "Threshold moves. Last widely published step was £90,000 from 1 April 2024. Do not file from this file." }
+      ]
+    },
+    "payroll": {
+      "summary": "PAYE is how UK employers run payroll: income tax and National Insurance through HMRC, usually via payroll software (Xero, Sage, etc.).",
+      "facts": [
+        { "key": "system", "value": "PAYE", "note": "Pay As You Earn. RTI reports to HMRC each pay run." },
+        { "key": "tax-year", "value": "6 April – 5 April", "note": "Payroll follows the UK tax year, not the calendar year." },
+        { "key": "books", "value": "Xero / payroll software", "note": "Rates, codes and YTD sit in the payroll product. Read them from there; do not invent a tax code." }
+      ]
+    },
+    "self-assessment": {
+      "summary": "Self Assessment is the UK return for sole traders, some company directors, and people with untaxed income.",
+      "facts": [
+        { "key": "online-deadline", "value": "31 January after the tax year", "note": "Tax year 2025/26 is due 31 January 2027. Paper is earlier (31 October)." },
+        { "key": "payment", "value": "31 January", "note": "Balancing payment and first payment on account typically due the same day." }
+      ]
+    },
+    "corporation-tax": {
+      "summary": "UK companies pay Corporation Tax on profits. Main rate 25%; small-profits rate 19% with marginal relief between the bands.",
+      "facts": [
+        { "key": "main-rate", "value": "25%", "note": "Profits above the upper limit (historically £250,000). Confirm current limits." },
+        { "key": "small-profits-rate", "value": "19%", "note": "Profits at or below the lower limit (historically £50,000)." }
+      ]
+    },
+    "income-tax": {
+      "summary": "England, Wales and Northern Ireland share the main Income Tax rates. Scotland sets its own bands. Always ask which nation.",
+      "facts": [
+        { "key": "personal-allowance", "value": "Confirm on GOV.UK", "note": "Long frozen at £12,570. Do not assume it has moved." },
+        { "key": "nations", "value": "Scotland is different", "note": "Scottish Income Tax bands are set in Edinburgh. A Scottish taxpayer is not on the rUK table." }
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+95c0a5700bfc  # telegram.test.ts: the AWS documentation example key (redaction test fixture)
+1a6c33b0dc6c  # telegram.test.ts: truncated synthetic private key testing that redact() catches the real shape
+6684bf71b635  # install.ps1: PowerShell parsing the key line of .env — code, not a key
+bf0b896bbed4  # discord.test.ts: labelled fake Discord token fixture
+0b9c3fe8127c  # journal.test.ts: journal search probe string
+78f5bd988867  # mcp-catalog.ts: the ${GITHUB_TOKEN} env template — the correct pattern
+131385478cac  # redact.test.ts: synthetic AWS-shaped fixture proving redaction
+5859adaf5d38  # redact.test.ts: synthetic Slack-shaped fixture
+a8cf79b66f9d  # redact.test.ts: synthetic Stripe-shaped fixture
+d12d257f2911  # redact.test.ts: synthetic JWT-shaped fixture
+73ae9198527b  # redact.test.ts: synthetic bearer fixture
+520cca096b07  # redact.test.ts: truncated synthetic key header

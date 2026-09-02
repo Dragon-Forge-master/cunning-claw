@@ -1,0 +1,49 @@
+{
+  "name": "cunningclaw",
+  "version": "0.2.0",
+  "description": "C.U.N.N.I.N.G. C.L.A.W. \u2014 a local personal assistant with a HUD, denylist, and a brain you can swap",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/boot.ts",
+    "build": "tsc",
+    "start": "node dist/boot.js",
+    "check": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts",
+    "doctor": "tsx src/doctor.ts",
+    "update": "git pull && npm install"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "license": "MIT",
+  "author": "Dragon Forge AI (https://github.com/Dragon-Forge-master)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dragon-Forge-master/cunning-claw.git"
+  },
+  "homepage": "https://github.com/Dragon-Forge-master/cunning-claw#readme",
+  "bugs": {
+    "url": "https://github.com/Dragon-Forge-master/cunning-claw/issues"
+  },
+  "keywords": [
+    "ai-agent",
+    "assistant",
+    "local-first",
+    "prompt-injection",
+    "mcp",
+    "openrouter",
+    "ollama",
+    "llm",
+    "security"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}

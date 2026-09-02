@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+GR_PY="${GITREVIEW_PYTHON:-/usr/bin/python3}"
+# Resolve gitreview from this repo, whoever cloned it and wherever it sits.
+# This line used to hardcode one maintainer's home directory, so the hook
+# silently no-opped for every other clone.
+GR_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+export PYTHONPATH="$GR_ROOT/tools/gitreview${PYTHONPATH:+:$PYTHONPATH}"
+if ! command -v "$GR_PY" >/dev/null 2>&1 || \
+   ! "$GR_PY" -c 'import gitreview' >/dev/null 2>&1; then
+  echo "gitreview: not runnable, skipping hook (fix with: gitreview install-hooks)" >&2
+  exit 0
+fi
+[ -n "$GITREVIEW_SKIP" ] && exit 0
+export GITREVIEW_MODEL="${GITREVIEW_MODEL:-llama3.2:latest}"
+
+case "$2" in
+  message|merge|squash|commit) exit 0 ;;
+esac
+"$GR_PY" -m gitreview.cli commit-msg --file "$1" || true
+exit 0

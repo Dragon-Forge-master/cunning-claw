@@ -1,0 +1,18 @@
+# Schedule
+
+Format: each entry is a markdown list item with a schedule, target, and instruction.
+- schedule: `08:00` (daily) or `09:00:mon-fri` or `friday`
+- target: `briefing` / `nudge` / `reminder`
+
+Welsh day names are first-class: `08:00:llun-gwe` parses the same as `mon-fri`.
+An annual date is `HH:MM:DD/MM` — `08:30:20/04` fires every 20 April.
+
+This file is personal to your install. Copy it to `SCHEDULE.md` (install.sh does
+this for you) and write your own entries; the copy is gitignored, so what you
+schedule stays on your machine.
+
+## Active Tasks
+
+- [x] schedule: `08:00:mon-fri` | target: `briefing` | instruction: Gather the morning weather, unread Gmail count, unread WhatsApp count, and any stalled thread from today's journal. Prepare a crisp 3-sentence morning briefing on the Desk.
+- [x] schedule: `17:00:fri` | target: `nudge` | instruction: Check whether this week's invoices and expenses are cleared in the books. Prepare a short Friday review note on the Desk.
+- [ ] schedule: `12:00:wed` | target: `reminder` | instruction: Remind the operator to stand up, stretch, and take ten minutes away from the screen.

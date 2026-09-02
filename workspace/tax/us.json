@@ -1,0 +1,30 @@
+{
+  "id": "us",
+  "name": "United States",
+  "authority": "IRS (federal) plus the state",
+  "currency": "USD",
+  "asOf": "2026-01-01",
+  "sources": ["https://www.irs.gov/"],
+  "taxYear": { "label": "calendar year (most filers)", "startMonth": 1, "startDay": 1 },
+  "topics": {
+    "income-tax": {
+      "summary": "US income tax is federal plus state (and sometimes city). There is no single US rate. Ask which state before saying anything numeric.",
+      "facts": [
+        { "key": "federal", "value": "IRS", "note": "Progressive federal brackets. Do not quote a bracket from memory." },
+        { "key": "state", "value": "required", "note": "Nine states have no general income tax; the rest do. Name the state or refuse the number." }
+      ]
+    },
+    "payroll": {
+      "summary": "US payroll is federal withholding, Social Security, Medicare, plus state unemployment and withholding. The books (Gusto, ADP, QuickBooks, Xero US) hold the live figures.",
+      "facts": [
+        { "key": "federal-payroll", "value": "FICA + withholding", "note": "Social Security wage base changes every year. Read the payroll run, do not invent it." }
+      ]
+    },
+    "sales-tax": {
+      "summary": "There is no federal VAT. Sales tax is state and local. Nexus rules decide whether you collect.",
+      "facts": [
+        { "key": "vat", "value": "none at federal level", "note": "Do not apply UK VAT to a US invoice." }
+      ]
+    }
+  }
+}
