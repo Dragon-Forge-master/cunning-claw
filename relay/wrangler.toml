@@ -1,0 +1,24 @@
+# Dragon Forge relay — Cloudflare Worker config.
+# Deploy with `wrangler deploy` from this directory. No npm install needed:
+# the Worker has zero dependencies and wrangler bundles the TypeScript itself.
+
+name = "cunningclaw-relay"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Token records and usage counters live in one KV namespace.
+# Create it once and paste the id it prints:
+#   wrangler kv namespace create TOKENS
+[[kv_namespaces]]
+binding = "TOKENS"
+id = "REPLACE_WITH_NAMESPACE_ID"
+
+[vars]
+# Comma-separated model allowlist. Customer tokens can only run these, so the
+# default is deliberately cheap — widening this list widens what a single
+# token can spend on the house key.
+MODELS = "google/gemini-3.5-flash-lite"
+
+# Secret (never in this file, never committed):
+#   wrangler secret put OPENROUTER_KEY
+# The real OpenRouter provider key the relay spends on behalf of customers.

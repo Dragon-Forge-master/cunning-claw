@@ -31,6 +31,7 @@ import { startDiscord, sendApprovalCard as sendDiscordCard, approvalSettled as d
 import { openPreview, closePreview, reloadPreview, previewState, servedDir } from "./preview.js";
 import fs from "node:fs";
 import { isSensitivePath } from "./paths.js";
+import { listKeys, setKey, deleteKey } from "./keys.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -77,6 +78,11 @@ app.get(["/board", "/board.html"], (_req, res) => {
 app.get(["/docs", "/docs.html"], (_req, res) => {
   issueSession(res);
   res.sendFile(path.join(ROOT, "public", "docs.html"));
+});
+
+app.get(["/keys", "/keys.html"], (_req, res) => {
+  issueSession(res);
+  res.sendFile(path.join(ROOT, "public", "keys.html"));
 });
 
 app.get(["/", "/index.html"], (_req, res) => {
@@ -224,6 +230,27 @@ app.post("/api/chat", (req, res) => {
   }
   res.json({ ok: true });
   void runTurn(message, agentEvents);
+});
+
+// --- The Keys page: the easy-secrets place -----------------------------------
+// Values are WRITE-ONLY through this API: set/unset and a four-character tail
+// go out, never a value. The roster in src/keys.ts is the whole attack surface.
+app.get("/api/keys", (_req, res) => {
+  res.json(listKeys());
+});
+
+app.post("/api/keys", (req, res) => {
+  const out = setKey(String(req.body?.name ?? ""), String(req.body?.value ?? ""));
+  if (!out.ok) return res.status(400).json(out);
+  broadcast("notice", { message: out.message });
+  res.json(out);
+});
+
+app.delete("/api/keys/:name", (req, res) => {
+  const out = deleteKey(String(req.params.name ?? ""));
+  if (!out.ok) return res.status(400).json(out);
+  broadcast("notice", { message: out.message });
+  res.json(out);
 });
 
 app.get("/api/history", (_req, res) => {

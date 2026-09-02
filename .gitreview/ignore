@@ -10,3 +10,4 @@ a8cf79b66f9d  # redact.test.ts: synthetic Stripe-shaped fixture
 d12d257f2911  # redact.test.ts: synthetic JWT-shaped fixture
 73ae9198527b  # redact.test.ts: synthetic bearer fixture
 520cca096b07  # redact.test.ts: truncated synthetic key header
+330b04c022d4  # relay/test.mjs: synthetic bearer fixture in the parser test
