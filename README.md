@@ -360,6 +360,33 @@ for each failure.
 
 ---
 
+## Google, the easy way
+
+There is no Google card on the connectors sheet, and that is not an oversight.
+Google publishes no hosted MCP for Gmail, Calendar or Drive, and the community
+servers that exist all require you to create your own Google Cloud project and
+OAuth credentials first — a wall nobody should have to climb to read their
+own mail.
+
+So the claw takes the other road: **it uses Google the way you do — through a
+browser you are signed into.** Once:
+
+1. Ask the claw to open Gmail (or open the browser viewport and go there).
+2. Sign in, in that window. The session belongs to the claw's own Chrome
+   profile on your machine and persists like any browser login.
+
+From then on the built-in tools do the rest: `check_email` reads your inbox,
+threads open and get read in full, and Gmail keyboard actions (archive, reply,
+and friends) work the real page. Calendar, Drive, Docs and YouTube are the
+same story — signed in once, they are all the claw's hands. Nothing about
+your Google account is stored outside that browser profile, and everything it
+sends still stops for your approval first.
+
+A one-click "Sign in with Google" connector card — one OAuth app registered
+for everyone — is on the retail roadmap; Gmail's API scopes require a paid
+third-party security assessment, so the browser road stays the honest default
+until the subscription pays that bill.
+
 ## MCP
 
 Cunning Claw speaks the same `mcpServers` files Claude Code and Cursor use, over the
