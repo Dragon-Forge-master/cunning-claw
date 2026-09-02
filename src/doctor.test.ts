@@ -6,6 +6,7 @@ import {
   noKeyGuide,
   nodeMajor,
   runDoctor,
+  setChromeFinderForTests,
 } from "./doctor.js";
 import { envLooksSet } from "./brain.js";
 import { setHasBinForTests, setHostForTests } from "./platform.js";
@@ -14,6 +15,7 @@ import { resetVoiceDetectForTests } from "./voice.js";
 afterEach(() => {
   setHostForTests(null);
   setHasBinForTests(null);
+  setChromeFinderForTests(null);
   resetVoiceDetectForTests();
 });
 
@@ -58,6 +60,9 @@ test("history.json must be a JSON array when present", () => {
 test("Linux doctor names apt packages for missing desktop tools", async () => {
   setHostForTests("linux");
   setHasBinForTests(() => false);
+  // The hasBin fake cannot hide a Chrome at an absolute path — Apple's CI
+  // runner ships one at /Applications and failed this test honestly.
+  setChromeFinderForTests(async () => null);
   resetVoiceDetectForTests();
   const checks = await runDoctor();
   const ids = checks.map((c) => c.id);
@@ -77,6 +82,7 @@ test("Linux doctor names apt packages for missing desktop tools", async () => {
 test("every failed or warned line names a fix", async () => {
   setHostForTests("linux");
   setHasBinForTests(() => false);
+  setChromeFinderForTests(async () => null);
   resetVoiceDetectForTests();
   const checks = await runDoctor();
   for (const c of checks) {

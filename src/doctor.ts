@@ -155,8 +155,17 @@ async function probeBox(box: RemoteBox): Promise<{ ok: boolean; line: string }> 
 // The doctor once kept its own private Chrome finder with no Windows paths in
 // it, and told a machine with Chrome visibly running that Chrome was not
 // installed. One finder, the real one, shared with the launcher.
+//
+// The test override exists because the real finder probes absolute paths
+// (/Applications/... on a Mac) that the hasBin fake cannot intercept — the
+// first macOS CI run failed on exactly that: Apple's runner ships Chrome, and
+// a test asserting "missing chrome" advice met a genuinely found Chrome.
+let chromeFinderOverride: (() => Promise<string | null>) | null = null;
+export function setChromeFinderForTests(fn: (() => Promise<string | null>) | null): void {
+  chromeFinderOverride = fn;
+}
 async function findChrome(): Promise<string | null> {
-  return findChromeBinary();
+  return chromeFinderOverride ? chromeFinderOverride() : findChromeBinary();
 }
 
 /**
