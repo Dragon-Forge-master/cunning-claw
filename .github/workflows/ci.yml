@@ -7,7 +7,14 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # macOS is in the matrix because the README says "linux · macOS supported"
+    # and nobody on this project owns a Mac — Apple's own runner is how that
+    # claim survives "how do we know?".
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,3 +26,30 @@ jobs:
         run: npm run check
       - name: Test
         run: npm test
+      - name: Boot smoke test
+        # A fresh clone must reach a lit glass: boot the real server, poll the
+        # HUD until it answers, and fail loudly if it never does. The key is
+        # synthetic — serving the HUD never calls a model — it only satisfies
+        # the first-run gate the way a fresh user's pasted key would.
+        env:
+          OPENROUTER_API_KEY: ci-smoke-synthetic-never-called
+        shell: bash
+        run: |
+          export CLAW_DATA_DIR="$RUNNER_TEMP/claw-data"
+          mkdir -p "$CLAW_DATA_DIR"
+          npx tsx src/server.ts > "$RUNNER_TEMP/boot.log" 2>&1 &
+          CLAW_PID=$!
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/ || true)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+          keys=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/keys || true)
+          kill $CLAW_PID || true
+          echo "--- boot log ---"
+          cat "$RUNNER_TEMP/boot.log"
+          if [ "$code" != "200" ] || [ "$keys" != "200" ]; then
+            echo "Boot smoke failed: HUD=$code KEYS=$keys"
+            exit 1
+          fi
+          echo "Boot smoke passed: the glass lit on ${{ matrix.os }}"
