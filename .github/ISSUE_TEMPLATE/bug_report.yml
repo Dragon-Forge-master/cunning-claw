@@ -1,0 +1,29 @@
+name: Bug report
+description: Something the claw did wrong, or refused to do
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you — field reports are how this gets good. The fastest way to a fix
+        is the boot banner + what you asked + what happened.
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "e.g. Ubuntu 24.04 / macOS 15 / Windows 11"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you ask, what did it do, what did you expect? Paste terminal output in a code block. Please redact any keys or personal paths first.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: npm run doctor output
+      description: Run `npm run doctor` and paste the result — it names most missing pieces itself.
+      render: text

@@ -1,0 +1,16 @@
+name: Feature request
+description: A job you want to bring the claw that it cannot yet do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: job
+    attributes:
+      label: The job
+      description: What would you ask it, in your own words, and what should happen? Real requests beat abstract capabilities — "read my supplier's price list PDF and update my quotes" tells us more than "PDF support".
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What happens today
+      description: What does it do now when you try — refuse, fumble, or lack the tool entirely?
