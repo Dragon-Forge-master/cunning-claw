@@ -282,6 +282,12 @@ if (!SR) {
   const input = $("msg-input");
   let dictationBase = "";   // whatever was already typed before the mic opened
   let finalSpeech = "";     // utterances the recogniser has committed
+  // The red mic's second press means "done — send it". Only the operator's
+  // press sets this; a natural end (silence timeout, error) never sends, so
+  // the original sin — the browser posting half a thought on its own — stays
+  // impossible. What was two presses (stop, then SEND on the same spot of
+  // screen) is one.
+  let sendOnStop = false;
 
   // Sending must wipe the dictaphone's memory too. It used to clear only the
   // box — then the next repaint (another word, or just switching the mic off)
@@ -301,10 +307,14 @@ if (!SR) {
     input.placeholder = "At your service, sir…";
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
+    if (sendOnStop) {
+      sendOnStop = false;
+      if (input.value.trim()) $("input-bar").requestSubmit();
+    }
   };
 
   micBtn.addEventListener("click", () => {
-    if (recognizer) { recognizer.stop(); return; }
+    if (recognizer) { sendOnStop = true; recognizer.stop(); return; }
 
     dictationBase = input.value;
     finalSpeech = "";
@@ -331,12 +341,13 @@ if (!SR) {
       if (e.error !== "aborted" && e.error !== "no-speech") {
         addMsg("system", `⚠ Microphone: ${e.error}`);
       }
+      sendOnStop = false;      // an error is never the operator saying "send"
       stopDictation();
     };
 
     micBtn.classList.add("listening");
     setState("LISTENING");
-    input.placeholder = "listening — press the mic again when you're done";
+    input.placeholder = "listening — press the mic again to send";
     recognizer.start();
   });
 }
