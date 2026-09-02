@@ -52,6 +52,8 @@ export const KEY_ROSTER: KeySpec[] = [
     hint: "For image, video and music generation. Starts r8_." },
   { name: "GITHUB_TOKEN", label: "GitHub token", applies: "live",
     hint: "A fine-grained PAT if you want the GitHub connector." },
+  { name: "FORGENET_TOKEN", label: "Forgenet token", applies: "live",
+    hint: "Unlocks the Forgenet design suite connector. Starts fgn_." },
 ];
 
 const rosterByName = new Map(KEY_ROSTER.map((k) => [k.name, k]));

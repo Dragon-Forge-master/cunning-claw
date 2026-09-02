@@ -95,6 +95,23 @@ export const MCP_CATALOGUE: CatalogueEntry[] = [
       headers: { Authorization: "Bearer ${GITHUB_TOKEN}" },
     },
   },
+  // The operator's own design suite. Token-auth like GitHub: a Forgenet
+  // token (fgn_…) pasted on the Keys page, minted per docs in forgenet-api.
+  // The mcp.forgenet.cloud hostname must be bound to the forgenet-api worker
+  // in the Cloudflare dashboard before this connects end-to-end.
+  {
+    id: "forgenet",
+    label: "Forgenet",
+    blurb: "Forge design suite — floor plans, interiors, land, flows: your cloud projects",
+    category: "Create",
+    popular: true,
+    tokenEnv: "FORGENET_TOKEN",
+    entry: {
+      type: "http",
+      url: "https://mcp.forgenet.cloud/mcp",
+      headers: { Authorization: "Bearer ${FORGENET_TOKEN}" },
+    },
+  },
   http("notion", "Notion", "Pages, databases, search", "Docs", "https://mcp.notion.com/mcp", true),
   http("figma", "Figma", "Files, components, comments", "Create", "https://mcp.figma.com/mcp", true),
   http("storyblok", "Storyblok", "Headless CMS content and components", "Create", "https://mcp.storyblok.com/mcp"),

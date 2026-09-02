@@ -158,11 +158,30 @@ test("GitHub is declared token-auth in the catalogue, because its OAuth can neve
   const gh = catalogueById("github");
   assert.equal(gh?.tokenEnv, "GITHUB_TOKEN");
   assert.match(gh?.entry.headers?.Authorization ?? "", /\$\{GITHUB_TOKEN\}/);
-  // GitHub is the only token-auth vendor today; OAuth-capable entries must not
-  // grow a tokenEnv by accident, or their working sign-in gets replaced by a
-  // "paste a token" dead end.
+  // OAuth-capable entries must not grow a tokenEnv by accident, or their
+  // working sign-in gets replaced by a "paste a token" dead end. The full
+  // token-auth roster is github and forgenet.
   assert.equal(catalogueById("canva")?.tokenEnv, undefined);
   assert.equal(catalogueById("notion")?.tokenEnv, undefined);
+});
+
+test("Forgenet is token-auth with the operator's own suite behind it", async () => {
+  const fn = catalogueById("forgenet");
+  assert.equal(fn?.tokenEnv, "FORGENET_TOKEN");
+  assert.match(fn?.entry.headers?.Authorization ?? "", /\$\{FORGENET_TOKEN\}/);
+  assert.match(fn?.entry.url ?? "", /^https:\/\/mcp\.forgenet\.cloud\//);
+
+  // The same doomed-OAuth guard that protects github must protect forgenet.
+  await inConnectorSandbox(async () => {
+    const undo = setEnv("FORGENET_TOKEN", undefined);
+    try {
+      const res = await retryConnector("forgenet");
+      assert.equal(res.ok, false);
+      assert.match(res.message, /FORGENET_TOKEN/);
+      assert.match(res.message, /Keys page/);
+      assert.equal(readUserMcpServers().forgenet, undefined, "no doomed write to mcp.json");
+    } finally { undo(); }
+  });
 });
 
 test("the snapshot's github row says which key it needs and whether it exists yet", () => {
