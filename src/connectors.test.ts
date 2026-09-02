@@ -3,14 +3,50 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { config } from "./config.js";
 import { MCP_CATALOGUE, catalogueById } from "./mcp-catalog.js";
-import { connectorSnapshot, outcome } from "./connectors.js";
+import { connectorSnapshot, loginConnector, outcome, retryConnector } from "./connectors.js";
 import {
   parseMcpServersBlock,
   readUserMcpServers,
   removeUserMcpServer,
   upsertUserMcpServer,
 } from "./mcp-config.js";
+
+/** Synthetic, per redact.test.ts — nothing resembling a live credential. */
+const GH_TOKEN = "ghp_EXAMPLEfake0000111122223333444455";
+
+/** Set (or unset) one env var; returns the undo. */
+function setEnv(name: string, value: string | undefined): () => void {
+  const saved = process.env[name];
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+  return () => {
+    if (saved === undefined) delete process.env[name];
+    else process.env[name] = saved;
+  };
+}
+
+/**
+ * A sandbox for the login/retry tests: HOME points at an empty temp dir so the
+ * operator's real mcp.json / .claude.json / .cursor files are never read or
+ * written, and mcp is switched off in the (in-memory) config so no code path
+ * can reach a real connect. The token guards under test run before both, so
+ * the guarded messages are unchanged; everything past the guard is inert.
+ */
+async function inConnectorSandbox(fn: () => Promise<void>): Promise<void> {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "claw-home-"));
+  const undoHome = setEnv("HOME", dir);
+  const savedMcp = config.mcp;
+  config.mcp = { ...(savedMcp ?? {}), enabled: false } as typeof config.mcp;
+  try {
+    await fn();
+  } finally {
+    config.mcp = savedMcp;
+    undoHome();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
 
 test("the catalogue uses vendor Streamable HTTP URLs, not invented ones", () => {
   assert.equal(catalogueById("canva")?.entry.url, "https://mcp.canva.com/mcp");
@@ -105,7 +141,8 @@ test("the prompt-to-app builders are in the directory, at their probed URLs", ()
   // with a web page or a 404 (Bolt, Replit, Framer, Builder.io) are left out on
   // purpose — a listed connector that cannot connect is worse than an absent one.
   assert.equal(catalogueById("lovable")?.entry.url, "https://mcp.lovable.dev/mcp");
-  assert.equal(catalogueById("v0")?.entry.url, "https://mcp.v0.dev/");
+  // mcp.v0.dev now 307-redirects; v0's docs give v0.app/api/mcp as the address.
+  assert.equal(catalogueById("v0")?.entry.url, "https://v0.app/api/mcp");
   assert.equal(catalogueById("magic-patterns")?.entry.url, "https://mcp.magicpatterns.com/mcp");
   assert.equal(catalogueById("convex")?.entry.url, "https://mcp.convex.dev/mcp");
   assert.equal(catalogueById("railway")?.entry.url, "https://mcp.railway.com/mcp");
@@ -113,4 +150,86 @@ test("the prompt-to-app builders are in the directory, at their probed URLs", ()
   for (const id of ["bolt", "replit", "framer", "builder-io"]) {
     assert.equal(catalogueById(id), undefined, `${id} has no working MCP endpoint`);
   }
+});
+
+test("GitHub is declared token-auth in the catalogue, because its OAuth can never work here", () => {
+  // GitHub refuses self-registered OAuth clients, so a browser "Reconnect" is
+  // a button that can never succeed. The catalogue must say so.
+  const gh = catalogueById("github");
+  assert.equal(gh?.tokenEnv, "GITHUB_TOKEN");
+  assert.match(gh?.entry.headers?.Authorization ?? "", /\$\{GITHUB_TOKEN\}/);
+  // GitHub is the only token-auth vendor today; OAuth-capable entries must not
+  // grow a tokenEnv by accident, or their working sign-in gets replaced by a
+  // "paste a token" dead end.
+  assert.equal(catalogueById("canva")?.tokenEnv, undefined);
+  assert.equal(catalogueById("notion")?.tokenEnv, undefined);
+});
+
+test("the snapshot's github row says which key it needs and whether it exists yet", () => {
+  const github = () => connectorSnapshot().connectors.find((c) => c.id === "github");
+
+  let undo = setEnv("GITHUB_TOKEN", undefined);
+  try {
+    assert.equal(github()?.tokenEnv, "GITHUB_TOKEN");
+    assert.equal(github()?.tokenSet, false, "no env var — the HUD must show the key as missing");
+  } finally { undo(); }
+
+  undo = setEnv("GITHUB_TOKEN", "   ");
+  try {
+    assert.equal(github()?.tokenSet, false, "a blank token is not a token");
+  } finally { undo(); }
+
+  undo = setEnv("GITHUB_TOKEN", GH_TOKEN);
+  try {
+    assert.equal(github()?.tokenSet, true);
+  } finally { undo(); }
+
+  // OAuth connectors carry no token fields at all — the HUD keys off presence.
+  const canva = connectorSnapshot().connectors.find((c) => c.id === "canva");
+  assert.equal(canva?.tokenEnv, undefined);
+  assert.equal(canva?.tokenSet, undefined);
+});
+
+test("Reconnect on github without a token points at the Keys page instead of attempting OAuth", async () => {
+  await inConnectorSandbox(async () => {
+    const undo = setEnv("GITHUB_TOKEN", undefined);
+    const oauthLog: string[] = [];
+    try {
+      const res = await loginConnector("github", (line) => oauthLog.push(line));
+      assert.equal(res.ok, false);
+      assert.match(res.message, /token/i, "the message must say it is token auth");
+      assert.match(res.message, /Keys page/, "the fix is on the Keys page — the message must send the operator there");
+      assert.match(res.message, /GITHUB_TOKEN/, "name the exact key to paste");
+      assert.deepEqual(oauthLog, [], "no OAuth flow may start — that was the button that did nothing");
+    } finally { undo(); }
+  });
+});
+
+test("Connect on github without a token names the missing key and writes nothing", async () => {
+  await inConnectorSandbox(async () => {
+    const undo = setEnv("GITHUB_TOKEN", undefined);
+    try {
+      const before = JSON.stringify(readUserMcpServers());
+      const res = await retryConnector("github");
+      assert.equal(res.ok, false);
+      assert.match(res.message, /GITHUB_TOKEN/);
+      assert.match(res.message, /Keys page/);
+      assert.equal(readUserMcpServers().github, undefined, "a doomed connector must not be written into mcp.json");
+      assert.equal(JSON.stringify(readUserMcpServers()), before, "the user file is untouched");
+    } finally { undo(); }
+  });
+});
+
+test("with a GITHUB_TOKEN in the env, Connect stops telling the operator to paste one", async () => {
+  await inConnectorSandbox(async () => {
+    const undo = setEnv("GITHUB_TOKEN", GH_TOKEN);
+    try {
+      // The connection itself cannot succeed in a test (mcp is off in the
+      // sandbox); what matters is that login falls through to the retry path
+      // rather than repeating the "paste a token" dead end.
+      const res = await loginConnector("github");
+      assert.doesNotMatch(res.message, /paste/i);
+      assert.doesNotMatch(res.message, /Keys page/);
+    } finally { undo(); }
+  });
 });

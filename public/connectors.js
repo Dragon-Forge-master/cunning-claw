@@ -89,6 +89,9 @@
 
   function statusView(c) {
     if (c.status === "connected") return { cls: "ok", mark: "✓", text: c.tools ? `${c.tools} tool${c.tools === 1 ? "" : "s"}` : "Connected" };
+    // Token vendors without their key get one honest status instead of the
+    // needs_auth/failed churn a doomed OAuth attempt produces.
+    if (c.tokenEnv && !c.tokenSet) return { cls: "warn", mark: "!", text: "Needs a key — see KEYS" };
     if (c.status === "needs_auth") return { cls: "warn", mark: "!", text: "Action required" };
     if (c.status === "failed") return { cls: "err", mark: "×", text: c.detail ? c.detail.slice(0, 80) : "Failed" };
     if (c.status === "disabled") return { cls: "idle", mark: "·", text: "Disabled" };
@@ -108,15 +111,20 @@
       b.onclick = fn;
       wrap.appendChild(b);
     };
-    if (c.status === "not_connected" || (c.status === "failed" && !c.configured)) {
+    // A token vendor (GitHub) can never finish a browser sign-in — its key
+    // lives on the Keys page. Offer that door, never the OAuth one.
+    if (c.tokenEnv && !c.tokenSet && c.status !== "connected") {
+      add("Add key", `${c.label} signs in with a token — paste ${c.tokenEnv} on the Keys page`, () => window.open("/keys", "_blank"), "active");
+    } else if (c.status === "not_connected" || (c.status === "failed" && !c.configured)) {
       add("Connect", `Add ${c.label} and try to connect`, () => act("connect", c.id));
     } else if (c.status === "needs_auth") {
-      add("Reconnect", "Sign in in the system browser", () => act("login", c.id), "active");
+      if (c.tokenEnv) add("Retry", "Try again with the saved token", () => act("connect", c.id), "active");
+      else add("Reconnect", "Sign in in the system browser", () => act("login", c.id), "active");
     } else if (c.status === "failed") {
       add("Retry", "Try connecting again", () => act("connect", c.id));
-      if (c.url) add("Reconnect", "Sign in in the system browser", () => act("login", c.id));
+      if (c.url && !c.tokenEnv) add("Reconnect", "Sign in in the system browser", () => act("login", c.id));
     } else if (c.status === "connected") {
-      if (c.url) add("Reconnect", "Sign in again", () => act("login", c.id));
+      if (c.url && !c.tokenEnv) add("Reconnect", "Sign in again", () => act("login", c.id));
       // A connected local server had no button at all unless it was removable,
       // so a card that was working looked identical to a card that was broken.
       else add("Refresh", "Restart this local server and reload its tools", () => act("connect", c.id));
@@ -267,8 +275,16 @@
     try {
       const res = await fetch("/api/mcp");
       if (!res.ok) return;
-      snapshot = await res.json();
-      render();
+      const next = await res.json();
+      // The 12-second poll used to rebuild every card unconditionally. Press
+      // a button as the poll lands and the element under the cursor is
+      // destroyed between mousedown and mouseup — the click dies silently.
+      // Only repaint when the snapshot actually changed, and never while an
+      // action is in flight.
+      const changed = JSON.stringify(next) !== JSON.stringify(snapshot);
+      snapshot = next;
+      if (busy) return;
+      if (changed) render();
     } catch { /* overlay will retry on open */ }
   }
 

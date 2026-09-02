@@ -41,7 +41,16 @@ export type ConnectorRow = {
   owned: boolean;
   popular: boolean;
   configured: boolean;
+  /** Token-auth vendors (GitHub): which .env key, and whether it exists yet. */
+  tokenEnv?: string;
+  tokenSet?: boolean;
 };
+
+function tokenFields(id: string): { tokenEnv?: string; tokenSet?: boolean } {
+  const env = catalogueById(id)?.tokenEnv;
+  if (!env) return {};
+  return { tokenEnv: env, tokenSet: Boolean(process.env[env]?.trim()) };
+}
 
 function mcpEnabled(): boolean {
   return config.mcp?.enabled !== false;
@@ -92,6 +101,7 @@ export function connectorSnapshot(): {
       owned: s.source === userFile(),
       popular: Boolean(cat?.popular),
       configured: true,
+      ...tokenFields(s.id),
     });
   }
 
@@ -115,6 +125,7 @@ export function connectorSnapshot(): {
       owned: false,
       popular: cat.popular,
       configured: false,
+      ...tokenFields(cat.id),
     });
   }
 
@@ -263,6 +274,20 @@ export async function loginConnector(
   id: string,
   log: (line: string) => void = () => {},
 ): Promise<{ ok: boolean; message: string; snapshot: ReturnType<typeof connectorSnapshot> }> {
+  const tokenCat = catalogueById(id);
+  if (tokenCat?.tokenEnv) {
+    // A browser sign-in can never work here — the vendor wants a pasted
+    // token. Offering OAuth anyway was the button that "did nothing".
+    const set = Boolean(process.env[tokenCat.tokenEnv]?.trim());
+    if (!set) {
+      return {
+        ok: false,
+        message: `${tokenCat.label} signs in with a token, not a browser. Paste a ${tokenCat.tokenEnv} on the Keys page, then press Connect.`,
+        snapshot: connectorSnapshot(),
+      };
+    }
+    return retryConnector(id);
+  }
   const already = existingById(id);
   if (!already) {
     const cat = catalogueById(id);
@@ -290,6 +315,14 @@ export async function loginConnector(
 }
 
 export async function retryConnector(id: string): Promise<{ ok: boolean; message: string; snapshot: ReturnType<typeof connectorSnapshot> }> {
+  const cat0 = catalogueById(id);
+  if (cat0?.tokenEnv && !process.env[cat0.tokenEnv]?.trim()) {
+    return {
+      ok: false,
+      message: `${cat0.label} needs a ${cat0.tokenEnv} first — paste one on the Keys page, then press Connect.`,
+      snapshot: connectorSnapshot(),
+    };
+  }
   let cfg = existingById(id);
   if (!cfg) {
     const cat = catalogueById(id);

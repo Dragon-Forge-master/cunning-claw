@@ -16,6 +16,13 @@ export type CatalogueEntry = {
   category: string;
   popular: boolean;
   entry: ClaudeMcpEntry;
+  /**
+   * Set when the vendor authenticates with a pasted token rather than a
+   * browser sign-in (GitHub refuses self-registered OAuth clients). The HUD
+   * then sends the operator to the Keys page instead of offering an OAuth
+   * "Reconnect" that can never succeed.
+   */
+  tokenEnv?: string;
 };
 
 /** HUD group order — same idea as Claude's "Popular for Sales" sections. */
@@ -78,9 +85,10 @@ export const MCP_CATALOGUE: CatalogueEntry[] = [
   {
     id: "github",
     label: "GitHub",
-    blurb: "Repos, issues, pull requests (needs GITHUB_TOKEN in .env)",
+    blurb: "Repos, issues, pull requests — signs in with a token, not a browser",
     category: "Code",
     popular: true,
+    tokenEnv: "GITHUB_TOKEN",
     entry: {
       type: "http",
       url: "https://api.githubcopilot.com/mcp/",
@@ -171,7 +179,8 @@ export const MCP_CATALOGUE: CatalogueEntry[] = [
 
   // Prompt-to-app builders — the "describe it and it builds it" tier.
   http("lovable", "Lovable", "Build and edit full-stack apps by prompt", "Code", "https://mcp.lovable.dev/mcp", true),
-  http("v0", "v0", "Vercel's generative UI — components and pages", "Code", "https://mcp.v0.dev/", true),
+  // mcp.v0.dev now 307-redirects; v0's docs give v0.app/api/mcp as the address.
+  http("v0", "v0", "Vercel's generative UI — components and pages", "Code", "https://v0.app/api/mcp", true),
   http("magic-patterns", "Magic Patterns", "Generate and iterate on UI designs", "Code", "https://mcp.magicpatterns.com/mcp"),
   http("expo", "Expo", "React Native builds and updates", "Code", "https://mcp.expo.dev/mcp"),
 
