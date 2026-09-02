@@ -31,9 +31,15 @@ export interface KeySpec {
 
 export const KEY_ROSTER: KeySpec[] = [
   { name: "OPENROUTER_API_KEY", label: "OpenRouter key", applies: "live",
-    hint: "Powers the brains (Gemini and friends). Get one at openrouter.ai — starts sk-or-." },
+    hint: "One key, many models (Gemini and friends). Get one at openrouter.ai — starts sk-or-." },
   { name: "DRAGONFORGE_TOKEN", label: "Dragon Forge token", applies: "live",
     hint: "The Just Works subscription token — one token, no other setup." },
+  { name: "GEMINI_API_KEY", label: "Google Gemini key", applies: "live",
+    hint: "Straight from Google AI Studio (aistudio.google.com), no broker. Starts AIza." },
+  { name: "OPENAI_API_KEY", label: "OpenAI key", applies: "live",
+    hint: "Straight from platform.openai.com. Starts sk-." },
+  { name: "ANTHROPIC_API_KEY", label: "Anthropic key", applies: "live",
+    hint: "Straight from console.anthropic.com. Starts sk-ant-." },
   { name: "TELEGRAM_BOT_TOKEN", label: "Telegram bot token", applies: "restart",
     hint: "From @BotFather. Pair with the chat id below." },
   { name: "TELEGRAM_CHAT_ID", label: "Telegram chat id", applies: "restart",
