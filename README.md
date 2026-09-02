@@ -125,6 +125,11 @@ Message it `/whoami` and put your user id in `DISCORD_ALLOWED_USER_ID`.
 `DISCORD_CHANNEL_ID` is optional: where cards for work started on the HUD should
 land; otherwise the last channel you spoke in.
 
+There is also a **managed brain** in the catalogue (`id: managed`) for the
+forthcoming Just Works subscription — inert without a `DRAGONFORGE_TOKEN`; see
+[`docs/RETAIL.md`](docs/RETAIL.md). Bring-your-own-key remains free forever and
+never crippled.
+
 Only the allowlisted ids are heard, and only they can press EXECUTE. Everything
 sent out is redacted first, and the bot cannot @-mention anyone, so a hostile page
 summarised into a reply cannot make it ping your server. `npm run doctor` reports

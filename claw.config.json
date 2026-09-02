@@ -149,7 +149,7 @@
           "in": 0.1,
           "out": 0.4
         },
-        "note": "fastest and cheapest — chat, clock, telemetry"
+        "note": "fastest and cheapest \u2014 chat, clock, telemetry"
       },
       {
         "id": "flash",
@@ -163,7 +163,7 @@
           "in": 0.3,
           "out": 2.5
         },
-        "note": "the workhorse — tools, browsing, most jobs (Gemini 3.5 generation, same price as the old 2.5 flash)"
+        "note": "the workhorse \u2014 tools, browsing, most jobs (Gemini 3.5 generation, same price as the old 2.5 flash)"
       },
       {
         "id": "pro",
@@ -191,7 +191,7 @@
           "in": 0.1,
           "out": 0.4
         },
-        "note": "OpenAI's cheapest — a second opinion"
+        "note": "OpenAI's cheapest \u2014 a second opinion"
       },
       {
         "id": "deepseek",
@@ -219,7 +219,20 @@
           "in": 0.0,
           "out": 0.0
         },
-        "note": "free and fully offline — Ollama llama3.2 3B, sized for this machine's RAM; chatty, not scholarly"
+        "note": "free and fully offline \u2014 Ollama llama3.2 3B, sized for this machine's RAM; chatty, not scholarly"
+      },
+      {
+        "id": "managed",
+        "label": "Managed",
+        "provider": "openai",
+        "model": "google/gemini-3.5-flash-lite",
+        "baseUrl": "https://relay.cunningclaw.com/v1",
+        "apiKeyEnv": "DRAGONFORGE_TOKEN",
+        "price": {
+          "in": 0.0,
+          "out": 0.0
+        },
+        "note": "the Just Works subscription \u2014 one token, no accounts anywhere else; inert without DRAGONFORGE_TOKEN"
       }
     ]
   },

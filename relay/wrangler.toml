@@ -17,7 +17,7 @@ id = "REPLACE_WITH_NAMESPACE_ID"
 # Comma-separated model allowlist. Customer tokens can only run these, so the
 # default is deliberately cheap — widening this list widens what a single
 # token can spend on the house key.
-MODELS = "google/gemini-3.5-flash-lite"
+MODELS = "google/gemini-3.5-flash-lite,google/gemini-2.5-flash-lite"
 
 # Secret (never in this file, never committed):
 #   wrangler secret put OPENROUTER_KEY
