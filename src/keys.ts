@@ -35,7 +35,7 @@ export const KEY_ROSTER: KeySpec[] = [
   { name: "DRAGONFORGE_TOKEN", label: "Dragon Forge token", applies: "live",
     hint: "The Just Works subscription token — one token, no other setup." },
   { name: "GEMINI_API_KEY", label: "Google Gemini key", applies: "live",
-    hint: "Straight from Google AI Studio (aistudio.google.com), no broker. Starts AIza." },
+    hint: "Straight from Google AI Studio (aistudio.google.com), no broker. Starts AIza. Thinks and paints — this one key also unlocks image generation." },
   { name: "OPENAI_API_KEY", label: "OpenAI key", applies: "live",
     hint: "Straight from platform.openai.com. Starts sk-." },
   { name: "ANTHROPIC_API_KEY", label: "Anthropic key", applies: "live",

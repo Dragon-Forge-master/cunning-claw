@@ -17,6 +17,7 @@ import { classifyBrowserAction, needsApproval as browserNeedsApproval, taskGrant
 import { snapshot, record } from "./filewatch.js";
 import { readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
+import { generateImage } from "./imagine.js";
 import { collapseHome, expandHome, isSensitivePath } from "./paths.js";
 import { grepFiles, globFiles, planEdit, commitEdit, readTodos, writeTodos, formatTodos, numberLines, resolveWorkPath, listLocalRepos } from "./coding.js";
 import { openPreview, closePreview, reloadPreview, servePath, parseNavigableUrl } from "./preview.js";
@@ -1124,6 +1125,20 @@ export const toolDefinitions: Anthropic.Tool[] = [
     description:
       "Return the curated field map of Cunning Claw-class systems (OpenClaw, Hermes, Open Interpreter, …). Use when asked what is out there or how we compare.",
     input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "generate_image",
+    description:
+      "Generate an image from a text prompt using the operator's Gemini key (the same AIza key that thinks can paint) and save it under workspace/images/. " +
+      "If no GEMINI_API_KEY is set, say so and point at the Keys page — do not improvise another route.",
+    input_schema: {
+      type: "object",
+      properties: {
+        prompt: { type: "string", description: "What to paint, in plain words" },
+      },
+      required: ["prompt"],
+      additionalProperties: false,
+    },
   },
 ];
 
@@ -2314,6 +2329,10 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         return writeSkill(String(input.name), String(input.description), String(input.body));
       }
       case "landscape": return landscapeSummary();
+      case "generate_image": {
+        const r = await generateImage(String(input.prompt ?? ""));
+        return r.message;
+      }
       default:
         if (mcp.isMcpTool(name)) {
           if (mcp.needsApproval(name)) {
