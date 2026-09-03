@@ -11,7 +11,7 @@
       var left=target-Date.now();
       if(left<=0){
         box.classList.add("live");
-        box.innerHTML='<div class="live-msg">The forge is open — run <b>npx cunningclaw</b></div>';
+        box.innerHTML='<div class="live-msg">The forge is open — <a href="https://github.com/Dragon-Forge-master/cunning-claw">github.com/Dragon-Forge-master/cunning-claw</a></div>';
         clearInterval(timer);return;
       }
       var sec=Math.floor(left/1000);
