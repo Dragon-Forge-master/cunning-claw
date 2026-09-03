@@ -1,0 +1,7 @@
+# Synthetic fixtures the redaction tests exist to catch — the same entries
+# gitreview's ledger (.gitreview/ignore) already dismisses. Each is a
+# fingerprint (file:rule:line); a real key would never live in a test file.
+src/redact.test.ts:generic-api-key:19
+src/redact.test.ts:stripe-access-token:22
+src/redact.test.ts:jwt:24
+src/telegram.test.ts:private-key:51
