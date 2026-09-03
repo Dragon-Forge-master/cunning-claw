@@ -12,9 +12,6 @@ multi-machine upgrade. Phase 1 is built and pushed; everything after it is not.
 - Read `SECURITY.md`'s "Design notes for anyone auditing" first. Six claims are
   load-bearing and three of them now depend on code in `src/remote.ts`.
 
-> **Before this repo goes public**, cut the "What Grok Bot actually does" section
-> below. The technical design is fine in the open; the competitive read and the
-> pricing anchors are not.
 
 ---
 
@@ -124,49 +121,6 @@ So the realistic flow is: make the droplet, paste the IP, run one ssh command, t
 *"set up a worker on that box"* and he does the rest. If you later want him creating and
 destroying droplets on his own, DigitalOcean's API is the easiest one to add — it is a
 single POST — but it wants its own phase, with a spend gate and a hard cap.
-
-## What Grok Bot actually does (researched 31 Aug 2026)
-
-xAI shipped this on 11 August 2026, three weeks before this plan. Worth reading
-properly rather than guessing, because it both validates the design and corrects one
-assumption in it.
-
-**Where they landed the same place:** a team of always-on named agents, each a
-persistent teammate rather than a task runner; a cloud computer with a browser,
-filesystem and terminal so work continues when your device is off; agents that message
-each other, share threads and pass ownership; and — the important one — bots that
-*"only come back when something needs your approval"* rather than asking at every step.
-Their **Auto Review** is standing policy (rules that require approval for sending,
-publishing, purchases, deletions, permission changes, production changes, accepting
-legal terms), where our work order is per-job consent. The two are complementary, and
-their category list is a good template for what should always ask regardless of plan.
-
-Their roster size is **two to six bots** in a group chat — independent confirmation of
-the "start at 3, cap at 6" call above, arrived at separately.
-
-**Where I was wrong, and it matters:** I assumed each agent gets its own machine. Grok
-Bot does the opposite — *"all of your Bots use the same persistent cloud computer"*,
-with bots on separate screens sharing one filesystem and one set of logins. Their docs
-say plainly: *"Do not use separate Bots as a security boundary"*, and *"files, browser
-sessions, and command line credentials are available across your Bot roster."*
-
-Our one-box-per-worker design is therefore **stronger on isolation than the market
-leader**, not merely different: a compromised or confused worker cannot reach another
-worker's logins, because it is not on that machine. It costs more (a box each rather
-than one shared), so it should be a stated choice with the reason attached, not an
-accident — and "each worker is actually sandboxed from the others" is a real line to
-sell on.
-
-**The gap worth taking:** none of the coverage or their own docs describes a monitoring
-view. Supervision is *conversational* — you message bots and read what they report, and
-the only dashboard mentioned is spend and usage. There is no floor to walk. That is
-precisely the thing you asked for first, so the office board is not a nice-to-have
-copying a competitor; it is the part they have not built.
-
-**Pricing anchor for the retail plan:** access rides on Cursor Ultra at $200/month and
-Cursor Premium Teams at $120/seat/month, plus SuperGrok Heavy. That is a different
-market from the one-off ~£15 desktop app proposed earlier — worth knowing before
-pricing the staffed tier.
 
 ## The shape
 
