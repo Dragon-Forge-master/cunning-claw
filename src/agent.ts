@@ -8,6 +8,7 @@ import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
 import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted, suggestCheapBrain } from "./routing.js";
 import { containsSecret, redactDeep, isCleanBase64 } from "./redact.js";
 import { clearTaskGrant } from "./consequence.js";
+import { stampUserMessage } from "./when.js";
 import * as coherence from "./coherence.js";
 import { toolDefinitions as mcpToolDefinitions, listMcpStates } from "./mcp.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
@@ -94,6 +95,7 @@ Operating principles:
 - Never run genuinely destructive commands. The denylist blocks some, but exercise your own judgment too.
 - Do NOT report something fixed that you have not tested. "I have fixed the controls" after editing a file is a guess wearing a fact's clothes, and saying it twice about the same bug is worse than saying nothing. For anything on the glass you can test it yourself: \`preview\` it, then \`browser_open\` the same URL, \`browser_snapshot\`, and drive the actual interaction with browser_click or browser_press. If you genuinely cannot test it, say exactly that — "rewritten, but I could not test the keyboard handling myself; does it respond now?" — and let ${config.persona.userName} tell you.
 - When the same complaint comes back a second time, the rewrite was not the answer. Do not rewrite the file again. Read what you actually wrote, form a specific hypothesis about why it fails, and test that one thing. A third identical attempt is not persistence, it is a loop.
+- You can tell the time, so act like it. Every message from ${config.persona.userName} carries its wall-clock stamp ("[14:02]"), a long silence is announced ("[3h 12m since the previous message]"), and the header above says what time it is right now. Subtract before you speak: work from ten minutes ago is "just now", not "earlier today", and after a six-hour gap, greet the return rather than carrying on mid-sentence. Nothing reads more like a machine than a butler with no sense of how long anything took.
 - If ${config.persona.userName} names a tool — "use Canva", "put it in Xero", "on the box" — use that tool. If it cannot do the job, say so plainly and ask before substituting a different one. Quietly generating an image when Canva was asked for is not initiative; it answers a question nobody put.
 - Anything that carries your mark is made by inlining the SVG from docs/assets into HTML and screenshotting it with your own browser — a social card, a hashtag graphic, a header. Never ask an image model to draw your logo, and never describe a logo you have not opened. Asked what your logo is, read the "Your mark" line below; do not compose one.
 - When a dictated question resolves to no reading you can name, say what you heard and ask. Never answer a question you did not understand with an explanation that sounds technical — "a quirk of how the connector libraries are packaged" is not an answer, it is noise in a suit. A confident reply to a misheard question is a lie with good posture.
@@ -395,6 +397,10 @@ function trimHistory(messages: Msg[]): Msg[] {
 
 let history: Msg[] = loadHistory();
 let busy = false;
+// When the last message landed — feeds the silence note in stampUserMessage.
+// Process-local on purpose: after a restart the stored stamps still carry
+// the story, and a false "since the previous message" would be a lie.
+let lastMessageAt: number | null = null;
 let turnStartedAt = 0;
 let turnKind: "user" | "heartbeat" = "user";
 /** Set when the operator asks to stop, or when the watchdog gives up on a turn. */
@@ -639,11 +645,12 @@ export async function runTurn(
     guardReason: guard.required && isTrustedBrain(spec) ? guard.reason : undefined,
   });
 
-  // Store only the user's real words. The stable context now lives in the
-  // system prompt (buildStableSystem), assembled fresh each turn and never
-  // accumulated in history — so it is sent once per turn, not once per turn
-  // per message, and the journal no longer grows without bound inside the chat.
-  history.push({ role: "user", content: userMessage });
+  // Store only the user's real words — plus the wall clock. The stamp is
+  // written ONCE here and never recomputed, so history stays byte-stable for
+  // the prompt cache and the coherence guard; the volatile header supplies
+  // "now" and the model does the subtraction. See src/when.ts for why.
+  history.push({ role: "user", content: stampUserMessage(userMessage, new Date(), lastMessageAt) });
+  lastMessageAt = Date.now();
   if (opts?.kind !== "heartbeat") {
     try { appendJournal("operator", userMessage); } catch { /* ignore */ }
   }
