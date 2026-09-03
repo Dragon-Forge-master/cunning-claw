@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Constellation — every door in the Cunning Claw world</title>
+<meta name="description" content="A living map of everywhere Cunning Claw reaches: the product, its source and package, the free Forgenet design tools that speak MCP, and Dragon Forge AI in Cardiff.">
+<link rel="canonical" href="https://cunningclaw.com/map">
+<link rel="alternate" hreflang="en-GB" href="https://cunningclaw.com/map">
+<link rel="alternate" hreflang="x-default" href="https://cunningclaw.com/map">
+<meta name="geo.region" content="GB-CRF"><meta name="geo.placename" content="Cardiff, Wales">
+<meta property="og:title" content="The Constellation — every door in the Cunning Claw world">
+<meta property="og:description" content="A living map of the product, its source, the free Forgenet tools and Dragon Forge AI.">
+<meta property="og:type" content="website"><meta property="og:url" content="https://cunningclaw.com/map">
+<meta property="og:locale" content="en_GB"><meta property="og:image" content="https://cunningclaw.com/social.png">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content="@Dragon_forge_ai">
+<meta name="theme-color" content="#0a111c">
+<link rel="icon" type="image/svg+xml" href="mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{--ink:#0a111c;--cyan:#35d6ed;--ice:#7ff0ff;--deep:#1a8ba0;--red:#e0442e;--gold:#f5a623;--text:#dfe9f2;--dim:#8496a8;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;--display:"Fraunces",Georgia,serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark;overflow-x:clip}
+body{background:var(--ink);color:var(--text);font-family:var(--mono);min-height:100vh;overflow-x:hidden}
+.neb{position:fixed;inset:-10%;z-index:0;pointer-events:none;background:
+  radial-gradient(38% 45% at 25% 35%,rgba(26,139,160,.26),transparent 70%),
+  radial-gradient(30% 40% at 78% 70%,rgba(53,214,237,.14),transparent 70%);filter:blur(30px)}
+.grid{position:fixed;inset:0;z-index:0;pointer-events:none;background:
+  linear-gradient(rgba(53,214,237,.045) 1px,transparent 1px) 0 0/48px 48px,
+  linear-gradient(90deg,rgba(53,214,237,.045) 1px,transparent 1px) 0 0/48px 48px;
+  mask:radial-gradient(ellipse at 50% 45%,#000 35%,transparent 80%)}
+@media (prefers-reduced-motion:no-preference){.neb{animation:drift 50s ease-in-out infinite alternate}@keyframes drift{from{transform:translate3d(-2%,0,0)}to{transform:translate3d(2%,-3%,0) scale(1.06)}}}
+header{position:relative;z-index:2;text-align:center;padding:36px 20px 0}
+header a.home{color:var(--cyan);text-decoration:none;letter-spacing:.24em;font-size:.72rem}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(1.7rem,4vw,2.6rem);margin-top:14px;letter-spacing:-.01em}
+h1 em{font-style:italic;color:var(--cyan)}
+.lede{color:var(--dim);font-size:.9rem;max-width:56ch;margin:12px auto 0;line-height:1.6}
+.stage{position:relative;z-index:1;width:min(1180px,100%);margin:0 auto;padding:10px 12px 40px}
+svg{width:100%;height:auto;display:block;overflow:visible}
+.link{fill:none;stroke:rgba(53,214,237,.28);stroke-width:1.2}
+.link.spine{stroke:rgba(53,214,237,.5);stroke-width:1.6}
+.node{cursor:pointer;text-decoration:none}
+.node circle{fill:#0e1826;stroke:var(--deep);stroke-width:1.4;transition:stroke .25s,filter .25s}
+.node.hub circle{stroke:var(--cyan);stroke-width:2}
+.node text,.glabel{paint-order:stroke;stroke:#0a111c;stroke-width:5px;stroke-linejoin:round}
+.node text{fill:var(--text);font-family:var(--mono);font-size:12.5px;letter-spacing:.06em}
+.node .sub{fill:var(--dim);font-size:10px;letter-spacing:.1em}
+.node.hub text{fill:var(--cyan);font-weight:600;font-size:13px;letter-spacing:.2em}
+.node:hover circle,.node:focus-visible circle{stroke:var(--ice);filter:drop-shadow(0 0 12px rgba(53,214,237,.7))}
+.node:hover text{fill:#fff}
+.node:focus-visible{outline:none}
+.node.soon circle{stroke-dasharray:4 4;stroke:var(--dim)}
+.node.soon text{fill:var(--dim)}
+.core{filter:drop-shadow(0 0 26px rgba(53,214,237,.55))}
+.ring{fill:none;stroke:rgba(53,214,237,.12);stroke-width:1}
+.glabel{fill:var(--deep);font-family:var(--mono);font-size:10.5px;letter-spacing:.3em}
+@media (prefers-reduced-motion:no-preference){
+  .orbit{transform-origin:600px 520px;animation:sway 26s ease-in-out infinite alternate}
+  .orbit.o2{animation-duration:34s;animation-direction:alternate-reverse}
+  @keyframes sway{from{transform:rotate(-1.2deg)}to{transform:rotate(1.2deg)}}
+  .pulse{animation:pulse 4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+}
+.legend{position:relative;z-index:2;display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:center;padding:0 20px 56px;color:var(--dim);font-size:.7rem;letter-spacing:.16em}
+.legend b{color:var(--cyan);font-weight:500}
+footer{position:relative;z-index:2;text-align:center;color:var(--dim);font-size:.68rem;letter-spacing:.2em;padding:0 20px 40px}
+footer a{color:var(--cyan);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="neb"></div><div class="grid"></div>
+<header>
+  <a class="home" href="/">← CUNNINGCLAW.COM</a>
+  <h1>The constellation — <em>every door, one sky</em></h1>
+  <p class="lede">A living map of where the claw reaches: the product and its source, the free Forgenet design tools that all speak MCP, and Dragon Forge AI in Cardiff. Every star is a real door — press one.</p>
+</header>
+<div class="stage" id="stage" aria-label="Constellation map of Cunning Claw destinations"></div>
+<div class="legend"><span><b>◉</b> the claw</span><span><b>●</b> a live door</span><span><b>◌</b> opening soon</span><span>drag nothing — it drifts on its own</span></div>
+<footer>DRAGON FORGE AI · CARDIFF, WALES · <a href="https://x.com/Dragon_forge_ai">@Dragon_forge_ai</a></footer>
+<script src="map.js" defer></script>
+</body>
+</html>

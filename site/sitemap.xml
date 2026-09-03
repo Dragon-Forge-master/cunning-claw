@@ -7,4 +7,11 @@
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="en-GB" href="https://cunningclaw.com/"/>
   </url>
+  <url>
+    <loc>https://cunningclaw.com/map</loc>
+    <lastmod>2026-09-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en-GB" href="https://cunningclaw.com/map"/>
+  </url>
 </urlset>
