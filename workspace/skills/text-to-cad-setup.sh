@@ -25,6 +25,8 @@ rm -rf "$TMP"
 [ -d "$VENV" ] || python3 -m venv "$VENV"
 "$VENV/bin/pip" install -q --upgrade pip
 "$VENV/bin/pip" install -q -r "$HERE/cad/requirements.txt"
+# the snapshot renderer drives a headless browser of its own
+"$VENV/bin/playwright" install chromium >/dev/null 2>&1 || echo "note: playwright browser install failed — snapshots will not render until it succeeds"
 
 echo "text-to-cad runtime ready."
 echo "  scripts: $HERE/cad/scripts  $HERE/dxf/scripts"
