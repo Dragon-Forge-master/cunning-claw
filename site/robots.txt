@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://cunningclaw.com/sitemap.xml
