@@ -34,3 +34,8 @@ __pycache__/
 
 # Marketing video is served straight from the Pages deploy, never git.
 site/*.mp4
+
+# text-to-cad runtime is fetched by setup, not committed
+workspace/skills/cad/scripts/
+workspace/skills/dxf/scripts/
+workspace/skills/.venv-cad/
