@@ -1,0 +1,55 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Launch card</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{--ink:#0a111c;--cyan:#35d6ed;--ice:#7ff0ff;--deep:#1a8ba0;--text:#dfe9f2;--dim:#8496a8}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1600px;height:900px;overflow:hidden;background:var(--ink);color:var(--text);font-family:"IBM Plex Mono",monospace;position:relative}
+  body.header{width:1500px;height:500px}
+  .neb{position:absolute;inset:-10%;background:
+    radial-gradient(38% 45% at 22% 40%,rgba(26,139,160,.30),transparent 70%),
+    radial-gradient(30% 40% at 78% 65%,rgba(53,214,237,.16),transparent 70%),
+    radial-gradient(60% 50% at 50% 110%,rgba(53,214,237,.10),transparent 70%);filter:blur(28px)}
+  .grid{position:absolute;inset:0;background:
+    linear-gradient(rgba(53,214,237,.05) 1px,transparent 1px) 0 0/48px 48px,
+    linear-gradient(90deg,rgba(53,214,237,.05) 1px,transparent 1px) 0 0/48px 48px;
+    mask:radial-gradient(ellipse at 50% 50%,#000 30%,transparent 80%)}
+  .stage{position:absolute;right:70px;top:110px;width:760px;perspective:1300px;perspective-origin:30% 40%}
+  body.header .stage{right:40px;top:40px;width:560px}
+  .pane{position:relative;transform:rotateY(-8deg) rotateX(3deg);transform-style:preserve-3d;
+    box-shadow:0 0 0 1px rgba(53,214,237,.45),0 0 60px rgba(53,214,237,.22),0 70px 110px -40px rgba(53,214,237,.55)}
+  .pane img{display:block;width:100%}
+  .pane::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(127,240,255,.18),rgba(127,240,255,0) 28%,rgba(127,240,255,0) 72%,rgba(53,214,237,.12));mix-blend-mode:screen}
+  .pane::after{content:"";position:absolute;inset:0;opacity:.5;background:repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0 1px,transparent 1px 3px)}
+  .pool{position:absolute;right:120px;top:640px;width:660px;height:120px;background:radial-gradient(ellipse at 50% 0%,rgba(53,214,237,.40),transparent 70%);filter:blur(18px)}
+  body.header .pool{top:380px;right:80px;width:480px}
+  .copy{position:absolute;left:90px;top:120px;width:700px}
+  body.header .copy{left:60px;top:70px;width:780px}
+  .lock{display:flex;align-items:center;gap:22px}
+  .lock img{width:92px;filter:drop-shadow(0 0 22px rgba(53,214,237,.45))}
+  body.header .lock img{width:68px}
+  .word{color:var(--cyan);font-weight:600;font-size:52px;letter-spacing:.2em}
+  body.header .word{font-size:40px}
+  .welsh{color:var(--cyan);opacity:.8;letter-spacing:.3em;font-size:14px;margin-top:8px}
+  .line{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:56px;line-height:1.12;margin-top:64px;letter-spacing:-.01em;text-wrap:balance}
+  .line em{font-style:italic;color:var(--cyan);display:block;margin-top:.15em}
+  body.header .line{font-size:38px;margin-top:34px}
+  .meta{margin-top:56px;color:var(--dim);font-size:16px;letter-spacing:.14em;line-height:2}
+  body.header .meta{margin-top:26px;font-size:13px}
+  .meta b{color:var(--ice);font-weight:500}
+  .foot{position:absolute;left:90px;bottom:64px;color:var(--dim);font-size:13px;letter-spacing:.24em}
+  body.header .foot{display:none}
+</style>
+<body class="">
+  <div class="neb"></div><div class="grid"></div>
+  <div class="copy">
+    <div class="lock"><img src="../assets/forge-mark-cyan.svg" alt=""><div><div class="word">CUNNING CLAW</div><div class="welsh">Y DYN HYSBYS · THE KNOWING ONE</div></div></div>
+    <div class="line">Most AI assistants will do whatever a web page tells them to.<em>This one won't.</em></div>
+    <div class="meta"><b>cunningclaw.com</b> · open source<br>local first · human consent where it counts<br><b>3 SEPTEMBER 2026 · 15:00 BST</b></div>
+  </div>
+  <div class="stage"><div class="pane"><img src="../../site/hud.png" alt=""></div></div>
+  <div class="pool"></div>
+  <div class="foot">DRAGON FORGE AI · CARDIFF · @DRAGON_FORGE_AI</div>
+</body>
+</html>
