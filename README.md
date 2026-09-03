@@ -20,6 +20,12 @@ And refuses when a web page tells it to do something you didn't ask for.
 
 <sub>Built in Cardiff by <b>Dragon Forge AI</b> · Local-first when privacy matters · Human approval when consequences matter</sub>
 
+<br><br>
+
+<a href="https://cunningclaw.com/#demo"><img src="docs/assets/demo-loop.gif" alt="Twelve seconds of the claw: asked for a coffee roastery's website, it writes it, serves it, and the site blooms on the glass" width="880"></a>
+
+<sub>One take, no cuts: asked for a website, it wrote one and put it on the glass. <a href="https://cunningclaw.com/#demo">The full 42-second film →</a></sub>
+
 </div>
 
 ---
