@@ -20,7 +20,7 @@
       if (r.bottom < 0 || r.top > innerHeight) return;
       var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
       var dx = (mx - cx) / innerWidth, dy = (my - cy) / innerHeight;
-      var lean = el.dataset.holo === "hero" ? 5 : 4;
+      var lean = el.dataset.holo === "hero" ? 2.5 : 1.5;
       el.style.setProperty("--ry", (rest[i].ry + dx * lean * 2).toFixed(2) + "deg");
       el.style.setProperty("--rx", (rest[i].rx - dy * lean * 2).toFixed(2) + "deg");
     });

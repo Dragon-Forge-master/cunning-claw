@@ -146,13 +146,13 @@ td.y{color:var(--cyan)}td.n{color:var(--dim)}
 .holo:hover{box-shadow:0 0 0 1px rgba(127,240,255,.7),0 0 54px rgba(53,214,237,.32),0 60px 100px -40px rgba(53,214,237,.6)}
 .holo-pool{position:absolute;left:8%;right:8%;bottom:-46px;height:90px;pointer-events:none;
   background:radial-gradient(ellipse at 50% 0%,rgba(53,214,237,.34),rgba(53,214,237,0) 70%);filter:blur(14px)}
-.glass .holo{--rx:9deg}
-/* a cockpit wall: outer edges recede, inner edges come forward, so nothing
-   splays past the page edge on a narrow screen */
-.rooms .holo:nth-child(1){--rx:4deg;--ry:-6deg}
-.rooms .holo:nth-child(2){--rx:4deg;--ry:6deg}
-.rooms .holo:nth-child(3){--rx:-3deg;--ry:-5deg}
-.rooms .holo:nth-child(4){--rx:-3deg;--ry:5deg}
+.glass .holo{--rx:4deg}
+/* near-straight by the operator's eye: a hint of a cockpit curve (outer edges
+   receding) so the panes still read as hanging rather than printed */
+.rooms .holo:nth-child(1){--rx:1.5deg;--ry:-2deg}
+.rooms .holo:nth-child(2){--rx:1.5deg;--ry:2deg}
+.rooms .holo:nth-child(3){--rx:-1deg;--ry:-2deg}
+.rooms .holo:nth-child(4){--rx:-1deg;--ry:2deg}
 .rooms{perspective:1200px;perspective-origin:50% 50%;padding:20px 2% 40px}
 /* the atmosphere: two slow drifting nebulae behind the panes, nothing more */
 .atmos::before{content:"";position:absolute;inset:-10% -5%;z-index:-1;pointer-events:none;
