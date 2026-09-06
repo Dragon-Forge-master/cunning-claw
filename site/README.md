@@ -3,16 +3,19 @@
 Static. No build step, no framework — the whole page is `index.html`, and the
 video sits beside it.
 
-## Deploy to a forgenet.cloud subdomain
+## Deploy
+
+The live site is **https://cunningclaw.com** (Cloudflare Pages).
 
 ```bash
 cd site
 npx wrangler pages deploy . --project-name=cunningclaw
 ```
 
-Then in the Cloudflare dashboard: **Workers & Pages → cunningclaw → Custom domains**,
-add `cunningclaw.forgenet.cloud`. DNS is handled for you if forgenet.cloud is already
-on this Cloudflare account.
+`cunningclaw.forgenet.cloud` was the first address and still serves an older
+deploy ("The Forge Master's Agent"). Retire it, or redirect it to cunningclaw.com,
+in the Cloudflare dashboard — a stranger who lands there today sees a page from
+before the rebrand.
 
 ## Notes
 
