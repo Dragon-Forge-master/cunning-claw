@@ -410,6 +410,16 @@ es.addEventListener("tool_result", (e) => {
   addChip(`✓ ${name} complete`);
 });
 
+es.addEventListener("brain_route", (e) => {
+  const { to, reason } = sseData(e);
+  const div = document.createElement("div");
+  div.className = "guard-chip";
+  div.textContent = `\u25b8 ${to} takes this one \u00b7 ${reason}`;
+  div.title = "A making job goes to the capable brain. Pin a brain to stop this.";
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+});
+
 es.addEventListener("brain_guard", (e) => {
   const { forcedTo, reason } = sseData(e);
   const div = document.createElement("div");

@@ -5,7 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { config, DATA_DIR, ROOT } from "./config.js";
 import { memorySnapshot } from "./memory.js";
 import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
-import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted, suggestCheapBrain } from "./routing.js";
+import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted, suggestCheapBrain, suggestCapableBrain } from "./routing.js";
 import { containsSecret, redactDeep, isCleanBase64 } from "./redact.js";
 import { clearTaskGrant } from "./consequence.js";
 import { stampUserMessage } from "./when.js";
@@ -602,6 +602,15 @@ export async function runTurn(
   // need a frontier model, and the guard below can still overrule this.
   const cheap = suggestCheapBrain(userMessage, history, kind);
   if (cheap) spec = cheap;
+
+  // And route up for the making jobs — a site, a logo, a plan, a letter. The
+  // two directions are exclusive: a turn is either trivial or a job, and the
+  // guard below still has the last word on safety either way.
+  const capable = cheap ? null : suggestCapableBrain(userMessage, kind);
+  if (capable && capable.id !== spec.id) {
+    spec = capable;
+    events.emit("brain_route", { to: spec.label, reason: "a making job" });
+  }
 
   // Safety gate over brain choice. A pin, a config default, or a failover
   // firing on a rate limit could otherwise put the cheapest model in front of

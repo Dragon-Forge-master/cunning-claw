@@ -149,3 +149,55 @@ test("WhatsApp is outside world — check_whatsapp taints, and asking for it up 
   ];
   assert.ok(historyIsTainted(tainted));
 });
+
+/**
+ * Routing up. The guard asks whether a brain is safe enough; the trivial rule
+ * asks whether a turn is too small to pay for. These pin the third question —
+ * is the brain good enough for the work — which nothing asked until a cheap
+ * model was handed "what's your logo" and answered with a fox.
+ */
+import { looksLikeMaking, suggestCapableBrain, suggestCheapBrain } from "./routing.js";
+import { pinBrain, pinnedBrainId } from "./brain.js";
+
+test("a making job is a producing verb aimed at a produced thing", () => {
+  for (const q of [
+    "build me a website for a Cardiff MOT garage",
+    "make a logo for the valeting business",
+    "write a letter to the council about the bins",
+    "draft a business plan for the coffee roastery",
+    "can you make a multi-page site with lots of information about the NHS",
+    "design a poster for Saturday",
+    "generate an image of the anvil at dawn",
+  ]) assert.equal(looksLikeMaking(q), true, q);
+  for (const q of [
+    "what's the time",
+    "make it louder",
+    "do you know what your logo is",
+    "thanks",
+    "open the site",
+    "what did we build yesterday",
+  ]) assert.equal(looksLikeMaking(q), false, q);
+  assert.equal(looksLikeMaking("x".repeat(400)), true, "a long brief is a job whatever its words");
+});
+
+test("a making job routes up to the capable brain when it has a key, and never over a pin", () => {
+  const saved = process.env.OPENROUTER_API_KEY;
+  const pinnedBefore = pinnedBrainId();
+  process.env.OPENROUTER_API_KEY = "or-test-key-for-routing-0123456789abcdef";
+  try {
+    pinBrain(null);
+    const up = suggestCapableBrain("build me a website for the garage", "user");
+    assert.ok(up, "routed somewhere");
+    assert.equal(up.id, "pro");
+    assert.equal(suggestCapableBrain("what's the time", "user"), null, "trivial does not route up");
+    assert.equal(suggestCapableBrain("build me a website", "heartbeat"), null, "heartbeat has its own brain");
+
+    // The pin is the operator's decision, in both directions.
+    pinBrain("flash");
+    assert.equal(suggestCapableBrain("build me a website for the garage", "user"), null, "no routing up over a pin");
+    assert.equal(suggestCheapBrain("what's the time", [], "user"), null, "no routing down over a pin either");
+  } finally {
+    pinBrain(pinnedBefore);
+    if (saved === undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY = saved;
+  }
+});

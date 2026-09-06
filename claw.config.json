@@ -149,21 +149,21 @@
           "in": 0.1,
           "out": 0.4
         },
-        "note": "fastest and cheapest \u2014 chat, clock, telemetry"
+        "note": "fastest and cheapest — chat, clock, telemetry"
       },
       {
         "id": "flash",
         "label": "Flash",
         "provider": "openai",
-        "model": "google/gemini-3.5-flash-lite",
+        "model": "google/gemini-3.5-flash",
         "baseUrl": "https://openrouter.ai/api/v1",
         "apiKeyEnv": "OPENROUTER_API_KEY",
         "thinking": false,
         "price": {
-          "in": 0.3,
-          "out": 2.5
+          "in": 1.5,
+          "out": 9.0
         },
-        "note": "the workhorse \u2014 tools, browsing, most jobs (Gemini 3.5 generation, same price as the old 2.5 flash)"
+        "note": "the workhorse — tools, browsing, most jobs (full 3.5 Flash, not the Lite cut; five times Lite's price and worth it)"
       },
       {
         "id": "pro",
@@ -191,7 +191,7 @@
           "in": 0.1,
           "out": 0.4
         },
-        "note": "OpenAI's cheapest \u2014 a second opinion"
+        "note": "OpenAI's cheapest — a second opinion"
       },
       {
         "id": "deepseek",
@@ -219,7 +219,7 @@
           "in": 0.0,
           "out": 0.0
         },
-        "note": "free and fully offline \u2014 Ollama llama3.2 3B, sized for this machine's RAM; chatty, not scholarly"
+        "note": "free and fully offline — Ollama llama3.2 3B, sized for this machine's RAM; chatty, not scholarly"
       },
       {
         "id": "managed",
@@ -232,7 +232,7 @@
           "in": 0.0,
           "out": 0.0
         },
-        "note": "the Just Works subscription \u2014 one token, no accounts anywhere else; inert without DRAGONFORGE_TOKEN"
+        "note": "the Just Works subscription — one token, no accounts anywhere else; inert without DRAGONFORGE_TOKEN"
       },
       {
         "id": "google",
@@ -245,7 +245,7 @@
           "in": 0.3,
           "out": 2.5
         },
-        "note": "a Gemini key straight from Google AI Studio \u2014 no broker in between"
+        "note": "a Gemini key straight from Google AI Studio — no broker in between"
       },
       {
         "id": "openai-direct",
@@ -258,7 +258,7 @@
           "in": 0.4,
           "out": 1.6
         },
-        "note": "an OpenAI key used directly \u2014 no broker in between"
+        "note": "an OpenAI key used directly — no broker in between"
       },
       {
         "id": "anthropic",
@@ -270,7 +270,7 @@
           "in": 1.0,
           "out": 5.0
         },
-        "note": "an Anthropic key used directly \u2014 Haiku class for the money"
+        "note": "an Anthropic key used directly — Haiku class for the money"
       }
     ]
   },
@@ -290,7 +290,9 @@
     ],
     "cheapWhenTrivial": true,
     "cheapBrain": "lite",
-    "guardOverridesPin": false
+    "guardOverridesPin": false,
+    "capableWhenMaking": true,
+    "capableBrain": "pro"
   },
   "coding": {
     "root": "~",

@@ -146,6 +146,9 @@ export interface ClawConfig {
     /** Route obviously-trivial turns to a cheap brain. */
     cheapWhenTrivial?: boolean;
     cheapBrain?: string;
+    /** Route making jobs (a site, a logo, a plan, a document) to a capable brain. Default on. */
+    capableWhenMaking?: boolean;
+    capableBrain?: string;
     /** Let the trusted-brain guard override an explicit pin. Off: the operator decides. */
     guardOverridesPin?: boolean;
   };

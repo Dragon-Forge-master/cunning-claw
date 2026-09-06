@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { config } from "./config.js";
 import { DEFAULT_MEMORY_BODY } from "./workspace.js";
-import { catalog, defaultBrainId, brainHasKey, type BrainSpec } from "./brain.js";
+import { catalog, defaultBrainId, brainHasKey, pinnedBrainId, type BrainSpec } from "./brain.js";
 
 /**
  * Risk gate over brain selection.
@@ -164,12 +164,55 @@ export function suggestCheapBrain(
   kind: "user" | "heartbeat",
 ): BrainSpec | null {
   if (kind === "heartbeat") return null;              // heartbeat has its own brain
+  if (pinnedBrainId()) return null;                   // a pin is the operator's decision, from below as from above
   if (config.routing?.cheapWhenTrivial === false) return null;
   if (historyIsTainted(history)) return null;         // hostile text in the window
   if (userMessage.length > 120) return null;          // long asks are rarely trivial
   if (!TRIVIAL.some((re) => re.test(userMessage.trim()))) return null;
 
   const id = config.routing?.cheapBrain ?? "cheap";
+  const spec = catalog().find((b) => b.id === id);
+  if (!spec || !brainHasKey(spec)) return null;       // not configured — stay put
+  return spec;
+}
+
+/**
+ * The making jobs: a verb that produces, aimed at a thing that gets produced.
+ * Both halves are required — "make it louder" is not a job, "write a letter" is.
+ * A long brief is a job whatever its words: nobody dictates four hundred
+ * characters to ask the time.
+ */
+const MAKING_VERBS = /\b(build|make|create|write|draft|design|generate|produce|compose|code|develop|redesign|rewrite|rework|mock ?up|prototype|put together|knock up|do me|draw|paint|sketch)\b/i;
+const MAKING_OBJECTS = /\b(site|website|web ?page|landing page|home ?page|app|dashboard|game|logo|poster|flyer|advert|banner|image|picture|graphic|card|business plan|plan|proposal|spec|specification|report|letter|email|document|doc|essay|story|script|deck|presentation|slides|skill|tool|feature|function|component|api|scraper|bot|cv|invoice|quote|brief|pitch|campaign|newsletter|blog post|article|readme|schema|migration|tests?)\b/i;
+const LONG_BRIEF = 400;
+
+export function looksLikeMaking(text: string): boolean {
+  const t = text.trim();
+  if (t.length >= LONG_BRIEF) return true;
+  return MAKING_VERBS.test(t) && MAKING_OBJECTS.test(t);
+}
+
+/**
+ * Route UP to the capable brain when the turn is a making job.
+ *
+ * The guard asks one question of a brain — is it safe enough for hostile
+ * text — and the trivial rule asks the opposite — is this turn too small to
+ * pay for. Nothing asked whether the brain was GOOD enough for the work, so
+ * AUTO handed "what's your logo" and "build me a site for the NHS" to the
+ * cheapest models on the roster and got a fox and a fiction. The mirror of
+ * the trivial rule: a known making shape, a capable brain that has a key,
+ * and never over a pin.
+ */
+export function suggestCapableBrain(
+  userMessage: string,
+  kind: "user" | "heartbeat",
+): BrainSpec | null {
+  if (kind === "heartbeat") return null;
+  if (pinnedBrainId()) return null;
+  if (config.routing?.capableWhenMaking === false) return null;
+  if (!looksLikeMaking(userMessage)) return null;
+
+  const id = config.routing?.capableBrain ?? "pro";
   const spec = catalog().find((b) => b.id === id);
   if (!spec || !brainHasKey(spec)) return null;       // not configured — stay put
   return spec;
