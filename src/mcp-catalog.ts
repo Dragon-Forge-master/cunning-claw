@@ -104,7 +104,11 @@ export const MCP_CATALOGUE: CatalogueEntry[] = [
     label: "Forgenet",
     blurb: "Forge design suite — floor plans, interiors, land, flows: your cloud projects",
     category: "Create",
-    popular: true,
+    // Off the front row until mcp.forgenet.cloud answers an initialize call —
+    // on 6 Sep it returned 404. A Popular card a stranger cannot connect is
+    // the first thing a launch-day visitor will press, and the one they will
+    // remember.
+    popular: false,
     tokenEnv: "FORGENET_TOKEN",
     entry: {
       type: "http",

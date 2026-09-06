@@ -34,3 +34,14 @@ test("the first message of a process never invents a gap", () => {
   const now = new Date(2026, 8, 3, 9, 0);
   assert.equal(stampUserMessage("morning", now, null), "[09:00] morning");
 });
+
+test("a heartbeat between two operator messages does not shrink the silence", () => {
+  // The claw pulses every thirty minutes. If that pulse counted as the
+  // previous message, an operator away for three hours would be told "30m
+  // since the previous message" on their return. agent.ts passes null for a
+  // heartbeat turn and leaves lastMessageAt alone; this pins both halves.
+  const t0 = new Date("2026-09-06T09:00:00").getTime();
+  const later = new Date("2026-09-06T12:00:00");
+  assert.doesNotMatch(stampUserMessage("[heartbeat]", later, null), /since the previous message/);
+  assert.equal(stampUserMessage("morning", later, t0), "[3h 0m since the previous message] [12:00] morning");
+});

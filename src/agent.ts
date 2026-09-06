@@ -649,9 +649,15 @@ export async function runTurn(
   // written ONCE here and never recomputed, so history stays byte-stable for
   // the prompt cache and the coherence guard; the volatile header supplies
   // "now" and the model does the subtraction. See src/when.ts for why.
-  history.push({ role: "user", content: stampUserMessage(userMessage, new Date(), lastMessageAt) });
-  lastMessageAt = Date.now();
+  // The silence note measures the OPERATOR's absence, so only their messages
+  // move the clock. The heartbeat is a turn too, and it fires every thirty
+  // minutes: let it set lastMessageAt and a three-hour absence reads as
+  // "30m since the previous message" — the exact lie this stamp was built to
+  // prevent. The journal line below already knew that; this one did not.
+  const stampedAt = opts?.kind === "heartbeat" ? null : lastMessageAt;
+  history.push({ role: "user", content: stampUserMessage(userMessage, new Date(), stampedAt) });
   if (opts?.kind !== "heartbeat") {
+    lastMessageAt = Date.now();
     try { appendJournal("operator", userMessage); } catch { /* ignore */ }
   }
 
