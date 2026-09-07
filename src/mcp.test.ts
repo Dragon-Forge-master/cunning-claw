@@ -230,6 +230,51 @@ test("Streamable HTTP initialize + session + paginated tools/list + fenced call"
   }
 });
 
+test("a JSON reply containing the text data: is still JSON; only text/event-stream is a stream", async () => {
+  // WordPress.com's real tools/list carries "invalid_record_data: the DNS
+  // service rejected the record data" inside one description. The old parser
+  // sniffed the body for "data:", took it for SSE, found no frames and
+  // returned {} — nineteen tools became "0 tool(s)" with no error anywhere.
+  const mock = await listen((_req, body, res) => {
+    let msg: any = {};
+    try { msg = JSON.parse(body || "{}"); } catch { /* empty notify */ }
+    res.setHeader("mcp-session-id", "sess-2");
+    if (!msg.id) { res.statusCode = 202; res.end(); return; }
+    if (msg.method === "initialize") {
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ jsonrpc: "2.0", id: msg.id, result: { protocolVersion: "2025-03-26", capabilities: {}, serverInfo: { name: "wp" } } }));
+      return;
+    }
+    if (msg.method === "tools/list") {
+      res.setHeader("Content-Type", "application/json; charset=UTF-8");
+      res.end(JSON.stringify({ jsonrpc: "2.0", id: msg.id, result: { tools: [{
+        name: "wpcom_dns",
+        description: "Errors: invalid_record_data: the DNS service rejected the record data.",
+        inputSchema: { type: "object", properties: {} },
+      }] } }));
+      return;
+    }
+    if (msg.method === "tools/call") {
+      // A genuine stream, declared as one, still parses to its last data frame.
+      res.setHeader("Content-Type", "text/event-stream");
+      res.end(`event: message\ndata: ${JSON.stringify({ jsonrpc: "2.0", id: msg.id, result: { content: [{ type: "text", text: "streamed" }] } })}\n\n`);
+      return;
+    }
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ jsonrpc: "2.0", id: msg.id, error: { message: "unknown" } }));
+  });
+  try {
+    const tools = await connectServers([{ id: "wp", transport: "http", url: mock.url }]);
+    assert.equal(tools.length, 1, "a description containing data: must not turn the JSON reply into an empty stream");
+    assert.equal(listMcpStates().find((s) => s.id === "wp")?.tools, 1);
+    const out = await callTool("mcp__wp__wpcom_dns", {});
+    assert.match(out, /streamed/);
+  } finally {
+    shutdown();
+    await mock.close();
+  }
+});
+
 test("HTTP 401 at boot is needs_auth, not a browser popup", async () => {
   const mock = await listen((_req, _body, res) => {
     res.statusCode = 401;

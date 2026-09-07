@@ -192,8 +192,18 @@ class McpConnection {
     return h;
   }
 
-  private parseBody(text: string): any {
-    if (text.includes("data:")) {
+  /**
+   * The transport decides the framing, not the body. A JSON reply is parsed
+   * as JSON even when a tool description happens to contain "data:" —
+   * WordPress.com's tools/list has one ("invalid_record_data: the DNS
+   * service rejected…"), and sniffing the body for that substring turned a
+   * 68 KB list of nineteen tools into "0 tool(s)". Only a text/event-stream
+   * Content-Type (or, with no Content-Type at all, a body whose lines are
+   * SSE frames) is read as a stream, and then the last data frame wins.
+   */
+  private parseBody(text: string, contentType = ""): any {
+    const isStream = /text\/event-stream/i.test(contentType) || (!contentType && /^(data|event):/m.test(text));
+    if (isStream) {
       const frames = text.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim());
       const last = frames.pop() ?? "{}";
       return JSON.parse(last);
@@ -233,7 +243,7 @@ class McpConnection {
     }
     if (!res.ok) throw new Error(`MCP "${this.cfg.id}" HTTP ${res.status}`);
     const text = await res.text();
-    const msg = this.parseBody(text);
+    const msg = this.parseBody(text, res.headers.get("content-type") ?? "");
     if (msg.error) throw new Error(msg.error.message ?? "MCP error");
     return msg.result;
   }
