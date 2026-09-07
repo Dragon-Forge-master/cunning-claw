@@ -618,7 +618,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 350 tests
+npm test        # 352 tests
 npm run check   # tsc --noEmit
 ```
 
