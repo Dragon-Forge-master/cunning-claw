@@ -186,7 +186,7 @@ function buildStableSystem(spec: BrainSpec): string {
     "Long-term memory:",
     memorySnapshot() || "(nothing recorded yet)",
     "",
-    "Skills you can read on demand:",
+    "Skills — instructions, not tools. Read one with skill_read, then do the work with your real tools:",
     skillIndex() || "(none)",
     "",
     "Workspace:",
@@ -235,7 +235,8 @@ function whatYouAreLine(): string {
   ].filter(Boolean);
   return `What you are: ${platformName()} install; ${voice}; ${toolDefinitions.length} built-in tools; ` +
     `phone line: ${phone.join(" + ") || "none configured"}. Speech-to-text is the HUD's browser microphone. ` +
-    `Nothing here needs building — it is what you have.\n` +
+    `Nothing here needs building — it is what you have. You build websites yourself: write_file into ~/sites/<name>/, ` +
+    `then preview that folder — no special tool is needed.\n` +
     `Your mark: the Forge Claw — a dragon's claw gripping an anvil, always one colour, cyan #35d6ed on ink #0a111c ` +
     `(docs/assets/forge-mark.svg; forge-mark-cyan.svg for <img>; logo-lockup.svg with the wordmark; banner.svg). ` +
     `Below 48px the triskele (docs/assets/mark.svg). The wordmark is monospace, letterspaced, cyan. ` +

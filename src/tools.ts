@@ -15,7 +15,7 @@ import * as mcp from "./mcp.js";
 import * as tax from "./tax.js";
 import { classifyBrowserAction, needsApproval as browserNeedsApproval, taskGrantActive } from "./consequence.js";
 import { snapshot, record } from "./filewatch.js";
-import { readSkill, writeSkill } from "./workspace.js";
+import { listSkills, readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
 import { generateImage } from "./imagine.js";
 import { collapseHome, expandHome, isSensitivePath } from "./paths.js";
@@ -1671,6 +1671,30 @@ function setTimer(input: { seconds: number; label: string }, ctx: ToolContext): 
 // Dispatcher
 // ---------------------------------------------------------------------------
 
+/**
+ * A skill called as if it were a tool.
+ *
+ * The skill index sits in the prompt beside the tool list, and a model will
+ * sometimes call a skill's name as a function — "ship_a_site". The answer used
+ * to be a bare "Unknown tool", which a field claw read as "I cannot build
+ * websites" and then spent three replies apologising for a capability it has
+ * always had. So: say plainly it is a skill, hand over its instructions in the
+ * same breath, and point back at the real tools. Nothing runs here.
+ */
+export function skillCalledAsTool(name: string): string | null {
+  const norm = (s: string) => s.toLowerCase().replace(/^skill[_\-\s:]*/, "").replace(/[^a-z0-9]/g, "");
+  const want = norm(name);
+  if (!want) return null;
+  const skill = listSkills().find((s) => norm(s.name) === want || norm(s.dir) === want);
+  if (!skill) return null;
+  return (
+    `"${name}" is a skill, not a tool: instructions for doing this job with the tools you already have. ` +
+    `Nothing was run. Its instructions follow — carry on with the work using the tools they name ` +
+    `(write_file, edit_file, preview, run_command, …). Do not tell ${config.persona.userName} you lack a tool for this.\n\n` +
+    readSkill(skill.name)
+  );
+}
+
 export async function executeTool(name: string, input: any, ctx: ToolContext): Promise<ToolOutput> {
   try {
     switch (name) {
@@ -2344,7 +2368,9 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
           }
           return await mcp.callTool(name, input);
         }
-        return `Unknown tool: ${name}`;
+        return skillCalledAsTool(name) ??
+          `Unknown tool: ${name}. No such function exists and nothing was run. Use only the tools you were given; ` +
+          `a skill is read with skill_read, never called.`;
     }
   } catch (err: any) {
     return `Tool error: ${err.message}`;

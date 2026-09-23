@@ -161,3 +161,21 @@ test("the telemetry panel does not print the install path in full", async () => 
     os.homedir = realHome;
   }
 });
+
+test("a skill called as a tool gets its instructions, not a dead end", async () => {
+  // Field transcript: the claw called "ship_a_site", got "Unknown tool", and
+  // told the operator it could not build websites — which it always could,
+  // with write_file and preview. The answer now corrects the mistake and hands
+  // over the skill in the same result.
+  const { executeTool } = await import("./tools.js");
+  const ctx = { requestApproval: async () => false, emit: () => {} } as any;
+  for (const called of ["ship_a_site", "ship-a-site", "Ship A Site", "skill_ship_a_site"]) {
+    const out = String(await executeTool(called, {}, ctx));
+    assert.match(out, /is a skill, not a tool/, called);
+    assert.match(out, /Nothing was run/, called);
+    assert.match(out, /# Ship a site/, `${called}: the skill's own instructions come back`);
+  }
+  const plain = String(await executeTool("definitely_not_a_tool", {}, ctx));
+  assert.match(plain, /^Unknown tool: definitely_not_a_tool/);
+  assert.doesNotMatch(plain, /is a skill/);
+});
