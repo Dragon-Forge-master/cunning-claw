@@ -155,29 +155,43 @@
         "id": "flash",
         "label": "Flash",
         "provider": "openai",
-        "model": "google/gemini-3.5-flash",
+        "model": "google/gemini-3.8-flash",
         "baseUrl": "https://openrouter.ai/api/v1",
         "apiKeyEnv": "OPENROUTER_API_KEY",
         "thinking": false,
         "price": {
-          "in": 1.5,
-          "out": 9.0
+          "in": 0.75,
+          "out": 3.75
         },
-        "note": "the workhorse — tools, browsing, most jobs (full 3.5 Flash, not the Lite cut; five times Lite's price and worth it)"
+        "note": "the workhorse — tools, browsing, most jobs (Gemini 3.8 Flash: newer than 3.5 and half its price)"
       },
       {
         "id": "pro",
-        "label": "Pro",
+        "label": "Sonnet",
         "provider": "openai",
-        "model": "google/gemini-2.5-pro",
+        "model": "anthropic/claude-sonnet-5",
         "baseUrl": "https://openrouter.ai/api/v1",
         "apiKeyEnv": "OPENROUTER_API_KEY",
         "thinking": false,
         "price": {
-          "in": 1.25,
+          "in": 2.0,
           "out": 10.0
         },
-        "note": "harder reasoning, still a quarter of Opus"
+        "note": "the capable brain — making jobs route here: sites, logos, plans, letters (Claude Sonnet 5; same output price as the Gemini 2.5 Pro it replaced)"
+      },
+      {
+        "id": "opus",
+        "label": "Opus",
+        "provider": "openai",
+        "model": "anthropic/claude-opus-5.5",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKeyEnv": "OPENROUTER_API_KEY",
+        "thinking": false,
+        "price": {
+          "in": 4.0,
+          "out": 20.0
+        },
+        "note": "the heaviest brain on the roster — pin it (/brain opus) for the hardest jobs; never chosen automatically"
       },
       {
         "id": "nano",
@@ -286,7 +300,8 @@
     "enforceTrustedBrain": true,
     "trustedBrains": [
       "pro",
-      "flash"
+      "flash",
+      "opus"
     ],
     "cheapWhenTrivial": true,
     "cheapBrain": "lite",

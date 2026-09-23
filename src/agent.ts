@@ -12,7 +12,7 @@ import { stampUserMessage } from "./when.js";
 import * as coherence from "./coherence.js";
 import { toolDefinitions as mcpToolDefinitions, listMcpStates } from "./mcp.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
-import { pinnedBrainId, pickBrain, nextBrain, isFailoverError, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
+import { pinnedBrainId, pickBrain, nextBrain, shouldFailOver, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
 import { completeOpenAi } from "./openai-compat.js";
 import { appendJournal, todayJournalSnippet } from "./journal.js";
 import { chromeProfileDir } from "./browser.js";
@@ -602,6 +602,9 @@ export async function runTurn(
   // need a frontier model, and the guard below can still overrule this.
   const cheap = suggestCheapBrain(userMessage, history, kind);
   if (cheap) spec = cheap;
+  // Which brain the router picked, if it picked one. Only that brain gets the
+  // wider failover in shouldFailOver; once the turn has moved on, normal rules.
+  let routedBrainId: string | null = cheap ? cheap.id : null;
 
   // And route up for the making jobs — a site, a logo, a plan, a letter. The
   // two directions are exclusive: a turn is either trivial or a job, and the
@@ -609,6 +612,7 @@ export async function runTurn(
   const capable = cheap ? null : suggestCapableBrain(userMessage, kind);
   if (capable && capable.id !== spec.id) {
     spec = capable;
+    routedBrainId = capable.id;
     events.emit("brain_route", { to: spec.label, reason: "a making job" });
   }
 
@@ -725,7 +729,7 @@ export async function runTurn(
           // An abandoned turn must not quietly resurrect itself on another
           // brain: cancelTurn() means stop, not "try somewhere else".
           if (abortTurn?.signal.aborted) throw err;
-          let nxt = isFailoverError(err) ? nextBrain(spec, kind) : null;
+          let nxt = shouldFailOver(err, spec.id === routedBrainId) ? nextBrain(spec, kind) : null;
 
           // Failover must not quietly demote a guarded turn. If hostile text is
           // in play, walk the chain for another trusted brain; if there is none,

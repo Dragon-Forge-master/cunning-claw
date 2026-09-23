@@ -236,6 +236,25 @@ export function isFailoverError(err: unknown): boolean {
   return false;
 }
 
+/**
+ * Should this error move the turn to another brain?
+ *
+ * isFailoverError covers what any brain can hit — rate limits, outages, a bad
+ * key. A brain the ROUTER chose (the capable brain for a making job, the cheap
+ * one for a trivial turn) earns one more: a refusal of the request itself —
+ * 400, 404 "no endpoints", 422. The operator never asked for that brain, so a
+ * shape it will not take is the router's mistake to absorb, not a dead turn
+ * for the operator to read. A pinned or default brain keeps the old rule: a
+ * 400 there is a real bug and should be seen, not papered over.
+ */
+export function shouldFailOver(err: unknown, routed: boolean): boolean {
+  if (isFailoverError(err)) return true;
+  if (!routed) return false;
+  if (err instanceof Anthropic.APIError) return [400, 404, 422].includes(err.status ?? 0);
+  const m = err instanceof Error ? err.message : String(err);
+  return /OpenAI-compatible API (400|404|422)\b/.test(m);
+}
+
 export function describeBrain(spec: BrainSpec): string {
   return `${spec.label} (${spec.provider} / ${spec.model})`;
 }

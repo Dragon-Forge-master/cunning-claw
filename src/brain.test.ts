@@ -157,3 +157,28 @@ test("an unknown model records tokens but does not invent a price", () => {
   assert.equal(cost.usd, 0);
   assert.match(formatCost(cost), /unpriced/);
 });
+
+test("a brain the router chose hands over on a refused request; a pinned or default one does not", async () => {
+  // Making jobs now route to a model this code had never called live. If it
+  // answered 400 or 404, the turn used to die — the very turns that matter
+  // most. A routed brain is the router's choice, so its refusal is absorbed;
+  // a brain the operator chose keeps the old rule, so a real bug is still seen.
+  const { shouldFailOver } = await import("./brain.js");
+  const refused = new Error('OpenAI-compatible API 400: {"error":{"message":"tool_choice not supported"}}');
+  const missing = new Error('OpenAI-compatible API 404: {"error":{"message":"No endpoints found"}}');
+  assert.equal(shouldFailOver(refused, true), true, "routed + 400 hands over");
+  assert.equal(shouldFailOver(missing, true), true, "routed + 404 hands over");
+  assert.equal(shouldFailOver(refused, false), false, "a default or pinned brain's 400 is a bug to see");
+  assert.equal(shouldFailOver(new Error("OpenAI-compatible API 429: slow down"), false), true, "rate limits still fail over for everyone");
+  assert.equal(shouldFailOver(new Error("OpenAI-compatible API 4001: odd"), true), false, "status codes match whole");
+});
+
+test("the roster carries the capable brain and a pin-only heavy one, both trusted", async () => {
+  // Inclusion, not an exact list — the roster grows.
+  const { catalog } = await import("./brain.js");
+  const { config } = await import("./config.js");
+  const ids = catalog().map((b) => b.id);
+  for (const id of ["flash", "pro", "opus"]) assert.ok(ids.includes(id), `${id} on the roster`);
+  for (const id of ["pro", "opus"]) assert.ok(config.routing?.trustedBrains?.includes(id), `${id} trusted`);
+  assert.notEqual(config.routing?.capableBrain, "opus", "Opus is pin-only: never chosen automatically");
+});
