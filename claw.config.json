@@ -167,31 +167,17 @@
       },
       {
         "id": "pro",
-        "label": "Sonnet",
+        "label": "Pro",
         "provider": "openai",
-        "model": "anthropic/claude-sonnet-5",
+        "model": "google/gemini-2.5-pro",
         "baseUrl": "https://openrouter.ai/api/v1",
         "apiKeyEnv": "OPENROUTER_API_KEY",
         "thinking": false,
         "price": {
-          "in": 2.0,
+          "in": 1.25,
           "out": 10.0
         },
-        "note": "the capable brain — making jobs route here: sites, logos, plans, letters (Claude Sonnet 5; same output price as the Gemini 2.5 Pro it replaced)"
-      },
-      {
-        "id": "opus",
-        "label": "Opus",
-        "provider": "openai",
-        "model": "anthropic/claude-opus-5.5",
-        "baseUrl": "https://openrouter.ai/api/v1",
-        "apiKeyEnv": "OPENROUTER_API_KEY",
-        "thinking": false,
-        "price": {
-          "in": 4.0,
-          "out": 20.0
-        },
-        "note": "the heaviest brain on the roster — pin it (/brain opus) for the hardest jobs; never chosen automatically"
+        "note": "Gemini's Pro — pin it for a job you want more care on; dearer than Flash, and older, so not chosen automatically"
       },
       {
         "id": "nano",
@@ -300,13 +286,12 @@
     "enforceTrustedBrain": true,
     "trustedBrains": [
       "pro",
-      "flash",
-      "opus"
+      "flash"
     ],
     "cheapWhenTrivial": true,
     "cheapBrain": "lite",
     "guardOverridesPin": false,
-    "capableWhenMaking": true,
+    "capableWhenMaking": false,
     "capableBrain": "pro"
   },
   "coding": {

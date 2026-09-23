@@ -173,12 +173,12 @@ test("a brain the router chose hands over on a refused request; a pinned or defa
   assert.equal(shouldFailOver(new Error("OpenAI-compatible API 4001: odd"), true), false, "status codes match whole");
 });
 
-test("the roster carries the capable brain and a pin-only heavy one, both trusted", async () => {
-  // Inclusion, not an exact list — the roster grows.
-  const { catalog } = await import("./brain.js");
+test("the shipped defaults keep the everyday brain on Gemini and nothing dearer chosen automatically", async () => {
+  // The operator's call: Gemini for the work, nothing that costs more unless
+  // they pin it. Inclusion, not an exact roster — the roster grows.
+  const { catalog, defaultBrainId } = await import("./brain.js");
   const { config } = await import("./config.js");
-  const ids = catalog().map((b) => b.id);
-  for (const id of ["flash", "pro", "opus"]) assert.ok(ids.includes(id), `${id} on the roster`);
-  for (const id of ["pro", "opus"]) assert.ok(config.routing?.trustedBrains?.includes(id), `${id} trusted`);
-  assert.notEqual(config.routing?.capableBrain, "opus", "Opus is pin-only: never chosen automatically");
+  const byId = new Map(catalog().map((b) => [b.id, b]));
+  assert.match(byId.get(defaultBrainId())?.model ?? "", /^google\/gemini/, "the default brain is Gemini");
+  assert.equal(config.routing?.capableWhenMaking, false, "making jobs stay on the default unless the operator turns routing up on");
 });

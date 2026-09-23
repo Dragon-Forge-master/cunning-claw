@@ -5,6 +5,7 @@ import {
   historyIsTainted, requiresTrustedBrain, enforceGuard, isTrustedBrain, trustedBrainIds,
 } from "./routing.js";
 import { catalog, pickBrain, type BrainSpec } from "./brain.js";
+import { config } from "./config.js";
 
 /**
  * brain.ts picks a model from pins, defaults and failover — questions of
@@ -183,8 +184,15 @@ test("a making job is a producing verb aimed at a produced thing", () => {
 test("a making job routes up to the capable brain when it has a key, and never over a pin", () => {
   const saved = process.env.OPENROUTER_API_KEY;
   const pinnedBefore = pinnedBrainId();
+  const routing = config.routing as NonNullable<typeof config.routing>;
+  const wasOn = routing.capableWhenMaking;
   process.env.OPENROUTER_API_KEY = "or-test-key-for-routing-0123456789abcdef";
   try {
+    // Off in the shipped config (Flash takes making jobs); the mechanism is
+    // what is under test, so switch it on here and prove the switch works.
+    routing.capableWhenMaking = false;
+    assert.equal(suggestCapableBrain("build me a website for the garage", "user"), null, "off means off");
+    routing.capableWhenMaking = true;
     pinBrain(null);
     const up = suggestCapableBrain("build me a website for the garage", "user");
     assert.ok(up, "routed somewhere");
@@ -197,6 +205,7 @@ test("a making job routes up to the capable brain when it has a key, and never o
     assert.equal(suggestCapableBrain("build me a website for the garage", "user"), null, "no routing up over a pin");
     assert.equal(suggestCheapBrain("what's the time", [], "user"), null, "no routing down over a pin either");
   } finally {
+    routing.capableWhenMaking = wasOn;
     pinBrain(pinnedBefore);
     if (saved === undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY = saved;
   }
