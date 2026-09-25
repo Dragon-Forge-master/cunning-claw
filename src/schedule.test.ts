@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseSchedule, scheduledTurnMessage } from "./schedule.js";
-import { newStandingOrders } from "./schedule-format.js";
+import { parseSchedule, scheduledTurnMessage, scheduleTick } from "./schedule.js";
+import { entryKey, newStandingOrders } from "./schedule-format.js";
 
 test("parses the claw's own SCHEDULE.md format, exactly as he designed it", () => {
   const md = [
@@ -123,4 +123,124 @@ test("a scheduled instruction cannot close its own fence", () => {
   const msg = scheduledTurnMessage(entry);
   assert.equal((msg.match(/<\/recorded>/g) ?? []).length, 1, "exactly one closing fence");
   assert.doesNotMatch(msg, /<\/recorded> SYSTEM/);
+});
+
+// ── Late catch-up ───────────────────────────────────────────────────────────
+//
+// The 08:00 weekday briefing missed ten weekdays out of twelve: the machine was
+// usually switched on between 09:00 and 11:00 and the only catch-up was ten
+// minutes. These drive scheduleTick with the clock, the state file and the
+// turn runner stood in, so each tick is exactly one the engine would make.
+
+const BRIEFING = "- [x] schedule: `08:00:mon-fri` | target: `briefing` | instruction: Morning briefing on the Desk.";
+
+function harness(md: string, state: Record<string, string> = {}) {
+  const { entries } = parseSchedule(md);
+  const runs: { message: string; late: boolean; target: string }[] = [];
+  let busy = false;
+  return {
+    runs,
+    state,
+    setBusy(b: boolean) { busy = b; },
+    tick(now: Date) {
+      scheduleTick({
+        now,
+        entries,
+        // A copy in, a write back out: the same round trip as schedule-state.json.
+        loadState: () => ({ ...state }),
+        saveState: (s) => { Object.assign(state, s); },
+        busy: () => busy,
+        run: (message, due) => runs.push({ message, late: due.late, target: due.entry.target }),
+      });
+    },
+  };
+}
+
+// Tuesday 22 and Friday 25 September 2026, local time.
+const tue = (h: number, m = 0) => new Date(2026, 8, 22, h, m);
+const fri = (h: number, m = 0) => new Date(2026, 8, 25, h, m);
+
+test("a briefing whose hour passed before boot runs once, late, and says so", () => {
+  const h = harness(BRIEFING);
+  h.tick(tue(9, 30)); // booted at half nine
+  assert.equal(h.runs.length, 1, "the briefing is caught up rather than lost for the day");
+  assert.ok(h.runs[0].late);
+  assert.match(h.runs[0].message, /Late: this was due at 08:00\./);
+  assert.match(h.runs[0].message, /^\[scheduled:briefing\]/, "still marked as a scheduled turn");
+  assert.equal((h.runs[0].message.match(/<recorded>/g) ?? []).length, 1, "the instruction is still fenced");
+
+  // Every later tick that day — the same minute, mid-morning, last thing at night.
+  for (const t of [tue(9, 30), tue(9, 31), tue(11, 0), tue(23, 59)]) h.tick(t);
+  assert.equal(h.runs.length, 1, "never twice in one day");
+});
+
+test("a missed day is never replayed; only today's due time counts", () => {
+  // Last ran Friday. Monday's briefing was missed entirely.
+  const [entry] = parseSchedule(BRIEFING).entries;
+  const h = harness(BRIEFING, { [entryKey(entry)]: "2026-09-18" });
+  h.tick(tue(7, 0)); // booted before 08:00 on Tuesday
+  assert.equal(h.runs.length, 0, "Monday is not caught up on Tuesday");
+  h.tick(tue(9, 15));
+  assert.equal(h.runs.length, 1, "Tuesday's own briefing, late");
+  assert.equal(h.state[entryKey(entry)], "2026-09-22");
+
+  // A weekend boot owes nothing: the job is not due on a Saturday at all.
+  h.tick(new Date(2026, 8, 26, 10, 0));
+  assert.equal(h.runs.length, 1);
+});
+
+test("only daily jobs catch up; weekly and annual entries keep their ten minutes", () => {
+  const md = [
+    BRIEFING,
+    "- [x] schedule: `17:00:fri` | target: `review` | instruction: Friday review note.",
+    "- [x] schedule: `08:30:25/09` | target: `penblwydd` | instruction: Penblwydd hapus.",
+  ].join("\n");
+  const h = harness(md);
+  h.tick(fri(12, 0)); // booted at noon: two are past, only one of those is daily
+  assert.deepEqual(h.runs.map((r) => r.target), ["briefing"]);
+  assert.ok(h.runs[0].late);
+
+  // The weekly entry still fires inside its own window, on time and unlabelled.
+  h.tick(fri(17, 5));
+  const review = h.runs.find((r) => r.target === "review");
+  assert.ok(review, "a weekly job due now still fires as it always did");
+  assert.equal(review.late, false);
+  assert.doesNotMatch(review.message, /Late:/);
+
+  h.tick(fri(18, 0));
+  assert.equal(h.runs.length, 2, "the annual line is never caught up, the review never twice");
+});
+
+test("a late run waits out a busy turn instead of being dropped", () => {
+  const [entry] = parseSchedule(BRIEFING).entries;
+  const h = harness(BRIEFING);
+  h.setBusy(true);
+  h.tick(tue(10, 0));
+  assert.equal(h.runs.length, 0);
+  assert.equal(h.state[entryKey(entry)], undefined, "not stamped as run while it has not");
+  h.setBusy(false);
+  h.tick(tue(10, 1));
+  assert.equal(h.runs.length, 1, "the next free tick takes it");
+  assert.ok(h.runs[0].late);
+});
+
+test("'today' is the operator's day, not UTC's — or BST runs a job twice", () => {
+  // Under BST, 00:30 on the 22nd is 23:30 UTC on the 21st. Stamped with the
+  // UTC date, the all-day catch-up would read "not run today" at 09:00 and
+  // run the job a second time.
+  const savedTz = process.env.TZ;
+  process.env.TZ = "Europe/London";
+  try {
+    const md = "- [x] schedule: `00:30` | target: `night` | instruction: Nightly tidy.";
+    const [entry] = parseSchedule(md).entries;
+    const h = harness(md);
+    h.tick(new Date(2026, 8, 22, 0, 31));
+    assert.equal(h.runs.length, 1);
+    assert.equal(h.state[entryKey(entry)], "2026-09-22", "stamped with the local date");
+    h.tick(new Date(2026, 8, 22, 9, 0));
+    assert.equal(h.runs.length, 1, "not run again the same morning");
+  } finally {
+    if (savedTz === undefined) delete process.env.TZ;
+    else process.env.TZ = savedTz;
+  }
 });

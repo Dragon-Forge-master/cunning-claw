@@ -9,10 +9,35 @@ const API = "https://api.telegram.org";
 
 type ResolveApproval = (id: string, approved: boolean) => boolean;
 
+/**
+ * Everything this module does to the outside world, in one seam, so the tests
+ * can stand in a network that fails on cue and a clock that does not wait.
+ */
+export interface TelegramIO {
+  fetch: typeof fetch;
+  /** An abort signal that fires after `ms`; every request carries one. */
+  timeout(ms: number): AbortSignal;
+  sleep(ms: number): Promise<void>;
+  now(): number;
+  log(line: string): void;
+}
+
+const defaultIO: TelegramIO = {
+  fetch: (...args) => fetch(...args),
+  timeout: (ms) => AbortSignal.timeout(ms),
+  sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+  now: () => Date.now(),
+  log: (line) => console.log(`  ${line}`),
+};
+
+let io: TelegramIO = defaultIO;
 let botToken: string | null = null;
 let allowed = new Set<string>();
 let resolveApproval: ResolveApproval | null = null;
 const approvalMsgs = new Map<string, { chatId: string; messageId: number }>();
+// Approvals still waiting on a verdict. A card retry checks this before each
+// attempt: a card for a request the HUD already settled is only noise.
+const liveCards = new Set<string>();
 
 export function parseChatAllowlist(raw: string): Set<string> {
   return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
@@ -33,15 +58,167 @@ export function telegramStatus() {
   };
 }
 
-async function api(token: string, method: string, body?: unknown) {
-  const res = await fetch(`${API}/bot${token}/${method}`, {
+/** Telegram's own refusal, with its error code kept so a 409 can be told apart. */
+export class TelegramError extends Error {
+  constructor(message: string, readonly code: number, readonly retryAfterS?: number) {
+    super(message);
+  }
+}
+
+/**
+ * How long any ordinary request may take. The live log had a fetch with no
+ * timeout at all: a half-open connection after the laptop woke could hang a
+ * send for as long as the kernel cared to keep the socket.
+ */
+export const REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * A long poll holds the request open for `pollSeconds` by design, so its
+ * timeout must outlast that or every quiet poll would be cut off and counted
+ * as a failure.
+ */
+export function pollTimeoutMs(pollSeconds: number): number {
+  return (pollSeconds + 15) * 1000;
+}
+
+async function api(token: string, method: string, body?: unknown, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const res = await io.fetch(`${API}/bot${token}/${method}`, {
     method: body ? "POST" : "GET",
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
+    signal: io.timeout(timeoutMs),
   });
-  const json = (await res.json()) as any;
-  if (!json.ok) throw new Error(json.description || method);
+  // A proxy's HTML error page is not JSON; say what came back instead of
+  // throwing a SyntaxError that names nothing.
+  const json = (await res.json().catch(() => null)) as any;
+  if (!json?.ok) {
+    throw new TelegramError(
+      json?.description || `${method}: HTTP ${res.status}`,
+      Number(json?.error_code ?? res.status),
+      json?.parameters?.retry_after,
+    );
+  }
   return json.result;
+}
+
+/** One short reason for the log: "fetch failed" alone does not say DNS or reset. */
+function reason(err: any): string {
+  const msg = String(err?.message ?? err);
+  const cause = err?.cause?.code ?? err?.cause?.message;
+  return cause && !msg.includes(String(cause)) ? `${msg} (${cause})` : msg;
+}
+
+/**
+ * Telegram's 409: another getUpdates poller holds this bot token. A 409 also
+ * comes back while a webhook is set, which is not a second claw; that one keeps
+ * Telegram's own wording in the ordinary "polling down" line.
+ */
+export function isConflict(err: any): boolean {
+  const msg = String(err?.message ?? "");
+  if (/webhook/i.test(msg)) return false;
+  return err?.code === 409 || /^Conflict\b/i.test(msg);
+}
+
+export const CONFLICT_LINE =
+  "Telegram: Conflict (409) — a second copy of the claw is polling the same bot. " +
+  "Telegram allows one poller per token; stop the other copy, or set telegram.enabled=false in its claw.config.json.";
+
+export const POLL_BACKOFF_BASE_MS = 4000;
+export const POLL_BACKOFF_CAP_MS = 5 * 60_000;
+
+/** 4 s, 8 s, 16 s … to five minutes: the wait after the nth failure in a row. */
+export function pollBackoffMs(failures: number): number {
+  return Math.min(POLL_BACKOFF_BASE_MS * 2 ** Math.max(0, failures - 1), POLL_BACKOFF_CAP_MS);
+}
+
+function duration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  return s < 120 ? `${s}s` : `${Math.round(s / 60)} min`;
+}
+
+/**
+ * Whether polling is up, and what to say about it — once per change, not per
+ * failure. The live log had ~1,586 "fetch failed" lines, 1,082 of them on one
+ * day, because the loop logged and retried every 4 s for as long as the network
+ * was gone. The journal learnt nothing from line two onwards and lost
+ * everything else in the noise.
+ */
+export class PollHealth {
+  private failures = 0;
+  private downSince = 0;
+  private conflictSaid = false;
+
+  constructor(private readonly now: () => number) {}
+
+  /** Record a failed poll; returns how long to wait and the line to log, if any. */
+  failed(err: unknown): { delayMs: number; line: string | null } {
+    this.failures++;
+    let line: string | null = null;
+    if (isConflict(err)) {
+      // Said once per outage even if the outage began as a network error: it
+      // is the one failure the operator has to fix by hand.
+      if (!this.conflictSaid) line = CONFLICT_LINE;
+      this.conflictSaid = true;
+    } else if (this.failures === 1) {
+      line = `Telegram: polling down — ${reason(err)}. Retrying with backoff up to every ${duration(POLL_BACKOFF_CAP_MS)}; quiet until it recovers.`;
+    }
+    if (this.failures === 1) this.downSince = this.now();
+    return { delayMs: pollBackoffMs(this.failures), line };
+  }
+
+  /** Record a good poll; returns the recovery line if polling had been down. */
+  succeeded(): string | null {
+    if (!this.failures) return null;
+    const line = `Telegram: polling recovered after ${this.failures} failed attempt(s) over ${duration(this.now() - this.downSince)}.`;
+    this.failures = 0;
+    this.conflictSaid = false;
+    return line;
+  }
+}
+
+export interface PollDeps {
+  getUpdates(offset: number): Promise<unknown>;
+  handle(update: any): Promise<void>;
+  sleep(ms: number): Promise<void>;
+  now(): number;
+  log(line: string): void;
+  /** Tests stop the loop; the claw never does. */
+  running?(): boolean;
+}
+
+/**
+ * The poll loop, with its network and timers injected.
+ *
+ * A poll failure and a handler failure are different things: the old loop
+ * shared one try, so a reply that failed to send was logged as a poll error
+ * and cost a 4 s sleep. Now only getUpdates itself counts towards the backoff,
+ * and nothing in here can reject — a rejection escaping a `void`-ed loop is
+ * how the live log came to hold an unhandled rejection from inside fetch.
+ */
+export async function pollLoop(d: PollDeps): Promise<void> {
+  const health = new PollHealth(d.now);
+  let offset = 0;
+  while (d.running?.() ?? true) {
+    let updates: unknown;
+    try {
+      updates = await d.getUpdates(offset);
+    } catch (err) {
+      const { delayMs, line } = health.failed(err);
+      if (line) d.log(line);
+      await d.sleep(delayMs);
+      continue;
+    }
+    const recovered = health.succeeded();
+    if (recovered) d.log(recovered);
+    for (const upd of Array.isArray(updates) ? updates : []) {
+      offset = Number(upd?.update_id) + 1 || offset;
+      try {
+        await d.handle(upd);
+      } catch (err) {
+        d.log(`Telegram: update handler error — ${reason(err)}`);
+      }
+    }
+  }
 }
 
 /**
@@ -85,31 +262,64 @@ async function send(chatId: string, text: string, extra?: Record<string, unknown
   });
 }
 
-/** Push a card to every allowlisted chat so the phone can authorise HUD-less turns. */
+export const CARD_ATTEMPTS = 3;
+export const CARD_RETRY_BASE_MS = 2000;
+
+/**
+ * A refusal that will be the same next time: a malformed card, a bot the
+ * operator blocked, a chat that no longer exists. Network errors, timeouts,
+ * 429 and 5xx are worth another go.
+ */
+function permanent(err: any): boolean {
+  return err instanceof TelegramError && err.code >= 400 && err.code < 500 && err.code !== 429;
+}
+
+/**
+ * Push a card to every allowlisted chat so the phone can authorise HUD-less turns.
+ *
+ * Three cards in the live log failed to send and were never retried, so a turn
+ * that had gone to the phone for a verdict sat waiting for a button nobody had.
+ * Now each chat gets a small bounded number of attempts with backoff, and stops
+ * early once the request is settled elsewhere. A send that timed out may still
+ * have been delivered, so a retry can occasionally leave two cards; both carry
+ * working buttons, which beats none.
+ */
 export async function sendApprovalCard(id: string, summary: string, detail: string): Promise<void> {
   if (!botToken || !allowed.size) return;
+  liveCards.add(id);
   const text = approvalCardText(summary, detail);
   for (const chatId of allowed) {
-    try {
-      const msg = await send(chatId, text, {
-        reply_markup: {
-          inline_keyboard: [[
-            { text: "EXECUTE", callback_data: `yes:${id}` },
-            { text: "DENY", callback_data: `no:${id}` },
-          ]],
-        },
-      });
-      if (msg?.message_id) {
-        approvalMsgs.set(id, { chatId, messageId: msg.message_id });
+    for (let attempt = 1; liveCards.has(id); attempt++) {
+      try {
+        const msg = await send(chatId, text, {
+          reply_markup: {
+            inline_keyboard: [[
+              { text: "EXECUTE", callback_data: `yes:${id}` },
+              { text: "DENY", callback_data: `no:${id}` },
+            ]],
+          },
+        });
+        if (msg?.message_id) {
+          approvalMsgs.set(id, { chatId, messageId: msg.message_id });
+        }
+        break;
+      } catch (err: any) {
+        if (attempt >= CARD_ATTEMPTS || permanent(err)) {
+          io.log(`Telegram: approval card to ${maskChatId(chatId)} not sent after ${attempt} attempt(s) — ${reason(err)}`);
+          break;
+        }
+        const wait = err?.retryAfterS
+          ? Math.min(err.retryAfterS * 1000, 30_000)
+          : CARD_RETRY_BASE_MS * 2 ** (attempt - 1);
+        await io.sleep(wait);
       }
-    } catch (err: any) {
-      console.error("  Telegram approval send failed:", err?.message ?? err);
     }
   }
 }
 
 /** Strip buttons once HUD or Telegram settles the request. */
 export function approvalSettled(id: string, approved: boolean): void {
+  liveCards.delete(id);
   const ref = approvalMsgs.get(id);
   approvalMsgs.delete(id);
   if (!ref || !botToken) return;
@@ -118,7 +328,11 @@ export function approvalSettled(id: string, approved: boolean): void {
     message_id: ref.messageId,
     reply_markup: { inline_keyboard: [] },
   }).catch(() => { /* message may already be gone */ });
-  void send(ref.chatId, approved ? "Authorised." : "Denied.");
+  // This `void send` had no catch: with the network down, the verdict line's
+  // fetch rejected with nobody listening — the unhandled rejection in the log.
+  void send(ref.chatId, approved ? "Authorised." : "Denied.").catch((err) =>
+    io.log(`Telegram: verdict line not sent — ${reason(err)}`),
+  );
 }
 
 /**
@@ -127,33 +341,53 @@ export function approvalSettled(id: string, approved: boolean): void {
  * moment the real loop can start (after .env gains the id and a restart).
  */
 async function bootstrapWhoamiLoop(token: string): Promise<void> {
-  let offset = 0;
-  for (;;) {
-    try {
-      const updates = (await api(token, "getUpdates", {
-        timeout: 50,
-        offset,
-        allowed_updates: ["message"],
-      })) as any[];
-      for (const u of updates) {
-        offset = u.update_id + 1;
-        const chatId = u.message?.chat?.id;
-        if (!chatId) continue;
-        await api(token, "sendMessage", {
-          chat_id: chatId,
-          text:
-            `Your chat id is: ${chatId}\n\n` +
-            `Ask the operator to put TELEGRAM_CHAT_ID=${chatId} in .env and restart Cunning Claw. ` +
-            `Until then I take no instructions here.`,
-        }).catch(() => {});
-      }
-    } catch {
-      await new Promise((r) => setTimeout(r, 5000));
-    }
-  }
+  // The same loop as the real one, so the same backoff and the same once-only
+  // logging: a claw left in setup mode on a laptop with no network would
+  // otherwise spin every 5 s all day.
+  await pollLoop({
+    getUpdates: (offset) =>
+      api(token, "getUpdates", { timeout: 50, offset, allowed_updates: ["message"] }, pollTimeoutMs(50)),
+    handle: async (u) => {
+      const chatId = u.message?.chat?.id;
+      if (!chatId) return;
+      await api(token, "sendMessage", {
+        chat_id: chatId,
+        text:
+          `Your chat id is: ${chatId}\n\n` +
+          `Ask the operator to put TELEGRAM_CHAT_ID=${chatId} in .env and restart Cunning Claw. ` +
+          `Until then I take no instructions here.`,
+      }).catch(() => {});
+    },
+    sleep: io.sleep,
+    now: io.now,
+    log: io.log,
+  });
 }
 
-export function startTelegram(events: AgentEvents, hooks: { resolveApproval: ResolveApproval }): void {
+/**
+ * Hold the token, allowlist and approval hook — and the network, so a test can
+ * arm the module against a fake one without starting a poller. Pass a null
+ * token to disarm.
+ */
+export function armTelegram(
+  token: string | null,
+  allow: Set<string>,
+  resolve: ResolveApproval | null,
+  withIO: TelegramIO = defaultIO,
+): void {
+  io = withIO;
+  botToken = token;
+  allowed = token ? allow : new Set();
+  resolveApproval = token ? resolve : null;
+  approvalMsgs.clear();
+  liveCards.clear();
+}
+
+export function startTelegram(
+  events: AgentEvents,
+  hooks: { resolveApproval: ResolveApproval },
+  withIO: TelegramIO = defaultIO,
+): void {
   // The config switch must win over the env token: a second claw on the same
   // machine (the film studio, a QA stand-in) shares .env via the repo but must
   // not fight the live claw for the bot — Telegram allows one getUpdates
@@ -173,52 +407,45 @@ export function startTelegram(events: AgentEvents, hooks: { resolveApproval: Res
     void bootstrapWhoamiLoop(token);
     return;
   }
-  botToken = token;
-  allowed = parseChatAllowlist(allow);
-  resolveApproval = hooks.resolveApproval;
+  armTelegram(token, parseChatAllowlist(allow), hooks.resolveApproval, withIO);
   console.log(`  Telegram: polling (allow ${[...allowed].map(maskChatId).join(", ")})`);
   void send([...allowed][0], onlineText()).catch(() => {});
-  void loop(events);
-}
-
-async function loop(events: AgentEvents): Promise<void> {
-  let offset = 0;
-  while (true) {
-    try {
-      const updates = await api(botToken!, "getUpdates", {
-        offset,
-        timeout: 25,
-        allowed_updates: ["message", "callback_query"],
-      });
-      for (const upd of updates as any[]) {
-        offset = upd.update_id + 1;
-        if (upd.callback_query) {
-          await handleCallback(upd.callback_query);
-          continue;
-        }
-        // Do NOT await the turn inside the poll loop. A turn that parks on an
-        // approval is released only by a callback_query (the EXECUTE button) —
-        // which this same loop must stay free to fetch. Awaiting handleMessage
-        // froze getUpdates until the approval timed out, so the button press
-        // never arrived and every Telegram approval silently expired. Run the
-        // turn alongside the poll; runTurn's own `busy` guard serialises them.
-        void handleMessage(upd.message, events).catch((err) =>
-          console.error("  Telegram message handler error:", err?.message ?? err),
-        );
+  void pollLoop({
+    getUpdates: (offset) =>
+      api(
+        token,
+        "getUpdates",
+        { offset, timeout: 25, allowed_updates: ["message", "callback_query"] },
+        pollTimeoutMs(25),
+      ),
+    handle: async (upd) => {
+      if (upd.callback_query) {
+        await handleCallback(upd.callback_query);
+        return;
       }
-    } catch (err: any) {
-      console.error("  Telegram poll error:", err?.message ?? err);
-      await new Promise((r) => setTimeout(r, 4000));
-    }
-  }
+      // Do NOT await the turn inside the poll loop. A turn that parks on an
+      // approval is released only by a callback_query (the EXECUTE button) —
+      // which this same loop must stay free to fetch. Awaiting handleMessage
+      // froze getUpdates until the approval timed out, so the button press
+      // never arrived and every Telegram approval silently expired. Run the
+      // turn alongside the poll; runTurn's own `busy` guard serialises them.
+      void handleMessage(upd.message, events).catch((err) =>
+        io.log(`Telegram: message handler error — ${reason(err)}`),
+      );
+    },
+    sleep: io.sleep,
+    now: io.now,
+    log: io.log,
+  });
 }
 
-async function handleCallback(cb: any): Promise<void> {
+export async function handleCallback(cb: any): Promise<void> {
   const data = String(cb.data ?? "");
   const chatId = String(cb.message?.chat?.id ?? "");
   // Field debugging left in on purpose: "the button does nothing" is only
-  // diagnosable if button presses are visible in the journal at all.
-  console.log(`  Telegram callback: ${data.slice(0, 12)}… from ${chatId} (allowed: ${allowed.has(chatId)})`);
+  // diagnosable if button presses are visible in the journal at all. Masked,
+  // because the journal reaches the glass and the full id is personal data.
+  io.log(`Telegram callback: ${data.slice(0, 12)}… from ${maskChatId(chatId)} (allowed: ${allowed.has(chatId)})`);
   try {
     await api(botToken!, "answerCallbackQuery", { callback_query_id: cb.id });
   } catch { /* already answered */ }
@@ -243,7 +470,7 @@ async function handleMessage(msg: any, events: AgentEvents): Promise<void> {
   }
 
   if (!allowed.has(chatId)) {
-    console.warn(`  Telegram ignored chat ${chatId} (not in TELEGRAM_CHAT_ID)`);
+    io.log(`Telegram ignored chat ${maskChatId(chatId)} (not in TELEGRAM_CHAT_ID)`);
     return;
   }
 
