@@ -11,6 +11,7 @@ import { board } from "./board.js";
 import { grantForTask } from "./consequence.js";
 import { ensureToken, currentToken, requireAuth, issueSession } from "./auth.js";
 import { loadPrefs, savePrefs } from "./hud-prefs.js";
+import { displayHistory } from "./history-view.js";
 import { connectAll as connectMcp, listMcpTools, listMcpStates, loginMcp, shutdown as shutdownMcp } from "./mcp.js";
 import { addMcpServerSnippet } from "./mcp-config.js";
 import {
@@ -111,7 +112,8 @@ function broadcast(event: string, data: unknown): void {
   if (event === "turn_done" && d?.text) void voice.speak(d.text);
   else if (event === "timer_fired") void voice.speak(`Sir, a reminder: ${d?.label ?? ""}`);
   else if (event === "approval_request") void voice.speak("Requesting authorisation, sir.");
-  else if (event === "turn_start") voice.cancel();
+  // A heartbeat starting must not cut the operator's speech off mid-sentence.
+  else if (event === "turn_start" && d?.kind !== "heartbeat") voice.cancel();
   else if (event === "agent_error" && d?.message) void voice.speak(d.message);
   else if (event === "preview" && d?.action === "open") void voice.speak("Preview on the glass, sir.");
   // heartbeat_ok is silent on purpose — OpenClaw-style.
@@ -255,28 +257,7 @@ app.delete("/api/keys/:name", (req, res) => {
 });
 
 app.get("/api/history", (_req, res) => {
-  // Return only displayable turns: plain user text + assistant text blocks.
-  const display: { role: string; text: string }[] = [];
-  for (const m of getHistory()) {
-    if (m.role === "user" && typeof m.content === "string") {
-      // Split on the explicit marker; fall back to the old shape so history
-      // written before the marker existed still renders.
-      const marker = m.content.indexOf(CONTEXT_END);
-      const text = marker >= 0
-        ? m.content.slice(marker + CONTEXT_END.length).replace(/^\n+/, "")
-        : m.content.replace(/^\[context[\s\S]*\]\n\n/, "");
-      if (text.startsWith("[heartbeat]")) continue;
-      const armed = text.replace(/^\[Armed skills[^\]]*\]\s*/, "");
-      display.push({ role: "user", text: armed });
-    } else if (m.role === "assistant" && Array.isArray(m.content)) {
-      const text = m.content
-        .filter((b: any) => b.type === "text")
-        .map((b: any) => b.text)
-        .join("");
-      if (text && text.trim() !== "HEARTBEAT_OK") display.push({ role: "assistant", text });
-    }
-  }
-  res.json(display);
+  res.json(displayHistory(getHistory(), CONTEXT_END));
 });
 
 app.post("/api/reset", (_req, res) => {

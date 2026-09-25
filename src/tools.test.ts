@@ -13,6 +13,18 @@ test("HARD_DENY blocks rm -rf variants regardless of flag order", () => {
   assert.equal(classifyCommand("sudo rm -rf --no-preserve-root /"), "deny");
 });
 
+test("HARD_DENY refuses a password fed to sudo, and leaves ordinary sudo to the approval card", () => {
+  // 8 Sept: the claw asked the operator for their sudo password twice. A
+  // password on sudo's stdin has, by construction, passed through the model
+  // and the chat log. The doctrine line says never ask; this is the floor.
+  assert.equal(classifyCommand("echo hunter2x | sudo -S apt install piper"), "deny");
+  assert.equal(classifyCommand("sudo -kS systemctl restart ollama"), "deny");
+  assert.equal(classifyCommand("printf '%s\\n' x | sudo -u root -S ls"), "deny");
+  assert.notEqual(classifyCommand("sudo -s"), "deny", "an interactive root shell is a different flag");
+  assert.notEqual(classifyCommand("sudo -u postgres psql"), "deny");
+  assert.notEqual(classifyCommand("ls -S /tmp"), "deny", "-S belongs to sudo only here");
+});
+
 test("HARD_DENY blocks disk, boot, and pipe-to-shell attacks", () => {
   assert.equal(classifyCommand("mkfs.ext4 /dev/sda1"), "deny");
   assert.equal(classifyCommand("dd if=/dev/zero of=/dev/sda"), "deny");

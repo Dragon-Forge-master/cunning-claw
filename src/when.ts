@@ -43,3 +43,14 @@ export function stampUserMessage(text: string, now: Date, lastAt: number | null)
     : "";
   return `${gap}${clockStamp(now)} ${text}`;
 }
+
+/**
+ * The inverse, for display. History stores the stamped text so the model can
+ * tell the time; the HUD's live bubbles never show the stamp, so a reloaded
+ * transcript should not either — and anything that recognises a message by
+ * its opening ("[heartbeat]", "[Armed skills…]") must look past the stamp.
+ * Missing that is how the heartbeat checklist came to fill the transcript.
+ */
+export function unstampUserMessage(text: string): string {
+  return text.replace(/^(?:\[[^\]]* since the previous message\] )?\[\d{2}:\d{2}\] /, "");
+}

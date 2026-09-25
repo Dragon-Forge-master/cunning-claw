@@ -1169,6 +1169,7 @@ const HARD_DENY: RegExp[] = [
   /\bwget\b[^|]*\|\s*(sudo\s+)?(ba)?sh/,
   /\bhistory\s+-c\b|\bshred\b/,
   /\/etc\/(shadow|sudoers)/,
+  /\bsudo\s+(-[a-zA-Z]+(\s+[^-\s]\S*)?\s+)*-[a-zA-Z]*S/, // sudo -S (flags and their arguments may come first): a password piped in, which means it passed through the model
 ];
 
 export function classifyCommand(command: string): Verdict {
