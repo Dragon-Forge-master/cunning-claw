@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import os from "node:os";
+import path from "node:path";
 import { redact, containsSecret, redactDeep } from "./redact.js";
 
 /**
@@ -133,4 +135,127 @@ test("replicate and huggingface tokens are redacted (synthetic)", () => {
   const hf = redact("token: hf_SyntheticTestTokenAbc123Def456Ghi789");
   assert.doesNotMatch(hf, /hf_Synthetic/);
   assert.match(hf, /REDACTED/);
+});
+
+// --- Passwords said in words ------------------------------------------------ //
+// A field review of the operator's journal found a sudo password typed into
+// the chat, because the assistant had asked for it, sitting in plain text in
+// the journal and the model history. Every value below is synthetic.
+
+test("a password said in words is redacted, and the words are kept", () => {
+  for (const [said, kept] of [
+    ["my password is hunter2x", "my password is [REDACTED]"],
+    ["My Password Is Hunter2x!", "My Password Is [REDACTED]"],
+    ["sudo password: abc123", "sudo password: [REDACTED]"],
+    ["the passwd is foo", "the passwd is [REDACTED]"],
+    ["pw = bar99", "pw = [REDACTED]"],
+    ["sudo password hunter2x", "sudo password [REDACTED]"],
+    ["ok, root password hunter2x.", "ok, root password [REDACTED]"],
+    ["the password for root is abc123", "the password for root is [REDACTED]"],
+    ['my password is "correct horse battery"', 'my password is "[REDACTED]"'],
+    ["db_password: s3cret", "db_password: [REDACTED]"],
+    ["mysql --password=abc123 -u root", "mysql --password=[REDACTED] -u root"],
+    ['{"password": "hunter2x"}', '{"password": "[REDACTED]"}'],
+  ]) {
+    assert.equal(redact(said), kept, said);
+    assert.equal(containsSecret(said), true, said);
+  }
+});
+
+test("ordinary talk about passwords is left alone, even beside a disclosure", () => {
+  // Each prose line rides with a real disclosure, so one assertion proves both
+  // halves: the prose untouched to the character, the secret gone.
+  const disclosure = "; my password is hunter2x";
+  for (const prose of [
+    "I keep it in a password manager",
+    "please reset my password",
+    "click the password field",
+    "I forgot the password",
+    "a strong password is important",
+    "the password is incorrect",
+    "your password is too short",
+    "sudo: a password is required",
+    "[sudo] password for owner: Sorry, try again.",
+    "grep: /etc/passwd: Permission denied",
+    "passwd: password updated successfully",
+    "Password:",
+  ]) {
+    assert.equal(redact(prose + disclosure), prose + "; my password is [REDACTED]", prose);
+  }
+});
+
+test("a password label does not reach across a newline", () => {
+  assert.equal(redact("Password:\nnext line\npw: abc123"), "Password:\nnext line\npw: [REDACTED]");
+});
+
+test("env references and masks are not secrets, so an mcp.json entry naming one passes", () => {
+  // tools.ts refuses any mcp.json snippet containsSecret() flags; "${VAR}" is
+  // the pattern it tells the model to use instead, so it must never trip.
+  assert.equal(containsSecret('"password": "hunter2x"'), true);
+  for (const ref of ['"password": "${DB_PASS}"', "DB_PASSWORD=$DB_PASS", "password: ****", "pw: <your-password>"]) {
+    assert.equal(containsSecret(ref), false, ref);
+  }
+});
+
+test("password redaction is idempotent", () => {
+  const once = redact("sudo password: abc123 and my password is hunter2x");
+  assert.equal(once, "sudo password: [REDACTED] and my password is [REDACTED]");
+  assert.equal(redact(once), once);
+});
+
+// --- The home directory ----------------------------------------------------- //
+// The same review found full home paths, username and all, in the assistant's
+// replies and tool results on the HUD, the voice, the phones and the journal.
+// "/home/owner" stands in for the operator's home; no real username belongs here.
+
+const HOME = "/home/owner";
+
+test("the home directory collapses to ~ wherever it starts a path", () => {
+  assert.equal(redact("saved to /home/owner/notes.txt, done", HOME), "saved to ~/notes.txt, done");
+  assert.equal(redact("cd /home/owner", HOME), "cd ~");
+  assert.equal(redact('"/home/owner/Game Dev/x" (/home/owner).', HOME), '"~/Game Dev/x" (~).');
+  assert.equal(redact("PATH=/usr/bin:/home/owner/bin", HOME), "PATH=/usr/bin:~/bin");
+  assert.equal(redact("open file:///home/owner/a.html", HOME), "open file://~/a.html");
+});
+
+test("other users, lookalikes and paths that merely contain the home are left alone", () => {
+  const text = "/home/owner/a /home/ownerx/b /home/owner.bak/c /home/owner-old/d /home/other/e /mnt/b/home/owner/f";
+  assert.equal(redact(text, HOME),
+    "~/a /home/ownerx/b /home/owner.bak/c /home/owner-old/d /home/other/e /mnt/b/home/owner/f");
+  // A service account whose home is "/" must not turn every path into "~".
+  assert.equal(redact("/etc/hosts /home/owner/x", "/"), "/etc/hosts /home/owner/x");
+  assert.equal(redact("/home/owner/x", HOME + "/"), "~/x", "a trailing slash on the home is ignored");
+});
+
+test("a Windows home collapses with either separator and any drive-letter case", () => {
+  const win = "C:\\Users\\Name";
+  assert.equal(redact("C:\\Users\\Name\\Documents\\a.txt", win), "~\\Documents\\a.txt");
+  assert.equal(redact("see c:/users/name/x", win), "see ~/x");
+  assert.equal(redact('{"p":"C:\\\\Users\\\\Name\\\\y"}', win), '{"p":"~\\\\y"}');
+  assert.equal(redact("C:\\Users\\Namex\\z D:\\Users\\Name\\z", win), "C:\\Users\\Namex\\z D:\\Users\\Name\\z");
+});
+
+test("by default the collapse uses this machine's own home", (t) => {
+  const home = os.homedir();
+  if (!home || home === path.parse(home).root) return t.skip("no real home on this box");
+  assert.equal(redact(`read ${path.join(home, "notes.txt")}`), `read ~${path.sep}notes.txt`);
+});
+
+test("a home path is collapsed but never reported as a secret", () => {
+  // containsSecret gates the mcp.json write; an entry whose args name a file
+  // under ~ is correct and must not be refused.
+  const entry = '"args": ["/home/owner/tools/server.js"]';
+  assert.equal(redact(entry, HOME), '"args": ["~/tools/server.js"]');
+  assert.equal(containsSecret(entry), false);
+});
+
+test("redactDeep collapses the home inside nested blocks and arrays", () => {
+  const msg = { content: [{ type: "text", text: "at /home/owner/a" }, ["/home/owner/b", "/home/owner/c"]] };
+  assert.deepEqual(redactDeep(msg, HOME), { content: [{ type: "text", text: "at ~/a" }, ["~/b", "~/c"]] });
+});
+
+test("the home collapse is idempotent", () => {
+  const once = redact("/home/owner/a and ~/b", HOME);
+  assert.equal(once, "~/a and ~/b");
+  assert.equal(redact(once, HOME), once);
 });
