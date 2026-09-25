@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import express from "express";
-import { config, ROOT } from "./config.js";
+import { config, DATA_DIR, ROOT } from "./config.js";
 import { getHistory, resetHistory, runTurn, cancelTurn, turnInFlight, CONTEXT_END, type AgentEvents } from "./agent.js";
 import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
@@ -10,6 +10,7 @@ import { banner } from "./banner.js";
 import { board } from "./board.js";
 import { grantForTask } from "./consequence.js";
 import { ensureToken, currentToken, requireAuth, issueSession } from "./auth.js";
+import { loadPrefs, savePrefs } from "./hud-prefs.js";
 import { connectAll as connectMcp, listMcpTools, listMcpStates, loginMcp, shutdown as shutdownMcp } from "./mcp.js";
 import { addMcpServerSnippet } from "./mcp-config.js";
 import {
@@ -561,6 +562,16 @@ app.post("/api/voice", (req, res) => {
   const { enabled } = req.body ?? {};
   voice.setEnabled(Boolean(enabled));
   res.json({ ok: true, enabled: voice.isEnabled() });
+});
+
+// Reading preferences (the typeface, for now). Stored in the data dir so the
+// choice follows the install into every browser that opens the HUD.
+app.get("/api/hud-prefs", (_req, res) => {
+  res.json(loadPrefs(DATA_DIR));
+});
+
+app.post("/api/hud-prefs", (req, res) => {
+  res.json(savePrefs(DATA_DIR, req.body));
 });
 
 app.get("/api/voices", (_req, res) => {
