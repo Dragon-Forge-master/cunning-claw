@@ -469,6 +469,13 @@ es.addEventListener("plan_step", (e) => {
 
 es.addEventListener("heartbeat_ok", (e) => {
   const { at } = sseData(e);
+  // A quiet heartbeat never sends turn_done, so without this the HUD sat on
+  // THINKING with STOP showing, under a bubble that just said HEARTBEAT_OK.
+  if (currentBubble && currentBubble.textContent.trim() === "HEARTBEAT_OK") {
+    (currentBubble.closest(".msg") || currentBubble).remove();
+  }
+  currentBubble = null;
+  setState("STANDBY");
   const chip = $("hb-chip");
   if (chip && at) chip.textContent = `\u2661 ${new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
 });
@@ -580,12 +587,17 @@ for (const tab of document.querySelectorAll(".vp-tab")) {
 function setDeviceWidth(w) {
   const frame = $("preview-frame");
   frame.style.width = w ? `${w}px` : "100%";
+  // The frame is a flex child with flex: 1, which ignores width; set the basis too.
+  frame.style.flex = w ? `0 0 ${w}px` : "";
+  frame.style.maxWidth = "100%";
   for (const b of document.querySelectorAll(".ctl.dev")) {
     b.classList.toggle("active", Number(b.dataset.w) === w);
   }
-  $("vp-dims").textContent = w
-    ? `${w} × ${frame.clientHeight || "—"}`
-    : `${frame.clientWidth || "—"} × ${frame.clientHeight || "—"}`;
+  // Report what the frame really is. A 768 request in a 546 px panel is
+  // capped at 546, and the readout used to claim 768 regardless.
+  const real = Math.round(frame.getBoundingClientRect().width) || "—";
+  $("vp-dims").textContent = `${real} × ${frame.clientHeight || "—"}` +
+    (w && typeof real === "number" && real < w ? ` (asked ${w}; the panel is narrower)` : "");
 }
 
 for (const b of document.querySelectorAll(".ctl.dev")) {
@@ -781,7 +793,9 @@ function renderSkillsList() {
             const body = String(detail.body || "");
             const cut = body.replace(/^---[\s\S]*?---\n*/, "");
             more.textContent = cut.slice(0, 900) + (cut.length > 900 ? "\n…" : "");
-            card.appendChild(more);
+            // toggleSkill re-rendered the list, so `card` is no longer on the page.
+            const live = document.querySelector(`.skill-card[data-name="${CSS.escape(s.name)}"]`) || card;
+            if (!live.querySelector(".sk-more")) live.appendChild(more);
           } catch { /* body is optional colour */ }
         }
       };

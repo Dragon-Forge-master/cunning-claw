@@ -183,7 +183,7 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; position: relative; }
 
 #input-bar { display: flex; gap: 8px; margin-top: 10px; }
 #msg-input {
-  flex: 1; background: rgba(53,214,237,0.05); border: 1px solid var(--cyan-dim);
+  flex: 1; min-width: 0; background: rgba(53,214,237,0.05); border: 1px solid var(--cyan-dim);
   color: var(--text); font-family: var(--mono); font-size: 13px; padding: 9px 12px; outline: none;
 }
 #msg-input:focus { border-color: var(--cyan); box-shadow: 0 0 10px var(--cyan-glow); }
@@ -208,6 +208,11 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; position: relative; }
   #hud.previewing #sys-panel { width: 100%; max-height: 120px; }
   #preview-panel { min-height: 45vh; width: 100%; }
   .brand .sub { display: none; }
+}
+/* On a phone the reactor pushed the transcript and the input more than a
+   screen down. It is decoration; the conversation is the point. */
+@media (max-width: 600px) {
+  #center { display: none; }
 }
 
 #route-chip, #spend-chip {
@@ -261,7 +266,7 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; position: relative; }
 .file-row .del { color: var(--red); }
 
 #files-diff { flex: 1; overflow: auto; padding: 4px 12px; font-size: 11.5px; line-height: 1.55; }
-#files-diff pre { white-space: pre; font-family: var(--mono); }
+#files-diff pre { white-space: pre; font-family: var(--code); }
 #files-diff .l-add { color: #5ddc8c; }
 #files-diff .l-del { color: var(--red); }
 #files-diff .l-ctx { color: var(--cyan-dim); }
@@ -506,7 +511,8 @@ header { flex-wrap: wrap; row-gap: 6px; }
 .msg-tools {
   position: absolute; top: 2px; right: 4px; display: none; gap: 2px;
 }
-.msg:hover .msg-tools { display: flex; }
+.msg:hover .msg-tools,
+.msg:focus-within .msg-tools { display: flex; }
 .msg-tools button {
   background: rgba(4, 8, 15, 0.85); border: 1px solid var(--cyan-dim); color: var(--cyan-dim);
   font-family: var(--mono); font-size: 11px; line-height: 1; padding: 3px 6px; cursor: pointer;

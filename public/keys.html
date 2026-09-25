@@ -56,6 +56,10 @@
 <script>
 const esc = (s) => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 
+// The last result per key survives load(), which rebuilds every card: the
+// "saved — relight the claw" line used to vanish 0.9 s after it appeared.
+const lastMsg = new Map();
+
 async function load() {
   const keys = await (await fetch("/api/keys")).json();
   const list = document.getElementById("list");
@@ -77,6 +81,13 @@ async function load() {
       <div class="msg"></div>`;
     const input = box.querySelector("input");
     const msg = box.querySelector(".msg");
+    const kept = lastMsg.get(k.name);
+    if (kept) { msg.textContent = kept.text; msg.className = kept.cls; }
+    const say = (out) => {
+      msg.textContent = out.message;
+      msg.className = "msg " + (out.ok ? "ok" : "warn");
+      lastMsg.set(k.name, { text: msg.textContent, cls: msg.className });
+    };
     box.querySelector(".save").addEventListener("click", async () => {
       const res = await fetch("/api/keys", {
         method: "POST",
@@ -84,15 +95,13 @@ async function load() {
         body: JSON.stringify({ name: k.name, value: input.value }),
       });
       const out = await res.json();
-      msg.textContent = out.message;
-      msg.className = "msg " + (out.ok ? "ok" : "warn");
+      say(out);
       if (out.ok) { input.value = ""; setTimeout(load, 900); }
     });
     box.querySelector(".remove")?.addEventListener("click", async () => {
       const res = await fetch("/api/keys/" + encodeURIComponent(k.name), { method: "DELETE" });
       const out = await res.json();
-      msg.textContent = out.message;
-      msg.className = "msg " + (out.ok ? "ok" : "warn");
+      say(out);
       if (out.ok) setTimeout(load, 900);
     });
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") box.querySelector(".save").click(); });
