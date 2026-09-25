@@ -314,13 +314,27 @@ export function applyBrainCommand(text: string): string | null {
 }
 
 export function bootBrainLines(): string[] {
-  return catalog().map((b) => {
+  const pin = pinnedBrainId();
+  const lines = catalog().map((b) => {
     const role = [
+      b.id === pin ? "PINNED" : "",
       b.id === defaultBrainId() ? "default" : "",
       b.id === heartbeatBrainId() ? "heartbeat" : "",
     ].filter(Boolean).join("+") || "standby";
     return `  Brain ${b.id}: ${describeBrain(b)} — ${role} — ${brainHasKey(b) ? "key present" : "NO KEY"}`;
   });
+  // A pin survives restarts, which is the point of it, and it overrides the
+  // default and the routing: say so where the operator looks at boot. From
+  // 9 to 25 Sept the live claw booted pinned to the cheapest brain while the
+  // banner named another, and nothing anywhere said a pin was in force.
+  if (pin) lines.unshift(`  Brain PIN in force: every turn uses ${pin} until /brain auto (or AUTO in the HUD picker)`);
+  return lines;
+}
+
+/** The banner's brain field: the brain turns will actually use, and whether a pin chose it. */
+export function bannerBrain(): string {
+  const active = pickBrain("user");
+  return `${active.id} · ${active.model}${pinnedBrainId() ? " (PINNED)" : ""}`;
 }
 
 // ---------------------------------------------------------------------------

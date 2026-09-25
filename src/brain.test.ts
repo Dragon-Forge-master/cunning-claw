@@ -3,6 +3,8 @@ import { config } from "./config.js";
 import test, { after, before } from "node:test";
 import {
   applyBrainCommand,
+  bannerBrain,
+  bootBrainLines,
   brainChain,
   catalog,
   defaultBrainId,
@@ -72,6 +74,24 @@ test("a pin never drags the heartbeat with it", () => {
       "the heartbeat keeps its own brain regardless of the pin");
     assert.equal(brainChain("user").length, 1, "a pin is strict — no fallbacks");
     assert.ok(brainChain("heartbeat").map((b) => b.id).includes(heartbeatBrainId()));
+  } finally {
+    pinBrain(null);
+  }
+});
+
+test("a pin in force is named at boot, and the banner names the brain turns really use", () => {
+  // 9 to 25 Sept: every boot said "brain flash · <Lite's model>" and nothing
+  // said a pin was in force. Fails with the PIN line or the banner fix removed.
+  try {
+    pinBrain(null);
+    assert.equal(bootBrainLines().some((l) => /PIN in force/.test(l)), false);
+    assert.doesNotMatch(bannerBrain(), /PINNED/);
+    const target = catalog().find((b) => b.id !== defaultBrainId())!;
+    pinBrain(target.id);
+    const lines = bootBrainLines();
+    assert.match(lines[0], new RegExp(`PIN in force: every turn uses ${target.id}`));
+    assert.ok(lines.some((l) => l.startsWith(`  Brain ${target.id}:`) && /PINNED/.test(l)));
+    assert.equal(bannerBrain(), `${target.id} · ${target.model} (PINNED)`);
   } finally {
     pinBrain(null);
   }

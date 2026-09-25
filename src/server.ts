@@ -26,7 +26,7 @@ import { startSchedule, scheduleStatus } from "./schedule.js";
 import { startRemoteWatch } from "./remote-watch.js";
 import { listSkills, readSkill, skillCatalog } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
-import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, missingKeyHint, sessionSpend, lastTurnCost } from "./brain.js";
+import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, bannerBrain, missingKeyHint, sessionSpend, lastTurnCost } from "./brain.js";
 import { createRequire } from "node:module";
 import { startTelegram, sendApprovalCard, approvalSettled, telegramStatus } from "./telegram.js";
 import { startDiscord, sendApprovalCard as sendDiscordCard, approvalSettled as discordSettled, discordStatus } from "./discord.js";
@@ -579,7 +579,7 @@ const httpServer = app.listen(port, host, async () => {
   console.log(banner({
     version: VERSION,
     url: `http://${host}:${port}`,
-    brain: `${active.default} · ${brainLabel()}`,
+    brain: bannerBrain(),
     voice: v.engine === "none" ? "none — run ./setup-voice.sh" : `${v.engine} · ${v.detail}`,
     heartbeat: hb.enabled ? `every ${hb.intervalMinutes}m` : "off",
     tools: toolDefinitions.length,
