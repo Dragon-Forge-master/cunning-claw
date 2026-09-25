@@ -9,8 +9,26 @@ import { ROOT, DATA_DIR, CONFIG_FILE } from "./config.js";
 
 const execFileAsync = promisify(execFile);
 
-test("an ordinary install resolves its own directory, as it always did", () => {
-  assert.equal(DATA_DIR, path.join(ROOT, "data"));
+test("an ordinary install resolves its own directory, as it always did", { timeout: 60_000 }, async () => {
+  // npm test gives the run its own data dir (scripts/test-env.mjs), so the
+  // default is checked where there is no override: a fresh process.
+  const env = { ...process.env };
+  delete env.CLAW_DATA_DIR;
+  delete env.CLAW_CONFIG;
+  const { stdout } = await execFileAsync(
+    "npx",
+    ["tsx", "-e", `import("${path.join(ROOT, "src/config.js")}").then((m) => console.log(JSON.stringify({ data: m.DATA_DIR, config: m.CONFIG_FILE })))`],
+    { cwd: ROOT, timeout: 50_000, env },
+  );
+  const got = JSON.parse(String(stdout).trim().split("\n").pop() ?? "{}");
+  assert.equal(got.data, path.join(ROOT, "data"));
+  assert.equal(got.config, path.join(ROOT, "claw.config.json"));
+});
+
+test("the test run never shares the live claw's data dir", () => {
+  // The brain tests write the pin file; with a shared dir they pinned and
+  // unpinned the operator's own claw. Fails if npm test loses its preload.
+  assert.notEqual(DATA_DIR, path.join(ROOT, "data"));
   assert.equal(CONFIG_FILE, path.join(ROOT, "claw.config.json"));
 });
 
@@ -41,7 +59,7 @@ test("a second claw can run beside the first with its own state", { timeout: 60_
     assert.equal(got.port, 3901, "and so is its config");
     assert.equal(got.name, "Worker One");
     // The first claw's own paths are untouched by any of that.
-    assert.equal(DATA_DIR, path.join(ROOT, "data"));
+    assert.equal(DATA_DIR, path.resolve(process.env.CLAW_DATA_DIR ?? path.join(ROOT, "data")));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
