@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-356%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-360%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -251,6 +251,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **WhatsApp** | WhatsApp Web / Business in the same Chrome — chat list, title unread count, draft, send. Send is always an approval. QR is scanned in that window |
 | **Accounts** | Jurisdiction packs (UK first; IE, US, AU, DE as stubs) plus Xero via the official local MCP. It will not invent a foreign tax rate or file a return |
 | **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Claw" wake word |
+| **Reads kindly** | **Aa** on the HUD switches every page to OpenDyslexic, bundled so it works offline. Code and commands stay monospace. The choice is saved per install |
 | **Remembers** | Markdown memory and a dated journal that survive restarts |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
 | **Reaches you** | Telegram or Discord, so it isn't trapped at your desk — approval cards arrive as buttons you press |
@@ -618,7 +619,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 356 tests
+npm test        # 360 tests
 npm run check   # tsc --noEmit
 ```
 
