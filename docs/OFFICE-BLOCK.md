@@ -46,7 +46,7 @@ token each install mints for itself (`src/auth.ts:29-47`).
 
 So a **worker is simply Cunning Claw, installed on its own box, driven by the foreman
 over that API.** No new agent to write, no protocol to design, and workers inherit all
-64 tools, the approval gates, the denylist and the fencing on day one.
+every tool, the approval gates, the denylist and the fencing on day one.
 
 This also dissolves the concurrency problem. The agent core is a hard singleton —
 `history`, `busy`, `abortTurn` and `spend` are module-scoped (`src/agent.ts:315-348`),

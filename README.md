@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-360%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-394%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -220,7 +220,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
   ▸ brain    flash · google/gemini-3.8-flash
   ▸ llais    piper · en_GB-alan-medium   (the voice)
   ▸ curiad   every 30m   (the heartbeat)
-  ▸ offer    68 tools on the bench
+  ▸ offer    69 tools on the bench
 
   ▸ wards    y ffens   — outside words are fenced
              y llw     — consequences wait for you
@@ -613,13 +613,13 @@ src/redact.ts    Credential redaction
 src/workspace.ts SOUL.md / USER.md / MEMORY.md / skills
 ```
 
-**~16,300 lines of TypeScript, two runtime dependencies.** Most of what it does comes from composing things
+**~17,600 lines of TypeScript (plus ~5,600 of tests), two runtime dependencies.** Most of what it does comes from composing things
 your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, `pactl` /
 `afplay`, Chrome's debug protocol — rather
 than dragging in frameworks.
 
 ```bash
-npm test        # 360 tests
+npm test        # 394 tests
 npm run check   # tsc --noEmit
 ```
 

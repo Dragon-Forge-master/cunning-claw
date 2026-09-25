@@ -31,7 +31,8 @@ once. The word "API" never appears in anything they read.
 ### Pricing thinking (all figures estimates, working shown)
 
 The workhorse brain is Gemini flash-class via OpenRouter: **$0.30/M input, $2.50/M output**
-(those are the live numbers in `claw.config.json`; the operator's brief says assume
+(OpenRouter's price for `google/gemini-3.5-flash-lite`, the model the managed tier runs, see
+`relay/src/lib.ts` DEFAULT_MODELS; the operator's brief says assume
 $0.30–0.50/M input, so take the range as the planning band).
 
 An agent turn is input-heavy: system prompt, history, tool results. Estimate a typical

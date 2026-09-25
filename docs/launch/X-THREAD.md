@@ -26,7 +26,7 @@ The part I care about: it reads strangers' text (web, email) all day and strange
 Outside words arrive fenced as data. Anything with a consequence — send, spend, delete, publish — stops for a human hand. There's a denylist config can add to but never subtract from.
 
 **4/**
-One Node process, two dependencies. 349 tests. CI on a real Mac and Linux, cold-boot smoke test every push. Windows works (beta).
+One Node process, two dependencies. 394 tests. CI on a real Mac and Linux, cold-boot smoke test every push. Windows works (beta).
 
 94 connectors — Canva, GitHub, Notion, Lovable, v0 — and Google needs none: sign in once in its browser and your mail is its hands.
 

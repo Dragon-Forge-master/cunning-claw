@@ -21,7 +21,7 @@ for the multi-machine work; `docs/BRAND.md` and `docs/SWYN.md` govern anything u
 npm run dev            # tsx src/boot.ts — first-run gate, then the server; no build step needed
 npm run build          # tsc → dist/ (only `npm start` and the tests' dist-free path need it)
 npm run check          # tsc --noEmit
-npm test               # tsx --test src/*.test.ts  (node:test; ~320 tests, ~6 s)
+npm test               # tsx --test src/*.test.ts, own temp data dir (node:test; ~390 tests, ~6 s)
 npx tsx --test src/discord.test.ts          # one file
 npx tsx --test --test-name-pattern="4014" src/discord.test.ts   # one test
 npm run doctor         # names every missing tool/key and the fix; run it on a fresh clone
