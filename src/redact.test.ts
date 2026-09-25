@@ -18,12 +18,12 @@ const SAMPLES: [string, string][] = [
   ["anthropic", "sk-ant-api03-EXAMPLEfakeKEY0000111122223333444455556666777788889999aa"],
   ["github", "ghp_EXAMPLEfake000011112222333344445555"],
   ["google-oauth", "AQ.Ab8EXAMPLEfake0000111122223333444455556666"],
-  ["google-api", "AIzaSyA1234567890abcdefghijklmnopqrstuvw"],
+  ["google-api", "AIzaSyA1234567890abcdefghijklmnopqrstuvw"], // gitleaks:allow (synthetic fixture)
   ["aws", "AKIAIOSFODNN7EXAMPLE"],
   ["slack", "xoxb-123456789012-abcdefghijklmnop"],
-  ["stripe", "sk_live_51H8xKfGhIjKlMnOpQrStUvWx"],
+  ["stripe", "sk_live_51H8xKfGhIjKlMnOpQrStUvWx"], // gitleaks:allow (synthetic fixture)
   ["openrouter", "sk-or-v1-0123456789abcdef0123456789abcdef"],
-  ["jwt", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dQw4w9WgXcQabcdefgh"],
+  ["jwt", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dQw4w9WgXcQabcdefgh"], // gitleaks:allow (synthetic fixture)
 ];
 
 for (const [label, secret] of SAMPLES) {

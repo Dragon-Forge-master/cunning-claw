@@ -1,7 +1,5 @@
-# Synthetic fixtures the redaction tests exist to catch — the same entries
-# gitreview's ledger (.gitreview/ignore) already dismisses. Each is a
-# fingerprint (file:rule:line); a real key would never live in a test file.
-src/redact.test.ts:generic-api-key:19
-src/redact.test.ts:stripe-access-token:22
-src/redact.test.ts:jwt:24
-src/telegram.test.ts:private-key:51
+# Synthetic fixtures the redaction and phone-line tests exist to catch are
+# marked in place with a `gitleaks:allow` comment on their own line, so the
+# allowance moves with the fixture. Line-number fingerprints here broke the
+# scan on 25 Sept when new tests shifted the fixtures down a few lines.
+# A real key would never live in a test file.

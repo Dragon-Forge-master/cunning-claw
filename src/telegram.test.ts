@@ -65,7 +65,7 @@ test("redaction happens before truncation, so a key straddling the cut is caught
 test("a private key in a model reply never reaches the phone", () => {
   const reply = [
     "Here is the file you asked for:",
-    "-----BEGIN OPENSSH PRIVATE KEY-----",
+    "-----BEGIN OPENSSH PRIVATE KEY-----", // gitleaks:allow (synthetic fixture)
     "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABlwAAAAdzc2gtcn",
     "-----END OPENSSH PRIVATE KEY-----",
   ].join("\n");
