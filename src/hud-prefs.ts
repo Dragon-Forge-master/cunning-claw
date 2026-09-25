@@ -4,8 +4,8 @@ import path from "node:path";
 /**
  * How the HUD looks to the person reading it, remembered per install.
  *
- * The first preference is the typeface. The operator reads with dyslexia and
- * asked for OpenDyslexic on 25 Sept; it is vendored under public/fonts (SIL
+ * The first preference is the typeface. The operator asked for OpenDyslexic
+ * on 25 Sept because it is easier to read; it is vendored under public/fonts (SIL
  * OFL, licence beside it) because the HUD is loopback and must not phone a
  * font host. It is a choice, not the default: the evidence that a special
  * face helps is mixed, and plenty of readers with dyslexia prefer a plain
