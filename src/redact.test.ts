@@ -259,3 +259,19 @@ test("the home collapse is idempotent", () => {
   assert.equal(once, "~/a and ~/b");
   assert.equal(redact(once, HOME), once);
 });
+
+test("a bare password typed straight after the claw asked for one is recognised", async () => {
+  const { isSecretReply } = await import("./redact.js");
+  const asked = "I need your sudo password to install that, sir.";
+  assert.equal(isSecretReply(asked, "Tr0ub4dor&3"), true);
+  assert.equal(isSecretReply(asked, "correcthorse"), true, "letters alone still count when it was asked for");
+  assert.equal(isSecretReply("Enter the PIN from the card.", "4417"), true);
+  // Ordinary answers to the same question are left alone.
+  assert.equal(isSecretReply(asked, "no"), false);
+  assert.equal(isSecretReply(asked, "cancel"), false);
+  assert.equal(isSecretReply(asked, "carry on"), false);
+  assert.equal(isSecretReply(asked, "I'll run it myself"), false, "a sentence is not a password");
+  // And a one-word reply to anything else is just a word.
+  assert.equal(isSecretReply("Which folder, sir?", "Documents"), false);
+  assert.equal(isSecretReply("", "Tr0ub4dor&3"), false);
+});

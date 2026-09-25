@@ -253,3 +253,24 @@ export function redactDeep<T>(value: T, home: string = HOME): T {
 export function isCleanBase64(s: unknown): boolean {
   return typeof s === "string" && /^[A-Za-z0-9+/=\r\n]*$/.test(s);
 }
+
+/**
+ * A password typed as the whole answer to a question about one. On 8 Sept
+ * the claw asked for the operator's sudo password and the reply was the
+ * password alone: no words around it, so no pattern above could know it was
+ * a secret. Only the question gives it away. When the last thing the claw
+ * said asks for a password (or passphrase, PIN, passcode) and the reply is a
+ * single short token that is not an ordinary answer, the reply is treated as
+ * the secret. The doctrine forbids asking in the first place; this is for
+ * when a weak brain asks anyway.
+ */
+const ASKS_FOR_SECRET = /\b(password|passphrase|passcode|pin code|pin|sudo)\b/i;
+const ORDINARY_ANSWER = /^(y|n|yes|no|nope|ok|okay|sure|done|cancel|stop|skip|later|thanks|cheers|continue|go|carry on|and|what|why|how|sorry)[.!?]*$/i;
+
+export function isSecretReply(previousAssistant: string, reply: string): boolean {
+  const r = reply.trim();
+  if (!ASKS_FOR_SECRET.test(previousAssistant)) return false;
+  if (!r || /\s/.test(r) || r.length < 4 || r.length > 128) return false;
+  if (ORDINARY_ANSWER.test(r)) return false;
+  return true;
+}

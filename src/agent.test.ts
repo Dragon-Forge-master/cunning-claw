@@ -59,12 +59,17 @@ test("the turn loop: quiet heartbeats leave no trace, silence is answered, a fai
     "HEARTBEAT_OK",            // a quiet beat
     "", "", "",                // an empty answer, then two nudged retries, all empty
     { status: 418 },           // a provider failure
+    "What is your sudo password?", // a weak brain asking what it must not
+    "Understood.",
   ];
   let requests = 0;
+  const bodies: string[] = [];
   const server = http.createServer((req, res) => {
-    req.resume();
+    let body = "";
+    req.on("data", (c) => { body += c; });
     req.on("end", () => {
       requests++;
+      bodies.push(body);
       const next = replies.shift() ?? "";
       if (typeof next !== "string") {
         res.writeHead(next.status, { "Content-Type": "application/json" });
@@ -109,6 +114,8 @@ test("the turn loop: quiet heartbeats leave no trace, silence is answered, a fai
       seen.length = 0;
       await m.runTurn("try this", events);
       out.errors = seen.filter(([e]) => e === "agent_error").map(([, d]) => d.message);
+      await m.runTurn("install piper", events);
+      await m.runTurn("Tr0ub4dor&3", events);
       out.history = m.getHistory().map((h) => ({ role: h.role, text: typeof h.content === "string" ? h.content : (h.content.find?.((b) => b.type === "text")?.text ?? "") }));
       console.log(JSON.stringify(out));
       process.exit(0);
@@ -124,19 +131,24 @@ test("the turn loop: quiet heartbeats leave no trace, silence is answered, a fai
     assert.equal(got.afterBeat, 0, "a quiet heartbeat must not take a slot in the sixty-message memory");
     assert.ok(got.beatEvents.includes("heartbeat_ok"));
 
-    assert.equal(requests, 5, "an empty answer with no tools gets two continuation checks, like one after tools");
+    assert.equal(requests, 7, "an empty answer with no tools gets two continuation checks, like one after tools");
     assert.equal(got.silentNotices.length, 1, "a reply that never comes is said out loud, not left as silence");
 
     assert.equal(got.errors.length, 1);
     const texts = got.history.map((h: { text: string }) => h.text);
     assert.ok(texts.some((t: string) => /try this$/.test(t)), "the operator's words survive a failed turn");
-    assert.match(got.history[got.history.length - 1].text, /^\[This turn failed before a reply: .*418/);
+    assert.ok(texts.some((t: string) => /^\[This turn failed before a reply: .*418/.test(t)));
+    // The password typed in answer went nowhere: not history, not the provider, not the journal.
+    assert.equal(JSON.stringify(got.history).includes("Tr0ub4dor"), false);
+    assert.equal(bodies.some((b) => b.includes("Tr0ub4dor")), false, "the model provider never saw it");
+    assert.ok(texts.some((t: string) => /looked like a password and was not kept/.test(t)));
     assert.equal(texts.some((t: string) => /Continuation check/.test(t)), true, "the nudges are real turns in history");
 
     const journal = fs.readdirSync(path.join(dir, "data", "journal")).map((f) => fs.readFileSync(path.join(dir, "data", "journal", f), "utf-8")).join("");
     assert.match(journal, /no reply/);
     assert.match(journal, /turn failed: .*418/);
     assert.doesNotMatch(journal, /HEARTBEAT/, "quiet beats stay out of the journal as before");
+    assert.doesNotMatch(journal, /Tr0ub4dor/);
   } finally {
     server.close();
     fs.rmSync(dir, { recursive: true, force: true });

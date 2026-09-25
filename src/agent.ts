@@ -6,7 +6,7 @@ import { config, DATA_DIR, ROOT } from "./config.js";
 import { memorySnapshot } from "./memory.js";
 import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
 import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted, suggestCheapBrain, suggestCapableBrain } from "./routing.js";
-import { containsSecret, redactDeep, isCleanBase64 } from "./redact.js";
+import { containsSecret, redactDeep, isCleanBase64, isSecretReply } from "./redact.js";
 import { clearTaskGrant } from "./consequence.js";
 import { stampUserMessage } from "./when.js";
 import * as coherence from "./coherence.js";
@@ -291,12 +291,27 @@ function loadHistory(): Msg[] {
   }
 }
 
+/** What the claw last said, as text: the question a reply is answering. */
+function lastAssistantText(messages: Msg[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== "assistant") continue;
+    if (typeof m.content === "string") return m.content;
+    return (m.content as any[]).filter((b) => b?.type === "text").map((b) => b.text).join(" ");
+  }
+  return "";
+}
+
 function saveHistory(messages: Msg[]): void {
   if (!config.history.persist) return;
   // Secrets reach the transcript constantly — pasted by the user, or returned
   // by a tool that read a config file or an HTTP response. history.json is
   // plain text on disk, so redact before it lands rather than after.
-  fs.writeFileSync(HISTORY_FILE, JSON.stringify(redactDeep(messages), null, 2));
+  // The home dir is NOT collapsed here: history is the model's own memory,
+  // read back after a restart, and a quoted "~/Game Dev/..." does not expand
+  // in a shell command. It never leaves the machine; the glass, the phones
+  // and the journal get the collapse at their own chokepoints.
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(redactDeep(messages, ""), null, 2));
 }
 
 /**
@@ -671,6 +686,11 @@ export async function runTurn(
   // prevent. The journal line below already knew that; this one did not.
   const stampedAt = opts?.kind === "heartbeat" ? null : lastMessageAt;
   const turnStartsAt = history.length;
+  // A password typed straight after the claw asked for one goes nowhere:
+  // not to history, not to the model, not to the journal.
+  if (opts?.kind !== "heartbeat" && isSecretReply(lastAssistantText(history), userMessage)) {
+    userMessage = "[The operator's reply looked like a password and was not kept. Do not ask for it again; tell them to change it, and give them the command to run themselves.]";
+  }
   history.push({ role: "user", content: stampUserMessage(userMessage, new Date(), stampedAt) });
   if (opts?.kind !== "heartbeat") {
     lastMessageAt = Date.now();
