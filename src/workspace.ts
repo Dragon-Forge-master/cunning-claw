@@ -125,8 +125,9 @@ function parseFrontmatter(raw: string): {
   return { name, description, label, category, body: m[2].trim() };
 }
 
-export function listSkills(): SkillMeta[] {
-  const root = path.join(WORKSPACE, "skills");
+export const SKILLS_ROOT = path.join(WORKSPACE, "skills");
+
+export function listSkills(root: string = SKILLS_ROOT): SkillMeta[] {
   if (!fs.existsSync(root)) return [];
   const skills: SkillMeta[] = [];
   for (const dir of fs.readdirSync(root, { withFileTypes: true })) {
@@ -159,32 +160,105 @@ export function skillIndex(): string {
   return skills.map((s) => `- ${s.name} [${s.category}]: ${s.description}`).join("\n");
 }
 
-export function skillCatalog(): {
+export function skillCatalog(root: string = SKILLS_ROOT): {
   name: string;
   label: string;
   category: string;
   categoryLabel: string;
   description: string;
+  lessons: number;
 }[] {
-  return listSkills().map((s) => ({
+  return listSkills(root).map((s) => ({
     name: s.name,
     label: s.label,
     category: s.category,
     categoryLabel: SKILL_CATEGORY_LABELS[s.category] ?? s.category,
     description: s.description,
+    lessons: readLessons(s.dir, root).length,
   }));
 }
 
-export function readSkill(name: string): string {
-  const skill = listSkills().find((s) => s.name === name || s.dir === name);
-  if (!skill) return `No skill named "${name}". Known: ${listSkills().map((s) => s.name).join(", ") || "(none)"}`;
-  return readIfExists(path.join(WORKSPACE, "skills", skill.dir, "SKILL.md"));
+export function readSkill(name: string, root: string = SKILLS_ROOT): string {
+  const skill = listSkills(root).find((s) => s.name === name || s.dir === name);
+  if (!skill) return `No skill named "${name}". Known: ${listSkills(root).map((s) => s.name).join(", ") || "(none)"}`;
+  const text = readIfExists(path.join(root, skill.dir, "SKILL.md"));
+  const lessons = readLessons(skill.dir, root);
+  if (!lessons.length) return text;
+  return `${text}\n\n## Lessons learned on this machine\n` +
+    `These were added after real use, each one approved by the operator on an approval card. ` +
+    `Where one contradicts the steps above, the lesson is newer and wins.\n` +
+    lessons.map((l) => `- ${l}`).join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Skill lessons: how a skill gets better with use.
+//
+// Hermes Agent's strength is revising its own skills after each task. Doing
+// that here by rewriting SKILL.md would break two things: most skills ship in
+// the repo, so a locally edited one makes the operator's `git pull` update
+// fail; and a skill is read back as instructions, so a rewrite made after
+// reading a hostile page could plant orders that outlive the turn. So a skill
+// is never rewritten. Each one gets a LESSONS.md beside it, per machine and
+// ignored by git: one dated line per lesson, added only through an approval
+// card, capped so the file stays something a person can read. When a skill
+// has gathered enough lessons, the operator (or skill_write, approved) folds
+// them into the skill proper.
+// ---------------------------------------------------------------------------
+
+export const MAX_LESSONS = 12;
+const MAX_LESSON_CHARS = 300;
+
+function lessonsFile(dir: string, root: string): string {
+  return path.join(root, dir, "LESSONS.md");
+}
+
+/** The lesson lines for a skill folder, oldest first, without their bullets. */
+export function readLessons(dir: string, root: string = SKILLS_ROOT): string[] {
+  return readIfExists(lessonsFile(dir, root))
+    .split("\n")
+    .filter((l) => l.startsWith("- "))
+    .map((l) => l.slice(2).trim())
+    .filter(Boolean);
+}
+
+/** One lesson, one line: no fences, no frontmatter, no headings smuggled in. */
+export function cleanLesson(raw: string): string {
+  return defuse(String(raw ?? ""))
+    .replace(/\s+/g, " ")
+    .replace(/^[-#>*\s]+/, "")
+    .replace(/---+/g, "—")
+    .trim()
+    .slice(0, MAX_LESSON_CHARS);
+}
+
+export type LessonResult = { ok: true; message: string; count: number } | { ok: false; message: string };
+
+export function addLesson(name: string, lesson: string, root: string = SKILLS_ROOT, today = new Date()): LessonResult {
+  const skill = listSkills(root).find((s) => s.name === name || s.dir === name);
+  if (!skill) return { ok: false, message: `No skill named "${name}". Known: ${listSkills(root).map((s) => s.name).join(", ") || "(none)"}` };
+  const text = cleanLesson(lesson);
+  if (text.length < 12) return { ok: false, message: "A lesson must say what to do differently, in a sentence." };
+  const existing = readLessons(skill.dir, root);
+  if (existing.some((l) => l.replace(/^\d{4}-\d{2}-\d{2}: /, "").toLowerCase() === text.toLowerCase())) {
+    return { ok: false, message: `The ${skill.name} skill already has that lesson.` };
+  }
+  if (existing.length >= MAX_LESSONS) {
+    return {
+      ok: false,
+      message: `The ${skill.name} skill has ${MAX_LESSONS} lessons, the most it keeps. Ask the operator to fold them into the skill itself (skill_write) before adding more.`,
+    };
+  }
+  const date = today.toISOString().slice(0, 10);
+  const file = lessonsFile(skill.dir, root);
+  const header = existing.length ? "" : `# Lessons for ${skill.name}\n\nAdded by the claw after real use, each approved by the operator. Per machine; not in git.\n\n`;
+  fs.appendFileSync(file, redact(`${header}- ${date}: ${text}\n`));
+  return { ok: true, message: `Added a lesson to the ${skill.name} skill (${existing.length + 1} of ${MAX_LESSONS}).`, count: existing.length + 1 };
 }
 
 export function writeSkill(name: string, description: string, body: string): string {
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64);
   if (!slug) return "Skill name is empty after sanitising.";
-  const dir = path.join(WORKSPACE, "skills", slug);
+  const dir = path.join(SKILLS_ROOT, slug);
   fs.mkdirSync(dir, { recursive: true });
   const md =
     // Cursor's richer frontmatter (label, category) plus the rename: provenance

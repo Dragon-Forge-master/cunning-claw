@@ -191,3 +191,12 @@ test("a skill called as a tool gets its instructions, not a dead end", async () 
   assert.match(plain, /^Unknown tool: definitely_not_a_tool/);
   assert.doesNotMatch(plain, /is a skill/);
 });
+
+test("skill and lesson approval cards say when the turn read outside content", async () => {
+  // A skill is read back as instructions, so the card that approves one must
+  // not hide that a stranger's text was in the conversation.
+  const { outsideContentWarning } = await import("./tools.js");
+  assert.match(outsideContentWarning({ tainted: () => true }), /read outside content/);
+  assert.equal(outsideContentWarning({ tainted: () => false }), "");
+  assert.equal(outsideContentWarning({}), "");
+});

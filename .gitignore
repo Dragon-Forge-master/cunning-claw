@@ -40,5 +40,6 @@ site/*.mp4
 workspace/skills/cad/scripts/
 workspace/skills/dxf/scripts/
 workspace/skills/.venv-cad/
+workspace/skills/*/LESSONS.md
 workspace/scratch/
 .claude/worktrees/

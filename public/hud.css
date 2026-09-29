@@ -506,6 +506,8 @@ header { flex-wrap: wrap; row-gap: 6px; }
 }
 #attach-btn:hover { border-color: var(--cyan); color: var(--cyan); }
 
+.sk-lessons { display: block; margin-top: 4px; font-size: 10px; letter-spacing: 1px; color: var(--amber); }
+
 /* Hover-tools on the assistant's replies: copy, speak */
 .msg { position: relative; }
 .msg-tools {

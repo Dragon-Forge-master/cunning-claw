@@ -15,7 +15,7 @@ import * as mcp from "./mcp.js";
 import * as tax from "./tax.js";
 import { classifyBrowserAction, needsApproval as browserNeedsApproval, taskGrantActive } from "./consequence.js";
 import { snapshot, record } from "./filewatch.js";
-import { listSkills, readSkill, writeSkill } from "./workspace.js";
+import { addLesson, listSkills, readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
 import { generateImage } from "./imagine.js";
 import { collapseHome, expandHome, isSensitivePath } from "./paths.js";
@@ -56,6 +56,18 @@ export interface ToolContext {
    * forever: a fact learned while a stranger was talking is testimony.
    */
   tainted?: () => boolean;
+}
+
+/**
+ * A skill and its lessons are read back as instructions in later turns. When
+ * this turn has read outside content, a line on the approval card says so,
+ * because that is exactly when text written by a stranger could be asking to
+ * become a standing order. The operator decides; the card must not hide it.
+ */
+export function outsideContentWarning(ctx: Pick<ToolContext, "tainted">): string {
+  return ctx.tainted?.()
+    ? "⚠ This turn read outside content (a web page, an email, a chat or a connector). Check the text below says only what you would have said yourself.\n\n"
+    : "";
 }
 
 // ---------------------------------------------------------------------------
@@ -1117,6 +1129,20 @@ export const toolDefinitions: Anthropic.Tool[] = [
         body: { type: "string", description: "Markdown instructions below the frontmatter" },
       },
       required: ["name", "description", "body"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "skill_learn",
+    description:
+      "Add one lesson to a skill you used, so it goes better next time: a step that was wrong or missing, or a correction the operator gave. One sentence saying what to do differently. Not for style. The skill file itself is never changed; lessons load with it. Requires approval.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "The skill's name, as in the skill index" },
+        lesson: { type: "string", description: "What to do differently next time, in one sentence" },
+      },
+      required: ["name", "lesson"],
       additionalProperties: false,
     },
   },
@@ -2348,10 +2374,19 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "skill_write": {
         const ok = await ctx.requestApproval(
           "Write a CUNNING CLAW skill",
-          `${input.name}\n${input.description}\n\n${String(input.body ?? "").slice(0, 1500)}`,
+          outsideContentWarning(ctx) + `${input.name}\n${input.description}\n\n${String(input.body ?? "").slice(0, 1500)}`,
         );
         if (!ok) return "The user declined to write the skill.";
         return writeSkill(String(input.name), String(input.description), String(input.body));
+      }
+      case "skill_learn": {
+        const ok = await ctx.requestApproval(
+          `Teach the ${String(input.name ?? "")} skill a lesson`,
+          outsideContentWarning(ctx) + `Skill: ${input.name}\nLesson: ${String(input.lesson ?? "").slice(0, 400)}\n\n` +
+            "It is added to that skill's lessons on this machine and read with the skill from now on.",
+        );
+        if (!ok) return "The operator declined the lesson.";
+        return addLesson(String(input.name ?? ""), String(input.lesson ?? "")).message;
       }
       case "landscape": return landscapeSummary();
       case "generate_image": {

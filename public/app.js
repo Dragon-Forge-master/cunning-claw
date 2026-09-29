@@ -781,6 +781,13 @@ function renderSkillsList() {
       desc.className = "sk-desc";
       desc.textContent = s.description;
       card.append(lab, desc);
+      if (s.lessons > 0) {
+        // Lessons are how a skill improves with use; show that it has.
+        const les = document.createElement("span");
+        les.className = "sk-lessons";
+        les.textContent = `${s.lessons} lesson${s.lessons === 1 ? "" : "s"} learned here`;
+        card.appendChild(les);
+      }
       card.onclick = async () => {
         toggleSkill(s.name);
         if (armedSkills.includes(s.name) && !card.querySelector(".sk-more")) {
