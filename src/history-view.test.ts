@@ -22,7 +22,8 @@ test("a stamped heartbeat turn never reaches the transcript", () => {
 });
 
 test("the armed-skills preamble and the gap note come off, behind a context block too", () => {
-  const stamped = stampUserMessage("[Armed skills — call skill_read first: desk]\nfile the invoice", new Date(2026, 8, 25, 9, 5), Date.now() - 5 * 3600_000);
+  const at = new Date(2026, 8, 25, 9, 5);
+  const stamped = stampUserMessage("[Armed skills — call skill_read first: desk]\nfile the invoice", at, at.getTime() - 5 * 3600_000);
   assert.match(stamped, /since the previous message\] \[09:05\] /);
   const shown = displayHistory([user(`[context]\nclock etc\n${END}\n\n${stamped}`)], END);
   assert.deepEqual(shown, [{ role: "user", text: "file the invoice" }]);

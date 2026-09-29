@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-24",
+  "updated": "2026-09-29",
   "note": "Curated field map, not an exhaustive crawl of every GitHub toy named Cunning Claw. Stars drift; the architecture notes do not.",
   "systems": [
     {
@@ -7,16 +7,16 @@
       "name": "OpenClaw",
       "url": "https://github.com/openclaw/openclaw",
       "class": "always-on messaging daemon",
-      "take": "Workspace files (SOUL.md, HEARTBEAT.md, USER.md), skills folders, heartbeat that stays quiet when idle, one messenger (Telegram), named brains with a cheap heartbeat model and fallbacks — not a sub-agent org chart.",
-      "refuse": "Curl-pipe installers, unauthenticated internet exposure, kitchen-sink plugin sprawl, defaulting every thought to Opus."
+      "take": "Workspace files (SOUL.md, HEARTBEAT.md, USER.md), skills folders, heartbeat that stays quiet when idle, one messenger (Telegram), named brains with a cheap heartbeat model and fallbacks — not a sub-agent org chart. Since launch it has grown into the giant of the field: dozens of chat channels, native phone apps and a large community marketplace of add-ons. Reach is its strength.",
+      "refuse": "Curl-pipe installers, unauthenticated internet exposure, kitchen-sink plugin sprawl, defaulting every thought to Opus. Chasing its reach channel by channel: win on trust instead — watched on the glass, cards before consequences, honest about what was done."
     },
     {
       "id": "hermes-agent",
       "name": "Hermes Agent",
       "url": "https://github.com/NousResearch/hermes-agent",
       "class": "self-improving agent runtime",
-      "take": "agentskills.io SKILL.md, skills born from experience, MEMORY.md/USER.md, provider-agnostic brain, scheduled automations.",
-      "refuse": "Becoming a framework you assemble instead of an assistant you live with. No HUD, no machine-control soul."
+      "take": "agentskills.io SKILL.md, skills born from experience, MEMORY.md/USER.md, provider-agnostic brain, scheduled automations. Its real edge is skills that get better with use. Taken 29 Sept as skill lessons: one approved, dated line per lesson beside the skill, per machine, never rewriting the SKILL.md itself.",
+      "refuse": "Becoming a framework you assemble instead of an assistant you live with. No HUD, no machine-control soul. Rewriting instructions silently after every task: a skill is read back as orders, so each change passes an approval card."
     },
     {
       "id": "open-interpreter",
@@ -81,6 +81,38 @@
       "class": "Forge lineage — agent in a box",
       "take": "Local-first mini PC, voice, smart home, one-command install.",
       "refuse": "Do not dissolve CUNNING CLAW into a distro. CUNNING CLAW is the mind; the OS is the house."
+    },
+    {
+      "id": "goose",
+      "name": "Goose",
+      "url": "https://github.com/aaif-goose/goose",
+      "class": "desktop agent + CLI (Agentic AI Foundation, Linux Foundation)",
+      "take": "Native desktop app on Linux, macOS and Windows plus a CLI; MCP as the extension standard; many providers including OpenRouter and Ollama. Proof that a serious open agent lives under neutral governance.",
+      "refuse": "A general-purpose worker you point at jobs, not an assistant that keeps the house: no heartbeat, no phone line, no soul files."
+    },
+    {
+      "id": "leon",
+      "name": "Leon",
+      "url": "https://github.com/leon-ai/leon",
+      "class": "privacy-first personal assistant (2.0 developer preview)",
+      "take": "Tools, context and memory with a privacy-first stance, the same instinct as the loopback-only HUD.",
+      "refuse": "Years of rewrites: ship the loop that works on one machine and let it earn its features."
+    },
+    {
+      "id": "anythingllm",
+      "name": "AnythingLLM",
+      "url": "https://github.com/Mintplex-Labs/anything-llm",
+      "class": "local agents + document chat desktop app",
+      "take": "Everything local unless you choose a cloud model: the default a cautious Linux user expects.",
+      "refuse": "A workspace for chatting with documents is not an assistant with hands on the machine."
+    },
+    {
+      "id": "self-operating-computer",
+      "name": "Self-Operating Computer",
+      "url": "https://github.com/OthersideAI/self-operating-computer",
+      "class": "screen-driving framework (2023)",
+      "take": "One of the first full computer-use loops: look at the screen, move the mouse, type.",
+      "refuse": "Pixels first. Accessibility refs and real tools beat guessing coordinates, and a model driving the mouse needs cards before consequences."
     }
   ]
 }
