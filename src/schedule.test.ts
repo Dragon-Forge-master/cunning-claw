@@ -244,3 +244,33 @@ test("'today' is the operator's day, not UTC's — or BST runs a job twice", () 
     else process.env.TZ = savedTz;
   }
 });
+
+test("a failed run says so and gets exactly one more try, thirty minutes later, the same day", async () => {
+  // 30 Sept to 20 Oct: 11 of 19 weekday briefings failed and left nothing,
+  // with no word to the operator. Fails without failedRun's retry stamp.
+  const { dueRuns, failedRun, RETRY_AFTER_MS } = await import("./schedule.js");
+  const { entries } = parseSchedule("- [x] schedule: `08:00` | target: `briefing` | instruction: the morning briefing.");
+  const e = entries[0];
+  const nine = new Date(2026, 9, 21, 9, 0); // a Wednesday, the job already late
+  const state: Record<string, string> = {};
+  const [due] = dueRuns(entries, state, nine);
+  assert.ok(due && due.late && !due.retry);
+  state[entryKey(e)] = "2026-10-21"; // stamped before it ran, as scheduleTick does
+
+  const notice = failedRun(state, due, "The Flash brain's account is out of credit", nine);
+  assert.match(notice, /briefing failed \(The Flash brain's account is out of credit\)\. I'll try it once more at 09:30/);
+  assert.deepEqual(dueRuns(entries, state, new Date(nine.getTime() + RETRY_AFTER_MS - 60_000)), [], "not before the half hour");
+  const [again] = dueRuns(entries, state, new Date(nine.getTime() + RETRY_AFTER_MS));
+  assert.ok(again?.retry, "the second attempt is due at 09:30");
+
+  state[entryKey(e)] = "2026-10-21";
+  assert.match(failedRun(state, again, "no reply", new Date(nine.getTime() + RETRY_AFTER_MS)), /failed again/);
+  assert.equal(state[entryKey(e)], "2026-10-21", "no third attempt today");
+  assert.deepEqual(dueRuns(entries, state, new Date(2026, 9, 21, 15, 0)), []);
+
+  // A retry stamp left from yesterday does not run today's job twice or skip it.
+  const stale: Record<string, string> = { [entryKey(e)]: `retry:2026-10-20:${new Date(2026, 9, 20, 9, 30).getTime()}` };
+  const today = dueRuns(entries, stale, nine);
+  assert.equal(today.length, 1);
+  assert.equal(today[0].retry, undefined);
+});

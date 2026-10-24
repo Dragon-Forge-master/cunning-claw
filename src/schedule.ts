@@ -119,11 +119,26 @@ export function startSchedule(events: AgentEvents): void {
       saveState,
       busy: () => turnInFlight().busy,
       run: (message, due) => {
-        if (due.late) {
+        if (due.late && !due.retry) {
           console.log(`  Schedule: ${due.entry.target} — ${lateLine(due.entry)} Running it now.`);
           events.emit("notice", { message: `${lateLine(due.entry)} Running ${due.entry.target} now.` });
         }
-        void runTurn(message, events, { kind: "user" });
+        let reason = "";
+        const watched: AgentEvents = {
+          ...events,
+          emit(event, data) {
+            if (event === "agent_error") reason = String((data as any)?.message ?? "");
+            events.emit(event, data);
+          },
+        };
+        void runTurn(message, watched, { kind: "user" }).then((reply) => {
+          if (reply !== null) return;
+          const state = loadState();
+          const notice = failedRun(state, due, reason || "no reply", new Date());
+          saveState(state);
+          console.log(`  Schedule: ${notice}`);
+          events.emit("notice", { message: notice });
+        });
       },
     });
   // Check at boot as well as on the interval: booting at 09:30 is exactly when
@@ -172,6 +187,34 @@ const ON_TIME_MS = 10 * 60_000;
 export interface DueRun {
   entry: ScheduleEntry;
   late: boolean;
+  /** The one second attempt after today's run failed. */
+  retry?: boolean;
+}
+
+/**
+ * A job is stamped before it runs, so a crash mid-briefing is not a second
+ * briefing on restart. But nothing looked at how the turn ended: from 30 Sept
+ * to 20 Oct, 11 of 19 weekday briefings failed (out of credit, or a brain that
+ * described the job instead of doing it) and left nothing, with no word to the
+ * operator. A failed run now says so, and gets one more try thirty minutes
+ * later the same day, recorded in the stamp as "retry:<day>:<epoch ms>".
+ */
+export const RETRY_AFTER_MS = 30 * 60_000;
+
+function parseRetry(v: string | undefined): { day: string; at: number } | null {
+  const m = /^retry:(\d{4}-\d{2}-\d{2}):(\d+)$/.exec(v ?? "");
+  return m ? { day: m[1], at: Number(m[2]) } : null;
+}
+
+/** Record a failed run; returns the notice for the operator. */
+export function failedRun(state: Record<string, string>, due: DueRun, reason: string, now: Date): string {
+  const what = due.entry.target;
+  const why = reason.replace(/\s+/g, " ").slice(0, 160);
+  if (due.retry) return `${what} failed again (${why}). It runs as normal next time it is due.`;
+  const at = now.getTime() + RETRY_AFTER_MS;
+  state[entryKey(due.entry)] = `retry:${localDay(now)}:${at}`;
+  const hm = new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return `${what} failed (${why}). I'll try it once more at ${hm}.`;
 }
 
 /**
@@ -194,7 +237,13 @@ export function dueRuns(entries: ScheduleEntry[], state: Record<string, string>,
     if (e.date && (now.getDate() !== e.date.d || now.getMonth() + 1 !== e.date.mo)) continue;
     const lateBy = now.getTime() - new Date(now).setHours(e.hh, e.mm, 0, 0);
     if (lateBy < 0) continue;
-    if (state[entryKey(e)] === today) continue;
+    const stamp = state[entryKey(e)];
+    if (stamp === today) continue;
+    const retry = parseRetry(stamp);
+    if (retry && retry.day === today) {
+      if (now.getTime() >= retry.at) out.push({ entry: e, late: true, retry: true });
+      continue;
+    }
     // Fire in the minute it is due, or within the following ten — a busy turn
     // or a restart at 08:00 is still on time. Past that, daily jobs only.
     if (lateBy <= ON_TIME_MS) out.push({ entry: e, late: false });
