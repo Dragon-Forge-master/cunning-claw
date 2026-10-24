@@ -24,6 +24,8 @@ export function displayHistory(messages: readonly any[], contextEnd: string): Di
         : m.content.replace(/^\[context[\s\S]*\]\n\n/, "");
       const text = unstampUserMessage(body);
       if (text.startsWith("[heartbeat]")) continue;
+      // The loop's own nudges are stored as user turns; the operator never typed them.
+      if (text.startsWith("[Continuation check")) continue;
       out.push({ role: "user", text: text.replace(/^\[Armed skills[^\]]*\]\s*/, "") });
     } else if (m?.role === "assistant" && Array.isArray(m.content)) {
       const text = m.content

@@ -59,3 +59,13 @@ test("a heartbeat's window is recent and always opens on an operator message", a
   assert.equal(recentWindow(long, 5)[0], long[0]);
   assert.equal(recentWindow(msgs.slice(0, 4), 12).length, 4, "short histories are untouched");
 });
+
+test("the loop's automatic nudges never show as operator bubbles", () => {
+  const shown = displayHistory([
+    user("[10:00] hello"),
+    reply(""),
+    user("[Continuation check — automatic; Chris did not type this] Your reply was empty."),
+    reply("Hello, sir."),
+  ], END);
+  assert.deepEqual(shown.map((t) => t.role + ":" + t.text), ["user:hello", "assistant:Hello, sir."]);
+});

@@ -791,7 +791,12 @@ export async function runTurn(
           recordUsage(spec, step.usage);
           history.push({ role: "assistant", content: step.content as any });
           if (step.refusal) {
-            events.emit("text", { delta: "I'm afraid I must decline that one, sir." });
+            // Through finalText too: emitted on its own, the decline left the
+            // reply "empty", so the loop pressed a model that had just refused
+            // to answer anyway, twice, then reported "no reply" (review, 24 Oct).
+            const decline = "I'm afraid I must decline that one, sir.";
+            finalText += decline;
+            events.emit("text", { delta: decline });
           }
           break;
         } catch (err) {
