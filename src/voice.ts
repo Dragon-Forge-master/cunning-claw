@@ -333,7 +333,8 @@ export async function speak(text: string): Promise<void> {
     return;
   }
 
-  const clean = cleanForSpeech(text).slice(0, config.voice.maxChars);
+  const max = config.voice.maxChars;
+  const clean = max > 0 ? cleanForSpeech(text).slice(0, max) : cleanForSpeech(text);
   if (!clean) return;
 
   cancel();

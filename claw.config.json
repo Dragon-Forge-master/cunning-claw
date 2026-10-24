@@ -47,7 +47,7 @@
   "voice": {
     "enabled": true,
     "engine": "auto",
-    "maxChars": 1200,
+    "maxChars": 0,
     "say": {
       "voice": "Daniel"
     },
