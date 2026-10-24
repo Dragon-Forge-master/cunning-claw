@@ -8,11 +8,12 @@ import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
 import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted, suggestCheapBrain, suggestCapableBrain } from "./routing.js";
 import { containsSecret, redactDeep, isCleanBase64, isSecretReply } from "./redact.js";
 import { clearTaskGrant } from "./consequence.js";
+import { recentWindow } from "./history-view.js";
 import { stampUserMessage } from "./when.js";
 import * as coherence from "./coherence.js";
 import { toolDefinitions as mcpToolDefinitions, listMcpStates } from "./mcp.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
-import { pinnedBrainId, pickBrain, nextBrain, shouldFailOver, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
+import { pinnedBrainId, pickBrain, nextBrain, shouldFailOver, isCreditExhausted, brainKeyEnv, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
 import { completeOpenAi } from "./openai-compat.js";
 import { appendJournal, todayJournalSnippet } from "./journal.js";
 import { chromeProfileDir } from "./browser.js";
@@ -480,10 +481,10 @@ export function resetHistory(): void {
   coherence.forgetTurnShapes();
 }
 
-function buildTools(spec: BrainSpec): Anthropic.ToolUnion[] {
+function buildTools(spec: BrainSpec, includeMcp = true): Anthropic.ToolUnion[] {
   // Tools discovered from MCP servers are ordinary tools to the model; the
   // difference is that their results come back untrusted-fenced.
-  const tools: Anthropic.ToolUnion[] = [...toolDefinitions, ...mcpToolDefinitions()];
+  const tools: Anthropic.ToolUnion[] = [...toolDefinitions, ...(includeMcp ? mcpToolDefinitions() : [])];
   if (spec.provider === "anthropic" && config.webSearch.enabled) {
     tools.push({
       type: "web_search_20260209",
@@ -494,11 +495,27 @@ function buildTools(spec: BrainSpec): Anthropic.ToolUnion[] {
   return tools;
 }
 
+/**
+ * How much of the conversation a heartbeat sees. HEARTBEAT.md asks for overdue
+ * timers, machine trouble and one stalled thread from the journal already in
+ * the system prompt, so a heartbeat needs neither the whole sixty-message
+ * window nor the schemas of every connected MCP tool. With both, each beat was
+ * about 62,000 tokens; in October that was what ran the OpenRouter credit down
+ * to where every beat, day and night, failed with a 402.
+ */
+export const HEARTBEAT_HISTORY = 12;
+
+/** Two brains bill the same account when they share a key and an endpoint. */
+function sameAccount(a: BrainSpec, b: BrainSpec): boolean {
+  return brainKeyEnv(a) === brainKeyEnv(b) && (a.baseUrl ?? "") === (b.baseUrl ?? "");
+}
+
 async function callBrain(
   spec: BrainSpec,
   _events: AgentEvents,
   onText: (delta: string) => void,
   signal?: AbortSignal,
+  kind: "user" | "heartbeat" = "user",
 ): Promise<{
   content: Anthropic.ContentBlock[];
   toolUses: { id: string; name: string; input: unknown }[];
@@ -509,12 +526,14 @@ async function callBrain(
   if (!brainHasKey(spec)) {
     throw new Error(`Missing key for brain ${spec.id}. ${missingKeyHint()}`);
   }
+  const lean = kind === "heartbeat";
 
   if (spec.provider === "openai") {
     const completion = await completeOpenAi({
       spec,
       system: `${buildStableSystem(spec)}\n\n${volatileSystem(spec)}`,
-      history: trimHistory(history),
+      history: lean ? recentWindow(trimHistory(history), HEARTBEAT_HISTORY) : trimHistory(history),
+      mcpTools: !lean,
       onText,
       signal,
     });
@@ -538,8 +557,8 @@ async function callBrain(
       { type: "text", text: buildStableSystem(spec), cache_control: { type: "ephemeral" } },
       { type: "text", text: volatileSystem(spec) },
     ],
-    tools: buildTools(spec),
-    messages: repairHistory(trimHistory(history)),
+    tools: buildTools(spec, !lean),
+    messages: repairHistory(lean ? recentWindow(trimHistory(history), HEARTBEAT_HISTORY) : trimHistory(history)),
     stream: true,
   };
   if (spec.thinking !== false) {
@@ -574,6 +593,10 @@ export async function runTurn(
   opts?: { kind?: "user" | "heartbeat" },
 ): Promise<string | null> {
   if (busy) {
+    // A heartbeat that lands mid-turn simply skips its beat. It used to take
+    // the refusal path below, which told the operator "Still working on the
+    // previous request" when they had not said anything at all.
+    if (opts?.kind === "heartbeat") return null;
     const forMs = Date.now() - turnStartedAt;
     // A turn that has outrun its budget is wedged, not busy. Take it out and
     // let the new instruction through rather than refusing work indefinitely.
@@ -739,7 +762,7 @@ export async function runTurn(
           const step = await callBrain(spec, events, (delta) => {
             finalText += delta;
             events.emit("text", { delta });
-          }, abortTurn?.signal);
+          }, abortTurn?.signal, kind);
           toolUses = step.toolUses;
           stopReason = step.stopReason;
           recordUsage(spec, step.usage);
@@ -753,6 +776,11 @@ export async function runTurn(
           // brain: cancelTurn() means stop, not "try somewhere else".
           if (abortTurn?.signal.aborted) throw err;
           let nxt = shouldFailOver(err, spec.id === routedBrainId) ? nextBrain(spec, kind) : null;
+          // Out of credit: only a brain on a different key can help, so skip
+          // the rest of the chain that shares this one.
+          if (isCreditExhausted(err)) {
+            while (nxt && sameAccount(nxt, spec)) nxt = nextBrain(nxt, kind);
+          }
 
           // Failover must not quietly demote a guarded turn. If hostile text is
           // in play, walk the chain for another trusted brain; if there is none,
@@ -944,6 +972,9 @@ export async function runTurn(
       msg = "My API credentials appear to be invalid, sir. Check the API key in .env for the active brain.";
     } else if (err instanceof Anthropic.RateLimitError) {
       msg = "We've hit the API rate limit. A brief pause is in order.";
+    } else if (isCreditExhausted(err)) {
+      msg = `The ${spec.label} brain's account is out of credit for a request this size, sir. ` +
+        `Top it up (OpenRouter: openrouter.ai/settings/credits), or pick the Local brain in the picker.`;
     } else if (err instanceof Anthropic.APIError) {
       msg = `API error ${err.status}: ${err.message}`;
     } else if (err instanceof Error) {

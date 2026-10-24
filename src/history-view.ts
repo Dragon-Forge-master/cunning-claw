@@ -37,3 +37,19 @@ export function displayHistory(messages: readonly any[], contextEnd: string): Di
   }
   return out;
 }
+
+/**
+ * The last n messages, widened backwards if needed so the window opens on an
+ * operator message (a window that opens on a tool result or an assistant turn
+ * is invalid for every provider). Pure, so the rule is tested.
+ */
+export function recentWindow<T extends { role: string; content: unknown }>(messages: T[], n: number): T[] {
+  if (messages.length <= n) return messages;
+  let start = messages.length - n;
+  const opensOnOperator = (i: number) => messages[i].role === "user" && typeof messages[i].content === "string";
+  let i = start;
+  while (i < messages.length && !opensOnOperator(i)) i++;
+  if (i < messages.length) return messages.slice(i);
+  while (start > 0 && !opensOnOperator(start)) start--;
+  return messages.slice(start);
+}

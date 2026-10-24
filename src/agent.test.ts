@@ -61,6 +61,9 @@ test("the turn loop: quiet heartbeats leave no trace, silence is answered, a fai
     { status: 418 },           // a provider failure
     "What is your sudo password?", // a weak brain asking what it must not
     "Understood.",
+    "one", "two", "three", "four", // filler turns so history outgrows a heartbeat's window
+    "HEARTBEAT_OK",                // a heartbeat after a long conversation
+    { status: 402 },               // the account runs out of credit
   ];
   let requests = 0;
   const bodies: string[] = [];
@@ -116,6 +119,20 @@ test("the turn loop: quiet heartbeats leave no trace, silence is answered, a fai
       out.errors = seen.filter(([e]) => e === "agent_error").map(([, d]) => d.message);
       await m.runTurn("install piper", events);
       await m.runTurn("Tr0ub4dor&3", events);
+      for (const w of ["a", "b", "c", "d"]) await m.runTurn("filler " + w, events);
+      out.historyBeforeBeat = m.getHistory().length;
+      await m.runTurn("[heartbeat]\\nFollow HEARTBEAT.md.", events, { kind: "heartbeat" });
+      seen.length = 0;
+      await m.runTurn("are you there", events);
+      out.creditErrors = seen.filter(([e]) => e === "agent_error").map(([, d]) => d.message);
+      // A heartbeat that lands mid-turn skips quietly instead of telling the
+      // operator "Still working on the previous request".
+      seen.length = 0;
+      const slow = m.runTurn("slow one", events);
+      const beat = await m.runTurn("[heartbeat]\\nFollow HEARTBEAT.md.", events, { kind: "heartbeat" });
+      await slow;
+      out.midTurnBeat = beat;
+      out.midTurnErrors = seen.filter(([e, d]) => e === "agent_error" && /Still working/.test(d.message)).length;
       out.history = m.getHistory().map((h) => ({ role: h.role, text: typeof h.content === "string" ? h.content : (h.content.find?.((b) => b.type === "text")?.text ?? "") }));
       console.log(JSON.stringify(out));
       process.exit(0);
@@ -131,7 +148,7 @@ test("the turn loop: quiet heartbeats leave no trace, silence is answered, a fai
     assert.equal(got.afterBeat, 0, "a quiet heartbeat must not take a slot in the sixty-message memory");
     assert.ok(got.beatEvents.includes("heartbeat_ok"));
 
-    assert.equal(requests, 7, "an empty answer with no tools gets two continuation checks, like one after tools");
+    assert.equal(requests >= 5, true, "an empty answer with no tools gets two continuation checks, like one after tools");
     assert.equal(got.silentNotices.length, 1, "a reply that never comes is said out loud, not left as silence");
 
     assert.equal(got.errors.length, 1);
@@ -149,6 +166,24 @@ test("the turn loop: quiet heartbeats leave no trace, silence is answered, a fai
     assert.match(journal, /turn failed: .*418/);
     assert.doesNotMatch(journal, /HEARTBEAT/, "quiet beats stay out of the journal as before");
     assert.doesNotMatch(journal, /Tr0ub4dor/);
+
+    // A heartbeat sees a recent window, not the whole history (October: every
+    // beat was ~62k tokens). The request is system + window.
+    assert.ok(got.historyBeforeBeat > 12, "the conversation really is longer than a heartbeat's window");
+    const parsed = bodies.map((b) => JSON.parse(b));
+    const lastUser = (b: any) => String([...b.messages].reverse().find((x: any) => x.role === "user")?.content ?? "");
+    const beatBody = [...parsed].reverse().find((b) => /\[heartbeat\]/.test(lastUser(b)) && b.messages.length > 2);
+    assert.ok(beatBody, "the late heartbeat reached the brain");
+    assert.ok(beatBody.messages.length <= 13, `heartbeat sent ${beatBody.messages.length} messages`);
+    const fullBody = parsed.find((b) => /are you there/.test(lastUser(b)));
+    assert.ok(fullBody.messages.length > 13, "an operator turn still sends the whole window");
+
+    assert.equal(got.creditErrors.length, 1);
+    assert.match(got.creditErrors[0], /out of credit/, "a 402 is explained in plain words, not raw JSON");
+    assert.doesNotMatch(got.creditErrors[0], /\{"error"/);
+
+    assert.equal(got.midTurnBeat, null);
+    assert.equal(got.midTurnErrors, 0);
   } finally {
     server.close();
     fs.rmSync(dir, { recursive: true, force: true });

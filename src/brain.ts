@@ -237,6 +237,18 @@ export function isFailoverError(err: unknown): boolean {
 }
 
 /**
+ * The provider refused because the account's credit cannot cover the request
+ * (OpenRouter answers 402, sometimes as "Prompt tokens limit exceeded" when a
+ * smaller request would still fit). Every brain on the same key fails the same
+ * way, so this is the operator's to fix, and worth saying in plain words.
+ */
+export function isCreditExhausted(err: unknown): boolean {
+  const m = err instanceof Error ? err.message : String(err ?? "");
+  if (err instanceof Anthropic.APIError && err.status === 402) return true;
+  return /API 402\b|insufficient (credits|balance|quota)|add more credits|credit balance is too low/i.test(m);
+}
+
+/**
  * Should this error move the turn to another brain?
  *
  * isFailoverError covers what any brain can hit — rate limits, outages, a bad

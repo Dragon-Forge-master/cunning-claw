@@ -39,3 +39,23 @@ test("unstamp leaves text that merely starts with a bracket alone", () => {
   assert.equal(unstampUserMessage("[10:42] hello"), "hello");
   assert.equal(unstampUserMessage("[3h 5m since the previous message] [10:42] hello"), "hello");
 });
+
+test("a heartbeat's window is recent and always opens on an operator message", async () => {
+  const { recentWindow } = await import("./history-view.js");
+  const msgs: { role: string; content: unknown }[] = [];
+  for (let i = 0; i < 20; i++) {
+    msgs.push(user(`[10:${String(i).padStart(2, "0")}] message ${i}`));
+    msgs.push({ role: "assistant", content: [{ type: "tool_use", id: `t${i}`, name: "x", input: {} }] });
+    msgs.push({ role: "user", content: [{ type: "tool_result", tool_use_id: `t${i}`, content: "ok" }] });
+    msgs.push(reply(`done ${i}`));
+  }
+  const w = recentWindow(msgs, 12);
+  assert.ok(w.length <= 12);
+  assert.equal(w[0].role, "user");
+  assert.equal(typeof w[0].content, "string", "never opens on a tool result");
+  assert.equal(w[w.length - 1], msgs[msgs.length - 1]);
+  // A window with no operator message inside it widens back to the nearest one.
+  const long = [user("start"), ...Array.from({ length: 30 }, (_, i) => ({ role: i % 2 ? "user" : "assistant", content: [{ type: "text", text: String(i) }] }))];
+  assert.equal(recentWindow(long, 5)[0], long[0]);
+  assert.equal(recentWindow(msgs.slice(0, 4), 12).length, 4, "short histories are untouched");
+});

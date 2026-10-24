@@ -128,11 +128,12 @@ export function toOpenAiMessages(
   return out;
 }
 
-export function openAiToolSchema() {
+export function openAiToolSchema(includeMcp = true) {
   // Flash, Pro, nano, DeepSeek and local Ollama all come through here.
   // Anthropic already receives MCP tools via agent.buildTools; this path used
   // to send only built-ins, so the model saw names in mcp_status and guessed.
-  return [...toolDefinitions, ...mcpToolDefinitions()].map((t) => ({
+  // A heartbeat leaves them out (includeMcp false): see agent.callBrain.
+  return [...toolDefinitions, ...(includeMcp ? mcpToolDefinitions() : [])].map((t) => ({
     type: "function" as const,
     function: {
       name: t.name,
@@ -154,6 +155,8 @@ export async function completeOpenAi(opts: {
   system: string;
   history: Anthropic.MessageParam[];
   onText: (delta: string) => void;
+  /** False leaves MCP connector schemas out of the request (heartbeats). */
+  mcpTools?: boolean;
   /** Aborted when the operator says stop, or the watchdog gives up on the turn. */
   signal?: AbortSignal;
 }): Promise<OpenAiCompletion> {
@@ -168,7 +171,7 @@ export async function completeOpenAi(opts: {
   const payload = {
     model: brain.model,
     max_tokens: opts.spec.maxTokens ?? config.maxTokens,
-    tools: openAiToolSchema(),
+    tools: openAiToolSchema(opts.mcpTools !== false),
     messages: toOpenAiMessages(opts.system, opts.history),
   };
 
