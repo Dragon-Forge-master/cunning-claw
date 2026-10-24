@@ -275,3 +275,24 @@ test("a bare password typed straight after the claw asked for one is recognised"
   assert.equal(isSecretReply("Which folder, sir?", "Documents"), false);
   assert.equal(isSecretReply("", "Tr0ub4dor&3"), false);
 });
+
+test("a passing mention of sudo, PIN or password does not eat the next reply", async () => {
+  // Review, 24 Oct: each of these replies was replaced as a "password".
+  const { isSecretReply } = await import("./redact.js");
+  const sudoCmd = "Run `sudo apt install piper-tts` in your terminal and tell me when it is done.";
+  for (const r of ["installed", "please", "/home/someone/notes.md"]) assert.equal(isSecretReply(sudoCmd, r), false, r);
+  assert.equal(isSecretReply("I can pin Opus or leave it on auto. Which do you want?", "AUTO"), false);
+  assert.equal(isSecretReply("The password field is fixed. Which file next?", "server.ts"), false);
+  assert.equal(isSecretReply("The PIN field now masks its input.", "yeah"), false);
+  // A real request still catches the bare answer.
+  assert.equal(isSecretReply("What's your sudo password?", "Tr0ub4dor&3"), true);
+  assert.equal(isSecretReply("Please enter the PIN from the card.", "4417"), true);
+});
+
+test("the password rule stays fast on a long hyphenated run", async () => {
+  const { redact } = await import("./redact.js");
+  const run = Array.from({ length: 40000 }, (_, i) => "w" + i).join("-");
+  const t0 = Date.now();
+  redact(run);
+  assert.ok(Date.now() - t0 < 1500, `took ${Date.now() - t0} ms`);
+});

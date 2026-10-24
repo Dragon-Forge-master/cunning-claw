@@ -116,7 +116,9 @@ function passwordRules(): Rule[] {
       // Not after "/" or ".", so "/etc/passwd: Permission denied" is a path,
       // not a disclosure. [ \t] rather than \s: a "Password:" label must not
       // reach across a newline and take the next line's first word.
-      re: new RegExp(String.raw`(?<![\w./\\])((?:[A-Za-z0-9]+[_-])*${KW}${FOR}["']?[ \t]*[=:][ \t]*)${VALUE}`, "gi"),
+      // The prefix is bounded: unbounded, it was retried from every "-" in a long
+      // hyphenated run, and redact() took 50 s on 489 KB (review, 24 Oct).
+      re: new RegExp(String.raw`(?<![\w./\\])((?:[A-Za-z0-9]{1,40}[_-]){0,6}${KW}${FOR}["']?[ \t]*[=:][ \t]*)${VALUE}`, "gi"),
       replace: replaceWith(false) as Rule["replace"] },
     { name: "password-said",
       re: new RegExp(String.raw`(\b${OWNER}[ \t]+(?:${OWNER}[ \t]+)*${KW}${FOR}[ \t]+(?:is|was)[ \t]*:?[ \t]*)${VALUE}`, "gi"),
@@ -264,13 +266,23 @@ export function isCleanBase64(s: unknown): boolean {
  * the secret. The doctrine forbids asking in the first place; this is for
  * when a weak brain asks anyway.
  */
-const ASKS_FOR_SECRET = /\b(password|passphrase|passcode|pin code|pin|sudo)\b/i;
-const ORDINARY_ANSWER = /^(y|n|yes|no|nope|ok|okay|sure|done|cancel|stop|skip|later|thanks|cheers|continue|go|carry on|and|what|why|how|sorry)[.!?]*$/i;
+// An actual request for one, not a passing mention: the first version fired
+// on "sudo" or "pin" anywhere, and the doctrine now tells the claw to hand out
+// sudo commands, so "installed", "AUTO" or "server.ts" were being thrown away
+// as passwords (review, 24 Oct).
+const ASKS_FOR_SECRET = new RegExp(
+  String.raw`\b(enter|type|send|give|provide|paste|share|tell me|what(?:'s| is)|need|require)\b[^.!?\n]{0,40}\b(password|passphrase|passcode|pin(?: code| number)?)\b` +
+  String.raw`|\b(password|passphrase|passcode|pin)\b[^.!?\n]{0,20}\?`,
+  "i",
+);
+const ORDINARY_ANSWER = /^(y|n|yes|yeah|yep|no|nope|ok|okay|sure|done|installed|finished|please|cancel|stop|skip|later|thanks|cheers|continue|go|carry on|and|what|why|how|sorry|auto)[.!?]*$/i;
 
 export function isSecretReply(previousAssistant: string, reply: string): boolean {
   const r = reply.trim();
   if (!ASKS_FOR_SECRET.test(previousAssistant)) return false;
   if (!r || /\s/.test(r) || r.length < 4 || r.length > 128) return false;
   if (ORDINARY_ANSWER.test(r)) return false;
+  // A path or a file name is an answer, not a secret.
+  if (/[\/~]/.test(r) || /\.[a-z0-9]{1,5}$/i.test(r)) return false;
   return true;
 }

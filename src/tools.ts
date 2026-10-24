@@ -15,7 +15,7 @@ import * as mcp from "./mcp.js";
 import * as tax from "./tax.js";
 import { classifyBrowserAction, needsApproval as browserNeedsApproval, taskGrantActive } from "./consequence.js";
 import { snapshot, record } from "./filewatch.js";
-import { addLesson, listSkills, readSkill, writeSkill } from "./workspace.js";
+import { addLesson, cleanLesson, listSkills, readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
 import { generateImage } from "./imagine.js";
 import { collapseHome, expandHome, isSensitivePath } from "./paths.js";
@@ -64,6 +64,9 @@ export interface ToolContext {
  * because that is exactly when text written by a stranger could be asking to
  * become a standing order. The operator decides; the card must not hide it.
  */
+/** The longest skill body an approval card will carry, so every word is seen. */
+export const MAX_CARD_BODY = 3500;
+
 export function outsideContentWarning(ctx: Pick<ToolContext, "tainted">): string {
   return ctx.tainted?.()
     ? "⚠ This turn read outside content (a web page, an email, a chat or a connector). Check the text below says only what you would have said yourself.\n\n"
@@ -2431,21 +2434,34 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "set_timer": return setTimer(input, ctx);
       case "skill_read": return readSkill(String(input.name ?? ""));
       case "skill_write": {
+        // The card shows exactly what will be written, all of it. It used to
+        // show the first 1,500 characters of the body and write the rest
+        // unseen: a skill is read back as instructions, so whatever sits past
+        // the cut becomes a standing order nobody approved.
+        const body = String(input.body ?? "");
+        if (body.length > MAX_CARD_BODY) {
+          return `That skill is ${body.length} characters; an approval card shows at most ${MAX_CARD_BODY}. Shorten it so the operator can read all of it before approving.`;
+        }
         const ok = await ctx.requestApproval(
           "Write a CUNNING CLAW skill",
-          outsideContentWarning(ctx) + `${input.name}\n${input.description}\n\n${String(input.body ?? "").slice(0, 1500)}`,
+          outsideContentWarning(ctx) + `${input.name}\n${input.description}\n\n${body}`,
         );
         if (!ok) return "The user declined to write the skill.";
         return writeSkill(String(input.name), String(input.description), String(input.body));
       }
       case "skill_learn": {
+        // Clean once, show that, store that. The card used to show the raw
+        // text cut at 400 while cleanLesson collapsed whitespace and kept 300,
+        // so padding could push a second sentence off the card and into the
+        // stored lesson (reproduced in review, 24 Oct).
+        const lesson = cleanLesson(String(input.lesson ?? ""));
         const ok = await ctx.requestApproval(
           `Teach the ${String(input.name ?? "")} skill a lesson`,
-          outsideContentWarning(ctx) + `Skill: ${input.name}\nLesson: ${String(input.lesson ?? "").slice(0, 400)}\n\n` +
-            "It is added to that skill's lessons on this machine and read with the skill from now on.",
+          outsideContentWarning(ctx) + `Skill: ${input.name}\nLesson: ${lesson}\n\n` +
+            "It is added to that skill's lessons on this machine, exactly as shown, and read with the skill from now on.",
         );
         if (!ok) return "The operator declined the lesson.";
-        return addLesson(String(input.name ?? ""), String(input.lesson ?? "")).message;
+        return addLesson(String(input.name ?? ""), lesson).message;
       }
       case "landscape": return landscapeSummary();
       case "generate_image": {
