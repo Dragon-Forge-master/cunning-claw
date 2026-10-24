@@ -185,8 +185,18 @@ test("an outage is logged once going down and once coming back, not once per mis
   assert.match(logs[1], /recovered after 200 failed attempt\(s\)/);
 });
 
+test("a single missed poll that the next one clears is a blip, and says nothing", async () => {
+  // October: ~375 down/recovered pairs, nearly all one miss over ~30 s.
+  // Fails with QUIET_MISSES at 0.
+  const { logs } = await runPolls(["fail", [], "fail", [], "fail", []]);
+  assert.deepEqual(logs, []);
+  const two = await runPolls(["fail", "fail", []]);
+  assert.equal(two.logs.length, 2, "two in a row is an outage, logged down and back up");
+  assert.match(two.logs[1], /recovered after 2 failed attempt/);
+});
+
 test("a 409 Conflict is called out once, as a second claw on the same bot", async () => {
-  const { logs } = await runPolls(["fail", "conflict", "conflict", "conflict", [], "conflict", []]);
+  const { logs } = await runPolls(["fail", "fail", "conflict", "conflict", "conflict", [], "conflict", []]);
   const conflictLines = logs.filter((l) => /Conflict/.test(l));
   // Once per outage, however many 409s — and a second outage says it again.
   assert.equal(conflictLines.length, 2);

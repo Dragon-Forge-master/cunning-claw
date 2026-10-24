@@ -143,10 +143,14 @@ function duration(ms: number): string {
  * was gone. The journal learnt nothing from line two onwards and lost
  * everything else in the noise.
  */
+/** Misses in a row that stay out of the log: one blip is not an outage. */
+const QUIET_MISSES = 1;
+
 export class PollHealth {
   private failures = 0;
   private downSince = 0;
   private conflictSaid = false;
+  private downSaid = false;
 
   constructor(private readonly now: () => number) {}
 
@@ -159,8 +163,13 @@ export class PollHealth {
       // is the one failure the operator has to fix by hand.
       if (!this.conflictSaid) line = CONFLICT_LINE;
       this.conflictSaid = true;
-    } else if (this.failures === 1) {
+    } else if (this.failures > QUIET_MISSES && !this.downSaid) {
+      // A single miss that the next poll clears is a network blip, not an
+      // outage: October's log had ~375 down/recovered pairs, almost all "after
+      // 1 failed attempt over 29s". Polling is only called down on the second
+      // miss in a row, timed from the first.
       line = `Telegram: polling down — ${reason(err)}. Retrying with backoff up to every ${duration(POLL_BACKOFF_CAP_MS)}; quiet until it recovers.`;
+      this.downSaid = true;
     }
     if (this.failures === 1) this.downSince = this.now();
     return { delayMs: pollBackoffMs(this.failures), line };
@@ -169,10 +178,12 @@ export class PollHealth {
   /** Record a good poll; returns the recovery line if polling had been down. */
   succeeded(): string | null {
     if (!this.failures) return null;
+    const said = this.downSaid || this.conflictSaid;
     const line = `Telegram: polling recovered after ${this.failures} failed attempt(s) over ${duration(this.now() - this.downSince)}.`;
     this.failures = 0;
     this.conflictSaid = false;
-    return line;
+    this.downSaid = false;
+    return said ? line : null;
   }
 }
 
