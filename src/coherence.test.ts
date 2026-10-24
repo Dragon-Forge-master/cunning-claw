@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { signature, read, notice, repeatedAcrossTurns, dominantShape } from "./coherence.js";
+import { signature, read, notice, repeatedAcrossTurns, dominantShape, admit, type CoherenceReading } from "./coherence.js";
 
 /**
  * The repetition ratio comes from the Quantum Coherence Kernel:
@@ -105,4 +105,133 @@ test("a turn's shape is whatever it mostly did", () => {
   assert.equal(dominantShape([]), "");
   assert.equal(dominantShape(["a", "b", "a", "a"]), "a");
   assert.equal(dominantShape(["only"]), "only");
+});
+
+// ---------------------------------------------------------------------------
+// Narrowed on 24 Oct: the operator's history showed the warning firing four
+// times (40–50%) during productive coding, because file and search tools were
+// identified by key names alone and refused calls kept counting. The sequences
+// below are shaped like that day's work and like the loops the guard is for.
+// ---------------------------------------------------------------------------
+
+/** Feed calls through admit() in order, as runTurn does, and keep every reading. */
+function play(calls: [string, unknown][]): { shapes: string[]; readings: CoherenceReading[] } {
+  const shapes: string[] = [];
+  const readings = calls.map(([name, input]) => admit(shapes, name, input));
+  return { shapes, readings };
+}
+
+const todo = (n: number) => ["todo", {
+  items: Array.from({ length: 4 }, (_, i) => ({ content: `step ${i + 1}`, status: i < n ? "completed" : "pending" })),
+}] as [string, unknown];
+
+test("the 24 Oct coding pattern — glob, grep, read, edit — is not circling", () => {
+  const { readings } = play([
+    todo(0),
+    ["glob", { pattern: "src/**/*.ts" }],
+    ["grep", { pattern: "repetition" }],
+    ["grep", { pattern: "coherence\\.read" }],
+    ["read_file", { path: "src/coherence.ts" }],
+    ["grep", { pattern: "shapes.push" }],
+    ["grep", { pattern: "signature\\(" }],
+    ["read_file", { path: "src/agent.ts", offset: 820, limit: 80 }],
+    todo(1),
+    ["edit_file", { path: "src/coherence.ts", oldString: "a", newString: "b" }],
+    ["edit_file", { path: "src/agent.ts", oldString: "c", newString: "d" }],
+    todo(2),
+    ["run_command", { command: "npm test" }],
+    ["read_file", { path: "src/coherence.ts" }],
+  ]);
+  for (const r of readings) assert.equal(r.verdict, "execute", `ratio ${r.ratio} after ${r.total} calls`);
+});
+
+test("five greps and a read is research, not 67% repetition", () => {
+  const { readings } = play([
+    ["grep", { pattern: "runTurn" }],
+    ["grep", { pattern: "executeTool", path: "src" }],
+    ["grep", { pattern: "UNTRUSTED_TOOLS" }],
+    ["grep", { pattern: "fenceUntrusted", glob: "**/*.ts" }],
+    ["grep", { pattern: "requestApproval" }],
+    ["read_file", { path: "src/server.ts" }],
+  ]);
+  assert.equal(readings.at(-1)!.ratio, 0);
+  assert.ok(readings.every((r) => r.verdict === "execute"));
+});
+
+test("file and search tools are identified by their target, spelt any way", () => {
+  assert.notEqual(sig("edit_file", { path: "src/a.ts" }), sig("edit_file", { path: "src/b.ts" }));
+  assert.notEqual(sig("grep", { pattern: "a" }), sig("grep", { pattern: "b" }));
+  assert.notEqual(sig("grep", { pattern: "a", path: "src" }), sig("grep", { pattern: "a", path: "docs" }));
+  // Trivial respellings are still the same move.
+  assert.equal(sig("read_file", { path: "./src/a.ts" }), sig("read_file", { path: "src//a.ts" }));
+  assert.equal(sig("glob", { pattern: "src/**/*.ts", path: "src/" }), sig("glob", { pattern: "SRC/**/*.ts ", path: "src" }));
+  assert.equal(sig("grep", { pattern: "handleClick" }), sig("grep", { pattern: " handleclick", path: "" }));
+  // Paging through a long file is progress; the top of the file is the top.
+  assert.notEqual(sig("read_file", { path: "a.ts", offset: 1 }), sig("read_file", { path: "a.ts", offset: 400 }));
+  assert.equal(sig("read_file", { path: "a.ts", offset: 1 }), sig("read_file", { path: "a.ts" }));
+});
+
+test("a URL's query string never reaches the signature", () => {
+  // Signatures are persisted by recordTurnShape; tokens live in query strings.
+  const s = sig("http_request", { url: "https://api.example.test/v1/items?token=synthetic-abc123#x" });
+  assert.equal(s, "http_request:api.example.test/v1/items");
+  assert.notEqual(sig("browser_open", { url: "https://a.test/one" }), sig("browser_open", { url: "https://a.test/two" }));
+});
+
+test("repeated todo updates are bookkeeping, not a move", () => {
+  const { readings, shapes } = play([
+    ["read_file", { path: "src/coherence.ts" }],
+    ["grep", { pattern: "signature" }],
+    todo(0), todo(1), todo(2), todo(3),
+  ]);
+  for (const r of readings) assert.equal(r.verdict, "execute");
+  assert.equal(readings.at(-1)!.total, 2, "only the real work is judged");
+  assert.equal(shapes.length, 6, "…but the turn still knows tools ran");
+  assert.equal(dominantShape(shapes), "read_file:src/coherence.ts");
+});
+
+test("the same grep, respelt, is still caught", () => {
+  // Spelling variations get past the exact-match Ouroboros guard; this is the
+  // circling the ratio exists for.
+  const { readings } = play([
+    ["grep", { pattern: "handleClick", path: "public" }],
+    ["grep", { pattern: "handleclick", path: "public/" }],
+    ["grep", { pattern: " handleClick ", path: "./public" }],
+    ["grep", { pattern: "HANDLECLICK", path: "public" }],
+    ["grep", { pattern: "handleClick", path: "public//" }],
+  ]);
+  assert.equal(readings.at(-1)!.verdict, "halt");
+});
+
+test("the same failing command, edited around, is still caught", () => {
+  const { readings } = play([
+    ["run_command", { command: "npm test" }],
+    ["read_file", { path: "src/discord.ts" }],
+    ["edit_file", { path: "src/discord.ts", oldString: "a", newString: "b" }],
+    ["run_command", { command: "npm test -- --test-name-pattern=4014" }],
+    ["edit_file", { path: "src/discord.ts", oldString: "b", newString: "c" }],
+    ["run_command", { command: "npm test 2>&1 | tail -20" }],
+    ["edit_file", { path: "src/discord.ts", oldString: "c", newString: "d" }],
+    ["run_command", { command: "npm test" }],
+  ]);
+  assert.equal(readings[4].verdict, "ruminate", "nudged first");
+  assert.equal(readings.at(-1)!.verdict, "halt", "then stopped");
+});
+
+test("a refused call does not count, so a real change of tack can still run", () => {
+  const stuck: [string, unknown] = ["grep", { pattern: "handleClick" }];
+  const { shapes, readings } = play([
+    ["grep", { pattern: "handleClick" }],
+    ["grep", { pattern: "handleclick" }],
+    ["grep", { pattern: "HandleClick" }],
+    stuck, stuck, stuck, stuck, stuck,
+  ]);
+  assert.equal(readings[3].verdict, "halt");
+  assert.equal(shapes.length, 3, "five refusals added nothing to the tally");
+
+  // A genuinely different approach is judged on its merits, not drowned by
+  // the refusals before it…
+  assert.notEqual(admit(shapes, "run_command", { command: "git log -S handleClick" }).verdict, "halt");
+  // …while the same move again is refused again.
+  assert.equal(admit(shapes, ...stuck).verdict, "halt");
 });

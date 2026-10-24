@@ -884,8 +884,8 @@ export async function runTurn(
             };
           }
 
-          shapes.push(coherence.signature(tu.name, tu.input));
-          const reading = coherence.read(shapes);
+          // Only calls that are allowed to run join the tally (see admit).
+          const reading = coherence.admit(shapes, tu.name, tu.input);
           if (reading.verdict === "halt") {
             events.emit("notice", { message: coherence.notice(reading) });
             return {

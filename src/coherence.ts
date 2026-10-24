@@ -15,7 +15,10 @@ import { config, DATA_DIR } from "./config.js";
  *
  * Signature is deliberately coarser than the Ouroboros key — the tool name plus
  * the *shape* of its argument rather than the argument itself — so near-misses
- * collapse together and the circling becomes visible.
+ * collapse together and the circling becomes visible. Coarse is not the same as
+ * blind, though: for file and search tools the shape includes WHICH file or
+ * pattern, because four greps for four different things is research, not
+ * circling (see FOCUS below for how that was learned).
  *
  * A high ratio is a smell, not a crime: re-reading the same file while editing
  * it is legitimate. So this nudges first and only refuses when the turn is
@@ -30,14 +33,85 @@ export interface CoherenceReading {
 }
 
 /**
+ * Tools that keep the books on the work rather than doing it.
+ *
+ * Updating the todo list after every step is exactly what the system prompt
+ * asks for, and each update has the same shape, so counting them made a
+ * well-organised turn look like a stuck one. They are left out of the ratio
+ * altogether — they can neither trip the guard nor dilute a real loop.
+ */
+const BOOKKEEPING = new Set(["todo"]);
+
+/**
+ * For file and search tools, the arguments that say what the call is ABOUT.
+ *
+ * Until 24 Oct these tools were identified by their key names alone, so
+ * grep{pattern:"a"} and grep{pattern:"b"} were "the same move". The operator's
+ * history that day showed the warning firing four times (40–50%) through
+ * ordinary coding — four greps for four different things, two edit_file calls
+ * on two different files — and five greps plus one read is already 67%, past
+ * the halt line, on precisely the glob/grep/read pattern the system prompt
+ * tells the claw to use. The path or pattern is the work; the same one
+ * repeated is still circling, and still caught.
+ *
+ * read_file's offset is part of the identity because paging through a long
+ * file is progress, like turning pages; reading the same window again is not.
+ */
+const FOCUS: Record<string, readonly string[]> = {
+  read_file: ["path", "offset"],
+  write_file: ["path"],
+  edit_file: ["path"],
+  grep: ["pattern", "path", "glob"],
+  glob: ["pattern", "path"],
+  memory_search: ["query"],
+  browser_open: ["url"],
+  http_request: ["url"],
+};
+
+/** Longest slice of an argument kept in a signature — they are persisted. */
+const FOCUS_MAX = 120;
+
+/**
+ * Make trivially different spellings of one argument compare equal, so that
+ * `./src/a.ts` vs `src/a.ts/`, or "Foo " vs "foo", are still one move.
+ *
+ * URLs keep only host and path: the query string is where tokens live, and
+ * signatures are written to disk by recordTurnShape.
+ */
+function normalise(key: string, value: unknown): string {
+  if (value === undefined || value === null || value === "") return "";
+  // Reading from line 1 is reading from the top, however it was spelt.
+  if (key === "offset") return Number(value) > 1 ? String(Number(value)) : "";
+  if (typeof value !== "string") return String(value);
+  let v = value.trim();
+  if (key === "url") {
+    try {
+      const u = new URL(v);
+      v = `${u.host}${u.pathname}`.replace(/\/+$/, "");
+    } catch { /* not a URL — fall through and treat it as text */ }
+    return v.toLowerCase().slice(0, FOCUS_MAX);
+  }
+  if (key === "path") {
+    v = v.replace(/\\/g, "/").replace(/\/{2,}/g, "/").replace(/^(\.\/)+/, "");
+    if (v.length > 1) v = v.replace(/\/+$/, "");
+    return v.slice(0, FOCUS_MAX);
+  }
+  // Patterns and queries: case and spacing are not a different idea.
+  return v.toLowerCase().replace(/\s+/g, " ").slice(0, FOCUS_MAX);
+}
+
+/**
  * Collapse an argument to its shape.
  *
  * For a shell command the verb is the identity: `ls -l` and `ls -la /tmp`
- * collapse to one move, while `git status` and `npm test` stay apart. For
- * structured input the keys are the shape — read_file{path} repeated is
- * circling whichever path it names.
+ * collapse to one move, while `git status` and `npm test` stay apart. For file
+ * and search tools the target is the identity (FOCUS). For other structured
+ * input the keys are the shape — read_email 1, 2, 3 is the same move.
+ *
+ * Returns "" for a bookkeeping call: it ran, but it is not a move.
  */
 export function signature(name: string, input: unknown): string {
+  if (BOOKKEEPING.has(name)) return "";
   const obj = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
 
   // For a shell command the verb *is* the identity — "git status" and
@@ -55,13 +129,25 @@ export function signature(name: string, input: unknown): string {
     return `${name}:${words.slice(0, 2).join(" ")}`;
   }
 
-  // For structured input the keys are the shape: read_file{path} repeated is
-  // circling whichever path it names, and read_email 1,2,3 is the same move.
+  const focus = FOCUS[name];
+  if (focus) {
+    const parts = focus.map((k) => normalise(k, obj[k]));
+    // Trailing empties are dropped so grep{pattern} and grep{pattern, path:""}
+    // agree; the separator keeps "a" + "b" from meeting "ab" + "".
+    while (parts.length > 1 && parts[parts.length - 1] === "") parts.pop();
+    return `${name}:${parts.join(" @ ")}`;
+  }
+
+  // For other structured input the keys are the shape: read_email 1,2,3 is the
+  // same move.
   const keys = Object.keys(obj).sort().join(",");
   return `${name}:{${keys}}`;
 }
 
-export function read(signatures: string[]): CoherenceReading {
+export function read(all: string[]): CoherenceReading {
+  // Bookkeeping calls are recorded (so the turn knows tools ran) but not
+  // judged.
+  const signatures = all.filter((s) => s !== "");
   const total = signatures.length;
   const unique = new Set(signatures).size;
   const ratio = total === 0 ? 0 : 1 - unique / total;
@@ -75,6 +161,24 @@ export function read(signatures: string[]): CoherenceReading {
   if (ratio >= halt) return { total, unique, ratio, verdict: "halt" };
   if (ratio >= warn) return { total, unique, ratio, verdict: "ruminate" };
   return { total, unique, ratio, verdict: "execute" };
+}
+
+/**
+ * Judge the next call, and record it only if it is allowed to run.
+ *
+ * A refused call must not count. It used to: agent.ts pushed the signature,
+ * then read the ratio, so once a turn reached the halt line every further
+ * attempt — even a genuinely different one — was added to the tally and
+ * refused, and the ratio could never come back down. A guard with no way out
+ * is not a guard, it is the end of the turn. Now a refused attempt leaves the
+ * tally untouched, so a real change of tack is judged on its merits while the
+ * same move again is refused again.
+ */
+export function admit(shapes: string[], name: string, input: unknown): CoherenceReading {
+  const sig = signature(name, input);
+  const reading = read([...shapes, sig]);
+  if (reading.verdict !== "halt") shapes.push(sig);
+  return reading;
 }
 
 /** What to tell the model when it is going round in circles. */
@@ -120,9 +224,9 @@ const KEEP_TURNS = 6;
 
 /** The move a turn was mostly made of, or "" when it did nothing much. */
 export function dominantShape(signatures: string[]): string {
-  if (!signatures.length) return "";
   const counts = new Map<string, number>();
-  for (const s of signatures) counts.set(s, (counts.get(s) ?? 0) + 1);
+  // A turn that mostly ticked off its todo list was not "mostly todo".
+  for (const s of signatures) if (s !== "") counts.set(s, (counts.get(s) ?? 0) + 1);
   let best = "";
   let n = 0;
   for (const [sig, count] of counts) {
