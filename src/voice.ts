@@ -10,6 +10,74 @@ let enabled = config.voice.enabled;
 /** Every process in the current speech pipeline (synth + playback). */
 let active: ChildProcess[] = [];
 
+/**
+ * Whether the claw is audibly speaking, told to whoever is listening.
+ *
+ * On 24 Oct the HUD's microphone heard the claw's own reply through the
+ * speakers and sent it back as the operator's message — the server spoke and
+ * nothing told the browser, so nothing paused the mic. The listener is
+ * injected rather than this module importing the SSE bus, because voice.ts is
+ * a leaf; it is also what lets the tests watch speech start and stop with no
+ * sound card.
+ */
+export type SpeakingState = { on: boolean; text?: string };
+let speakingListener: (state: SpeakingState) => void = () => {};
+let speakingNow = false;
+/** What is being said, so a mic that hears it anyway can recognise the echo. */
+let spokenText = "";
+/** A new utterance must be announced even if speech was already running. */
+let announce = false;
+
+export function onSpeaking(fn: ((state: SpeakingState) => void) | null): void {
+  speakingListener = fn ?? (() => {});
+}
+
+export function isSpeaking(): boolean {
+  return speakingNow;
+}
+
+/**
+ * Report a change in "is anything audible", derived from the live process
+ * list rather than from each engine remembering to say so — every way speech
+ * ends (finished, cancelled, the binary missing) empties that list.
+ */
+function settle(): void {
+  const now = active.length > 0;
+  if (now && (!speakingNow || announce)) {
+    speakingNow = true;
+    announce = false;
+    tell({ on: true, text: spokenText });
+  } else if (!now) {
+    announce = false;
+    if (speakingNow) {
+      speakingNow = false;
+      tell({ on: false });
+      // The heartbeat that waited its turn (see react()) speaks now.
+      if (queued) {
+        const next = queued;
+        queued = null;
+        void speak(next);
+      }
+    }
+  }
+}
+
+function tell(state: SpeakingState): void {
+  try { speakingListener(state); } catch { /* a listener's fault must not break speech */ }
+}
+
+/** Called by speak()/sample() just before spawning a new utterance. */
+function begin(text: string): void {
+  spokenText = text;
+  announce = true;
+}
+
+/** Child processes are spawned through this so the tests can stand in for audio. */
+let spawnProc: typeof spawn = spawn;
+export function setSpawnForTests(fn: typeof spawn | null): void {
+  spawnProc = fn ?? spawn;
+}
+
 export type VoiceEngine = "piper" | "spd-say" | "say" | "sapi" | "none";
 let availability: { engine: VoiceEngine; detail: string; player?: string } | null = null;
 
@@ -74,8 +142,10 @@ export function wrapPcmToWav(pcm: Buffer, sampleRate: number): Buffer {
   return Buffer.concat([header, pcm]);
 }
 
-export function resetVoiceDetectForTests(): void {
-  availability = null;
+export function resetVoiceDetectForTests(
+  found: { engine: VoiceEngine; detail: string; player?: string } | null = null,
+): void {
+  availability = found;
 }
 
 /**
@@ -161,16 +231,68 @@ export function setEnabled(value: boolean): void {
   if (!enabled) cancel();
 }
 
-/** Stop anything currently being spoken. */
+/** Stop anything currently being spoken, and anything waiting to be. */
 export function cancel(): void {
+  queued = null;
+  halt();
+  settle();
+}
+
+/** The kind of the turn in flight; turns are serial (agent.ts is a singleton). */
+let turnKind: "user" | "heartbeat" = "user";
+/** One heartbeat reply held back until the current speech has finished. */
+let queued: string | null = null;
+
+/**
+ * What the speakers do for each event the HUD is sent. broadcast() hands every
+ * event here, so these rules live beside the voice and are tested without a
+ * server; the server runs on the operator's machine, so speaking here comes
+ * out of their speakers regardless of browser TTS support.
+ */
+export function react(event: string, data: unknown): void {
+  const d = (data ?? {}) as Record<string, unknown>;
+  if (event === "turn_start") {
+    turnKind = d.kind === "heartbeat" ? "heartbeat" : "user";
+    // A heartbeat starting must not cut the operator's speech off mid-sentence.
+    if (turnKind !== "heartbeat") cancel();
+  } else if (event === "turn_done") {
+    // "Stop", said or pressed, ends the turn with stopped: true and must end
+    // the voice too. It used to send turn_done with empty text, which matched
+    // nothing here, so a long reply (maxChars 0 is unlimited) talked on for
+    // minutes after the operator said stop.
+    if (d.stopped) cancel();
+    else if (typeof d.text === "string" && d.text) {
+      // A heartbeat with news used to call speak(), which halts whatever is
+      // playing — cutting the operator's own reply off mid-read. It waits.
+      if (turnKind === "heartbeat" && speakingNow) queued = d.text;
+      else void speak(d.text);
+    }
+  } else if (event === "timer_fired") void speak(`Sir, a reminder: ${String(d.label ?? "")}`);
+  else if (event === "approval_request") void speak("Requesting authorisation, sir.");
+  else if (event === "agent_error" && typeof d.message === "string" && d.message) void speak(d.message);
+  else if (event === "preview" && d.action === "open") void speak("Preview on the glass, sir.");
+  // heartbeat_ok is silent on purpose — OpenClaw-style.
+}
+
+/**
+ * Kill the pipeline without reporting it. speak() halts the old utterance and
+ * starts the new one in the same tick, and a stop-then-start pair would tell
+ * the HUD to resume listening for no reason.
+ */
+function halt(): void {
+  const wasSpeaking = active.length > 0;
   for (const proc of active) {
     try { proc.stdout?.unpipe(); } catch { /* noop */ }
     try { proc.stdin?.destroy(); } catch { /* noop */ }
     try { proc.kill("SIGKILL"); } catch { /* already gone */ }
   }
   active = [];
-  if (availability?.engine === "spd-say") {
-    try { spawn("spd-say", ["-C"], { stdio: "ignore" }).unref(); } catch { /* noop */ }
+  // Killing spd-say does not stop speech-dispatcher, so flush it — but only
+  // when something was speaking. The flush is a separate process that races
+  // the next utterance, and fired unconditionally it cut a fresh reply off a
+  // fifth of a second in (seen driving the HUD, after spd-say gained -w).
+  if (wasSpeaking && availability?.engine === "spd-say") {
+    try { spawnProc("spd-say", ["-C"], { stdio: "ignore" }).unref(); } catch { /* noop */ }
   }
 }
 
@@ -190,8 +312,23 @@ export function cleanForSpeech(text: string): string {
 
 function track(procs: ChildProcess[]): void {
   active = procs;
-  const clear = () => { active = active.filter((p) => !procs.includes(p)); };
-  for (const p of procs) p.on("exit", clear);
+  for (const p of procs) {
+    // Only the process that exited leaves the list. Dropping the whole group
+    // when Piper finished synthesising meant paplay, still playing the
+    // buffered audio, was neither cancellable nor counted as speaking — so the
+    // mic reopened mid-sentence on exactly the long replies that echo worst.
+    p.on("exit", () => {
+      active = active.filter((x) => x !== p);
+      settle();
+    });
+    // A pipeline missing a stage makes no sound: end it all, and say so.
+    p.on("error", () => {
+      for (const q of procs) if (q !== p) { try { q.kill("SIGKILL"); } catch { /* gone */ } }
+      active = active.filter((x) => !procs.includes(x));
+      settle();
+    });
+  }
+  settle();
 }
 
 function swallow(proc: ChildProcess): void {
@@ -206,7 +343,7 @@ function speakWithPiperStream(text: string, model: string, player: string): void
 
   // piper --output-raw  →  paplay / aplay (raw s16le mono). Streaming, so
   // audio starts before the whole utterance has been synthesised.
-  const synth = spawn(
+  const synth = spawnProc(
     PIPER_BIN,
     [
       "-m", model,
@@ -223,7 +360,7 @@ function speakWithPiperStream(text: string, model: string, player: string): void
   const playArgs = player === "paplay"
     ? ["--raw", `--rate=${rate}`, "--format=s16le", "--channels=1"]
     : ["-r", rate, "-f", "S16_LE", "-c", "1", "-q", "-t", "raw"];
-  const play = spawn(player, playArgs, { stdio: ["pipe", "ignore", "ignore"] });
+  const play = spawnProc(player, playArgs, { stdio: ["pipe", "ignore", "ignore"] });
 
   swallow(synth);
   swallow(play);
@@ -247,7 +384,7 @@ function speakWithPiperStream(text: string, model: string, player: string): void
  */
 function speakWithPiperFile(text: string, model: string, player: string): void {
   const piper = config.voice.piper;
-  const synth = spawn(
+  const synth = spawnProc(
     PIPER_BIN,
     [
       "-m", model,
@@ -264,8 +401,10 @@ function speakWithPiperFile(text: string, model: string, player: string): void {
   const chunks: Buffer[] = [];
   synth.stdout.on("data", (c: Buffer) => chunks.push(c));
   synth.stdin.end(text);
-  track([synth]);
 
+  // Registered before track() so the hand-over to the player happens before
+  // the synth leaves the list — otherwise speech reads as over for a moment
+  // between synthesis and playback, and the mic would reopen into it.
   synth.on("exit", (code) => {
     const pcm = Buffer.concat(chunks);
     if (code !== 0 || pcm.length === 0) {
@@ -279,7 +418,7 @@ function speakWithPiperFile(text: string, model: string, player: string): void {
       console.error(`Voice: could not write WAV: ${(err as Error).message}`);
       return;
     }
-    const play = spawn(player, [wav], { stdio: "ignore" });
+    const play = spawnProc(player, [wav], { stdio: "ignore" });
     swallow(play);
     play.on("error", (err) => {
       console.error(`Voice playback failed (${player}): ${err.message}`);
@@ -290,6 +429,7 @@ function speakWithPiperFile(text: string, model: string, player: string): void {
     });
     track([play]);
   });
+  track([synth]);
 }
 
 function speakWithPiper(text: string, model: string, player: string): void {
@@ -301,8 +441,11 @@ function speakWithSpd(text: string): void {
   const s = config.voice.spd;
   const args = ["-l", s.language, "-r", String(s.rate), "-p", String(s.pitch), "-i", String(s.volume)];
   if (s.voiceName) args.push("-y", s.voiceName);
-  args.push("--", text);
-  const child = spawn("spd-say", args, { stdio: "ignore" });
+  // -w keeps spd-say alive until the words have been spoken. Without it the
+  // client hands the text to speech-dispatcher and exits at once, so the
+  // process list — and the HUD's mic — would think speech ended as it began.
+  args.push("-w", "--", text);
+  const child = spawnProc("spd-say", args, { stdio: "ignore" });
   swallow(child);
   child.on("error", (err) => {
     console.error(`Voice: spd-say failed: ${err.message}`);
@@ -311,7 +454,7 @@ function speakWithSpd(text: string): void {
 }
 
 function speakWithSay(text: string, voice = sayVoice()): void {
-  const child = spawn("say", ["-v", voice, "--", text], { stdio: "ignore" });
+  const child = spawnProc("say", ["-v", voice, "--", text], { stdio: "ignore" });
   swallow(child);
   child.on("error", (err) => {
     console.error(`Voice: say failed: ${err.message}`);
@@ -337,7 +480,8 @@ export async function speak(text: string): Promise<void> {
   const clean = max > 0 ? cleanForSpeech(text).slice(0, max) : cleanForSpeech(text);
   if (!clean) return;
 
-  cancel();
+  halt();
+  begin(clean);
   try {
     const model = resolveModel();
     if (engine === "piper" && model && player) speakWithPiper(clean, model, player);
@@ -347,6 +491,8 @@ export async function speak(text: string): Promise<void> {
     else console.error(`Voice produced no audio: ${detail}`);
   } catch (err) {
     console.error(`Voice: engine vanished mid-run: ${(err as Error).message}`);
+  } finally {
+    settle(); // nothing spawned is "not speaking", including after the halt
   }
 }
 
@@ -355,7 +501,7 @@ export async function speak(text: string): Promise<void> {
  * Runs detached so it can be cancelled the same way as the other engines.
  */
 function speakWithSapi(text: string): void {
-  const child = spawn(
+  const child = spawnProc(
     POWERSHELL,
     psArgs(
       "Add-Type -AssemblyName System.Speech;" +
@@ -364,9 +510,7 @@ function speakWithSapi(text: string): void {
     { stdio: "ignore" },
   );
   child.on("error", () => {});
-  active = [child];
-  const clear = () => { active = active.filter((p) => p !== child); };
-  child.on("exit", clear);
+  track([child]);
 }
 
 /** Speak a sample with an explicit Piper model or spd/`say` voice — used by the auditioner. */
@@ -376,24 +520,29 @@ export async function sample(opts: { model?: string; voiceName?: string; text: s
     console.error(`Voice produced no audio: ${(await detect()).detail}`);
     return;
   }
-  cancel();
+  halt();
   const clean = cleanForSpeech(opts.text);
-  if (opts.model) {
-    const p = path.isAbsolute(opts.model) ? opts.model : path.join(ROOT, opts.model);
-    if (fs.existsSync(p)) return void speakWithPiper(clean, p, player ?? config.voice.piper.player);
+  begin(clean);
+  try {
+    if (opts.model) {
+      const p = path.isAbsolute(opts.model) ? opts.model : path.join(ROOT, opts.model);
+      if (fs.existsSync(p)) return void speakWithPiper(clean, p, player ?? config.voice.piper.player);
+    }
+    if (opts.voiceName && engine === "spd-say") {
+      const saved = config.voice.spd.voiceName;
+      config.voice.spd.voiceName = opts.voiceName;
+      speakWithSpd(clean);
+      config.voice.spd.voiceName = saved;
+      return;
+    }
+    if (opts.voiceName && engine === "say") {
+      speakWithSay(clean, opts.voiceName);
+      return;
+    }
+    await speak(clean);
+  } finally {
+    settle(); // a sample that spawned nothing must still end the halted speech
   }
-  if (opts.voiceName && engine === "spd-say") {
-    const saved = config.voice.spd.voiceName;
-    config.voice.spd.voiceName = opts.voiceName;
-    speakWithSpd(clean);
-    config.voice.spd.voiceName = saved;
-    return;
-  }
-  if (opts.voiceName && engine === "say") {
-    speakWithSay(clean, opts.voiceName);
-    return;
-  }
-  await speak(clean);
 }
 
 /** Piper voice models present on disk. */

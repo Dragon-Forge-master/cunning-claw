@@ -240,22 +240,123 @@ function pickVoice() {
 speechSynthesis.onvoiceschanged = pickVoice;
 pickVoice();
 
-function speak(text) {
+function speak(text, { after = false } = {}) {
   // When the server has a real TTS engine it speaks for us — don't double up.
   if (serverVoiceAvailable) return;
   if (!ttsEnabled || !("speechSynthesis" in window) || !text) return;
   if (speechSynthesis.getVoices().length === 0) return; // Chrome/Linux ships none
-  speechSynthesis.cancel();
+  // speechSynthesis queues by itself; letting a heartbeat wait is just not
+  // cancelling what is already being read.
+  if (!after) speechSynthesis.cancel();
   // Strip markdown-ish noise for cleaner speech
   const clean = text.replace(/[*_`#]/g, "").replace(/\[.*?\]\(.*?\)/g, "");
   const utter = new SpeechSynthesisUtterance(clean);
   if (cunningclawVoice) utter.voice = cunningclawVoice;
   utter.rate = 1.05;
   utter.pitch = 0.9;
-  utter.onstart = () => setState("SPEAKING");
-  utter.onend = () => setState("STANDBY");
+  // The browser's own voice reaches the mic just as the server's does.
+  // Chrome ends a cancelled utterance with "error" (interrupted), not "end".
+  utter.onstart = () => clawSpeaking("browser", true, clean);
+  utter.onend = () => clawSpeaking("browser", false);
+  utter.onerror = () => clawSpeaking("browser", false);
   speechSynthesis.speak(utter);
 }
+
+// ---------------------------------------------------------------------------
+// The mic must not hear the claw
+// ---------------------------------------------------------------------------
+// On 24 Oct an operator message shared 35 five-word runs with the claw's
+// previous reply: the mic had heard the speakers and posted the claw's words
+// back as the operator's. Nothing told the HUD when the server was talking.
+// Now the server says so ("speaking"), browser TTS says so, and while either
+// is talking every recogniser is paused and its results thrown away. The
+// echo check below is the second guard, for whatever slips past the first.
+let serverSpeaking = false;
+let browserSpeaking = false;
+let lastSpoken = "";       // what the speakers said last, for the echo check
+let resumeTimer = null;    // the quiet tail after speech, before the mic reopens
+// Room echo and the audio buffer outlast the process by a beat; reopening the
+// instant speech "ends" caught the last words.
+const RESUME_AFTER_SPEECH_MS = 600;
+// Reassigned by the mic block when recognition is supported.
+let pauseDictation = () => {};
+let resumeDictation = () => {};
+
+const isClawSpeaking = () => serverSpeaking || browserSpeaking;
+/** True while anything the mic hears is likely the claw's own voice. */
+const mustNotHear = () => isClawSpeaking() || resumeTimer !== null;
+
+function clawSpeaking(source, on, text) {
+  if (source === "server") serverSpeaking = on;
+  else browserSpeaking = on;
+  if (on && text) lastSpoken = text;
+  clearTimeout(resumeTimer);
+  resumeTimer = null;
+  if (isClawSpeaking()) {
+    if (state !== "THINKING") setState("SPEAKING");
+    pauseHearing();
+    return;
+  }
+  if (state === "SPEAKING") setState(recognizer ? "LISTENING" : "STANDBY");
+  resumeTimer = setTimeout(() => {
+    resumeTimer = null;
+    if (!isClawSpeaking()) resumeHearing();
+  }, RESUME_AFTER_SPEECH_MS);
+}
+
+function pauseHearing() {
+  pauseDictation();
+  // abort(), not stop(): stop() still delivers what it already heard, which
+  // is exactly the claw's voice.
+  try { wakeRecognizer?.abort(); } catch { /* not running */ }
+}
+
+function resumeHearing() {
+  resumeDictation();
+  startWakeLoop();
+}
+
+/** The operator talking over the claw: stop the voice, wherever it comes from. */
+function silenceClaw() {
+  fetch("/api/voice/stop", { method: "POST" }).catch(() => {});
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  serverSpeaking = false;
+  browserSpeaking = false;
+  clearTimeout(resumeTimer);
+  resumeTimer = null;
+  if (state === "SPEAKING") setState("STANDBY");
+  resumeHearing();
+}
+
+function noteEchoDropped() {
+  addMsg("system", "The mic heard my own reply — left it out.");
+}
+
+// echo-guard:begin — src/voice.test.ts runs this exact block, so keep it
+// self-contained: no globals, no DOM.
+/**
+ * Is what the mic heard mostly the claw's last spoken reply?
+ * Compares five-word runs (shingles): more than 60% of the heard text's runs
+ * appearing in the reply is an echo. Under five words cannot be judged and is
+ * let through — short commands ("stop", "yes, do it") must never be eaten.
+ */
+function isOwnEcho(heard, spoken) {
+  const words = (s) => String(s || "").toLowerCase()
+    .replace(/['’]/g, "")             // "I'll" and "I’ll" are the same word
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .split(" ").filter(Boolean);
+  const runs = (w) => {
+    const out = [];
+    for (let i = 0; i + 5 <= w.length; i++) out.push(w.slice(i, i + 5).join(" "));
+    return out;
+  };
+  const heardRuns = runs(words(heard));
+  if (heardRuns.length === 0) return false;
+  const spokenRuns = new Set(runs(words(spoken)));
+  const shared = heardRuns.filter((r) => spokenRuns.has(r)).length;
+  return shared / heardRuns.length > 0.6;
+}
+// echo-guard:end
 
 // ---------------------------------------------------------------------------
 // Speech recognition (push-to-talk + wake word)
@@ -299,8 +400,13 @@ if (!SR) {
     input.value = parts.join(" ");
   };
 
+  // Paused while the claw speaks: the dictation stays open (the button stays
+  // red, the words so far stay in the box), only the recogniser is stopped.
+  let dictationPaused = false;
+
   const stopDictation = () => {
     recognizer = null;
+    dictationPaused = false;
     micBtn.classList.remove("listening");
     if (state === "LISTENING") setState("STANDBY");
     paint("");                 // drop any uncommitted interim text
@@ -313,63 +419,119 @@ if (!SR) {
     }
   };
 
-  micBtn.addEventListener("click", () => {
-    if (recognizer) { sendOnStop = true; recognizer.stop(); return; }
-
-    dictationBase = input.value;
-    finalSpeech = "";
-
-    recognizer = new SR();
-    recognizer.lang = "en-GB";
+  // One recogniser per stretch of listening; a pause for the claw's voice ends
+  // it and the resume starts a fresh one. Each checks it is still the current
+  // one, so a late "end" from the aborted recogniser cannot close dictation.
+  const openRecognizer = () => {
+    const r = new SR();
+    recognizer = r;
+    r.lang = "en-GB";
     // Keep listening through the pauses; a pause is not the end of a thought.
-    recognizer.continuous = true;
+    r.continuous = true;
     // Show the words landing, so it is obvious it is hearing you.
-    recognizer.interimResults = true;
+    r.interimResults = true;
 
-    recognizer.onresult = (e) => {
+    r.onresult = (e) => {
+      if (r !== recognizer || mustNotHear()) return;   // the claw's own voice
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const chunk = e.results[i][0].transcript;
-        if (e.results[i].isFinal) finalSpeech += (finalSpeech ? " " : "") + chunk.trim();
-        else interim += chunk;
+        if (e.results[i].isFinal) {
+          if (isOwnEcho(chunk, lastSpoken)) { noteEchoDropped(); continue; }
+          finalSpeech += (finalSpeech ? " " : "") + chunk.trim();
+        } else interim += chunk;
       }
       paint(interim);
     };
 
-    recognizer.onend = stopDictation;
-    recognizer.onerror = (e) => {
+    r.onend = () => {
+      if (r !== recognizer || dictationPaused) return;
+      stopDictation();
+    };
+    r.onerror = (e) => {
+      if (r !== recognizer || dictationPaused) return;
       if (e.error !== "aborted" && e.error !== "no-speech") {
         addMsg("system", `⚠ Microphone: ${e.error}`);
       }
       sendOnStop = false;      // an error is never the operator saying "send"
       stopDictation();
     };
+    r.start();
+  };
 
+  pauseDictation = () => {
+    if (!recognizer || dictationPaused) return;
+    dictationPaused = true;
+    paint("");
+    try { recognizer.abort(); } catch { /* already ended */ }
+    input.placeholder = "paused while I speak — press the mic to talk over me";
+  };
+
+  resumeDictation = () => {
+    if (!recognizer || !dictationPaused) return;
+    dictationPaused = false;
+    if (state === "STANDBY") setState("LISTENING");
+    input.placeholder = "listening — press the mic again to send";
+    openRecognizer();
+  };
+
+  const startDictation = () => {
+    dictationBase = input.value;
+    finalSpeech = "";
     micBtn.classList.add("listening");
     setState("LISTENING");
     input.placeholder = "listening — press the mic again to send";
-    recognizer.start();
+    openRecognizer();
+  };
+
+  micBtn.addEventListener("click", () => {
+    // Talking over the claw means "be quiet, I'm speaking" — never "send".
+    // silenceClaw() reopens a paused dictation; a closed one opens now.
+    if (isClawSpeaking()) {
+      silenceClaw();
+      if (!recognizer) startDictation();
+      return;
+    }
+    // In the quiet tail after speech the recogniser is still paused, and a
+    // stop() on it would never end — the press would do nothing. Reopen first.
+    if (resumeTimer !== null) {
+      clearTimeout(resumeTimer);
+      resumeTimer = null;
+      resumeHearing();
+    }
+    if (recognizer) { sendOnStop = true; recognizer.stop(); return; }
+    startDictation();
   });
 }
 
 function startWakeLoop() {
   if (!SR || !wakeEnabled) return;
-  wakeRecognizer = new SR();
-  wakeRecognizer.lang = "en-GB";
-  wakeRecognizer.continuous = true;
-  wakeRecognizer.interimResults = false;
-  wakeRecognizer.onresult = (e) => {
+  // resumeHearing() restarts it once the claw has finished speaking, and one
+  // listener at a time — a second would hear every command twice.
+  if (wakeRecognizer || mustNotHear()) return;
+  const r = new SR();
+  wakeRecognizer = r;
+  r.lang = "en-GB";
+  r.continuous = true;
+  r.interimResults = false;
+  r.onresult = (e) => {
+    if (mustNotHear()) return;
     const text = e.results[e.results.length - 1][0].transcript.trim();
     const m = text.match(/(?:cunning\s+)?claw[,.]?\s*(.*)/i);
     if (m) {
+      // The claw saying its own name aloud is not the operator calling it.
+      if (isOwnEcho(text, lastSpoken)) { noteEchoDropped(); return; }
       const cmd = m[1].trim();
       if (cmd) sendMessage(cmd);
       else speak("Yes, sir?");
     }
   };
-  wakeRecognizer.onend = () => { if (wakeEnabled) setTimeout(startWakeLoop, 400); };
-  wakeRecognizer.onerror = () => {};
-  try { wakeRecognizer.start(); } catch { /* already running */ }
+  r.onend = () => {
+    if (wakeRecognizer === r) wakeRecognizer = null;
+    if (wakeEnabled) setTimeout(startWakeLoop, 400);
+  };
+  r.onerror = () => {};
+  try { r.start(); } catch { wakeRecognizer = null; /* already running */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -386,7 +548,9 @@ function sseData(e) {
   }
 }
 
-es.addEventListener("turn_start", () => {
+let turnKind = "user";      // "heartbeat" turns must not talk over a reply
+es.addEventListener("turn_start", (e) => {
+  turnKind = sseData(e).kind === "heartbeat" ? "heartbeat" : "user";
   setState("THINKING");
   currentBubble = null;
 });
@@ -481,9 +645,12 @@ es.addEventListener("heartbeat_ok", (e) => {
 });
 
 es.addEventListener("turn_done", (e) => {
-  const { text } = sseData(e);
+  const { text, stopped } = sseData(e);
   setState("STANDBY");
-  speak(text);
+  // "Stop" stops the browser's voice as well as the server's.
+  if (stopped) { if ("speechSynthesis" in window) speechSynthesis.cancel(); return; }
+  // A heartbeat's news waits behind a reply being read, as on the server.
+  speak(text, { after: turnKind === "heartbeat" });
 });
 
 es.addEventListener("agent_error", (e) => {
@@ -613,7 +780,20 @@ function paintConnection() {
   $("conn-dot").title = sseConnected ? "Connected to CUNNING CLAW" : "Disconnected — retrying";
 }
 
-es.addEventListener("hello", () => { sseConnected = true; paintConnection(); });
+es.addEventListener("hello", () => {
+  sseConnected = true;
+  paintConnection();
+  // A restarted server is silent; one still talking re-sends "speaking" right
+  // after hello. Either way a stale "on" from before the drop must not keep
+  // the mic shut for good.
+  if (serverSpeaking) clawSpeaking("server", false);
+});
+
+// The server's voice (Piper/espeak) starting and stopping — see clawSpeaking().
+es.addEventListener("speaking", (e) => {
+  const { on, text } = sseData(e);
+  clawSpeaking("server", Boolean(on), typeof text === "string" ? text : "");
+});
 es.onopen = () => { sseConnected = true; paintConnection(); };
 es.onerror = () => { sseConnected = false; paintConnection(); };
 

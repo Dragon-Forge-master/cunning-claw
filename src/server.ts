@@ -106,18 +106,22 @@ function broadcast(event: string, data: unknown): void {
   const payload = `event: ${event}\ndata: ${JSON.stringify(redactDeep(data))}\n\n`;
   for (const res of sseClients) res.write(payload);
 
-  // Server-side voice: the server runs on the user's machine, so speaking
-  // here comes out of their speakers regardless of browser TTS support.
-  const d = data as any;
-  if (event === "turn_done" && d?.text) void voice.speak(d.text);
-  else if (event === "timer_fired") void voice.speak(`Sir, a reminder: ${d?.label ?? ""}`);
-  else if (event === "approval_request") void voice.speak("Requesting authorisation, sir.");
-  // A heartbeat starting must not cut the operator's speech off mid-sentence.
-  else if (event === "turn_start" && d?.kind !== "heartbeat") voice.cancel();
-  else if (event === "agent_error" && d?.message) void voice.speak(d.message);
-  else if (event === "preview" && d?.action === "open") void voice.speak("Preview on the glass, sir.");
-  // heartbeat_ok is silent on purpose — OpenClaw-style.
+  // Server-side voice: which events speak, which stop it, and why a heartbeat
+  // waits its turn, live in voice.react() where they are tested.
+  voice.react(event, data);
 }
+
+// The HUD's mic must know when the speakers are talking, or it hears the claw
+// and posts the reply back as the operator's words (24 Oct). The spoken text
+// rides along so the HUD can also recognise an echo that slips past the pause.
+voice.onSpeaking((state) => broadcast("speaking", state));
+
+// Pressing the mic while the claw is talking means "stop, I'm speaking".
+// Behind requireAuth like the rest of /api.
+app.post("/api/voice/stop", (_req, res) => {
+  voice.cancel();
+  res.json({ ok: true });
+});
 
 app.get("/api/events", (req, res) => {
   res.writeHead(200, {
@@ -126,6 +130,8 @@ app.get("/api/events", (req, res) => {
     Connection: "keep-alive",
   });
   res.write("event: hello\ndata: {}\n\n");
+  // A HUD that (re)connects mid-sentence would otherwise open its mic into it.
+  if (voice.isSpeaking()) res.write(`event: speaking\ndata: ${JSON.stringify({ on: true })}\n\n`);
   sseClients.add(res);
   const keepalive = setInterval(() => res.write(": ping\n\n"), 25000);
   req.on("close", () => {
@@ -199,7 +205,11 @@ app.post("/api/cancel", (_req, res) => {
   const stopped = cancelTurn("operator asked to stop");
   if (stopped) {
     broadcast("notice", { message: `Abandoned the request after ${Math.round(forMs / 1000)}s.` });
-    broadcast("turn_done", { text: "" });
+    // stopped: true is what silences the voice (voice.react) and browser TTS.
+    broadcast("turn_done", { text: "", stopped: true });
+  } else {
+    // No turn running, but the last reply may still be being read aloud.
+    voice.cancel();
   }
   res.json({ ok: true, stopped });
 });
@@ -221,7 +231,9 @@ app.post("/api/chat", (req, res) => {
         ? `Stopped, sir — abandoned after ${Math.round(forMs / 1000)}s.`
         : "Nothing was running, sir.",
     });
-    broadcast("turn_done", { text: "" });
+    // Also when nothing was running: "stop" while he is reading a reply out
+    // means stop reading. stopped: true is what voice.react() cancels on.
+    broadcast("turn_done", { text: "", stopped: true });
     return res.json({ ok: true, stopped });
   }
   const brainReply = applyBrainCommand(message);
