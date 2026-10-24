@@ -43,3 +43,6 @@ workspace/skills/.venv-cad/
 workspace/skills/*/LESSONS.md
 workspace/scratch/
 .claude/worktrees/
+
+# A separate project the claw cloned here on 9 Oct; not part of this repo.
+gods-eye-view/
