@@ -54,3 +54,18 @@ export function stampUserMessage(text: string, now: Date, lastAt: number | null)
 export function unstampUserMessage(text: string): string {
   return text.replace(/^(?:\[[^\]]* since the previous message\] )?\[\d{2}:\d{2}\] /, "");
 }
+
+/**
+ * The local calendar date and wall-clock time, for anything a person reads by
+ * day: the journal, skill lessons. toISOString is UTC, so under BST every
+ * journal line sat an hour behind the HUD, and lines written between 00:00
+ * and 00:59 landed in yesterday's file, where todayJournalSnippet never
+ * looked. Found 24 Oct, the day before the clocks went back.
+ */
+export function localDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function localTime(d: Date): string {
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, "0")).join(":");
+}

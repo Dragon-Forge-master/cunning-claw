@@ -2,20 +2,21 @@ import fs from "node:fs";
 import path from "node:path";
 import { redact } from "./redact.js";
 import { DATA_DIR } from "./config.js";
+import { localDate, localTime } from "./when.js";
 import { WORKSPACE, defuse, wrapRecorded } from "./workspace.js";
 
 export const JOURNAL_DIR = path.join(DATA_DIR, "journal");
 
-export function appendJournal(role: "operator" | "cunningclaw", text: string): void {
-  const day = new Date().toISOString().slice(0, 10);
+export function appendJournal(role: "operator" | "cunningclaw", text: string, now = new Date()): void {
+  const day = localDate(now);
   fs.mkdirSync(JOURNAL_DIR, { recursive: true });
-  const line = `- ${new Date().toISOString().slice(11, 19)} ${role}: ${defuse(text).replace(/\s+/g, " ").slice(0, 400)}\n`;
+  const line = `- ${localTime(now)} ${role}: ${defuse(text).replace(/\s+/g, " ").slice(0, 400)}\n`;
   fs.appendFileSync(path.join(JOURNAL_DIR, `${day}.md`), redact(line));
 }
 
 /** Last lines of today's log, for the per-turn context block. */
-export function todayJournalSnippet(limit = 20): string {
-  const day = new Date().toISOString().slice(0, 10);
+export function todayJournalSnippet(limit = 20, now = new Date()): string {
+  const day = localDate(now);
   const file = path.join(JOURNAL_DIR, `${day}.md`);
   try {
     const lines = fs.readFileSync(file, "utf-8").split("\n").filter((l) => l.trim());

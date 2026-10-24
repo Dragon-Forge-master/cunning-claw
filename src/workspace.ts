@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { ROOT } from "./config.js";
 import { redact } from "./redact.js";
+import { localDate } from "./when.js";
 
 export const WORKSPACE = path.join(ROOT, "workspace");
 
@@ -248,7 +249,7 @@ export function addLesson(name: string, lesson: string, root: string = SKILLS_RO
       message: `The ${skill.name} skill has ${MAX_LESSONS} lessons, the most it keeps. Ask the operator to fold them into the skill itself (skill_write) before adding more.`,
     };
   }
-  const date = today.toISOString().slice(0, 10);
+  const date = localDate(today);
   const file = lessonsFile(skill.dir, root);
   const header = existing.length ? "" : `# Lessons for ${skill.name}\n\nAdded by the claw after real use, each approved by the operator. Per machine; not in git.\n\n`;
   fs.appendFileSync(file, redact(`${header}- ${date}: ${text}\n`));
@@ -265,7 +266,7 @@ export function writeSkill(name: string, description: string, body: string): str
     // must record who actually wrote it.
     `---\nname: ${slug}\nlabel: ${slug.replace(/-/g, " ")}\ncategory: general\n` +
     `description: ${description.trim().slice(0, 1024)}\n` +
-    `author: cunningclaw\nwritten: ${new Date().toISOString().slice(0, 10)}\n---\n\n${body.trim()}\n`;
+    `author: cunningclaw\nwritten: ${localDate(new Date())}\n---\n\n${body.trim()}\n`;
   fs.writeFileSync(path.join(dir, "SKILL.md"), redact(md));
   return `Wrote skill "${slug}" to workspace/skills/${slug}/SKILL.md`;
 }
