@@ -268,3 +268,25 @@ test("under \"Allow for this task\", a config edit still stops at a card and is 
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("long output keeps its end, where the verdict is, and says what was cut", async () => {
+  const { clipMiddle } = await import("./tools.js");
+  const body = Array.from({ length: 4000 }, (_, i) => `ok ${i + 1} - a test`).join("\n") + "\n# tests 396\n# pass 396\n# fail 0";
+  const out = clipMiddle(body, 20000);
+  assert.ok(out.length < 20200);
+  assert.match(out, /# pass 396\n# fail 0$/, "the summary survives");
+  assert.match(out, /^ok 1 - a test/);
+  assert.match(out, /characters omitted from the middle/);
+  assert.equal(clipMiddle("short", 100), "short");
+});
+
+test("a failing command's stdout reaches the model, not only its stderr", async () => {
+  // node:test prints failures and its summary to stdout and exits 1; the claw
+  // used to see stderr alone. Fails with the old err.stderr-only detail.
+  const { executeTool } = await import("./tools.js");
+  const ctx = { emit() {}, requestApproval: async () => true };
+  const out = String(await executeTool("run_command", { command: `node -e "console.log('# tests 3'); console.log('# fail 1'); console.error('boom'); process.exit(1)"` }, ctx));
+  assert.match(out, /Command failed \(exit 1\)/);
+  assert.match(out, /# fail 1/);
+  assert.match(out, /boom/);
+});

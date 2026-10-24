@@ -1371,6 +1371,19 @@ function isShellSpawnFailure(err: any): boolean {
   return err?.code === "ENOENT" && /^spawn/.test(String(err?.syscall ?? err?.message ?? ""));
 }
 
+/**
+ * Keep the start and the end of long output, and say what was cut. Output used
+ * to be sliced from the front, so on 24 Oct a 396-test run lost everything
+ * after test 104, including the pass/fail summary, and the claw still said
+ * "verified passing". The end of a command's output is where the verdict is.
+ */
+export function clipMiddle(text: string, max: number, head = Math.floor(max / 4)): string {
+  if (text.length <= max) return text;
+  const tail = max - head;
+  const cut = text.length - head - tail;
+  return `${text.slice(0, head)}\n[… ${cut} characters omitted from the middle; the end follows …]\n${text.slice(-tail)}`;
+}
+
 async function execIn(command: string, cwd: string): Promise<string> {
   // cmd.exe treats every newline as a new command — a multi-line quoted
   // python -c that bash swallows whole gets shredded here, "succeeding" into
@@ -1394,7 +1407,7 @@ async function execIn(command: string, cwd: string): Promise<string> {
       const out = [stdout && `stdout:\n${stdout}`, stderr && `stderr:\n${stderr}`]
         .filter(Boolean)
         .join("\n");
-      return (`(cwd ${cwd})\n` + (out || "(no output)")).slice(0, 20000);
+      return `(cwd ${cwd})\n` + clipMiddle(out || "(no output)", 20000);
     } catch (err: any) {
       if (isShellSpawnFailure(err)) {
         // Node reports a MISSING CWD with the exact same "spawn <shell> ENOENT"
@@ -1434,8 +1447,11 @@ async function execIn(command: string, cwd: string): Promise<string> {
           `its path instead: the HUD serves it itself. Do not retry this command.`
         );
       }
-      const detail = (err.stderr || err.message || "").slice(0, 5000);
-      return `(cwd ${cwd})\nCommand failed (exit ${err.code ?? "?"}):\n${detail}`;
+      // A failing command's stdout matters as much as its stderr: node:test,
+      // jest and most build tools print the failures and the summary there.
+      const detail = [err.stdout && `stdout:\n${err.stdout}`, err.stderr && `stderr:\n${err.stderr}`]
+        .filter(Boolean).join("\n") || String(err.message ?? "");
+      return `(cwd ${cwd})\nCommand failed (exit ${err.code ?? "?"}):\n${clipMiddle(detail, 12000)}`;
     }
   }
 }
