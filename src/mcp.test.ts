@@ -499,3 +499,27 @@ test("a hostile MCP tool name cannot write outside the untrusted fence", () => {
   // The hostile text may remain INSIDE the attribute — neutered, it is just
   // data there. What must not happen is it escaping into model-visible prose.
 });
+
+test("union and intersection tool schemas keep their parameters for OpenAI-style brains", () => {
+  // 9 Oct: a top-level anyOf made OpenRouter refuse the whole request. The
+  // first fix deleted the keyword and every parameter with it.
+  const union = jsonSchemaForOpenAi({ anyOf: [
+    { type: "object", properties: { url: { type: "string" }, size: { type: "number" } }, required: ["url", "size"] },
+    { type: "object", properties: { path: { type: "string" }, size: { type: "number" } }, required: ["path", "size"] },
+  ] }) as any;
+  assert.equal(union.anyOf, undefined);
+  assert.deepEqual(Object.keys(union.properties).sort(), ["path", "size", "url"]);
+  assert.deepEqual(union.required, ["size"], "only what every alternative requires");
+
+  const both = jsonSchemaForOpenAi({ type: "object", allOf: [
+    { properties: { owner: { type: "string" } }, required: ["owner"] },
+    { properties: { repo: { type: "string" } }, required: ["repo"] },
+  ] }) as any;
+  assert.equal(both.allOf, undefined);
+  assert.deepEqual(Object.keys(both.properties).sort(), ["owner", "repo"]);
+  assert.deepEqual([...both.required].sort(), ["owner", "repo"]);
+
+  const plain = jsonSchemaForOpenAi({ type: "object", properties: { q: { type: "string" } }, required: ["q"], enum: [1] }) as any;
+  assert.deepEqual(plain.required, ["q"]);
+  assert.equal(plain.enum, undefined);
+});

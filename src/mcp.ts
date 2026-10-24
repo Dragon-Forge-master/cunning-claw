@@ -340,6 +340,32 @@ export function schemaArgHint(schema: Record<string, unknown> | undefined): stri
   return keys.length ? keys.join(", ") : "";
 }
 
+function objectParts(list: unknown): Record<string, any>[] {
+  return Array.isArray(list) ? list.filter((v) => v && typeof v === "object" && !Array.isArray(v)) as Record<string, any>[] : [];
+}
+
+function mergeVariants(schema: Record<string, any>): void {
+  const props: Record<string, unknown> = { ...(schema.properties && typeof schema.properties === "object" ? schema.properties : {}) };
+  const required = new Set<string>(Array.isArray(schema.required) ? schema.required : []);
+  for (const part of objectParts(schema.allOf)) {
+    Object.assign(props, part.properties ?? {});
+    for (const r of Array.isArray(part.required) ? part.required : []) required.add(r);
+  }
+  const alternatives = [...objectParts(schema.anyOf), ...objectParts(schema.oneOf)];
+  if (alternatives.length) {
+    for (const v of alternatives) for (const [k, sch] of Object.entries(v.properties ?? {})) if (!(k in props)) props[k] = sch;
+    const common = alternatives
+      .map((v) => new Set<string>(Array.isArray(v.required) ? v.required : []))
+      .reduce((a, b) => new Set([...a].filter((x) => b.has(x))));
+    for (const r of common) required.add(r);
+  }
+  for (const forbidden of ["oneOf", "anyOf", "allOf", "enum", "const", "not"]) delete schema[forbidden];
+  schema.properties = props;
+  const req = [...required].filter((r) => r in props);
+  if (req.length) schema.required = req;
+  else delete schema.required;
+}
+
 /**
  * OpenAI-compatible brains (Gemini via OpenRouter, local Ollama, …) reject
  * anything that is not a JSON-Schema object. MCP servers sometimes send a
@@ -359,6 +385,17 @@ export function jsonSchemaForOpenAi(raw: unknown): Record<string, unknown> {
     return { type: "object", properties: { value: clone } };
   }
   clone.type = "object";
+
+  // OpenAI-style function definitions refuse top-level oneOf, anyOf, allOf,
+  // enum, const and not: on 9 Oct one such tool (Replicate's) made OpenRouter
+  // reject the whole request, every tool with it. Deleting them, as the claw's
+  // own first fix did, emptied union-shaped tools of every parameter, so the
+  // model could never learn the argument names. Merge instead: allOf parts
+  // all apply (union properties and required); anyOf/oneOf variants are
+  // alternatives (union properties, require only what every variant
+  // requires). The server still validates the exact shape.
+  mergeVariants(clone);
+
   if (!clone.properties || typeof clone.properties !== "object" || Array.isArray(clone.properties)) {
     clone.properties = {};
   }
