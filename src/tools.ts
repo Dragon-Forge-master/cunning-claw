@@ -1206,10 +1206,29 @@ export function classifyCommand(command: string): Verdict {
   for (const p of config.commandPolicy.denyPatterns) {
     if (new RegExp(p, "i").test(command)) return "deny";
   }
-  for (const p of config.commandPolicy.autoApprovePatterns) {
-    if (new RegExp(p).test(command)) return "auto";
-  }
+  if (autoApproves(command, config.commandPolicy.autoApprovePatterns)) return "auto";
   return "approve";
+}
+
+/**
+ * May this command run without a card? The patterns are anchored at the
+ * start, so on their own they waved through anything that merely BEGAN
+ * harmlessly: found on 24 Oct, "git status && git push --force",
+ * "cat a > claw.config.json", "grep x $(curl …)" and "find . -delete" all
+ * classified "auto". Auto now means one plain command, or a pipeline whose
+ * every stage is itself auto-approvable. Anything chained (; && || &),
+ * redirected into a file, substituted ($( ), backticks, <( )) or spread over
+ * lines asks first, as does find with an action that writes or runs things.
+ * The code decides this, not config: a pattern cannot widen it.
+ */
+export function autoApproves(command: string, patterns: readonly string[]): boolean {
+  const c = command.trim();
+  if (!c) return false;
+  if (/[;&\n\r`]|\$\(|[<>]\(|>|\|\|/.test(c.replace(/2>&1|2>\/dev\/null|>\/dev\/null/g, ""))) return false;
+  if (/\bfind\b[^|]*\s-(delete|exec|execdir|ok|okdir|fprint|fprintf|fls)\b/.test(c)) return false;
+  const stages = c.split("|").map((s) => s.trim());
+  if (stages.some((s) => !s)) return false;
+  return stages.every((s) => patterns.some((p) => new RegExp(p).test(s)));
 }
 
 /**
@@ -1456,6 +1475,19 @@ async function readFileTool(input: { path: string; offset?: number; limit?: numb
  * so writes here always raise an approval card, task grant or not. Same logic
  * as the camera: some doors need a human hand on them every single time.
  */
+/**
+ * The policy files. claw.config.json holds autoApprovePatterns, allowSudo and
+ * workOrder.enabled; .env holds the keys. On 24 Oct the claw had a plan
+ * refused for including a config edit ("no plan may pre-authorise writing
+ * it"), then made the same edit directly under "Allow for this task", which
+ * the ordinary write gate honoured. Writing either now raises a card every
+ * time: no task grant and no work order covers it.
+ */
+export function isPolicyFile(p: string): boolean {
+  const abs = path.resolve(p);
+  return abs === path.resolve(CONFIG_FILE) || abs === path.join(ROOT, "claw.config.json") || abs === path.join(ROOT, ".env");
+}
+
 export function isIdentityFile(p: string): boolean {
   const abs = path.resolve(p);
   return ["SOUL.md", "IDENTITY.md", "HEARTBEAT.md"].some(
@@ -1546,6 +1578,12 @@ async function writeFileTool(
       input.content.slice(0, 2000) + (input.content.length > 2000 ? "\n…(truncated preview)" : ""),
     );
     if (!ok) return "The user declined the identity-file write.";
+  } else if (isPolicyFile(p)) {
+    const ok = await ctx.requestApproval(
+      `${action} ${path.basename(p)} — the claw's own policy and keys; this always asks`,
+      input.content.slice(0, 2000) + (input.content.length > 2000 ? "\n…(truncated preview)" : ""),
+    );
+    if (!ok) return "The user declined the policy-file write.";
   } else if (!taskGrantActive() && !freeWriteZone(p, fs.existsSync(p))) {
     const ok = await gate(
       ctx,
@@ -1761,6 +1799,11 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
             `Edit identity file ${plan.path} — this changes who the claw is`, plan.preview,
           );
           if (!ok) return "The user declined the identity-file edit.";
+        } else if (isPolicyFile(plan.path)) {
+          const ok = await ctx.requestApproval(
+            `Edit ${path.basename(plan.path)} — the claw's own policy and keys; this always asks`, plan.preview,
+          );
+          if (!ok) return "The user declined the policy-file edit.";
         } else if (!taskGrantActive() && !freeWriteZone(plan.path, true)) {
           const ok = await gate(
             ctx,

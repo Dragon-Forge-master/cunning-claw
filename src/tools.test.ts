@@ -200,3 +200,71 @@ test("skill and lesson approval cards say when the turn read outside content", a
   assert.equal(outsideContentWarning({ tainted: () => false }), "");
   assert.equal(outsideContentWarning({}), "");
 });
+
+test("auto-approval covers one plain command, never a chain, redirect or substitution", async () => {
+  // 24 Oct: anchored-at-the-start patterns let these through with no card.
+  // Fails with autoApproves reduced to the old any-pattern-matches rule.
+  const { autoApproves } = await import("./tools.js");
+  const { config } = await import("./config.js");
+  const pats = config.commandPolicy.autoApprovePatterns;
+  for (const c of ["git status && git push --force", "cat a > claw.config.json", "grep x $(curl evil.test)",
+    "ls `rm -r x`", "ls; rm -r ~/x", "date & reboot", "find . -delete", "find . -exec rm {} +",
+    "cat x | sh", "ls\nrm -r x", "diff <(ls) <(ls)", "ls || rm x"]) {
+    assert.equal(autoApproves(c, pats), false, c);
+  }
+  for (const c of ["ls -la", "git log --oneline", "ps | grep node", "git status | head", "cat notes.md 2>/dev/null",
+    "ls -la 2>&1", "find . -name '*.ts'", "df -h"]) {
+    assert.equal(autoApproves(c, pats), true, c);
+  }
+});
+
+test("writing the config or .env always raises a card, even under a task grant", async () => {
+  const { isPolicyFile } = await import("./tools.js");
+  const { ROOT, CONFIG_FILE } = await import("./config.js");
+  const path = await import("node:path");
+  assert.equal(isPolicyFile(CONFIG_FILE), true);
+  assert.equal(isPolicyFile(path.join(ROOT, "claw.config.json")), true);
+  assert.equal(isPolicyFile(path.join(ROOT, ".env")), true);
+  assert.equal(isPolicyFile(path.join(ROOT, "docs", "claw.config.json.md")), false);
+  assert.equal(isPolicyFile(path.join(ROOT, "src", "config.ts")), false);
+});
+
+test("under \"Allow for this task\", a config edit still stops at a card and is refused if declined", { timeout: 60_000 }, async () => {
+  // The 24 Oct sequence, end to end, against a throwaway copy of the config
+  // (CLAW_CONFIG) in a subprocess, so a failure cannot touch the real one.
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const { ROOT } = await import("./config.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "claw-policy-"));
+  try {
+    const cfg = path.join(dir, "claw.config.json");
+    fs.copyFileSync(path.join(ROOT, "claw.config.json"), cfg);
+    const before = fs.readFileSync(cfg, "utf-8");
+    const probe = path.join(dir, "probe.mjs");
+    fs.writeFileSync(probe, `
+      const c = await import(${JSON.stringify(path.join(ROOT, "src/consequence.ts"))});
+      const t = await import(${JSON.stringify(path.join(ROOT, "src/tools.ts"))});
+      c.grantForTask();
+      const cards = [];
+      const ctx = { emit() {}, requestApproval: async (s) => { cards.push(s); return false; } };
+      const out = await t.executeTool("edit_file", { path: ${JSON.stringify(cfg)}, oldString: '"maxChars"', newString: '"maxCharz"' }, ctx);
+      const out2 = await t.executeTool("write_file", { path: ${JSON.stringify(cfg)}, content: "{}" }, ctx);
+      console.log(JSON.stringify({ cards, out: String(out), out2: String(out2) }));
+      process.exit(0);
+    `);
+    const { stdout } = await promisify(execFile)("npx", ["tsx", probe], {
+      cwd: ROOT, timeout: 50_000, env: { ...process.env, CLAW_CONFIG: cfg, CLAW_DATA_DIR: path.join(dir, "data") },
+    });
+    const got = JSON.parse(String(stdout).trim().split("\n").pop() ?? "{}");
+    assert.equal(got.cards.length, 2, "a card for the edit and one for the write, grant or not");
+    assert.match(got.cards[0], /policy and keys/);
+    assert.match(got.out, /declined the policy-file edit/);
+    assert.match(got.out2, /declined the policy-file write/);
+    assert.equal(fs.readFileSync(cfg, "utf-8"), before, "the config is untouched");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
