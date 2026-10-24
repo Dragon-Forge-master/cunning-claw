@@ -424,6 +424,11 @@ let turnStartedAt = 0;
 let turnKind: "user" | "heartbeat" = "user";
 /** Set when the operator asks to stop, or when the watchdog gives up on a turn. */
 let abortTurn: AbortController | null = null;
+/** Where the running turn began in history, so a stop can tidy it at once. */
+let currentTurnStart = 0;
+
+/** Thrown inside a turn that was stopped: it must not touch history again. */
+class TurnAbandoned extends Error {}
 
 /** How long a single turn may run before it is treated as wedged. */
 function maxTurnMs(): number {
@@ -445,6 +450,12 @@ export function turnInFlight(): { busy: boolean; forMs: number; kind: string } {
 export function cancelTurn(reason: string): boolean {
   if (!busy) return false;
   abortTurn?.abort(new Error(reason));
+  // Tidy the stopped turn's partial work now, synchronously, while nothing
+  // else can run: a tool call left without its result would poison every
+  // later request. The operator's own words stay; a heartbeat leaves nothing.
+  // The stopped turn itself never writes to history again (TurnAbandoned).
+  history.length = Math.min(history.length, currentTurnStart + (turnKind === "heartbeat" ? 0 : 1));
+  saveHistory(history);
   busy = false;
   abortTurn = null;
   return true;
@@ -619,7 +630,16 @@ export async function runTurn(
   busy = true;
   turnStartedAt = Date.now();
   turnKind = opts?.kind === "heartbeat" ? "heartbeat" : "user";
-  abortTurn = new AbortController();
+  // This turn's own controller. The module-level abortTurn is nulled by a
+  // stop and replaced by the next turn, so reading it later meant a stopped
+  // turn saw "not aborted" (or the next turn's signal), carried on calling
+  // the brain and running tools after "stop", then on its way out truncated
+  // history under the next turn and cleared busy while that turn still ran.
+  const turnAbort = new AbortController();
+  abortTurn = turnAbort;
+  const stillMine = () => {
+    if (turnAbort.signal.aborted) throw new TurnAbandoned("turn was stopped");
+  };
 
   // Belt and braces: even if nothing else notices, release the flag so the
   // next instruction is not refused.
@@ -710,6 +730,7 @@ export async function runTurn(
   // prevent. The journal line below already knew that; this one did not.
   const stampedAt = opts?.kind === "heartbeat" ? null : lastMessageAt;
   const turnStartsAt = history.length;
+  currentTurnStart = turnStartsAt;
   // A password typed straight after the claw asked for one goes nowhere:
   // not to history, not to the model, not to the journal.
   if (opts?.kind !== "heartbeat" && isSecretReply(lastAssistantText(history), userMessage)) {
@@ -763,7 +784,8 @@ export async function runTurn(
           const step = await callBrain(spec, events, (delta) => {
             finalText += delta;
             events.emit("text", { delta });
-          }, abortTurn?.signal, kind);
+          }, turnAbort.signal, kind);
+          stillMine();
           toolUses = step.toolUses;
           stopReason = step.stopReason;
           recordUsage(spec, step.usage);
@@ -775,7 +797,7 @@ export async function runTurn(
         } catch (err) {
           // An abandoned turn must not quietly resurrect itself on another
           // brain: cancelTurn() means stop, not "try somewhere else".
-          if (abortTurn?.signal.aborted) throw err;
+          if (turnAbort.signal.aborted) throw new TurnAbandoned("turn was stopped");
           let nxt = shouldFailOver(err, spec.id === routedBrainId) ? nextBrain(spec, kind) : null;
           // Out of credit: only a brain on a different key can help, so skip
           // the rest of the chain that shares this one.
@@ -843,7 +865,7 @@ export async function runTurn(
       // Nothing new starts once the turn has been abandoned. Tools are the
       // expensive, world-changing half — a stopped turn firing one more shell
       // command is exactly what "stop" is supposed to prevent.
-      if (abortTurn?.signal.aborted) break;
+      stillMine();
 
       // Execute all requested tools (concurrently), return results in ONE user message.
       const results = await Promise.all(
@@ -927,8 +949,9 @@ export async function runTurn(
           };
         }),
       );
+      stillMine();
       history.push({ role: "user", content: results });
-      if (abortTurn?.signal.aborted) break;
+      stillMine();
     }
 
     // What was this turn mostly made of? The in-turn guard resets every time
@@ -962,6 +985,9 @@ export async function runTurn(
     }
     return finalText;
   } catch (err) {
+    // A stopped turn was tidied by cancelTurn; whatever runs now (perhaps the
+    // operator's next message) owns history and the busy flag.
+    if (err instanceof TurnAbandoned || turnAbort.signal.aborted) return null;
     // Roll back the failed turn's partial work (tool calls without results
     // would poison every later request), but keep the operator's own message
     // and a one-line record of the failure. Dropping both meant "try again"
@@ -995,7 +1021,9 @@ export async function runTurn(
     return null;
   } finally {
     clearTimeout(watchdog);
-    busy = false;
-    abortTurn = null;
+    if (abortTurn === turnAbort) {
+      busy = false;
+      abortTurn = null;
+    }
   }
 }

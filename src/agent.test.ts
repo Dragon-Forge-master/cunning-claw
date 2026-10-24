@@ -189,3 +189,94 @@ test("the turn loop: quiet heartbeats leave no trace, silence is answered, a fai
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("stop means stop: a stopped turn never touches the next turn's history or busy flag", { timeout: 90_000 }, async () => {
+  // Reproduced by review on 24 Oct: cancelTurn nulled the shared controller,
+  // so the stopped turn read the NEXT turn's signal, and on its way out
+  // truncated history under it (the operator's new message vanished) and
+  // cleared busy while it still ran. Fake brain: requests whose last message
+  // contains SLOW wait 1.5 s; everything else answers at once.
+  const http = await import("node:http");
+  let requests = 0;
+  const server = http.createServer((req, res) => {
+    let body = "";
+    req.on("data", (c) => { body += c; });
+    req.on("end", () => {
+      requests++;
+      const msgs = JSON.parse(body).messages;
+      const last = String(msgs[msgs.length - 1]?.content ?? "");
+      const send = (text: string) => {
+        if (res.destroyed) return;
+        res.writeHead(200, { "Content-Type": "text/event-stream" });
+        res.end(`data: ${JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`);
+      };
+      const lastMsg = msgs[msgs.length - 1];
+      if (lastMsg?.role === "tool") return send("late reply");
+      if (/SLOW/.test(last)) {
+        // Ask for a tool; the probe's approval card then sits for 1.5 s.
+        res.writeHead(200, { "Content-Type": "text/event-stream" });
+        const call = { index: 0, id: "t1", type: "function", function: { name: "run_command", arguments: JSON.stringify({ command: "echo slow" }) } };
+        return res.end(`data: ${JSON.stringify({ choices: [{ delta: { tool_calls: [call] }, finish_reason: "tool_calls" }] })}\n\ndata: [DONE]\n\n`);
+      }
+      send("reply to " + last.replace(/^\[\d\d:\d\d\] /, ""));
+    });
+  });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
+  const port = (server.address() as import("node:net").AddressInfo).port;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "claw-stop-"));
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "claw.config.json"), "utf-8"));
+    cfg.brains = { default: "fake", heartbeat: "fake", fallbacks: ["fake"],
+      catalog: [{ id: "fake", label: "Fake", provider: "openai", model: "fake", baseUrl: `http://127.0.0.1:${port}/v1`, apiKeyEnv: "FAKE_BRAIN_KEY", thinking: false, price: { in: 0, out: 0 } }] };
+    cfg.routing = { ...cfg.routing, trustedBrains: ["fake"], cheapBrain: "fake", capableBrain: "fake" };
+    for (const k of ["heartbeat", "telegram", "discord", "mcp"]) cfg[k] = { ...(cfg[k] ?? {}), enabled: false };
+    const cfgPath = path.join(dir, "stop.json");
+    fs.writeFileSync(cfgPath, JSON.stringify(cfg));
+    const probe = path.join(dir, "probe.mjs");
+    fs.writeFileSync(probe, `
+      const m = await import(${JSON.stringify(path.join(ROOT, "src/agent.ts"))});
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      // The operator presses stop while an approval card is still up.
+      const events = { emit() {}, requestApproval: async () => { await sleep(1500); return true; } };
+      const texts = () => m.getHistory().map((h) => typeof h.content === "string" ? h.content : (h.content.find?.((b) => b.type === "text")?.text ?? ""));
+      const out = {};
+      // A user turn, stopped mid-request, then the next message at once.
+      const first = m.runTurn("SLOW first", events);
+      await sleep(400);
+      out.cancelled = m.cancelTurn("operator asked to stop");
+      const second = await m.runTurn("second", events);
+      out.first = await first;
+      out.second = second;
+      await sleep(1700);
+      out.afterUser = texts();
+      out.busyAfterUser = m.turnInFlight().busy;
+      // The same with a heartbeat.
+      const beat = m.runTurn("[heartbeat] SLOW", events, { kind: "heartbeat" });
+      await sleep(400);
+      m.cancelTurn("operator asked to stop");
+      await m.runTurn("hello there", events);
+      await beat;
+      await sleep(1700);
+      out.afterBeat = texts();
+      console.log(JSON.stringify(out));
+      process.exit(0);
+    `);
+    const { stdout } = await execFileAsync("npx", ["tsx", probe], { cwd: ROOT, timeout: 80_000,
+      env: { ...process.env, CLAW_DATA_DIR: path.join(dir, "data"), CLAW_CONFIG: cfgPath } });
+    const got = JSON.parse(String(stdout).trim().split("\n").pop() ?? "{}");
+    assert.equal(got.cancelled, true);
+    assert.equal(got.first, null, "the stopped turn ends quietly");
+    assert.equal(got.second, "reply to second");
+    assert.ok(got.afterUser.some((t: string) => /second$/.test(t)), "the operator's next message survives");
+    assert.ok(got.afterUser.includes("reply to second"));
+    assert.equal(got.afterUser.includes("late reply"), false, "nothing from the stopped turn lands later");
+    assert.equal(got.afterUser.some((t: string) => /slow/.test(t)), false, "no stray tool result from the stopped turn");
+    assert.equal(got.busyAfterUser, false);
+    assert.ok(got.afterBeat.some((t: string) => /hello there$/.test(t)), "a stopped heartbeat does not eat the next message");
+    assert.ok(got.afterBeat.includes("reply to hello there"));
+    assert.equal(got.afterBeat.some((t: string) => /heartbeat/.test(t)), false, "the stopped heartbeat leaves nothing");
+  } finally {
+    server.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
