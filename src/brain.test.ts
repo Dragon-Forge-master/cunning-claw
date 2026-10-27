@@ -200,5 +200,11 @@ test("the shipped defaults keep the everyday brain on Gemini and nothing dearer 
   const { config } = await import("./config.js");
   const byId = new Map(catalog().map((b) => [b.id, b]));
   assert.match(byId.get(defaultBrainId())?.model ?? "", /^google\/gemini/, "the default brain is Gemini");
-  assert.equal(config.routing?.capableWhenMaking, false, "making jobs stay on the default unless the operator turns routing up on");
+  // Cheap by default, capable when it matters: the everyday brain must cost
+  // less than the brain making jobs route to, or the routing buys nothing.
+  const def = byId.get(defaultBrainId());
+  const capable = byId.get(config.routing?.capableBrain ?? "");
+  if (config.routing?.capableWhenMaking && def?.price && capable?.price) {
+    assert.ok(def.price.out < capable.price.out, "the default is the cheaper of the two");
+  }
 });

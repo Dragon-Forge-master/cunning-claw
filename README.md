@@ -217,7 +217,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
   (local first · human consent where there are consequences)
 
   ▸ ar-lein  http://127.0.0.1:3900   the glass is lit
-  ▸ brain    flash · google/gemini-3.8-flash
+  ▸ brain    flashlite · google/gemini-3.1-flash-lite
   ▸ llais    piper · en_GB-alan-medium   (the voice)
   ▸ curiad   every 30m   (the heartbeat)
   ▸ offer    70 tools on the bench

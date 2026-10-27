@@ -129,9 +129,10 @@
     "intervalMinutes": 30
   },
   "brains": {
-    "default": "flash",
+    "default": "flashlite",
     "heartbeat": "lite",
     "fallbacks": [
+      "flashlite",
       "flash",
       "lite",
       "nano"
@@ -152,6 +153,20 @@
         "note": "fastest and cheapest — chat, clock, telemetry"
       },
       {
+        "id": "flashlite",
+        "label": "Flash-Lite",
+        "provider": "openai",
+        "model": "google/gemini-3.1-flash-lite",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKeyEnv": "OPENROUTER_API_KEY",
+        "thinking": false,
+        "price": {
+          "in": 0.25,
+          "out": 1.5
+        },
+        "note": "the everyday brain — chat, questions, small jobs; a third of 3.8 Flash's price"
+      },
+      {
         "id": "flash",
         "label": "Flash",
         "provider": "openai",
@@ -160,10 +175,10 @@
         "apiKeyEnv": "OPENROUTER_API_KEY",
         "thinking": false,
         "price": {
-          "in": 0.75,
-          "out": 3.75
+          "in": 0.83,
+          "out": 4.12
         },
-        "note": "the workhorse — tools, browsing, most jobs (Gemini 3.8 Flash: newer than 3.5 and half its price)"
+        "note": "the capable Gemini — making jobs and anything reading the web or your inbox route here (3.8 Flash)"
       },
       {
         "id": "pro",
@@ -178,6 +193,20 @@
           "out": 10.0
         },
         "note": "Gemini's Pro — pin it for a job you want more care on; dearer than Flash, and older, so not chosen automatically"
+      },
+      {
+        "id": "haiku",
+        "label": "Haiku",
+        "provider": "openai",
+        "model": "anthropic/claude-haiku-5.5",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKeyEnv": "OPENROUTER_API_KEY",
+        "thinking": false,
+        "price": {
+          "in": 0.1,
+          "out": 0.5
+        },
+        "note": "cheapest strong brain on OpenRouter (Oct 2026) — pin it with /brain haiku to try; never chosen automatically"
       },
       {
         "id": "nano",
@@ -291,8 +320,8 @@
     "cheapWhenTrivial": true,
     "cheapBrain": "lite",
     "guardOverridesPin": false,
-    "capableWhenMaking": false,
-    "capableBrain": "pro"
+    "capableWhenMaking": true,
+    "capableBrain": "flash"
   },
   "coding": {
     "root": "~",

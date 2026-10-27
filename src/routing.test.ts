@@ -196,7 +196,7 @@ test("a making job routes up to the capable brain when it has a key, and never o
     pinBrain(null);
     const up = suggestCapableBrain("build me a website for the garage", "user");
     assert.ok(up, "routed somewhere");
-    assert.equal(up.id, "pro");
+    assert.equal(up.id, config.routing?.capableBrain ?? "pro");
     assert.equal(suggestCapableBrain("what's the time", "user"), null, "trivial does not route up");
     assert.equal(suggestCapableBrain("build me a website", "heartbeat"), null, "heartbeat has its own brain");
 
