@@ -274,3 +274,13 @@ test("a failed run says so and gets exactly one more try, thirty minutes later, 
   assert.equal(today.length, 1);
   assert.equal(today[0].retry, undefined);
 });
+
+test("a scheduled run that spoke and then failed is not run again", async () => {
+  // Field transcript: the 08:00 briefing streamed its reply, the follow-up
+  // call ran out of credit, runTurn returned null, and the same "Late"
+  // briefing arrived again thirty minutes later — paid for twice.
+  const { runFailed } = await import("./schedule.js");
+  assert.equal(runFailed(null, true), false, "words reached the operator: done");
+  assert.equal(runFailed(null, false), true, "silent failure: retry");
+  assert.equal(runFailed("Morning, sir.", false), false);
+});

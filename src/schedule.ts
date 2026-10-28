@@ -124,15 +124,17 @@ export function startSchedule(events: AgentEvents): void {
           events.emit("notice", { message: `${lateLine(due.entry)} Running ${due.entry.target} now.` });
         }
         let reason = "";
+        let spoke = false;
         const watched: AgentEvents = {
           ...events,
           emit(event, data) {
             if (event === "agent_error") reason = String((data as any)?.message ?? "");
+            if (event === "text" && String((data as any)?.delta ?? "").trim()) spoke = true;
             events.emit(event, data);
           },
         };
         void runTurn(message, watched, { kind: "user" }).then((reply) => {
-          if (reply !== null) return;
+          if (!runFailed(reply, spoke)) return;
           const state = loadState();
           const notice = failedRun(state, due, reason || "no reply", new Date());
           saveState(state);
@@ -204,6 +206,20 @@ export const RETRY_AFTER_MS = 30 * 60_000;
 function parseRetry(v: string | undefined): { day: string; at: number } | null {
   const m = /^retry:(\d{4}-\d{2}-\d{2}):(\d+)$/.exec(v ?? "");
   return m ? { day: m[1], at: Number(m[2]) } : null;
+}
+
+/**
+ * Did a scheduled run fail, or only fail after it had already spoken?
+ *
+ * runTurn returns null for any turn that errors — including one that
+ * streamed its whole reply and then died on a later call (out of credit on
+ * the follow-up step, in the field). That briefing was on the glass, but the
+ * scheduler counted it a failure and ran it again thirty minutes later, so
+ * the operator got the same "Late" briefing twice and paid for it twice. A
+ * run that delivered words did its job; only a silent one earns the retry.
+ */
+export function runFailed(reply: string | null, spoke: boolean): boolean {
+  return reply === null && !spoke;
 }
 
 /** Record a failed run; returns the notice for the operator. */

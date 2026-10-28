@@ -227,10 +227,29 @@ export function enforceGuard(
   guard: Guard,
 ): { spec: BrainSpec; overridden: boolean } {
   if (!guard.required || isTrustedBrain(chosen)) return { spec: chosen, overridden: false };
-  const all = catalog();
-  const trusted = trustedBrainIds()
-    .map((id) => all.find((b) => b.id === id))
-    .find((b): b is BrainSpec => Boolean(b));
+  const trusted = cheapestTrusted();
   if (!trusted) return { spec: chosen, overridden: false }; // nothing better available
   return { spec: trusted, overridden: true };
+}
+
+/**
+ * The trusted brain the guard should force: the cheapest one that can run.
+ *
+ * It used to take the first id in routing.trustedBrains, which was "pro" —
+ * Gemini 2.5 Pro at $10 per million output — when 3.8 Flash was on the same
+ * list at $4.12. Every turn that had read an email or a web page paid Pro's
+ * price for a safety property Flash already met, and a field log shows that
+ * turn on the bill the day the credit ran out. Any brain on the list is
+ * trusted by definition; which one is a cost question, so answer it on cost.
+ */
+export function cheapestTrusted(): BrainSpec | undefined {
+  const all = catalog();
+  const listed = trustedBrainIds()
+    .map((id) => all.find((b) => b.id === id))
+    .filter((b): b is BrainSpec => Boolean(b));
+  const ready = listed.filter(brainHasKey);
+  const pool = ready.length ? ready : listed;
+  const cost = (b: BrainSpec) => (b.price ? b.price.in * 3 + b.price.out : Number.POSITIVE_INFINITY);
+  // Stable on ties: config order still decides between equally priced brains.
+  return pool.map((b, i) => ({ b, i })).sort((x, y) => cost(x.b) - cost(y.b) || x.i - y.i)[0]?.b;
 }

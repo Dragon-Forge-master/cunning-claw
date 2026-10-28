@@ -210,3 +210,20 @@ test("a making job routes up to the capable brain when it has a key, and never o
     if (saved === undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY = saved;
   }
 });
+
+test("the guard forces the cheapest trusted brain, not the first one listed", async () => {
+  // trustedBrains is ["pro", "flash"]; the guard took "pro" — $10/M output —
+  // for every turn that had read an email, when Flash on the same list costs
+  // less than half that. Which trusted brain is a cost question.
+  const { cheapestTrusted } = await import("./routing.js");
+  const { catalog } = await import("./brain.js");
+  const picked = cheapestTrusted();
+  assert.ok(picked, "a trusted brain exists");
+  const cost = (b: BrainSpec) => (b.price ? b.price.in * 3 + b.price.out : Infinity);
+  for (const id of config.routing?.trustedBrains ?? []) {
+    const b = catalog().find((x) => x.id === id);
+    if (b) assert.ok(cost(picked) <= cost(b), `${picked.id} is no dearer than ${b.id}`);
+  }
+  const forced = enforceGuard(cheapBrain(), { required: true, reason: "test" } as any);
+  assert.equal(forced.spec.id, picked.id, "enforceGuard uses it");
+});
