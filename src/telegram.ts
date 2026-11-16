@@ -1,3 +1,4 @@
+import os from "node:os";
 import { config } from "./config.js";
 import { redact } from "./redact.js";
 import type { AgentEvents } from "./agent.js";
@@ -33,6 +34,8 @@ const defaultIO: TelegramIO = {
 let io: TelegramIO = defaultIO;
 let botToken: string | null = null;
 let allowed = new Set<string>();
+// The people who may give orders, by Telegram USER id — see operatorIds.
+let operators = new Set<string>();
 let resolveApproval: ResolveApproval | null = null;
 const approvalMsgs = new Map<string, { chatId: string; messageId: number }>();
 // Approvals still waiting on a verdict. A card retry checks this before each
@@ -41,6 +44,53 @@ const liveCards = new Set<string>();
 
 export function parseChatAllowlist(raw: string): Set<string> {
   return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
+}
+
+/**
+ * Telegram's group and channel chats have negative ids; a private chat's id is
+ * the user's own id, always positive.
+ */
+export function isGroupChat(chatId: string): boolean {
+  return String(chatId).trim().startsWith("-");
+}
+
+/**
+ * Who may give orders, by user id rather than by chat.
+ *
+ * The allowlist used to be checked against the CHAT a message arrived in and
+ * nothing else. Put a group's id in TELEGRAM_CHAT_ID and every member of that
+ * group could start turns and press EXECUTE on the operator's machine — a
+ * shell for anyone the group let in. A private chat's id is its user's id, so
+ * each positive entry already names an operator; TELEGRAM_OPERATOR_ID adds
+ * more explicitly. A group entry names no one: it is a room, not a person.
+ */
+export function operatorIds(allow: Set<string>, explicit = process.env.TELEGRAM_OPERATOR_ID ?? ""): Set<string> {
+  const out = new Set([...allow].filter((id) => !isGroupChat(id)));
+  for (const id of parseChatAllowlist(explicit)) if (!isGroupChat(id)) out.add(id);
+  return out;
+}
+
+/** May this sender, in this chat, give the claw an order? Both must be on the lists. */
+export function mayCommand(chatId: string, fromId: string): boolean {
+  return allowed.has(chatId) && operators.has(fromId);
+}
+
+/**
+ * A reply bound for a group, with the machine taken out of it.
+ *
+ * Redaction removes secrets; it does not remove where the claw lives. A group
+ * has strangers in it, so home paths, the hostname and LAN addresses come out
+ * as well. The operator's private chat keeps them — it is the operator's own
+ * machine they are reading about.
+ */
+export function groupSafeText(text: string, host = os.hostname()): string {
+  let t = String(text ?? "")
+    .replace(/(?:\/home|\/Users)\/[^\s/'"`)]+(?:\/[^\s'"`)]*)?/g, "[path]")
+    .replace(/[A-Za-z]:\\Users\\[^\s'"`)]+/g, "[path]")
+    .replace(/~\/[^\s'"`)]*/g, "[path]")
+    .replace(/\b(?:10|127)(?:\.\d{1,3}){3}\b|\b192\.168(?:\.\d{1,3}){2}\b|\b172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}\b/g, "[local address]");
+  if (host && host.length >= 3) t = t.split(host).join("[this machine]");
+  return t;
 }
 
 /**
@@ -245,8 +295,9 @@ export async function pollLoop(d: PollDeps): Promise<void> {
  * Order matters: redact the whole text, THEN truncate. Truncating first leaves
  * a key that straddles the cut unmatched, and redact() can lengthen the string.
  */
-export function outboundText(text: string): string {
-  return redact(String(text ?? "")).slice(0, 3900);
+export function outboundText(text: string, group = false): string {
+  const clean = redact(String(text ?? ""));
+  return (group ? groupSafeText(clean) : clean).slice(0, 3900);
 }
 
 /** The approval card's body, redacted before its own truncation for the same reason. */
@@ -268,7 +319,7 @@ async function send(chatId: string, text: string, extra?: Record<string, unknown
   if (!botToken) return null;
   return api(botToken, "sendMessage", {
     chat_id: Number(chatId) || chatId,
-    text: outboundText(text),
+    text: outboundText(text, isGroupChat(chatId)),
     ...extra,
   });
 }
@@ -299,7 +350,11 @@ export async function sendApprovalCard(id: string, summary: string, detail: stri
   if (!botToken || !allowed.size) return;
   liveCards.add(id);
   const text = approvalCardText(summary, detail);
+  // Cards go to the operator's private chats only. A card in a group shows
+  // strangers the exact command and path, and puts the EXECUTE button in front
+  // of all of them; the press is refused below, but the card itself leaks.
   for (const chatId of allowed) {
+    if (isGroupChat(chatId)) continue;
     for (let attempt = 1; liveCards.has(id); attempt++) {
       try {
         const msg = await send(chatId, text, {
@@ -389,6 +444,7 @@ export function armTelegram(
   io = withIO;
   botToken = token;
   allowed = token ? allow : new Set();
+  operators = token ? operatorIds(allow) : new Set();
   resolveApproval = token ? resolve : null;
   approvalMsgs.clear();
   liveCards.clear();
@@ -420,7 +476,13 @@ export function startTelegram(
   }
   armTelegram(token, parseChatAllowlist(allow), hooks.resolveApproval, withIO);
   console.log(`  Telegram: polling (allow ${[...allowed].map(maskChatId).join(", ")})`);
-  void send([...allowed][0], onlineText()).catch(() => {});
+  if (!operators.size) {
+    console.warn("  ⚠ Telegram: TELEGRAM_CHAT_ID lists only group chats, so nobody may give orders. " +
+      "Message the bot /whoami in a private chat and add that id, or set TELEGRAM_OPERATOR_ID.");
+  }
+  // Greet a private chat, never a group: the line names the HUD's address.
+  const greet = [...allowed].find((id) => !isGroupChat(id));
+  if (greet) void send(greet, onlineText()).catch(() => {});
   void pollLoop({
     getUpdates: (offset) =>
       api(
@@ -461,7 +523,10 @@ export async function handleCallback(cb: any): Promise<void> {
     await api(botToken!, "answerCallbackQuery", { callback_query_id: cb.id });
   } catch { /* already answered */ }
   const m = /^(yes|no):(.+)$/.exec(data);
-  if (!m || !allowed.has(chatId)) return;
+  // The presser must be an operator, in a private chat. A forwarded or stale
+  // card in a group must not be pressable by whoever is in that group.
+  const fromId = String(cb.from?.id ?? "");
+  if (!m || isGroupChat(chatId) || !mayCommand(chatId, fromId)) return;
   const approved = m[1] === "yes";
   const id = m[2];
   if (!resolveApproval?.(id, approved)) {
@@ -469,19 +534,36 @@ export async function handleCallback(cb: any): Promise<void> {
   }
 }
 
-async function handleMessage(msg: any, events: AgentEvents): Promise<void> {
+export async function handleMessage(msg: any, events: AgentEvents): Promise<void> {
   const chatId = String(msg?.chat?.id ?? "");
+  const fromId = String(msg?.from?.id ?? chatId);
   const text = String(msg?.text ?? "").trim();
   if (!chatId || !text) return;
+  const group = isGroupChat(chatId);
 
-  // /whoami works from unknown chats so the operator can learn their id.
+  // /whoami works from unknown chats so the operator can learn their id. In a
+  // group it gives the sender their own user id, which is the one that counts.
   if (text === "/whoami" || (text === "/start" && !allowed.has(chatId))) {
-    await send(chatId, `Your Telegram chat id is ${chatId}. Put it in TELEGRAM_CHAT_ID and restart CUNNING CLAW.`);
+    await send(chatId, group
+      ? `Your Telegram user id is ${fromId}. Only ids in TELEGRAM_CHAT_ID or TELEGRAM_OPERATOR_ID can give me orders.`
+      : `Your Telegram chat id is ${chatId}. Put it in TELEGRAM_CHAT_ID and restart CUNNING CLAW.`);
     return;
   }
 
   if (!allowed.has(chatId)) {
     io.log(`Telegram ignored chat ${maskChatId(chatId)} (not in TELEGRAM_CHAT_ID)`);
+    return;
+  }
+
+  // Silence, not a refusal: answering every stranger in a busy group would
+  // turn the claw into a noise machine and tell them exactly what to try.
+  if (!operators.has(fromId)) {
+    io.log(`Telegram ignored a message in ${maskChatId(chatId)} from ${maskChatId(fromId)} (not an operator)`);
+    return;
+  }
+
+  if (group && text === "/status") {
+    await send(chatId, "I don't share machine details in a group, sir. Ask me for /status in a private chat.");
     return;
   }
 

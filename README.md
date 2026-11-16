@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-436%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-439%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -172,6 +172,10 @@ allowlist exists — a leaked token alone cannot be talked to by strangers.
 
 **Telegram** — make a bot with @BotFather, put its token in `TELEGRAM_BOT_TOKEN`,
 message it `/whoami`, and put the id it replies with in `TELEGRAM_CHAT_ID`.
+You can add a group's id too, but a group is a room, not a person: only you are
+obeyed there (by your Telegram user id), strangers get silence, approval cards
+go only to your private chat, and replies in the group have paths, the
+hostname and LAN addresses taken out.
 
 **Discord** — in the [Developer Portal](https://discord.com/developers/applications):
 New Application → Bot → Reset Token (that is `DISCORD_BOT_TOKEN`). On the same
@@ -619,7 +623,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 436 tests
+npm test        # 439 tests
 npm run check   # tsc --noEmit
 ```
 

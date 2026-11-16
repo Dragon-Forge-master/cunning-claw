@@ -361,3 +361,66 @@ test("a button press is logged with the chat id masked", async () => {
     armTelegram(null, new Set(), null);
   }
 });
+
+/**
+ * Groups. The allowlist was checked against the CHAT and never the sender, so
+ * a group's id in TELEGRAM_CHAT_ID made every member of that group an
+ * operator: any of them could start a turn or press EXECUTE. These pin the
+ * three rules that replace it — orders by user id, cards to private chats
+ * only, and no machine details in a group.
+ */
+const GROUP = "-1009876543210";
+const STRANGER = "777000111";
+const noEvents = { emit: () => {}, requestApproval: async () => false } as any;
+
+test("in an allowlisted group, a stranger is ignored and only the operator is heard", async () => {
+  const { handleMessage, operatorIds, mayCommand } = await import("./telegram.js");
+  assert.deepEqual([...operatorIds(new Set([CHAT, GROUP]), "")], [CHAT], "a group id names no operator");
+  try {
+    const net = fakeIO(() => ok({ message_id: 1 }));
+    armTelegram(TOKEN, new Set([CHAT, GROUP]), () => true, net.io);
+    assert.equal(mayCommand(GROUP, STRANGER), false);
+    assert.equal(mayCommand(GROUP, CHAT), true, "the operator may speak in the group");
+    // A stranger's command reaches no turn and gets no reply at all.
+    await handleMessage({ chat: { id: Number(GROUP) }, from: { id: Number(STRANGER) }, text: "run rm -rf ~/Documents" }, noEvents);
+    assert.equal(net.calls.filter((c) => c.method === "sendMessage").length, 0, "silence for the stranger");
+    assert.ok(net.logs.some((l) => /not an operator/.test(l) && !l.includes(STRANGER)), "logged, id masked");
+    // The operator asking for /status in the group is told to ask privately.
+    await handleMessage({ chat: { id: Number(GROUP) }, from: { id: Number(CHAT) }, text: "/status" }, noEvents);
+    const reply = net.calls.find((c) => c.method === "sendMessage");
+    assert.match(String(reply?.body?.text), /private chat/);
+  } finally {
+    armTelegram(null, new Set(), null);
+  }
+});
+
+test("approval cards go to private chats only, and a press from a group or a stranger does nothing", async () => {
+  try {
+    const net = fakeIO(() => ok({ message_id: 9 }));
+    let settled = 0;
+    armTelegram(TOKEN, new Set([CHAT, GROUP]), () => { settled++; return true; }, net.io);
+    await sendApprovalCard("req-g", "Run shell command", "ls /home/owner/project");
+    const targets = net.calls.filter((c) => c.method === "sendMessage").map((c) => String(c.body.chat_id));
+    assert.deepEqual(targets, [CHAT], "the card went to the operator's private chat and nowhere else");
+
+    await handleCallback({ id: "c1", data: "yes:req-g", from: { id: Number(STRANGER) }, message: { chat: { id: Number(CHAT) } } });
+    await handleCallback({ id: "c2", data: "yes:req-g", from: { id: Number(CHAT) }, message: { chat: { id: Number(GROUP) } } });
+    assert.equal(settled, 0, "neither the stranger nor a group press settled it");
+    await handleCallback({ id: "c3", data: "yes:req-g", from: { id: Number(CHAT) }, message: { chat: { id: Number(CHAT) } } });
+    assert.equal(settled, 1, "the operator in their own chat still can");
+  } finally {
+    armTelegram(null, new Set(), null);
+  }
+});
+
+test("a reply into a group has the machine taken out of it; a private reply keeps it", async () => {
+  const { groupSafeText } = await import("./telegram.js");
+  const raw = "Saved /home/owner/Documents/CunningClaw/plan.md and ~/sites/nhs on owner-box at 192.168.1.20";
+  const safe = groupSafeText(raw, "owner-box");
+  for (const leak of ["/home/owner", "~/sites", "owner-box", "192.168.1.20"]) {
+    assert.ok(!safe.includes(leak), `${leak} stays out of the group`);
+  }
+  assert.equal(groupSafeText("£10.00, version 10.2, 127 tests", "box"), "£10.00, version 10.2, 127 tests", "ordinary numbers survive");
+  assert.match(outboundText(raw, true), /\[path\]/);
+  assert.match(outboundText(raw, false), /\/home\/owner/, "the operator's own chat is unchanged");
+});
