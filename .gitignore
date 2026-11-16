@@ -19,6 +19,7 @@ data/remote-jobs-state.json
 data/turn-shapes.json
 data/schedule-state.json
 data/hud-prefs.json
+data/owner.json
 
 # Personal to each install — .example templates are tracked instead.
 senses/devices.json

@@ -44,8 +44,8 @@ the claw already drives its *own* Chrome for automation.
 
 1. Node SEA build of the engine (a `bundle` script, not yet written) — proves the single-binary
    engine on all three platforms; useful on its own for a "portable zip".
-2. First-run wizard as a plain HUD page shown when `.env` is missing —
-   valuable immediately, even before any app shell exists.
+2. First-run wizard as a plain HUD page shown when `.env` is missing — **built**: `/welcome`
+   (`public/welcome.html`), opened at boot when no brain can run.
 3. Tauri shell + tray icon + updater.
 4. Signing certificates and release automation (GitHub Actions builds all
    three installers per tag).

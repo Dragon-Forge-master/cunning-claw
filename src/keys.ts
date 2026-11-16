@@ -131,3 +131,38 @@ export function deleteKey(name: string): { ok: boolean; message: string } {
   delete process.env[name];
   return { ok: true, message: `${spec.label} removed.` };
 }
+
+export type KeyCheck = { status: "valid" | "invalid" | "unchecked"; message: string };
+
+/**
+ * Is this key real? Checked against the provider for free, before it is saved.
+ *
+ * A new owner pastes one key and then judges the whole product by the first
+ * reply. A typo'd key used to surface three screens later as a 401 in the
+ * middle of a turn. Both checks are read-only listings that cost nothing:
+ * OpenRouter's key-info endpoint, Google's model list. Anything else, or a
+ * network failure, is "unchecked" — saved, with a plain warning.
+ */
+export async function checkKey(
+  name: string,
+  value: string,
+  doFetch: typeof fetch = fetch,
+): Promise<KeyCheck> {
+  const probe: { url: string; headers: Record<string, string>; who: string } | null =
+    name === "OPENROUTER_API_KEY"
+      ? { url: "https://openrouter.ai/api/v1/key", headers: { Authorization: `Bearer ${value}` }, who: "OpenRouter" }
+      : name === "GEMINI_API_KEY"
+        ? { url: "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1", headers: { "x-goog-api-key": value }, who: "Google" }
+        : null;
+  if (!probe) return { status: "unchecked", message: "Saved. This kind of key is checked the first time it is used." };
+  try {
+    const res = await doFetch(probe.url, { headers: probe.headers, signal: AbortSignal.timeout(10_000) });
+    if (res.ok) return { status: "valid", message: `${probe.who} accepted the key.` };
+    if (res.status === 400 || res.status === 401 || res.status === 403) {
+      return { status: "invalid", message: `${probe.who} did not recognise that key. Check it was copied whole — no spaces, nothing missing at the ends.` };
+    }
+    return { status: "unchecked", message: `${probe.who} answered ${res.status}, so the key could not be checked. It is saved; try a message and see.` };
+  } catch {
+    return { status: "unchecked", message: `Could not reach ${probe.who} to check the key — is this machine online? It is saved anyway.` };
+  }
+}

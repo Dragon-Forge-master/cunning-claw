@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { applyOwner, loadOwner } from "./owner.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -214,5 +215,10 @@ export interface ClawConfig {
 export const config: ClawConfig = JSON.parse(
   fs.readFileSync(CONFIG_FILE, "utf-8"),
 );
+
+// Who the operator is lives in the data dir, not in claw.config.json: the
+// setup page writes it, and a tracked file edited by hand is what makes
+// `npm run update` refuse to pull.
+applyOwner(config, loadOwner(DATA_DIR));
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });

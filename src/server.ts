@@ -33,7 +33,10 @@ import { startDiscord, sendApprovalCard as sendDiscordCard, approvalSettled as d
 import { openPreview, closePreview, reloadPreview, previewState, servedDir } from "./preview.js";
 import fs from "node:fs";
 import { isSensitivePath } from "./paths.js";
-import { listKeys, setKey, deleteKey } from "./keys.js";
+import { listKeys, setKey, deleteKey, checkKey } from "./keys.js";
+import { setupNeeded, markLocalReady, localRuntimeReachable, openInBrowser, hasUsableCloudKey } from "./first-run.js";
+import { saveOwner, applyOwner } from "./owner.js";
+import { pinBrain, catalog as brainCatalog } from "./brain.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -87,8 +90,16 @@ app.get(["/keys", "/keys.html"], (_req, res) => {
   res.sendFile(path.join(ROOT, "public", "keys.html"));
 });
 
-app.get(["/", "/index.html"], (_req, res) => {
+app.get(["/welcome", "/welcome.html"], (_req, res) => {
   issueSession(res);
+  res.sendFile(path.join(ROOT, "public", "welcome.html"));
+});
+
+app.get(["/", "/index.html"], (req, res) => {
+  issueSession(res);
+  // With no brain able to run, the HUD would only answer "no key". Send a new
+  // owner to the page that fixes that; ?hud opens the HUD regardless.
+  if (setupNeeded() && req.query.hud === undefined) return res.redirect(302, "/welcome");
   res.sendFile(path.join(ROOT, "public", "index.html"));
 });
 
@@ -266,6 +277,59 @@ app.delete("/api/keys/:name", (req, res) => {
   if (!out.ok) return res.status(400).json(out);
   broadcast("notice", { message: out.message });
   res.json(out);
+});
+
+// --- Setup: the first-run page -----------------------------------------------
+// Three narrow writes and nothing else: one brain key (checked for free before
+// it is saved), the offline brain, and the owner's name and town.
+const SETUP_KEYS = new Set(["OPENROUTER_API_KEY", "GEMINI_API_KEY"]);
+
+app.get("/api/welcome", async (_req, res) => {
+  res.json({
+    needed: setupNeeded(),
+    cloudKey: hasUsableCloudKey(),
+    ollama: await localRuntimeReachable(),
+    owner: { userName: config.persona.userName, addressUserAs: config.persona.addressUserAs, weatherPlace: config.board?.weatherPlace ?? "" },
+    claw: config.persona.name,
+  });
+});
+
+app.post("/api/welcome/key", async (req, res) => {
+  const name = String(req.body?.name ?? "");
+  const value = String(req.body?.value ?? "").trim();
+  if (!SETUP_KEYS.has(name)) return res.status(400).json({ ok: false, message: "Setup takes an OpenRouter or a Google Gemini key." });
+  if (!value) return res.status(400).json({ ok: false, message: "Paste the key first." });
+  const check = await checkKey(name, value);
+  if (check.status === "invalid") return res.status(400).json({ ok: false, message: check.message });
+  const saved = setKey(name, value);
+  if (!saved.ok) return res.status(400).json(saved);
+  // The default roster runs on OpenRouter. With only a Google key, AUTO would
+  // keep choosing brains that cannot run; pin the one that can, and say so.
+  let pinned = "";
+  if (name === "GEMINI_API_KEY" && !process.env.OPENROUTER_API_KEY?.trim() && brainCatalog().some((b) => b.id === "google")) {
+    pinBrain("google");
+    pinned = "google";
+  }
+  res.json({ ok: true, message: check.message, pinned });
+});
+
+app.post("/api/welcome/local", async (_req, res) => {
+  if (!(await localRuntimeReachable())) {
+    return res.status(400).json({
+      ok: false,
+      message: "Nothing answered on this machine's Ollama port. Install Ollama from ollama.com, run `ollama pull llama3.2`, then press this again.",
+    });
+  }
+  if (!brainCatalog().some((b) => b.id === "local")) return res.status(400).json({ ok: false, message: "No local brain is in this install's roster." });
+  markLocalReady();
+  pinBrain("local");
+  res.json({ ok: true, message: "Ollama answered. The offline brain is chosen — nothing you say leaves this machine." });
+});
+
+app.post("/api/welcome/owner", (req, res) => {
+  const saved = saveOwner(DATA_DIR, req.body ?? {});
+  applyOwner(config, saved);
+  res.json({ ok: true, owner: saved });
 });
 
 app.get("/api/history", (_req, res) => {
@@ -612,7 +676,11 @@ const httpServer = app.listen(port, host, async () => {
   startTelegram(agentEvents, { resolveApproval: settleApproval });
   startDiscord(agentEvents, { resolveApproval: settleApproval });
   for (const line of bootBrainLines()) console.log(line);
-  if (!brainReady()) {
+  if (setupNeeded()) {
+    const url = `http://${host}:${port}/welcome`;
+    console.warn(`  ⚠ No brain can run yet. Setup is waiting at ${url}\n`);
+    openInBrowser(url);
+  } else if (!brainReady()) {
     console.warn(`  ⚠ No brain has an API key. ${missingKeyHint()}\n`);
   }
 });

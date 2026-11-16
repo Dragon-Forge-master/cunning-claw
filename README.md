@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-439%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-442%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -73,6 +73,11 @@ cd cunning-claw
 That checks Node 22+, runs `npm install`, creates `.env` from the example, asks for an OpenRouter key, offers the offline voice, runs `npm run doctor`, and prints how to start.
 
 Then `npm run dev` and open **http://127.0.0.1:3900**. It binds to loopback only — nothing is exposed to your network.
+
+No key yet? Start it anyway. With no brain able to run, it opens a **setup page** in your browser instead of
+refusing to start: paste an OpenRouter or Google key (checked with the provider for free before it is kept),
+or choose the offline brain if Ollama is running, then give your name and town. Those live in
+`data/owner.json`, not in `claw.config.json`, so `npm run update` never trips over your edits.
 
 ### Windows (native)
 
@@ -623,7 +628,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 439 tests
+npm test        # 442 tests
 npm run check   # tsc --noEmit
 ```
 

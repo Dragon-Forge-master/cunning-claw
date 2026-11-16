@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { brainHasKey, catalog, isLocalEndpoint } from "./brain.js";
 import { noKeyGuide } from "./doctor.js";
 
@@ -45,9 +46,49 @@ export async function canBoot(): Promise<{ ok: true } | { ok: false; message: st
   return { ok: false, message: noKeyGuide() + extra };
 }
 
-export async function assertReadyToBoot(): Promise<void> {
+/**
+ * Whether the HUD should open on the setup page.
+ *
+ * Boot used to refuse outright without a key and print a guide to editing
+ * .env — the one step a non-technical owner could not take. Now the server
+ * starts anyway and sends them to /welcome, where a key is pasted, checked and
+ * saved. Live: the moment a cloud key lands in process.env, or a local runtime
+ * is confirmed, the HUD opens as normal.
+ */
+let localReady = false;
+export function markLocalReady(ready = true): void {
+  localReady = ready;
+}
+export function setupNeeded(): boolean {
+  return !hasUsableCloudKey() && !localReady;
+}
+export { localRuntimeReachable };
+
+/**
+ * Open a page in the operator's own browser, once, at boot. Fire and forget:
+ * no desktop (a server, CI, an ssh login) simply means nothing opens, and the
+ * console line beside it still says where to go.
+ */
+export function openInBrowser(url: string): void {
+  if (process.env.CLAW_NO_BROWSER || process.env.CI) return;
+  try {
+    const child =
+      process.platform === "darwin"
+        ? spawn("open", [url], { detached: true, stdio: "ignore" })
+        : process.platform === "win32"
+          ? spawn("rundll32", ["url.dll,FileProtocolHandler", url], { detached: true, stdio: "ignore" })
+          : spawn("xdg-open", [url], { detached: true, stdio: "ignore" });
+    child.once("error", () => {});
+    child.unref();
+  } catch { /* no browser to open is not an error */ }
+}
+
+export async function prepareBoot(): Promise<void> {
   const result = await canBoot();
-  if (result.ok) return;
-  console.error(`\n${result.message}\n`);
-  process.exit(1);
+  if (result.ok) {
+    markLocalReady(!hasUsableCloudKey());
+    return;
+  }
+  console.warn(`\n${result.message}`);
+  console.warn("  Or skip all of that: the setup page opens in your browser and does it for you.\n");
 }

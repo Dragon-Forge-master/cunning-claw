@@ -36,3 +36,25 @@ test("remove drops exactly the named line", () => {
   const out = removeEnvLine("A=1\nGITHUB_TOKEN=x\nB=2", "GITHUB_TOKEN");
   assert.equal(out, "A=1\nB=2");
 });
+
+test("a pasted key is checked with the provider for free before it is kept", async () => {
+  // A typo'd key used to surface three screens later as a 401 mid-turn. The
+  // check is a read-only listing that costs nothing; an outage is "unchecked",
+  // never a refusal, so a flaky network cannot lock a new owner out.
+  const { checkKey } = await import("./keys.js");
+  const seen: string[] = [];
+  const answer = (status: number) => (async (url: unknown, init?: RequestInit) => {
+    seen.push(`${url} ${JSON.stringify(init?.headers)}`);
+    return new Response("{}", { status });
+  }) as typeof fetch;
+
+  assert.equal((await checkKey("OPENROUTER_API_KEY", "sk-or-good", answer(200))).status, "valid");
+  assert.match(seen.at(-1)!, /openrouter\.ai\/api\/v1\/key .*Bearer sk-or-good/);
+  assert.equal((await checkKey("OPENROUTER_API_KEY", "sk-or-typo", answer(401))).status, "invalid");
+  assert.equal((await checkKey("GEMINI_API_KEY", "AIza-bad", answer(400))).status, "invalid");
+  assert.match(seen.at(-1)!, /generativelanguage.*x-goog-api-key/);
+  assert.equal((await checkKey("GEMINI_API_KEY", "AIza-x", answer(503))).status, "unchecked", "their outage is not your typo");
+  const offline = (async () => { throw new TypeError("fetch failed"); }) as unknown as typeof fetch;
+  assert.equal((await checkKey("OPENROUTER_API_KEY", "sk-or-x", offline)).status, "unchecked");
+  assert.equal((await checkKey("GITHUB_TOKEN", "ghp_x", answer(200))).status, "unchecked", "only the two brain keys are probed");
+});
