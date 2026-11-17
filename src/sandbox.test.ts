@@ -8,6 +8,9 @@ import { promisify } from "node:util";
 import {
   DEFAULT_HIDDEN,
   bwrapArgs,
+  dotEnvNames,
+  sandboxEnv,
+  sessionSockets,
   decide,
   detectEngine,
   explainSandboxFailure,
@@ -362,6 +365,71 @@ test("bubblewrap really hides a key: cat fails inside the box and the secret nev
     assert.equal(fs.readFileSync(path.join(proj, "w"), "utf-8").trim(), "done", "ordinary work still writes");
     assert.equal(fs.readFileSync(path.join(ssh, "id_ed25519"), "utf-8"), "SYNTHETIC-PRIVATE-KEY-0000", "the real key is untouched");
   } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+
+// --- Secrets kept out of the environment, and the session's sockets hidden ---
+
+test("a boxed command's environment loses credentials, the claw's .env names and the session signposts", () => {
+  const env = {
+    PATH: "/usr/bin", HOME: "/home/owner", LANG: "en_GB.UTF-8", TERM: "xterm", XDG_RUNTIME_DIR: "/run/user/1000",
+    OPENROUTER_API_KEY: "x", GEMINI_API_KEY: "x", CLAW_TOKEN: "x", GITHUB_TOKEN: "x", AWS_SECRET_ACCESS_KEY: "x",
+    NTFY_TOPIC: "x", DISCORD_BOT_TOKEN: "x", DB_PASSWORD: "x",
+    SSH_AUTH_SOCK: "/tmp/ssh-x/agent.1", DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/1000/bus", DISPLAY: ":0", XAUTHORITY: "/home/owner/.Xauthority",
+  };
+  const { env: out, removed } = sandboxEnv(env, ["NTFY_TOPIC"]);
+  for (const k of ["PATH", "HOME", "LANG", "TERM", "XDG_RUNTIME_DIR"]) assert.equal(out[k], env[k as keyof typeof env], k);
+  for (const k of ["OPENROUTER_API_KEY", "GEMINI_API_KEY", "CLAW_TOKEN", "GITHUB_TOKEN", "AWS_SECRET_ACCESS_KEY", "NTFY_TOPIC",
+    "DISCORD_BOT_TOKEN", "DB_PASSWORD", "SSH_AUTH_SOCK", "DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "XAUTHORITY"]) {
+    assert.equal(out[k], undefined, `${k} must not reach the box`);
+    assert.ok(removed.includes(k), k);
+  }
+  assert.equal(sandboxEnv(env, [], { keepSshAgent: true }).env.SSH_AUTH_SOCK, "/tmp/ssh-x/agent.1", "revealing ~/.ssh brings the agent with it");
+});
+
+test("the .env reader takes names only, export lines included, comments not", () => {
+  assert.deepEqual(dotEnvNames("# A comment\nOPENROUTER_API_KEY=sk-x\nexport NTFY_TOPIC=abc\n  CUSTOM_THING = 1\nnot a line\n"), ["OPENROUTER_API_KEY", "NTFY_TOPIC", "CUSTOM_THING"]);
+});
+
+test("the session's sockets are listed for hiding: agents, keyring, bus and display", () => {
+  const env = { XDG_RUNTIME_DIR: "/run/user/1000", SSH_AUTH_SOCK: "/tmp/ssh-x/agent.1", WAYLAND_DISPLAY: "wayland-1", DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/1000/bus,guid=1" };
+  const s = sessionSockets(env, HOME);
+  for (const p of ["/tmp/ssh-x/agent.1", "/run/user/1000/bus", "/run/user/1000/gnupg", "/run/user/1000/keyring", "/run/user/1000/wayland-1", "/tmp/.X11-unix", "/home/owner/.Xauthority"]) {
+    assert.ok(s.includes(p), p);
+  }
+  assert.ok(!sessionSockets(env, HOME, { keepSshAgent: true }).includes("/tmp/ssh-x/agent.1"));
+});
+
+test("notify-send and playerctl alone leave the box (they need the desktop bus); chained, they do not", () => {
+  assert.equal(isLauncher("notify-send 'Build done'"), true);
+  assert.equal(isLauncher("playerctl pause"), true);
+  assert.equal(isLauncher("playerctl pause; cat ~/.ssh/id_ed25519"), false);
+});
+
+test("bubblewrap really refuses a hidden agent socket and drops env secrets", { skip: live.engine !== "bwrap" ? `no usable bubblewrap: ${live.why}` : false }, async () => {
+  const net = await import("node:net");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "claw-sock-"));
+  const sock = path.join(dir, "agent.sock");
+  const server = net.createServer((c) => c.end("SYNTHETIC-AGENT-ANSWER\n"));
+  await new Promise<void>((r) => server.listen(sock, () => r()));
+  const client = `const c=require("net").connect(${JSON.stringify(sock)});c.on("data",d=>{process.stdout.write(String(d));process.exit(0)});c.on("error",e=>{console.log("refused",e.code);process.exit(0)});setTimeout(()=>process.exit(0),3000)`;
+  const run = async (hidden: { dirs: string[]; files: string[] }) => {
+    const { stdout } = await execFileAsync("bwrap", bwrapArgs({
+      writable: [], readOnly: [], network: true, hidden, shell: "/bin/sh",
+      command: `${process.execPath} -e '${client}'; printenv SYNTHETIC_AGENT_TOKEN || echo no-token`,
+    }), { env: sandboxEnv({ ...process.env, SYNTHETIC_AGENT_TOKEN: "SYNTHETIC-ENV-0000" }, []).env });
+    return stdout;
+  };
+  try {
+    assert.match(await run({ dirs: [], files: [] }), /SYNTHETIC-AGENT-ANSWER/, "control: the socket answers when not hidden");
+    const hidden = await run({ dirs: [], files: [sock] });
+    assert.doesNotMatch(hidden, /SYNTHETIC-AGENT-ANSWER/);
+    assert.match(hidden, /refused/);
+    assert.match(hidden, /no-token/);
+  } finally {
+    server.close();
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });

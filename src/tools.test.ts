@@ -417,3 +417,26 @@ test("connector_guide answers from the catalogue through executeTool, with no ap
   assert.deepEqual(cards, []);
   assert.ok(toolDefinitions.some((t: any) => t.name === "connector_guide"));
 });
+
+test("where bubblewrap works, a boxed command cannot print the claw's keys from its environment", async (t) => {
+  // Hiding .env was not enough: config.ts loads it into process.env and every
+  // child inherited it, so `printenv` in the box printed every provider key.
+  const sandbox = await import("./sandbox.js");
+  sandbox.setDetectionForTests(null);
+  const live = await sandbox.detect();
+  if (live.engine !== "bwrap") return t.skip(`no usable bubblewrap: ${live.why}`);
+  const { executeTool } = await import("./tools.js");
+  const ctx = { emit() {}, requestApproval: async () => true };
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "claw-env-"));
+  process.env.SYNTHETIC_TEST_API_KEY = "SYNTHETIC-ENV-SECRET-0000";
+  try {
+    const out = String(await executeTool("run_command", { command: "printenv; echo END", cwd: work }, ctx));
+    assert.match(out, /^\[sandboxed by bubblewrap/);
+    assert.match(out, /END/, "the command ran");
+    assert.match(out, /PATH=/, "ordinary variables still arrive");
+    assert.doesNotMatch(out, /SYNTHETIC-ENV-SECRET/);
+  } finally {
+    delete process.env.SYNTHETIC_TEST_API_KEY;
+    fs.rmSync(work, { recursive: true, force: true });
+  }
+});

@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-616%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-622%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -623,7 +623,8 @@ assumption that the model will eventually be lied to.
 - A **sandbox around the shell**, where one exists: bubblewrap on Linux (`sudo apt install
   bubblewrap`), `sandbox-exec` on macOS. A command may write only to its own folder under
   home, the temp dir and the folders in `sandbox.writable`; ssh keys, git and cloud credentials,
-  keyrings and browser profiles are hidden from it (an empty stand-in; `sandbox.reveal` shows
+  keyrings and browser profiles are hidden from it, and so are the ssh/gpg agents, the keyring,
+  the desktop bus and the display; your keys are kept out of its environment (an empty stand-in; `sandbox.reveal` shows
   `~/.ssh` again for git over ssh, `sandbox.hide` adds more); the claw's config, `.env`, data
   and workspace stay read-only even then. Other reads are not confined. To write anywhere else the
   model must ask with `unsandboxed: true`, which always raises a card, even under a work
@@ -728,7 +729,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 616 tests
+npm test        # 622 tests
 npm run check   # tsc --noEmit
 ```
 

@@ -1484,7 +1484,7 @@ async function execIn(command: string, cwd: string, box?: sandbox.Plan): Promise
   for (;;) {
     try {
       const { stdout, stderr } = box?.kind === "sandboxed"
-        ? await execFileAsync(box.file, box.args, { cwd, timeout: config.commandPolicy.timeoutMs, maxBuffer: 1024 * 1024 })
+        ? await execFileAsync(box.file, box.args, { cwd, timeout: config.commandPolicy.timeoutMs, maxBuffer: 1024 * 1024, ...(box.env ? { env: box.env } : {}) })
         : await execAsync(command, {
           cwd,
           timeout: config.commandPolicy.timeoutMs,

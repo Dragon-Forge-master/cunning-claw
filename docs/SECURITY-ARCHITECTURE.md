@@ -4,7 +4,7 @@
 points at the file that implements it, and the limits are stated next to the
 guarantees, because a security document that overclaims is worse than none.*
 
-Status as of 17 November 2026: version 0.3 on `main`, 616 automated tests
+Status as of 17 November 2026: version 0.3 on `main`, 622 automated tests
 passing (`npm test`), two runtime dependencies (`@anthropic-ai/sdk`, `express`).
 The project is new and has run on very few machines. Nothing here has been
 independently audited.
@@ -262,6 +262,27 @@ in the box, the failure is explained as the box, and the command must ask with
 `sandbox.hide` adds paths. `npm run doctor` lists what is hidden, and names
 anything that could not be.
 
+**Secrets are kept out of the environment, and the session's sockets are
+hidden.** Hiding the `.env` file alone was not enough: the agent loads it into
+its own environment at start, and child processes inherit their parent's
+environment, so `printenv` inside the box printed every key. (Found on 17
+November while checking a grant pitch's claim against the code.) A boxed
+command now gets an environment without anything named like a credential, without
+any name defined in the agent's `.env`, and without the variables that point at
+the desktop session (`sandboxEnv` in `src/sandbox.ts`). Because a stripped
+variable is only a signpost, the sockets themselves are hidden too: the ssh and
+GnuPG agents (which *use* keys without revealing them), the GNOME keyring, the
+D-Bus session bus (which can unlock the keyring), and the X11 and Wayland
+display sockets (a program that can reach the display can type into the
+operator's windows). From inside the box, the agent's own memory cannot be read
+through `/proc` either: that is refused across the user-namespace boundary.
+Live tests cover the end-to-end `printenv` case through `run_command`, and a
+planted agent socket that answers when it is not hidden and refuses the
+connection when it is; both fail with the fix removed. The limit: sockets in
+Linux's abstract namespace have no path to hide. Some X11 and D-Bus setups
+listen there, and they stay reachable while the box shares the network
+namespace (`network: true`); with `network: false` they do not.
+
 **What the sandbox does not do.** Apart from those, it confines **writes**, not
 reads: a sandboxed command can still read the operator's other files —
 documents, source code, the agent's chat history — and with network access on,
@@ -449,7 +470,7 @@ deployed as such without an independent assessment.
 | Converter environment, zip refusals | `npx tsx --test src/documents.test.ts` |
 | Testimony stamp in search results | `npx tsx --test src/memory.test.ts` |
 | Discord cards only in direct messages | `npx tsx --test src/discord.test.ts` |
-| Everything | `npm test` — 616 passing at the time of writing |
+| Everything | `npm test` — 622 passing at the time of writing |
 
 Every test in the suite is required to fail with its fix reverted
 (`CLAUDE.md`, "Tests"), and the commit that added it says so.

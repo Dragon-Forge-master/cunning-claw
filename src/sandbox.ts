@@ -102,6 +102,72 @@ export const DEFAULT_HIDDEN = [
 ];
 
 /**
+ * Environment variables a sandboxed command must not inherit.
+ *
+ * Hiding the .env FILE was not enough: config.ts loads it into process.env at
+ * start, and every child inherited it, so `printenv` inside the box printed
+ * every provider key — found by testing the claim "environment secrets are
+ * isolated" in a grant pitch, 17 Nov. Names that look like credentials go,
+ * every name defined in the claw's .env goes, and so do the variables that
+ * point at the desktop session: the ssh and gpg agents (they USE keys without
+ * revealing them), the D-Bus session bus (it can unlock the keyring), and the
+ * X11/Wayland display (a program that can reach it can type into your windows).
+ */
+const SECRET_NAME = /(^|_)(API_?KEY|KEY|TOKEN|SECRET|PASSWORD|PASSWD|PASSPHRASE|CREDENTIALS?|PRIVATE)(_|$)|APIKEY|ACCESS_?KEY/i;
+const SESSION_VARS = ["SSH_AUTH_SOCK", "SSH_AGENT_PID", "GPG_AGENT_INFO", "DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY"];
+
+export function sandboxEnv(
+  env: NodeJS.ProcessEnv,
+  dotEnvNames: readonly string[],
+  opts: { keepSshAgent?: boolean } = {},
+): { env: NodeJS.ProcessEnv; removed: string[] } {
+  const drop = new Set(dotEnvNames);
+  const out: NodeJS.ProcessEnv = {};
+  const removed: string[] = [];
+  for (const [k, v] of Object.entries(env)) {
+    if (v === undefined) continue;
+    const agent = k === "SSH_AUTH_SOCK" || k === "SSH_AGENT_PID";
+    const session = SESSION_VARS.includes(k) && !(agent && opts.keepSshAgent);
+    if (drop.has(k) || SECRET_NAME.test(k) || session) removed.push(k);
+    else out[k] = v;
+  }
+  return { env: out, removed: removed.sort() };
+}
+
+/** The names a .env file defines — values are never read here. */
+export function dotEnvNames(text: string): string[] {
+  const names: string[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+    if (m && !names.includes(m[1])) names.push(m[1]);
+  }
+  return names;
+}
+
+/**
+ * The desktop session's sockets, hidden inside the box. Stripping the
+ * variables only removes the signpost: the agent and bus sockets sit at
+ * well-known paths a command could simply guess. Hidden by mounting over
+ * them (an empty file or folder), which a live test confirms refuses the
+ * connection. Abstract-namespace sockets have no path and cannot be hidden
+ * this way; with the network off they are cut too, with it on they are not.
+ */
+export function sessionSockets(env: NodeJS.ProcessEnv, home: string, opts: { keepSshAgent?: boolean } = {}): string[] {
+  const out: string[] = [];
+  const run = env.XDG_RUNTIME_DIR;
+  if (env.SSH_AUTH_SOCK && !opts.keepSshAgent) out.push(env.SSH_AUTH_SOCK);
+  if (run) {
+    out.push(path.join(run, "bus"), path.join(run, "gnupg"), path.join(run, "keyring"), path.join(run, "gcr"));
+    if (!opts.keepSshAgent) out.push(path.join(run, "ssh-agent.socket"), path.join(run, "openssh_agent"));
+    out.push(path.join(run, env.WAYLAND_DISPLAY || "wayland-0"));
+  }
+  const bus = env.DBUS_SESSION_BUS_ADDRESS?.match(/unix:path=([^,;]+)/)?.[1];
+  if (bus) out.push(bus);
+  out.push("/tmp/.X11-unix", env.XAUTHORITY || path.join(home, ".Xauthority"));
+  return [...new Set(out)];
+}
+
+/**
  * The claw's own secrets: its keys, its connector sign-ins, and its Chrome
  * profile (the Gmail and WhatsApp sessions). Hidden whatever the config says —
  * `reveal` cannot reach them.
@@ -469,7 +535,7 @@ export function setDetectionForTests(d: Detection | null): void {
 // ---------------------------------------------------------------------------
 
 export type Plan =
-  | { kind: "sandboxed"; engine: Engine; file: string; args: string[]; label: string; writes: WriteSet; network: boolean; mode: SandboxMode; hidden: HiddenSet }
+  | { kind: "sandboxed"; engine: Engine; file: string; args: string[]; label: string; writes: WriteSet; network: boolean; mode: SandboxMode; hidden: HiddenSet; env?: NodeJS.ProcessEnv }
   | { kind: "host"; label: string; why: string; askFirst: boolean }
   | { kind: "refuse"; text: string };
 
@@ -483,7 +549,9 @@ export type Plan =
 export function isLauncher(command: string): boolean {
   const c = command.trim();
   if (/[;&|<>`$()\n\r\\]/.test(c)) return false;
-  return /^(xdg-open|gio\s+open|gtk-launch|open)\s+\S/.test(c);
+  // notify-send and playerctl speak to the desktop over D-Bus, which the box
+  // now hides; alone, with nothing chained, they cannot carry anything out.
+  return /^(xdg-open|gio\s+open|gtk-launch|open)\s+\S/.test(c) || /^(notify-send|playerctl)(\s|$)/.test(c);
 }
 
 function show(paths: readonly string[], home: string): string {
@@ -503,6 +571,8 @@ export function decide(o: {
   writes: WriteSet;
   /** Secret paths to hide inside the box; none when absent. */
   hidden?: HiddenSet;
+  /** The environment the boxed command gets, secrets stripped; inherited when absent. */
+  env?: NodeJS.ProcessEnv;
   shell: string;
   command: string;
   home: string;
@@ -551,7 +621,7 @@ export function decide(o: {
     `[sandboxed by ${ENGINE_NAME[engine]} — writes only to: ${show(o.writes.writable, o.home) || "nowhere"}` +
     `${o.writes.cwdNote ? ` (read-only here: ${o.writes.cwdNote})` : ""}; network ${settings.network ? "on" : "off"}` +
     `${hidden.dirs.length + hidden.files.length ? "; keys and sign-ins hidden" : ""}]`;
-  return { kind: "sandboxed", engine, file: engine, args, label, writes: o.writes, network: settings.network, mode: settings.mode, hidden };
+  return { kind: "sandboxed", engine, file: engine, args, label, writes: o.writes, network: settings.network, mode: settings.mode, hidden, env: o.env };
 }
 
 /** One line for the approval card, so the operator knows what a yes lets loose. */
@@ -660,11 +730,25 @@ function isDirectory(p: string): boolean {
   }
 }
 
+/** Whether the operator has asked for ssh to work in the box (sandbox.reveal has ~/.ssh) — the agent goes with the keys. */
+function sshRevealed(settings: SandboxSettings, home: string): boolean {
+  const ssh = path.join(home, ".ssh");
+  return settings.reveal.some((r) => path.resolve(r.startsWith("~/") ? path.join(home, r.slice(2)) : r) === ssh);
+}
+
 export function currentHidden(settings = sandboxSettings(), home = os.homedir()): HiddenSet {
   return planHidden({
-    defaults: DEFAULT_HIDDEN, extra: settings.hide, reveal: settings.reveal, own: ownSecrets(),
+    defaults: [...DEFAULT_HIDDEN, ...sessionSockets(process.env, home, { keepSshAgent: sshRevealed(settings, home) })],
+    extra: settings.hide, reveal: settings.reveal, own: ownSecrets(),
     home, real: realOrNull, isDir: isDirectory,
   });
+}
+
+/** The boxed command's environment: process.env without credentials or the session's signposts. */
+export function currentSandboxEnv(settings = sandboxSettings(), home = os.homedir()): { env: NodeJS.ProcessEnv; removed: string[] } {
+  let names: string[] = [];
+  try { names = dotEnvNames(fs.readFileSync(path.join(ROOT, ".env"), "utf-8")); } catch { /* no .env: nothing extra to drop */ }
+  return sandboxEnv(process.env, names, { keepSshAgent: sshRevealed(settings, home) });
 }
 
 /** Decide how `command` runs from `cwd`. HARD_DENY has already run; this never relaxes it. */
@@ -675,8 +759,9 @@ export async function prepareCommand(o: { command: string; cwd: string; shell?: 
   const detection = settings.mode === "off" ? off : await detect();
   const writes = detection.engine ? currentWrites(o.cwd, settings, home) : { writable: [], readOnly: [], skipped: [], cwdNote: "" };
   const hidden = detection.engine ? currentHidden(settings, home) : undefined;
+  const env = detection.engine ? currentSandboxEnv(settings, home).env : undefined;
   const shell = o.shell && isSafePath(o.shell) ? o.shell : "/bin/sh";
-  return decide({ settings, detection, unsandboxed: o.unsandboxed, writes, hidden, shell, command: o.command, home });
+  return decide({ settings, detection, unsandboxed: o.unsandboxed, writes, hidden, env, shell, command: o.command, home });
 }
 
 /** One clause for the model's self-knowledge. Starts the probe if nothing has yet. */
@@ -717,7 +802,9 @@ export async function sandboxDoctor(deps: DetectDeps = realDeps): Promise<{ stat
     : "";
   const h = currentHidden(s, home);
   const hiddenList = [...h.dirs, ...h.files].map((p) => collapseHome(p, home));
-  const hiddenNote = hiddenList.length ? `; hidden from commands: ${hiddenList.join(", ")}` : "";
+  const stripped = currentSandboxEnv(s, home).removed;
+  const hiddenNote = (hiddenList.length ? `; hidden from commands: ${hiddenList.join(", ")}` : "") +
+    (stripped.length ? `; kept out of their environment: ${stripped.join(", ")}` : "");
   const unhidden = h.skipped.length ? ` · could not hide: ${h.skipped.map((k) => `${k.path} (${k.why})`).join(", ")}` : "";
   return {
     status: refused.length || h.skipped.length ? "warn" : "ok",
