@@ -25,6 +25,7 @@ npm test               # tsx --test src/*.test.ts, own temp data dir (node:test;
 npx tsx --test src/discord.test.ts          # one file
 npx tsx --test --test-name-pattern="4014" src/discord.test.ts   # one test
 npm run doctor         # names every missing tool/key and the fix; run it on a fresh clone
+npm run bundle         # double-click bundle for this machine; -- --all for every platform (release/)
 ```
 
 Two runtime dependencies (`@anthropic-ai/sdk`, `express`) and that number is a rule, not an

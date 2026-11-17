@@ -1,0 +1,112 @@
+name: Bundles
+
+# The download-and-double-click bundles (scripts/bundle.mjs). Built once on
+# Linux — the app is plain JavaScript, only the Node runtime differs — then each
+# system's bundle is unpacked and started by its own launcher on that system,
+# because "it should work on Windows" is not the same as a Windows machine
+# saying so. A tag publishes them to a GitHub Release, only after all three pass.
+
+on:
+  push:
+    tags: ["v*"]
+    branches: [main]
+    paths:
+      - scripts/bundle.mjs
+      - .github/workflows/bundle.yml
+      - src/boot.ts
+      - src/first-run.ts
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build every bundle
+        run: npm run bundle -- --all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundles
+          path: |
+            release/*.zip
+            release/*.tar.gz
+          if-no-files-found: error
+
+  smoke:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+            launcher: Cunning Claw.sh
+          - os: macos-latest
+            target: darwin-arm64
+            launcher: Cunning Claw.command
+          - os: windows-latest
+            target: win-x64
+            launcher: Cunning Claw.cmd
+    runs-on: ${{ matrix.os }}
+    env:
+      CLAW_NO_BROWSER: "1"
+    steps:
+      # No checkout and no setup-node: the bundle must stand on its own.
+      - uses: actions/download-artifact@v4
+        with:
+          name: bundles
+      - name: Unpack, as a user would
+        shell: bash
+        run: |
+          f=$(ls cunningclaw-*-${{ matrix.target }}.tar.gz cunningclaw-*-${{ matrix.target }}.zip 2>/dev/null | head -1)
+          case "$f" in *.tar.gz) tar -xzf "$f" ;; *) unzip -q "$f" ;; esac
+          ls -d cunningclaw-*-${{ matrix.target }}/
+      - name: Double-click (Linux, macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd cunningclaw-*-${{ matrix.target }}
+          nohup "./${{ matrix.launcher }}" > "$RUNNER_TEMP/boot.log" 2>&1 &
+      - name: Double-click (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dir = Get-ChildItem -Directory "cunningclaw-*-${{ matrix.target }}" | Select-Object -First 1
+          Start-Process -FilePath (Join-Path $dir.FullName "${{ matrix.launcher }}") -WindowStyle Hidden `
+            -RedirectStandardOutput "$env:RUNNER_TEMP\boot.log" -RedirectStandardError "$env:RUNNER_TEMP\boot.err"
+      - name: It opens on the setup page
+        shell: bash
+        run: |
+          ok=""
+          for i in $(seq 1 45); do
+            home=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/ || true)
+            welcome=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/welcome || true)
+            if [ "$home" = "302" ] && [ "$welcome" = "200" ]; then ok=1; break; fi
+            sleep 2
+          done
+          echo "--- boot log ---"; cat "$RUNNER_TEMP/boot.log" "$RUNNER_TEMP/boot.err" 2>/dev/null || true
+          if [ -z "$ok" ]; then echo "Bundle smoke failed on ${{ matrix.target }}: / -> $home, /welcome -> $welcome"; exit 1; fi
+          echo "Bundle smoke passed: ${{ matrix.target }} started from its own launcher and opened on setup"
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: bundles
+      - name: Publish to the GitHub Release for this tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --title "Cunning Claw ${GITHUB_REF_NAME}" \
+            --notes "Download the one for your computer, unzip it, and read READ ME FIRST.txt. Not code-signed yet: Windows and macOS will ask once before the first run." \
+            cunningclaw-*.zip cunningclaw-*.tar.gz

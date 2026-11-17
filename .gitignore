@@ -47,3 +47,6 @@ workspace/scratch/
 
 # A separate project the claw cloned here on 9 Oct; not part of this repo.
 gods-eye-view/
+
+# Built bundles (npm run bundle)
+release/

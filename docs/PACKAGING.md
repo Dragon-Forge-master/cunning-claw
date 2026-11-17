@@ -42,8 +42,12 @@ the claw already drives its *own* Chrome for automation.
 
 ## Order of work
 
-1. Node SEA build of the engine (a `bundle` script, not yet written) — proves the single-binary
-   engine on all three platforms; useful on its own for a "portable zip".
+1. A portable bundle per platform — **built**, as the official Node runtime beside the app
+   rather than a Node SEA single binary: `npm run bundle -- --all` (`scripts/bundle.mjs`)
+   makes all five from one machine, because both runtime dependencies are plain
+   JavaScript. Unzip, double-click the launcher, done. `.github/workflows/bundle.yml`
+   starts each one with its own launcher on a real Windows, macOS and Linux runner,
+   and a `v*` tag publishes them to a GitHub Release.
 2. First-run wizard as a plain HUD page shown when `.env` is missing — **built**: `/welcome`
    (`public/welcome.html`), opened at boot when no brain can run.
 3. Tauri shell + tray icon + updater.

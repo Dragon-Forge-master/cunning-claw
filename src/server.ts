@@ -680,8 +680,11 @@ const httpServer = app.listen(port, host, async () => {
     const url = `http://${host}:${port}/welcome`;
     console.warn(`  ⚠ No brain can run yet. Setup is waiting at ${url}\n`);
     openInBrowser(url);
-  } else if (!brainReady()) {
-    console.warn(`  ⚠ No brain has an API key. ${missingKeyHint()}\n`);
+  } else {
+    if (!brainReady()) console.warn(`  ⚠ No brain has an API key. ${missingKeyHint()}\n`);
+    // Started from the double-click launcher: nobody is at a terminal to read
+    // the address, so take them to the glass.
+    if (process.env.CLAW_OPEN_HUD) openInBrowser(`http://${host}:${port}/`);
   }
 });
 
@@ -691,6 +694,14 @@ const httpServer = app.listen(port, host, async () => {
 // says nothing about what to do. Same words as the doctor, which already knows.
 httpServer.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code !== "EADDRINUSE") throw err;
+  // A second double-click on the launcher is the commonest way to hit this,
+  // and the claw is already running: show them it rather than an error.
+  if (process.env.CLAW_OPEN_HUD) {
+    console.log(`\n  Something is already running on port ${port} — opening it. If that is not Cunning Claw, change server.port in claw.config.json.\n`);
+    openInBrowser(`http://${host}:${port}/`);
+    setTimeout(() => process.exit(0), 1500);
+    return;
+  }
   console.error(`\n  ✗ Port ${port} on ${host} is in use — stop the other process or change server.port in claw.config.json\n`);
   process.exit(1);
 });

@@ -10,7 +10,8 @@
     "check": "tsc --noEmit",
     "test": "tsx --import ./scripts/test-env.mjs --test src/*.test.ts",
     "doctor": "tsx src/doctor.ts",
-    "update": "git pull && npm install"
+    "update": "git pull && npm install",
+    "bundle": "node scripts/bundle.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
