@@ -35,7 +35,7 @@ export const UNTRUSTED_TOOLS = new Set([
  * so every one of them taints the turn — the guard cannot know which are safe.
  * Every browser_* result is page content (snapshots included), so they all taint.
  */
-function isUntrustedToolName(name: string): boolean {
+export function isUntrustedToolName(name: string): boolean {
   return (
     UNTRUSTED_TOOLS.has(name) ||
     name.startsWith("mcp__") ||

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { config } from "./config.js";
+import { injectionAlarm } from "./injection.js";
 
 /**
  * The work order — approve the plan once, not every step of it.
@@ -224,6 +225,17 @@ export function consume(tool: string, match: string): { covered: boolean; step?:
     const step = order.steps[i];
     if (step.tool !== tool) continue;
     if (step.match.trim() !== want) continue;
+    // This turn read text that tried to give orders (src/injection.ts). The
+    // plan was approved before the stranger spoke, so its irreversible steps
+    // go back to a card. The use is still spent: if the card says yes, the
+    // send happened and a later turn must not repeat it under the plan; if
+    // it says no, asking again next time is the safe way to be wrong.
+    if (injectionAlarm() && stepIsCommitting(step)) {
+      const spent = order.used[i] ?? 0;
+      if (spent >= (step.uses ?? 1)) continue;
+      order.used[i] = spent + 1;
+      return { covered: false };
+    }
     const allowed = step.uses ?? 1;
     const spent = order.used[i] ?? 0;
     if (spent >= allowed) continue;

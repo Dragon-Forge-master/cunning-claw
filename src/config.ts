@@ -237,6 +237,13 @@ export interface ClawConfig {
    */
   workOrder?: { enabled?: boolean; expiryMinutes?: number };
   /**
+   * The injection scanner (src/injection.ts): the score, 0..1, at which a
+   * fenced block is marked and committing actions in that turn ask afresh.
+   * Default 0.5. There is no off switch — invisible characters are always
+   * stripped, and a warning costs nothing but a line.
+   */
+  injection?: { threshold?: number };
+  /**
    * Second machines the claw may work on. Boxes are named here and chosen by
    * id — the model never supplies a host, a user or an ssh option.
    */

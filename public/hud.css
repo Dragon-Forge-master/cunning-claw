@@ -165,6 +165,11 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; position: relative; }
   align-self: flex-start; font-size: 11px; color: var(--amber);
   border: 1px dashed rgba(255,180,84,0.4); padding: 3px 8px;
 }
+/* A tool result whose text tried to give the claw instructions. */
+.action-chip .inj-flag {
+  margin-left: 8px; padding: 0 5px; font-size: 10px; letter-spacing: 1px;
+  color: #1a1206; background: var(--amber); border-radius: 2px; cursor: help;
+}
 
 /* Approval card */
 .approval-card {

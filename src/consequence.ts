@@ -1,4 +1,5 @@
 import { config } from "./config.js";
+import { injectionAlarm } from "./injection.js";
 
 /**
  * Which browser actions actually need a human.
@@ -96,8 +97,15 @@ export function clearTaskGrant(): void {
   taskGrant = false;
 }
 
+/**
+ * A grant is suspended while the injection alarm is up (src/injection.ts):
+ * "stop asking me about this errand" was said about the operator's errand,
+ * not about whatever the page the claw just read would like done. It comes
+ * back by itself when the alarm clears with the next turn — which also ends
+ * the grant, so in practice the rest of this turn asks, card by card.
+ */
 export function taskGrantActive(): boolean {
-  return taskGrant;
+  return taskGrant && !injectionAlarm();
 }
 
 export function needsApproval(
@@ -110,7 +118,7 @@ export function needsApproval(
   if (consequence === "reversible") return false;
   // An irreversible action is never covered by a grant.
   const irreversible = classifyBrowserAction(kind, query, opts).why !== "unrecognised target — asking rather than guessing";
-  if (taskGrant && !irreversible) return false;
+  if (taskGrantActive() && !irreversible) return false;
   return true;
 }
 

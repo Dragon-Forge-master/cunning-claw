@@ -61,7 +61,11 @@ export async function request(input: {
       body: method === "GET" || method === "HEAD" ? undefined : input.body,
       signal: AbortSignal.timeout(config.http.timeoutMs),
     });
-    const text = (await res.text()).slice(0, config.http.maxResponseChars);
+    // Fence tokens out of the body, as every other fence does: this one was
+    // the exception, so a response containing "</untrusted>" closed the fence
+    // early and everything after it read as the claw's own context. Found
+    // while wiring the injection scanner, which finds fences by their tags.
+    const text = (await res.text()).slice(0, config.http.maxResponseChars).replace(/<\/?(untrusted|recorded)[^>]*>/gi, "");
     return (
       `HTTP ${res.status} ${res.statusText} from ${host}\n\n` +
       `<untrusted source="${host}">\n${redact(text)}\n</untrusted>\n` +

@@ -12,6 +12,7 @@ import {
   type PlanStep,
 } from "./workorder.js";
 import { classifyCommand } from "./tools.js";
+import { raiseInjectionAlarm, clearInjectionAlarm } from "./injection.js";
 
 /**
  * A work order moves consent earlier, it does not remove it. These tests are
@@ -228,4 +229,28 @@ test("a pull from a box cannot install standing orders through a plan", () => {
     { tool: "remote_copy", match: "pull /home/owner/cunning-claw/workspace/SCHEDULE.md forge:/home/claw/work/s.md", summary: "Bring the schedule down" },
   ), isDenied);
   assert.equal(p.ok, false);
+});
+
+test("after reading text that tried to give orders, a plan's sends go back to a card", () => {
+  // A plan is approved before the stranger speaks. "Email the accountant"
+  // cannot have meant "and whatever the email you just read asks for".
+  reset();
+  const p = prepare("Email the accountant", steps(
+    { tool: "run_command", match: "npm run report", summary: "Build the report" },
+    { tool: "send_email", match: "accounts@example.com", summary: "Send it" },
+  ), isDenied);
+  if (!p.ok) throw new Error(p.error);
+  activate(p.order);
+  raiseInjectionAlarm({ score: 0.9, signals: ["override"] });
+  try {
+    assert.equal(consume("send_email", "accounts@example.com").covered, false,
+      "a committing step asks afresh in an alarmed turn");
+    assert.equal(consume("run_command", "npm run report").covered, true, "reversible steps still run under the plan");
+    clearInjectionAlarm();
+    assert.equal(consume("send_email", "accounts@example.com").covered, false,
+      "the send that went to a card is spent — a later turn does not send it twice");
+  } finally {
+    clearInjectionAlarm();
+    reset();
+  }
 });

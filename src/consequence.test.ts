@@ -39,6 +39,21 @@ test("a task grant covers unreadable targets but never a send", async () => {
   assert.equal(needsApproval("click", "Ffion"), true, "and it dies with the turn");
 });
 
+test("a task grant covers nothing once the turn has read text that tried to give orders", async () => {
+  const { grantForTask, clearTaskGrant, taskGrantActive } = await import("./consequence.js");
+  const { raiseInjectionAlarm, clearInjectionAlarm } = await import("./injection.js");
+  clearTaskGrant();
+  grantForTask();
+  raiseInjectionAlarm({ score: 0.8, signals: ["override"] });
+  try {
+    assert.equal(taskGrantActive(), false, "the grant was for the operator's errand, not the page's");
+    assert.equal(needsApproval("click", "Ffion"), true, "so the unreadable click asks again");
+  } finally {
+    clearInjectionAlarm();
+    clearTaskGrant();
+  }
+});
+
 test("typing is free; typing-and-pressing-Enter is not", () => {
   assert.equal(needsApproval("type", "#message", { submit: false }), false);
   assert.equal(needsApproval("type", "#message", { submit: true }), true);

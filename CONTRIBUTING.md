@@ -19,6 +19,7 @@ src/paths.ts       expandHome + the sensitive-file denylist every file tool obey
 src/documents.ts   read_document: PDF/Office/OpenDocument/HTML/images to fenced text; a bounded zip reader
 src/remote.ts      ssh to another machine: boxes, detached jobs, file transfer
 src/workorder.ts   approve a plan once instead of every step of it
+src/injection.ts   scans fenced text for orders aimed at the model; warns, flags, alarms the turn
 src/voice.ts       Piper / spd-say / say
 src/doctor.ts      npm run doctor
 src/workspace.ts   SOUL.md / MEMORY.md / skills
