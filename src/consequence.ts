@@ -113,3 +113,42 @@ export function needsApproval(
   if (taskGrant && !irreversible) return false;
   return true;
 }
+
+/**
+ * What an approval card for a creating/publishing MCP tool must say about who
+ * will be able to see the result.
+ *
+ * Field report (issue #4): the claw made a GitHub repository through the
+ * GitHub connector. The card fired — create_* gates — but it showed only the
+ * arguments the model passed, which said nothing about visibility, and the
+ * vendor defaulted to PUBLIC. The operator approved a publish without ever
+ * seeing the word. A card is only a boundary if it shows the consequence, so
+ * a creating tool's card states visibility either way: what the arguments
+ * set, or that they set nothing and the vendor's default applies.
+ *
+ * Name-based, like the MCP gate itself: the server's schema is third-party
+ * text, and a missing field is exactly the case that matters.
+ */
+const CREATING_VERBS = new Set([
+  "create", "publish", "new", "upload", "share", "post", "deploy", "fork", "import", "copy", "duplicate", "remix",
+]);
+const VISIBILITY_KEY = /visib|private|public|privacy|unlisted|audience|access_?level|permission/i;
+
+export function publishVisibilityNote(toolName: string, input: unknown): string {
+  // mcp__github__create_repository → the remote half: create, repository.
+  const remote = toolName.replace(/^mcp__.+?__/, "");
+  const words = remote.replace(/([a-z])([A-Z])/g, "$1 $2").split(/[^a-zA-Z]+/).map((w) => w.toLowerCase());
+  if (!words.some((w) => CREATING_VERBS.has(w))) return "";
+  const found: string[] = [];
+  const look = (v: unknown, depth: number) => {
+    if (!v || typeof v !== "object" || depth > 2) return;
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      if (VISIBILITY_KEY.test(k) && (typeof val !== "object" || val === null)) found.push(`${k}: ${String(val)}`);
+      else look(val, depth + 1);
+    }
+  };
+  look(input, 0);
+  return found.length
+    ? `visibility — ${found.join(", ")}`
+    : "visibility not specified — vendor default applies (may be public)";
+}

@@ -13,7 +13,7 @@ import * as eyes from "./eyes.js";
 import * as http from "./http.js";
 import * as mcp from "./mcp.js";
 import * as tax from "./tax.js";
-import { classifyBrowserAction, needsApproval as browserNeedsApproval, taskGrantActive } from "./consequence.js";
+import { classifyBrowserAction, needsApproval as browserNeedsApproval, publishVisibilityNote, taskGrantActive } from "./consequence.js";
 import { snapshot, record } from "./filewatch.js";
 import { addLesson, cleanLesson, listSkills, readSkill, writeSkill } from "./workspace.js";
 import { landscapeSummary } from "./landscape.js";
@@ -2471,8 +2471,11 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       default:
         if (mcp.isMcpTool(name)) {
           if (mcp.needsApproval(name)) {
+            // A creating tool's card names visibility in the title, where it
+            // cannot be truncated away, even when the arguments are silent (#4).
+            const visibility = publishVisibilityNote(name, input);
             const ok = await ctx.requestApproval(
-              `MCP tool: ${name}`,
+              `MCP tool: ${name}${visibility ? ` — ${visibility}` : ""}`,
               JSON.stringify(input, null, 2).slice(0, 1500),
             );
             if (!ok) return "The user declined the MCP call.";
