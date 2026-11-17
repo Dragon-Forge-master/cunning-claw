@@ -171,6 +171,17 @@ export interface ClawConfig {
       writeTools?: string[];
     }[];
   };
+  /**
+   * Send only the MCP schemas a turn needs, plus a roster of the rest, and
+   * cut very long tool results. On unless enabled is false; see src/tool-diet.ts.
+   */
+  toolDiet?: {
+    enabled?: boolean;
+    sendAllAtMost?: number;
+    stickyTurns?: number;
+    rosterDescChars?: number;
+    maxResultChars?: number;
+  };
   agent?: { maxTurnMinutes?: number };
   /**
    * Memory search by meaning. "auto" picks a keyed provider (Ollama first when

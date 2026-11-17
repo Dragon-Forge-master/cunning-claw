@@ -11,7 +11,8 @@ import { clearTaskGrant } from "./consequence.js";
 import { recentWindow } from "./history-view.js";
 import { stampUserMessage } from "./when.js";
 import * as coherence from "./coherence.js";
-import { toolDefinitions as mcpToolDefinitions, listMcpStates } from "./mcp.js";
+import { toolDefinitions as mcpToolDefinitions, listMcpStates, listMcpTools } from "./mcp.js";
+import * as diet from "./tool-diet.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
 import { pinnedBrainId, pickBrain, nextBrain, shouldFailOver, isCreditExhausted, brainKeyEnv, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
 import { completeOpenAi } from "./openai-compat.js";
@@ -210,11 +211,19 @@ function buildStableSystem(spec: BrainSpec): string {
   ].join("\n");
 }
 
-/** The volatile half — just what genuinely changes each turn. Kept tiny. */
+/**
+ * The volatile half — just what genuinely changes each turn. Kept tiny, bar
+ * the tool diet's roster of unloaded MCP tools: a few thousand tokens here in
+ * place of tens of thousands of schemas, and it shrinks as tools are loaded.
+ */
 function volatileSystem(spec: BrainSpec): string {
   const now = new Date().toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" });
-  return `[This turn — time: ${now}; brain: ${describeBrain(spec)} (${spec.id}).${mcpRosterLine()}${boxRosterLine()}${coherence.repeatedAcrossTurns()}]`;
+  const roster = dietRoster ? `\n${dietRoster}` : "";
+  return `[This turn — time: ${now}; brain: ${describeBrain(spec)} (${spec.id}).${mcpRosterLine()}${boxRosterLine()}${coherence.repeatedAcrossTurns()}]${roster}`;
 }
+
+/** The tool diet's roster of deferred MCP tools, set by toolsForCall for the same request. */
+let dietRoster = "";
 
 /**
  * The live MCP roster, one line, every turn. History is a belief store with no
@@ -503,10 +512,21 @@ export function resetHistory(): void {
   coherence.forgetTurnShapes();
 }
 
+/**
+ * Built-ins plus the MCP schemas the tool diet picks for this request, and
+ * the roster of the rest for the volatile half (src/tool-diet.ts). Called
+ * before the system prompt is built, so the roster and the tool list agree.
+ */
+function toolsForCall(includeMcp: boolean): Anthropic.Tool[] {
+  const picked = diet.assembleTools(toolDefinitions as Anthropic.Tool[], listMcpTools(), mcpToolDefinitions, includeMcp);
+  dietRoster = picked.roster;
+  return picked.tools;
+}
+
 function buildTools(spec: BrainSpec, includeMcp = true): Anthropic.ToolUnion[] {
   // Tools discovered from MCP servers are ordinary tools to the model; the
   // difference is that their results come back untrusted-fenced.
-  const tools: Anthropic.ToolUnion[] = [...toolDefinitions, ...(includeMcp ? mcpToolDefinitions() : [])];
+  const tools: Anthropic.ToolUnion[] = [...toolsForCall(includeMcp)];
   if (spec.provider === "anthropic" && config.webSearch.enabled) {
     tools.push({
       type: "web_search_20260209",
@@ -551,11 +571,13 @@ async function callBrain(
   const lean = kind === "heartbeat";
 
   if (spec.provider === "openai") {
+    const tools = toolsForCall(!lean);
     const completion = await completeOpenAi({
       spec,
       system: `${buildStableSystem(spec)}\n\n${volatileSystem(spec)}`,
       history: lean ? recentWindow(trimHistory(history), HEARTBEAT_HISTORY) : trimHistory(history),
       mcpTools: !lean,
+      tools,
       onText,
       signal,
     });
@@ -568,6 +590,8 @@ async function callBrain(
     };
   }
 
+  // Tools first: the diet's roster rides in the volatile half built below.
+  const tools = buildTools(spec, !lean);
   const params: Anthropic.MessageCreateParamsStreaming = {
     model: spec.model,
     max_tokens: spec.maxTokens ?? config.maxTokens,
@@ -579,7 +603,7 @@ async function callBrain(
       { type: "text", text: buildStableSystem(spec), cache_control: { type: "ephemeral" } },
       { type: "text", text: volatileSystem(spec) },
     ],
-    tools: buildTools(spec, !lean),
+    tools,
     messages: repairHistory(lean ? recentWindow(trimHistory(history), HEARTBEAT_HISTORY) : trimHistory(history)),
     stream: true,
   };
@@ -748,6 +772,7 @@ export async function runTurn(
   }
   history.push({ role: "user", content: stampUserMessage(userMessage, new Date(), stampedAt) });
   if (opts?.kind !== "heartbeat") {
+    diet.beginTurn(userMessage);
     lastMessageAt = Date.now();
     try { appendJournal("operator", userMessage); } catch { /* ignore */ }
   }
@@ -901,7 +926,7 @@ export async function runTurn(
             const echo = prior
               ? `\n\nThe most recent answer to this exact call is repeated below. The answer you ` +
                 `need — a status line, a URL, an error message — is in this text. Read it and act ` +
-                `on it; calling again will not change it:\n\n${prior.result.slice(0, 6000)}`
+                `on it; calling again will not change it:\n\n${diet.trimToolText(prior.result, 6000)}`
               : "";
             const verdict = answersFrozen
               ? `it answered IDENTICALLY each time. The answer exists; re-asking is not reading.`
@@ -957,10 +982,13 @@ export async function runTurn(
             ? (result.length > 400 ? result.slice(0, 400) + "…" : result)
             : result.map((b) => b.type === "image" ? "[image]" : b.text).join(" ").slice(0, 400);
           events.emit("tool_result", { name: tu.name, result: preview });
+          // Cut before it enters history: a whole log read once is otherwise
+          // re-sent on every later step of this turn and every turn after.
+          const kept = diet.trimToolResult(result, diet.dietSettings().maxResultChars);
           return {
             type: "tool_result" as const,
             tool_use_id: tu.id,
-            content: typeof result === "string" && nudge ? result + nudge : result,
+            content: typeof kept === "string" && nudge ? kept + nudge : kept,
           };
         }),
       );

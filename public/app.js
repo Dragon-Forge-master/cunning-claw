@@ -1250,7 +1250,7 @@ async function pollStatus() {
     const {
       text, online, serverVoice: sv, serverVoiceAvailable: sva,
       skills, heartbeat, landscapeCount, landscapeUpdated,
-      brain, brains, telegram, discord, ntfy, toolCount, preview, spend,
+      brain, brains, telegram, discord, ntfy, toolCount, preview, spend, toolDiet,
     } = await res.json();
     renderBrainPicker(brains);
     if (preview?.open && preview.url) {
@@ -1268,7 +1268,8 @@ async function pollStatus() {
       `Telegram: ${telegram?.enabled ? `on (${(telegram.chats || []).join(", ")})` : "off"}`,
       `Discord: ${discord?.enabled ? `on (${(discord.users || []).join(", ")})` : "off"}`,
       `ntfy: ${ntfy?.enabled ? `on (${ntfy.topic} · ${ntfy.server}${ntfy.delivery === "failing" ? " · failing" : ""})` : "off"}`,
-    ].join("\n");
+      toolDiet?.text ?? "",
+    ].filter((line, i) => i === 0 || line).join("\n");
     $("sys-status").textContent = text + extra;
     // The dot is connection state, owned by the SSE socket. Brain readiness is
     // a separate fact — showing it here made a keyless-but-connected CUNNING CLAW
@@ -1279,6 +1280,7 @@ async function pollStatus() {
       $("spend-chip").textContent = spend.turns
         ? `$${usd.toFixed(4)} · ${spend.turns} turn${spend.turns === 1 ? "" : "s"}`
         : "";
+      $("spend-chip").title = toolDiet?.text ?? "";
     }
     if (brain) {
       const b = (brains?.catalog || []).find((x) => x.model === brain.model);
