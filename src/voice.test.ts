@@ -41,6 +41,42 @@ test("cleanForSpeech strips markdown so it is not read aloud", () => {
   assert.doesNotMatch(out, /`/);
 });
 
+function hudSpeechText(): (text: string) => string {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = fs.readFileSync(path.join(here, "..", "public", "app.js"), "utf-8");
+  const start = src.indexOf("// speech-clean:begin");
+  const end = src.indexOf("// speech-clean:end");
+  assert.ok(start >= 0 && end > start, "public/app.js must carry the speech-clean block");
+  return vm.runInNewContext(`${src.slice(start, end)}\nspeechText`);
+}
+
+// What the voice must never read out character by character. Each case is
+// [reply text, what is said]; both the server voice and the HUD's say it.
+const SPOKEN: [string, string][] = [
+  // The brand line: "hash three five d six e d", twice.
+  ["Your mark is cyan #35d6ed on ink #0a111c.", "Your mark is cyan on ink."],
+  ["The accent (#fff) stays.", "The accent stays."],
+  ["Merged as 626d48f, see commit ca35aa660ba1e7e9ad284da7505ed9f0a05cc045 for the rest.", "Merged as, see commit for the rest."],
+  ["Session session_01WKx8stV5FGA8fRNerFMUSx is done.", "Session is done."],
+  ["Job 3f2b8c1e-9a4d-4e2b-8c1f-0a1b2c3d4e5f finished.", "Job finished."],
+  ["Your user id is 819273645501.", "Your user id is."],
+  ["The docs are at https://github.com/Dragon-Forge-master/cunning-claw/blob/main/README.md.", "The docs are at github.com."],
+  ["See www.example.co.uk/path?q=1, then (https://docs.anthropic.com/en/api).", "See example.co.uk, then (docs.anthropic.com)."],
+  ["The HUD is on http://127.0.0.1:3900/docs right now.", "The HUD is on a local address right now."],
+  ["Run this:\n```bash\nnpm test\n```\nThen check.", "Run this: — code omitted — Then check."],
+  // Ordinary words, issue numbers and short numbers are left alone.
+  ["Issue #4 and #45 are fixed; the faded decade cafe opens at 0900.", "Issue 4 and 45 are fixed; the faded decade cafe opens at 0900."],
+  ["Call 07700 900123 about the MOT on 17 November.", "Call 07700 900123 about the MOT on 17 November."],
+];
+
+test("colour codes, hashes, long ids, URLs and code blocks are not read out character by character", () => {
+  const hud = hudSpeechText();
+  for (const [text, said] of SPOKEN) {
+    assert.equal(cleanForSpeech(text), said, `server voice: ${text}`);
+    assert.equal(hud(text), said, `HUD voice: ${text}`);
+  }
+});
+
 test("the prompt can read what detect() found without waiting, and never mistakes 'not looked' for 'no voice'", async () => {
   // The claw once offered to build offline speech it already had, because
   // nothing told it what engine was installed. The stable prompt now reads

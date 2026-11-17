@@ -252,6 +252,33 @@ function pickVoice() {
 speechSynthesis.onvoiceschanged = pickVoice;
 pickVoice();
 
+// speech-clean:begin — a copy of cleanForSpeech in src/voice.ts, for the
+// browser's own voice; src/voice.test.ts runs this exact block against it.
+// Colour codes, hashes and long ids are dropped and a URL is said as its site,
+// or "#35d6ed" is read out as "hash three five d six e d".
+const LOCAL_HOST = /^(?:localhost|127(?:\.\d+){3}|0\.0\.0\.0|10(?:\.\d+){3}|192\.168(?:\.\d+){2})$/i;
+function speechText(text) {
+  return String(text ?? "")
+    .replace(/```[\s\S]*?```/g, " — code omitted — ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\b(?:https?:\/\/|www\.)(?:www\.)?([^\s/?#:]+)\S*?([.,;:!?)]*)(?=\s|$)/gi, (_m, host, tail) =>
+      (LOCAL_HOST.test(host.replace(/\.$/, "")) ? "a local address" : host) + tail)
+    .replace(/(^|[^\w&])#(?:[0-9a-f]{6}(?:[0-9a-f]{2})?|(?=[0-9]*[a-f])[0-9a-f]{3,4})\b/gi, "$1")
+    .replace(/\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b/gi, "")
+    .replace(/\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,}\b/gi, "")
+    .replace(/\b(?=[\w-]*\d)(?=[\w-]*[a-z])[\w-]{16,}\b/gi, "")
+    .replace(/\b\d{12,}\b/g, "")
+    .replace(/^\s{0,3}#{1,6}\s*/gm, "")
+    .replace(/^\s*[-*•]\s+/gm, "")
+    .replace(/[*_~`>|#]/g, "")
+    .replace(/\(\s*\)|\[\s*\]/g, "")
+    .replace(/\s+([.,;:!?])/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+// speech-clean:end
+
 function speak(text, { after = false } = {}) {
   // When the server has a real TTS engine it speaks for us — don't double up.
   if (serverVoiceAvailable) return;
@@ -260,8 +287,7 @@ function speak(text, { after = false } = {}) {
   // speechSynthesis queues by itself; letting a heartbeat wait is just not
   // cancelling what is already being read.
   if (!after) speechSynthesis.cancel();
-  // Strip markdown-ish noise for cleaner speech
-  const clean = text.replace(/[*_`#]/g, "").replace(/\[.*?\]\(.*?\)/g, "");
+  const clean = speechText(text);
   const utter = new SpeechSynthesisUtterance(clean);
   if (cunningclawVoice) utter.voice = cunningclawVoice;
   utter.rate = 1.05;
