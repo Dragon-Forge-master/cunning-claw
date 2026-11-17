@@ -76,14 +76,28 @@ jobs:
         run: |
           cd cunningclaw-*-${{ matrix.target }}
           nohup "./${{ matrix.launcher }}" > "$RUNNER_TEMP/boot.log" 2>&1 &
-      - name: Double-click (Windows)
+      - name: Double-click (Windows), and it opens on the setup page
+        # One step, not two: the first run's log showed the claw lit and
+        # waiting on Windows, yet nothing answered the next step's curl —
+        # the Windows runner ends what a step started when that step ends.
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $dir = Get-ChildItem -Directory "cunningclaw-*-${{ matrix.target }}" | Select-Object -First 1
-          Start-Process -FilePath (Join-Path $dir.FullName "${{ matrix.launcher }}") `
+          $claw = Start-Process -FilePath (Join-Path $dir.FullName "${{ matrix.launcher }}") -PassThru `
             -RedirectStandardOutput "$env:RUNNER_TEMP\boot.log" -RedirectStandardError "$env:RUNNER_TEMP\boot.err"
+          $ok = $false
+          for ($i = 0; $i -lt 45; $i++) {
+            $home_ = & curl.exe -s -o NUL -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/
+            $welcome = & curl.exe -s -o NUL -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/welcome
+            if ($home_ -eq "302" -and $welcome -eq "200") { $ok = $true; break }
+            Start-Sleep -Seconds 2
+          }
+          "--- boot log ---"; Get-Content "$env:RUNNER_TEMP\boot.log", "$env:RUNNER_TEMP\boot.err" -ErrorAction SilentlyContinue
+          if (-not $ok) { "Bundle smoke failed on ${{ matrix.target }}: / -> $home_, /welcome -> $welcome"; exit 1 }
+          "Bundle smoke passed: ${{ matrix.target }} started from its own launcher and opened on setup"
       - name: It opens on the setup page
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           ok=""
