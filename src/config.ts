@@ -154,6 +154,11 @@ export interface ClawConfig {
     guardOverridesPin?: boolean;
   };
   coding?: { root?: string; skip?: string[] };
+  /**
+   * read_document. maxChars is one read's share of the context window (40k);
+   * a longer document is paged with `start`. ocrLang is tesseract's code.
+   */
+  documents?: { maxChars?: number; maxFileMB?: number; timeoutMs?: number; ocrMaxPages?: number; ocrLang?: string };
   mcp?: {
     enabled: boolean;
     timeoutMs: number;

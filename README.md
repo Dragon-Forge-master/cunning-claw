@@ -242,7 +242,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
   ▸ brain    flashlite · google/gemini-3.1-flash-lite
   ▸ llais    piper · en_GB-alan-medium   (the voice)
   ▸ curiad   every 30m   (the heartbeat)
-  ▸ offer    70 tools on the bench
+  ▸ offer    71 tools on the bench
 
   ▸ wards    y ffens   — outside words are fenced
              y llw     — consequences wait for you
@@ -269,6 +269,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **Sees** | Screenshots the desktop, and can *glance* at the room through a webcam or a Home Assistant camera — mood is a hypothesis, never a reason to act |
 | **Operates** | Shell, files, apps, volume, media, clipboard, notifications, window focus, keystrokes |
 | **Browses** | Owns a Chrome profile over CDP — accessibility refs, real mouse/keys, snapshot after every action, Gmail, WhatsApp Web |
+| **Reads documents** | PDF, Word, Excel, PowerPoint, OpenDocument, HTML, CSV and images (OCR). Office files open with nothing installed; `markitdown`, `pdftotext` and `tesseract` add PDFs and scans — `npm run doctor` names the install line. What comes back is fenced as a stranger's words |
 | **Reads mail** | Gmail through that Chrome session — search operators, category tabs, whole threads, drafts. Send is always an approval. No credentials handled |
 | **WhatsApp** | WhatsApp Web / Business in the same Chrome — chat list, title unread count, draft, send. Send is always an approval. QR is scanned in that window |
 | **Accounts** | Jurisdiction packs (UK first; IE, US, AU, DE as stubs) plus Xero via the official local MCP. It will not invent a foreign tax rate or file a return |

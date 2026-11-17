@@ -16,6 +16,7 @@ src/gmail.ts       Gmail search language, list/thread scrapers, compose helpers
 src/desktop.ts     Screen, keys, clipboard — per-platform paths via src/platform.ts
 src/windows.ts     The Windows half: PowerShell, SendKeys, System.Drawing
 src/paths.ts       expandHome + the sensitive-file denylist every file tool obeys
+src/documents.ts   read_document: PDF/Office/OpenDocument/HTML/images to fenced text; a bounded zip reader
 src/remote.ts      ssh to another machine: boxes, detached jobs, file transfer
 src/workorder.ts   approve a plan once instead of every step of it
 src/voice.ts       Piper / spd-say / say

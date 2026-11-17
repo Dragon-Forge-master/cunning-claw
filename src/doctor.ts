@@ -12,6 +12,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { boxes as remoteBoxes, sshArgs, shQuote, type Box as RemoteBox } from "./remote.js";
 import { expandHome } from "./paths.js";
+import { DOCUMENT_TOOLS } from "./documents.js";
 
 const execFileAsync = promisify(execFile);
 import { detect } from "./voice.js";
@@ -383,6 +384,14 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
     out.push(row("chrome", "ok", false, `Chrome: ${chrome}`));
   } else {
     out.push(row("chrome", "warn", false, missing("google-chrome")));
+  }
+
+  // read_document. None is essential: the built-in reader opens Word, Excel,
+  // PowerPoint and OpenDocument with nothing installed. These add PDFs and OCR.
+  for (const t of DOCUMENT_TOOLS) {
+    out.push((await hasBin(t.bin))
+      ? row(`doc-${t.bin}`, "ok", false, `${t.bin} present — ${t.for}`)
+      : row(`doc-${t.bin}`, "warn", false, `${missing(t.bin)} For read_document: ${t.for}.`));
   }
 
   // A Chrome already running from before the origin fix keeps the old flag
