@@ -63,8 +63,12 @@ jobs:
       - name: Unpack, as a user would
         shell: bash
         run: |
-          f=$(ls cunningclaw-*-${{ matrix.target }}.tar.gz cunningclaw-*-${{ matrix.target }}.zip 2>/dev/null | head -1)
-          case "$f" in *.tar.gz) tar -xzf "$f" ;; *) unzip -q "$f" ;; esac
+          # One of the two names never exists for a given system; with bash's
+          # -e -o pipefail an `ls` of both fails the step before anything unpacks.
+          for f in cunningclaw-*-${{ matrix.target }}.tar.gz cunningclaw-*-${{ matrix.target }}.zip; do
+            [ -f "$f" ] || continue
+            case "$f" in *.tar.gz) tar -xzf "$f" ;; *) unzip -q "$f" ;; esac
+          done
           ls -d cunningclaw-*-${{ matrix.target }}/
       - name: Double-click (Linux, macOS)
         if: runner.os != 'Windows'
@@ -77,7 +81,7 @@ jobs:
         shell: pwsh
         run: |
           $dir = Get-ChildItem -Directory "cunningclaw-*-${{ matrix.target }}" | Select-Object -First 1
-          Start-Process -FilePath (Join-Path $dir.FullName "${{ matrix.launcher }}") -WindowStyle Hidden `
+          Start-Process -FilePath (Join-Path $dir.FullName "${{ matrix.launcher }}") `
             -RedirectStandardOutput "$env:RUNNER_TEMP\boot.log" -RedirectStandardError "$env:RUNNER_TEMP\boot.err"
       - name: It opens on the setup page
         shell: bash
