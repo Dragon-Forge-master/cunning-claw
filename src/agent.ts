@@ -5,9 +5,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { config, DATA_DIR, ROOT } from "./config.js";
 import { memorySnapshot } from "./memory.js";
 import { executeTool, toolDefinitions, type ToolContext } from "./tools.js";
-import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted, suggestCheapBrain, suggestCapableBrain } from "./routing.js";
+import { enforceGuard, requiresTrustedBrain, isTrustedBrain, historyIsTainted, isUntrustedToolName, suggestCheapBrain, suggestCapableBrain } from "./routing.js";
 import { containsSecret, redactDeep, isCleanBase64, isSecretReply } from "./redact.js";
 import { clearTaskGrant } from "./consequence.js";
+import { screenOutput, raiseInjectionAlarm, clearInjectionAlarm, cardAfterInjection } from "./injection.js";
 import { recentWindow } from "./history-view.js";
 import { stampUserMessage } from "./when.js";
 import * as coherence from "./coherence.js";
@@ -662,8 +663,10 @@ export async function runTurn(
     }
   }, maxTurnMs() + 1000);
   watchdog.unref?.();
-  // A grant covers one errand, not the rest of the session.
+  // A grant covers one errand, not the rest of the session. The injection
+  // alarm is the same shape: the operator speaking again is a fresh start.
   clearTaskGrant();
+  clearInjectionAlarm();
   const kind = opts?.kind === "heartbeat" ? "heartbeat" as const : "user" as const;
   events.emit("turn_start", { kind });
 
@@ -753,7 +756,12 @@ export async function runTurn(
   }
 
   const ctx: ToolContext = {
-    requestApproval: events.requestApproval,
+    // After the turn has read text that tried to give orders, every card says
+    // so — the operator is the one reader the stranger cannot rewrite.
+    requestApproval: (summary, detail) => {
+      const card = cardAfterInjection(summary, detail);
+      return events.requestApproval(card.summary, card.detail);
+    },
     emit: events.emit,
     tainted: () => historyIsTainted(history),
   };
@@ -934,7 +942,15 @@ export async function runTurn(
           }
 
           events.emit("tool_start", { name: tu.name, input: tu.input });
-          const result = await executeTool(tu.name, tu.input, ctx);
+          // Every fence passes here on its way to the model, so the injection
+          // scanner reads them here: invisible characters out, a warning in
+          // front of anything that talks to the model, and the turn alarmed.
+          const screened = screenOutput(
+            await executeTool(tu.name, tu.input, ctx),
+            { unfenced: isUntrustedToolName(tu.name) },
+          );
+          const result = screened.output;
+          if (screened.flagged) raiseInjectionAlarm(screened.flagged);
 
           // Remember what this exact call answered, and whether it keeps
           // answering the same thing — the Ouroboros guard above reads this.
@@ -956,7 +972,11 @@ export async function runTurn(
           const preview = typeof result === "string"
             ? (result.length > 400 ? result.slice(0, 400) + "…" : result)
             : result.map((b) => b.type === "image" ? "[image]" : b.text).join(" ").slice(0, 400);
-          events.emit("tool_result", { name: tu.name, result: preview });
+          events.emit("tool_result", {
+            name: tu.name,
+            result: preview,
+            ...(screened.flagged ? { injection: screened.flagged } : {}),
+          });
           return {
             type: "tool_result" as const,
             tool_use_id: tu.id,

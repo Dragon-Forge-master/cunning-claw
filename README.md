@@ -558,6 +558,12 @@ assumption that the model will eventually be lied to.
 
 - Everything read from the web or your inbox is **fenced as untrusted data**, with fence
   tokens stripped so a page can't close the fence and impersonate you.
+- A **second line inside the fence** (`src/injection.ts`, local heuristics, no model call):
+  invisible characters are stripped, text that tries to give orders — in English, Welsh,
+  Spanish, French, German or Chinese, in plain sight, hidden in Unicode tags or
+  base64 — gets a warning line the model reads and an amber flag on the HUD, and for
+  the rest of that turn no plan or task grant covers an irreversible step. It never
+  blocks the text: you may be asking whether the email is a phishing attempt.
 - **Agent-written files are separated from human-written ones.** A note CUNNING CLAW recorded is a
   recollection, never an instruction — so a poisoned memory can't become a standing order.
 - **Memory carries provenance.** A fact saved while untrusted content sat in the context

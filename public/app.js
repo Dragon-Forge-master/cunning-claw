@@ -224,6 +224,7 @@ function addChip(text) {
   div.textContent = text;
   chatLog.appendChild(div);
   chatLog.scrollTop = chatLog.scrollHeight;
+  return div;
 }
 
 // ---------------------------------------------------------------------------
@@ -570,8 +571,19 @@ es.addEventListener("tool_start", (e) => {
 });
 
 es.addEventListener("tool_result", (e) => {
-  const { name } = sseData(e);
-  addChip(`✓ ${name} complete`);
+  const { name, injection } = sseData(e);
+  const chip = addChip(`✓ ${name} complete`);
+  // The scanner (src/injection.ts) found text in this result aimed at the
+  // claw. The model was warned; this is so the operator can see it too.
+  if (injection && Array.isArray(injection.signals)) {
+    const flag = document.createElement("span");
+    flag.className = "inj-flag";
+    flag.textContent = "⚑ instructions inside";
+    flag.title =
+      `This result contains text that tried to give instructions (${injection.signals.map(String).join(", ")}). ` +
+      `It was treated as data, and anything irreversible this turn asks you first.`;
+    chip.appendChild(flag);
+  }
 });
 
 es.addEventListener("brain_route", (e) => {
