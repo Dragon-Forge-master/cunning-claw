@@ -6,6 +6,10 @@ dist/
 !.env.example
 .venv/
 voices/*.onnx
+# whisper.cpp build and models (./setup-ears.sh)
+.whisper/
+models/*.bin
+data/ears/
 data/history.json
 data/history-archive/
 data/memory.json

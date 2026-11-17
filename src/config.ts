@@ -110,6 +110,17 @@ export interface ClawConfig {
    * device is /dev/videoN on Linux, an avfoundation index on macOS.
    */
   eyes?: { enabled?: boolean; device?: string; maxImageWidth?: number };
+  /**
+   * Private ears — the HUD mic transcribed on this machine by whisper.cpp.
+   * "auto" uses whisper when found, else the browser's recogniser (which
+   * sends audio off the machine, and the HUD says so). See src/ears.ts.
+   */
+  ears?: {
+    engine?: "auto" | "whisper" | "browser" | "off";
+    maxBytes?: number;
+    maxSeconds?: number;
+    whisper?: { bin?: string; model?: string; language?: string; threads?: number; timeoutMs?: number };
+  };
   coherence: {
     ouroborosLimit: number;
     maxIterations: number;

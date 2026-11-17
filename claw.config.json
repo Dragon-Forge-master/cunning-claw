@@ -126,6 +126,14 @@
     "device": "/dev/video0",
     "maxImageWidth": 1280
   },
+  "ears": {
+    "engine": "auto",
+    "whisper": {
+      "bin": "",
+      "model": "",
+      "language": "en"
+    }
+  },
   "coherence": {
     "ouroborosLimit": 2,
     "maxIterations": 25,

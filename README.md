@@ -127,6 +127,9 @@ The template lives at `packaging/cunningclaw.service`. macOS: keep `npm run dev`
 npm install
 cp .env.example .env        # add your OPENROUTER_API_KEY
 ./setup-voice.sh            # neural voice, ~60MB, fully offline
+./setup-ears.sh             # private ears: whisper.cpp + ggml-base.en.bin (~150MB), so the mic
+                            # is transcribed here — without it the browser's recogniser sends
+                            # your voice to Google, and the HUD says BROWSER EARS
 npm run doctor
 npm run dev
 ```
