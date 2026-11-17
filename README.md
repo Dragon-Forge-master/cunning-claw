@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-445%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-597%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -267,7 +267,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
   ▸ brain    flashlite · google/gemini-3.1-flash-lite
   ▸ llais    piper · en_GB-alan-medium   (the voice)
   ▸ curiad   every 30m   (the heartbeat)
-  ▸ offer    71 tools on the bench
+  ▸ offer    72 tools on the bench
 
   ▸ wards    y ffens   — outside words are fenced
              y llw     — consequences wait for you
@@ -704,7 +704,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 445 tests
+npm test        # 597 tests
 npm run check   # tsc --noEmit
 ```
 
