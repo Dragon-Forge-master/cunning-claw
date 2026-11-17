@@ -340,6 +340,13 @@
     "maxResultChars": 12000,
     "servers": []
   },
+  "toolDiet": {
+    "enabled": true,
+    "sendAllAtMost": 8,
+    "stickyTurns": 2,
+    "rosterDescChars": 60,
+    "maxResultChars": 24000
+  },
   "pricing": {
     "currency": "USD",
     "models": {

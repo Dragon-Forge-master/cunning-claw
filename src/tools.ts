@@ -12,6 +12,7 @@ import * as desktop from "./desktop.js";
 import * as eyes from "./eyes.js";
 import * as http from "./http.js";
 import * as mcp from "./mcp.js";
+import { gateUnloadedCall, keepLoaded, loadToolsResult } from "./tool-diet.js";
 import * as tax from "./tax.js";
 import { classifyBrowserAction, needsApproval as browserNeedsApproval, taskGrantActive } from "./consequence.js";
 import { snapshot, record } from "./filewatch.js";
@@ -430,6 +431,21 @@ export const toolDefinitions: Anthropic.Tool[] = [
       additionalProperties: false,
     },
     strict: true,
+  },
+  {
+    name: "load_tools",
+    description:
+      "Load the full schemas of MCP tools listed under \"MCP tools on call\" so you can call them. " +
+      "Pass tools (full names, mcp__<server>__<name>) for just those, or server for all of one server's tools. " +
+      "They join your tool list from your next step and stay for a few turns. Built-in tools never need this.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tools: { type: "array", items: { type: "string" }, description: "e.g. [\"mcp__github__create_issue\"]" },
+        server: { type: "string", description: "A server id from the roster, e.g. github" },
+      },
+      additionalProperties: false,
+    },
   },
   {
     name: "mcp_add",
@@ -2152,6 +2168,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "mcp_status": return mcp.mcpStatusText();
       case "mcp_describe": return mcp.describeTools(input.server, input.tool);
       case "mcp_schema": return mcp.describeMcpTool(String(input.tool ?? ""));
+      case "load_tools": return loadToolsResult(input ?? {}, mcp.listMcpTools());
       case "mcp_add": {
         const snippet = String(input.snippet ?? "");
         // A raw credential in config is how the last one ended up in three
@@ -2470,6 +2487,13 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       }
       default:
         if (mcp.isMcpTool(name)) {
+          // The tool diet left this schema out of the request, so the
+          // arguments are a guess: load it and send the model back, before
+          // any approval card is shown for guessed arguments.
+          const known = mcp.findMcpTool(name);
+          const unloaded = gateUnloadedCall(name, known, mcp.schemaArgHint(known?.inputSchema));
+          if (unloaded) return unloaded;
+          if (known) keepLoaded([known.localName]);
           if (mcp.needsApproval(name)) {
             const ok = await ctx.requestApproval(
               `MCP tool: ${name}`,

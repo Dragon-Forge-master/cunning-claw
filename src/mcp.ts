@@ -721,9 +721,13 @@ export async function loginMcp(serverId: string, log: (line: string) => void = (
   return `Signed in to ${serverId}, but tools did not load: ${st?.detail ?? "unknown"}`;
 }
 
-/** MCP tool definitions, for the API request — including OpenAI-compatible brains. */
-export function toolDefinitions(): Anthropic.Tool[] {
-  return discovered.map((t) => ({
+/**
+ * MCP tool definitions, for the API request — including OpenAI-compatible
+ * brains. `only` is the tool diet's selection (src/tool-diet.ts); absent,
+ * every discovered tool goes.
+ */
+export function toolDefinitions(only: McpTool[] = discovered): Anthropic.Tool[] {
+  return only.map((t) => ({
     name: t.localName,
     description: `[via MCP server "${t.serverId}"] ${t.description}`,
     input_schema: jsonSchemaForOpenAi(t.inputSchema) as Anthropic.Tool["input_schema"],

@@ -37,6 +37,7 @@ import { listKeys, setKey, deleteKey, checkKey } from "./keys.js";
 import { setupNeeded, markLocalReady, localRuntimeReachable, openInBrowser, hasUsableCloudKey } from "./first-run.js";
 import { saveOwner, applyOwner } from "./owner.js";
 import { pinBrain, catalog as brainCatalog } from "./brain.js";
+import { dietStatus } from "./tool-diet.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -503,6 +504,8 @@ app.get("/api/status", async (_req, res) => {
     spend: sessionSpend(),
     turn: turnInFlight(),
     lastTurn: lastTurnCost(),
+    // What the last request's tool schemas cost against sending every one.
+    toolDiet: dietStatus(),
     preview: previewState(),
     mcp: (() => {
       const snap = connectorSnapshot();
