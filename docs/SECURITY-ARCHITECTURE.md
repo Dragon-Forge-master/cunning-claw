@@ -4,7 +4,7 @@
 points at the file that implements it, and the limits are stated next to the
 guarantees, because a security document that overclaims is worse than none.*
 
-Status as of 17 November 2026: version 0.3 on `main`, 610 automated tests
+Status as of 17 November 2026: version 0.3 on `main`, 616 automated tests
 passing (`npm test`), two runtime dependencies (`@anthropic-ai/sdk`, `express`).
 The project is new and has run on very few machines. Nothing here has been
 independently audited.
@@ -240,14 +240,33 @@ refused; and paths with characters outside a short whitelist stay read-only.
 on the auto-approve list or covered by an approved plan. With
 `sandbox.mode: "required"`, it is refused outright and nothing runs. Every
 result begins with a stable label, for example
-`[sandboxed by bubblewrap — writes only to: ~/sites; network on]`.
+`[sandboxed by bubblewrap — writes only to: ~/sites; network on; keys and sign-ins hidden]`.
 
-**What the sandbox does not do.** It confines **writes**, not reads. A
-sandboxed command can read anything the operator can, including `~/.ssh`, and
-with network access on — the default, because `git`, `npm` and most real work
-need it — it could send what it reads elsewhere. This was a deliberate
-trade-off (git over ssh needs `~/.ssh`), and it is the most important limit in
-this document. Set `"network": false` in the `sandbox` block of
+**Key stores are hidden.** Since 17 November, every sandboxed command sees an
+empty, read-only stand-in where the credentials live: `~/.ssh`, `~/.gnupg`,
+`~/.aws`, `~/.azure`, `~/.kube`, `~/.config/gcloud`, `~/.config/gh`,
+`~/.docker/config.json`, `~/.netrc`, `~/.git-credentials`, `~/.password-store`,
+`~/.local/share/keyrings`, and the everyday browsers' profiles (cookies are
+signed-in sessions) — plus, whatever the config says, the agent's own `.env`,
+its connector sign-ins (`data/mcp-oauth.json`) and its own Chrome profile.
+On Linux each folder is replaced by an empty read-only tmpfs and each file by
+`/dev/null`, mounted after every other bind so no writable folder can uncover
+one; on macOS the profile denies reading and writing them, after the allows so
+the deny wins (`DEFAULT_HIDDEN`, `planHidden` and `bwrapArgs` in
+`src/sandbox.ts`). A live test plants a synthetic key, runs `cat` on it inside
+real bubblewrap, and fails if the key appears; it does, with the hiding
+switched off. The cost is deliberate: git over ssh, `gh` and cloud CLIs fail
+in the box, the failure is explained as the box, and the command must ask with
+`unsandboxed: true`. An operator who pushes over ssh every day can add
+`"~/.ssh"` to `sandbox.reveal`; the agent's own secrets cannot be revealed.
+`sandbox.hide` adds paths. `npm run doctor` lists what is hidden, and names
+anything that could not be.
+
+**What the sandbox does not do.** Apart from those, it confines **writes**, not
+reads: a sandboxed command can still read the operator's other files —
+documents, source code, the agent's chat history — and with network access on,
+the default because `git`, `npm` and most real work need it, it could send
+what it reads elsewhere. Set `"network": false` in the `sandbox` block of
 `claw.config.json` to cut network access from every sandboxed command.
 `run_command` is the only local shell tool; documents, the browser and
 connectors are not inside the sandbox.
@@ -374,11 +393,12 @@ reads credentials.
 3. If approved, it runs in the sandbox. The `postinstall` script cannot modify
    the system, the shell profile or the agent's own config and keys, and its
    writes outside the allowed folders fail.
-4. With the default `network: true`, the script **can** read `~/.ssh` or other
-   readable credentials and send them out. This is the honest gap. For
-   untrusted code, set `sandbox.network` to `false`, or run it on a separate
-   machine through the remote tools, which treat everything the far machine
-   prints as untrusted.
+4. The script finds `~/.ssh`, `~/.aws`, `~/.git-credentials`, the browser
+   profiles and the agent's own keys empty. With the default `network: true` it
+   **can** still read and send the operator's other files: source code,
+   documents, anything outside the hidden list. For untrusted code, set
+   `sandbox.network` to `false`, or run it on a separate machine through the
+   remote tools, which treat everything the far machine prints as untrusted.
 
 ### C — A phishing email aimed at the agent
 
@@ -429,17 +449,17 @@ deployed as such without an independent assessment.
 | Converter environment, zip refusals | `npx tsx --test src/documents.test.ts` |
 | Testimony stamp in search results | `npx tsx --test src/memory.test.ts` |
 | Discord cards only in direct messages | `npx tsx --test src/discord.test.ts` |
-| Everything | `npm test` — 610 passing at the time of writing |
+| Everything | `npm test` — 616 passing at the time of writing |
 
 Every test in the suite is required to fail with its fix reverted
 (`CLAUDE.md`, "Tests"), and the commit that added it says so.
 
 ## 7. Known gaps, in priority order
 
-1. **Sandboxed commands can read secrets and, with network on, send them.**
-   Mitigation today: `sandbox.network: false`. Next: hide known secret paths
-   (`~/.ssh`, cloud credential files, the agent's `.env`) from sandboxed
-   commands, with an explicit card to grant them.
+1. **Sandboxed commands can read the operator's other files and, with network
+   on, send them.** Key stores and sign-ins are hidden (section 3.3); ordinary
+   files are not. Mitigation today: `sandbox.network: false` for untrusted
+   work. Next: a per-command network allow-list.
 2. **Document converters run outside the sandbox.** Next: run them inside it,
    read-only, with no network.
 3. **No sandbox on Windows.** The result text says so; nothing more yet.

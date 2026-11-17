@@ -61,7 +61,7 @@ export interface ClawConfig {
    * sandbox-exec when present, the host with a visible note when not;
    * required: no sandbox, no command. Only writes are confined.
    */
-  sandbox?: { mode?: "off" | "auto" | "required"; network?: boolean; writable?: string[] };
+  sandbox?: { mode?: "off" | "auto" | "required"; network?: boolean; writable?: string[]; hide?: string[]; reveal?: string[] };
   voice: {
     enabled: boolean;
     engine: "auto" | "piper" | "spd-say" | "say";

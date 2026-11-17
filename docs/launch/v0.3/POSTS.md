@@ -1,7 +1,7 @@
 # Cunning Claw 0.3 — posts
 
 Ready to paste. Every claim below is in the code on `main`; the numbers come
-from `npm test` (610) and the tool-diet test (150 connector tools, 80% fewer
+from `npm test` (616) and the tool-diet test (150 connector tools, 80% fewer
 tokens of tool lists). Pair any of them with `social-0.3.png`.
 
 Do not post the download link until the v0.3.0 release exists on
@@ -43,7 +43,7 @@ Cunning Claw 0.3 — the local AI assistant from Cardiff:
 • flags web pages that try to give it orders
 • starts free with a Google key, no terminal
 
-Open source. 610 tests. No token, ever.
+Open source. 616 tests. No token, ever.
 
 ---
 
@@ -67,4 +67,4 @@ threat that matters. This release is mostly about that, and about cost:
 - A first-time user can start free: the setup page walks through a free
   Google Gemini key, with no terminal.
 
-Two runtime dependencies. 610 tests. Built in Cardiff by Dragon Forge AI.
+Two runtime dependencies. 616 tests. Built in Cardiff by Dragon Forge AI.

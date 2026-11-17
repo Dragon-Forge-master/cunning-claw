@@ -48,7 +48,9 @@
       "~/Documents/CunningClaw",
       "~/.npm",
       "~/.cache"
-    ]
+    ],
+    "hide": [],
+    "reveal": []
   },
   "server": {
     "port": 3900,

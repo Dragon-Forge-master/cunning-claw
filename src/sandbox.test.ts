@@ -6,12 +6,14 @@ import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import {
+  DEFAULT_HIDDEN,
   bwrapArgs,
   decide,
   detectEngine,
   explainSandboxFailure,
   isLauncher,
   normalisePath,
+  planHidden,
   planWrites,
   sandboxDoctor,
   sandboxSettings,
@@ -254,5 +256,112 @@ test("bubblewrap really refuses a write outside the box and allows one inside", 
   } finally {
     fs.rmSync(inside, { recursive: true, force: true });
     fs.rmSync(other, { recursive: true, force: true });
+  }
+});
+
+
+// --- Secrets hidden from the box -------------------------------------------
+// The box first confined writes only, so `cat ~/.ssh/id_ed25519` worked inside
+// it, and with the network on that key could be posted anywhere — the first
+// known gap in docs/SECURITY-ARCHITECTURE.md.
+
+const OWN = ["/home/owner/claw/.env", "/home/owner/claw/data/mcp-oauth.json", "/home/owner/.config/cunningclaw/chrome-profile"];
+function hiddenFor(o: { exists: string[]; dirs: string[]; reveal?: string[]; extra?: string[]; links?: Record<string, string> }) {
+  return planHidden({
+    defaults: DEFAULT_HIDDEN, extra: o.extra ?? [], reveal: o.reveal ?? [], own: OWN, home: HOME,
+    real: (p) => (o.links?.[p] ?? (o.exists.includes(p) ? p : null)),
+    isDir: (p) => o.dirs.includes(p),
+  });
+}
+
+test("ssh keys, credential files and the claw's own secrets are hidden; absent ones are skipped quietly", () => {
+  const h = hiddenFor({
+    exists: ["/home/owner/.ssh", "/home/owner/.netrc", "/home/owner/.aws", ...OWN],
+    dirs: ["/home/owner/.ssh", "/home/owner/.aws", OWN[2]],
+  });
+  assert.ok(h.dirs.includes("/home/owner/.ssh"));
+  assert.ok(h.dirs.includes("/home/owner/.aws"));
+  assert.ok(h.files.includes("/home/owner/.netrc"));
+  for (const own of OWN) assert.ok([...h.dirs, ...h.files].includes(own), own);
+  assert.ok(!h.dirs.includes("/home/owner/.gnupg"), "absent folders are not mounted over");
+  assert.deepEqual(h.skipped, []);
+});
+
+test("reveal can show ~/.ssh again for git over ssh, but never the claw's own keys", () => {
+  const h = hiddenFor({
+    exists: ["/home/owner/.ssh", ...OWN], dirs: ["/home/owner/.ssh"],
+    reveal: ["~/.ssh", "/home/owner/claw/.env"],
+  });
+  assert.ok(!h.dirs.includes("/home/owner/.ssh"));
+  assert.ok(h.files.includes("/home/owner/claw/.env"), "reveal must not reach the claw's own .env");
+});
+
+test("a symlinked key folder is hidden where it really lives, and an unpassable path is reported", () => {
+  const h = hiddenFor({
+    exists: ["/data/keys"], dirs: ["/data/keys"],
+    links: { "/home/owner/.ssh": "/data/keys", "/home/owner/.netrc": '/home/owner/odd"name' },
+  });
+  assert.ok(h.dirs.includes("/data/keys"));
+  assert.ok(h.skipped.some((k) => k.path === "~/.netrc"), "an unhideable secret must be said, not silently left visible");
+});
+
+test("bwrap hides secrets last, so a writable folder cannot uncover one; macOS denies reading them", () => {
+  const hidden = { dirs: ["/home/owner/proj/.ssh"], files: ["/home/owner/proj/.env"] };
+  const a = bwrapArgs({ writable: ["/home/owner/proj"], readOnly: [], hidden, network: true, shell: "/bin/sh", command: "true" });
+  const bind = a.indexOf("--bind");
+  const tmpfs = a.indexOf("--tmpfs");
+  assert.ok(tmpfs > bind, "the hide must come after the writable bind it sits inside");
+  assert.deepEqual(a.slice(tmpfs, tmpfs + 4), ["--tmpfs", "/home/owner/proj/.ssh", "--remount-ro", "/home/owner/proj/.ssh"]);
+  const f = a.indexOf("/home/owner/proj/.env");
+  assert.deepEqual(a.slice(f - 2, f + 1), ["--ro-bind", "/dev/null", "/home/owner/proj/.env"]);
+  assert.throws(() => bwrapArgs({ writable: [], readOnly: [], hidden: { dirs: ['/x"y'], files: [] }, network: true, shell: "/bin/sh", command: "x" }));
+
+  const p = sbplProfile({ writable: ["/Users/owner/proj"], readOnly: [], network: true, hidden: { dirs: ["/Users/owner/.ssh"], files: ["/Users/owner/.netrc"] } });
+  const lines = p.split("\n");
+  const deny = lines.findIndex((l) => l.includes('(deny file-read* file-write* (subpath "/Users/owner/.ssh"))'));
+  assert.ok(deny > lines.findIndex((l) => l.includes('subpath "/Users/owner/proj"')), "the deny must follow the allows to win");
+  assert.ok(p.includes('(deny file-read* file-write* (literal "/Users/owner/.netrc"))'));
+});
+
+test("the label says secrets are hidden, and a missing-key failure is explained as the box", () => {
+  const hidden = { dirs: ["/home/owner/.ssh"], files: [], skipped: [] };
+  const settings = { mode: "auto" as const, network: true, writable: [], hide: [], reveal: [] };
+  const plan = decide({ settings, detection: BWRAP, unsandboxed: false, writes: writes(), hidden, shell: "/bin/bash", command: "git push", home: HOME });
+  assert.equal(plan.kind, "sandboxed");
+  assert.match((plan as { label: string }).label, /keys and sign-ins hidden/);
+  const why = explainSandboxFailure("git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.", plan, HOME);
+  assert.match(why, /missing key, and that is the sandbox/);
+  assert.match(why, /~\/\.ssh/);
+  assert.match(why, /unsandboxed: true/);
+  assert.match(why, /sandbox\.reveal/);
+});
+
+test("bubblewrap really hides a key: cat fails inside the box and the secret never appears", { skip: live.engine !== "bwrap" ? `no usable bubblewrap: ${live.why}` : false }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "claw-hide-"));
+  try {
+    const ssh = path.join(dir, ".ssh");
+    const proj = path.join(dir, "proj");
+    fs.mkdirSync(ssh);
+    fs.mkdirSync(proj);
+    fs.writeFileSync(path.join(ssh, "id_ed25519"), "SYNTHETIC-PRIVATE-KEY-0000");
+    fs.writeFileSync(path.join(dir, ".netrc"), "SYNTHETIC-NETRC-TOKEN-0000");
+    const run = async (command: string) => {
+      try {
+        const { stdout, stderr } = await execFileAsync("bwrap", bwrapArgs({
+          writable: [proj], readOnly: [], network: false, shell: "/bin/sh", command,
+          hidden: { dirs: [ssh], files: [path.join(dir, ".netrc")] },
+        }));
+        return stdout + stderr;
+      } catch (err: any) {
+        return `${err.stdout ?? ""}${err.stderr ?? ""}`;
+      }
+    };
+    const out = await run(`cat ${ssh}/id_ed25519; cat ${dir}/.netrc; ls -A ${ssh}; touch ${ssh}/planted; echo done > ${proj}/w`);
+    assert.doesNotMatch(out, /SYNTHETIC-PRIVATE-KEY|SYNTHETIC-NETRC-TOKEN/);
+    assert.equal(fs.existsSync(path.join(ssh, "planted")), false, "nothing written into the stand-in reaches the real folder");
+    assert.equal(fs.readFileSync(path.join(proj, "w"), "utf-8").trim(), "done", "ordinary work still writes");
+    assert.equal(fs.readFileSync(path.join(ssh, "id_ed25519"), "utf-8"), "SYNTHETIC-PRIVATE-KEY-0000", "the real key is untouched");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });

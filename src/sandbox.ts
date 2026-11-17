@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { config, CONFIG_FILE, DATA_DIR, ROOT } from "./config.js";
 import { cunningclawMcpPath } from "./mcp-config.js";
-import { collapseHome } from "./paths.js";
+import { collapseHome, PROFILE_DIR } from "./paths.js";
 import { hasBin, host, type Host } from "./platform.js";
 
 const execFileAsync = promisify(execFile);
@@ -44,6 +44,10 @@ export interface SandboxSettings {
   network: boolean;
   /** Extra folders sandboxed commands may write to. `~` expands; nothing broader than a subfolder of home. */
   writable: string[];
+  /** Extra secret folders or files to hide from sandboxed commands, on top of DEFAULT_HIDDEN. */
+  hide: string[];
+  /** DEFAULT_HIDDEN entries to show again (e.g. "~/.ssh" for git over ssh). The claw's own secrets cannot be revealed. */
+  reveal: string[];
 }
 
 /**
@@ -61,7 +65,49 @@ export function sandboxSettings(raw: unknown = (config as { sandbox?: unknown })
   const writable = Array.isArray(s.writable)
     ? s.writable.filter((p): p is string => typeof p === "string")
     : DEFAULT_WRITABLE;
-  return { mode, network: s.network !== false, writable };
+  const strings = (v: unknown) => (Array.isArray(v) ? v.filter((p): p is string => typeof p === "string") : []);
+  return { mode, network: s.network !== false, writable, hide: strings(s.hide), reveal: strings(s.reveal) };
+}
+
+/**
+ * Where credentials live, hidden from every sandboxed command.
+ *
+ * The box first shipped confining writes only: / was bound read-only, so a
+ * command could still `cat ~/.ssh/id_ed25519` and, with the network on, post
+ * it anywhere. Written up as the first known gap in
+ * docs/SECURITY-ARCHITECTURE.md, and the first thing a reviewer would try.
+ * Each of these is replaced by an empty, read-only stand-in inside the box.
+ * The cost is real and deliberate: git over ssh, gh and cloud CLIs fail in
+ * the box and ask for the card (unsandboxed: true) — a key leaving the
+ * machine is the one mistake that cannot be taken back.
+ */
+export const DEFAULT_HIDDEN = [
+  "~/.ssh",
+  "~/.gnupg",
+  "~/.aws",
+  "~/.azure",
+  "~/.kube",
+  "~/.config/gcloud",
+  "~/.config/gh",
+  "~/.docker/config.json",
+  "~/.netrc",
+  "~/.git-credentials",
+  "~/.password-store",
+  "~/.local/share/keyrings",
+  // Everyday browsers' profiles: cookies are signed-in sessions.
+  "~/.config/google-chrome",
+  "~/.config/chromium",
+  "~/.config/BraveSoftware",
+  "~/.mozilla",
+];
+
+/**
+ * The claw's own secrets: its keys, its connector sign-ins, and its Chrome
+ * profile (the Gmail and WhatsApp sessions). Hidden whatever the config says —
+ * `reveal` cannot reach them.
+ */
+export function ownSecrets(): string[] {
+  return [path.join(ROOT, ".env"), path.join(DATA_DIR, "mcp-oauth.json"), PROFILE_DIR];
 }
 
 // ---------------------------------------------------------------------------
@@ -107,6 +153,53 @@ export function tooBroad(p: string, home: string): string | null {
 
 function inside(p: string, root: string): boolean {
   return p === root || p.startsWith(root === "/" ? "/" : root + "/");
+}
+
+export interface HiddenSet {
+  /** Folders replaced by an empty read-only one inside the box, realpath'd. */
+  dirs: string[];
+  /** Files replaced by an empty one. */
+  files: string[];
+  /** Entries that could not be hidden, and why — the doctor prints these. */
+  skipped: { path: string; why: string }[];
+}
+
+/**
+ * Which secret paths a sandboxed command must not see. Only paths that exist
+ * are hidden (bubblewrap cannot mount over nothing, and there is nothing to
+ * hide), each resolved through `real` so a symlinked ~/.ssh is hidden where
+ * it really lives. A path the whitelist refuses cannot be passed to bwrap,
+ * so it is reported rather than silently left visible.
+ */
+export function planHidden(o: {
+  defaults: readonly string[];
+  extra: readonly string[];
+  reveal: readonly string[];
+  own: readonly string[];
+  home: string;
+  real: (p: string) => string | null;
+  isDir: (p: string) => boolean;
+}): HiddenSet {
+  const expand = (p: string) => (p === "~" ? o.home : p.startsWith("~/") ? path.join(o.home, p.slice(2)) : p);
+  const revealed = new Set(o.reveal.map((r) => path.resolve(expand(r))));
+  const wanted = [
+    ...o.defaults.filter((d) => !revealed.has(path.resolve(expand(d)))),
+    ...o.extra,
+    ...o.own,
+  ];
+  const dirs: string[] = [];
+  const files: string[] = [];
+  const skipped: { path: string; why: string }[] = [];
+  for (const w of wanted) {
+    const abs = path.resolve(expand(w));
+    const r = o.real(abs);
+    if (!r) continue; // absent: nothing to hide
+    if (!isSafePath(r)) { skipped.push({ path: w, why: "its path has characters the sandbox will not pass on, so it stays visible" }); continue; }
+    if (r === "/" || r === o.home) { skipped.push({ path: w, why: "too broad to hide" }); continue; }
+    const list = o.isDir(r) ? dirs : files;
+    if (!list.includes(r)) list.push(r);
+  }
+  return { dirs, files, skipped };
 }
 
 export interface WriteSet {
@@ -212,6 +305,8 @@ function assertSafe(paths: readonly string[]): void {
 export interface BoxSpec {
   writable: readonly string[];
   readOnly: readonly string[];
+  /** Secret paths replaced by empty stand-ins. Absent = none (the engine probe). */
+  hidden?: { dirs: readonly string[]; files: readonly string[] };
   network: boolean;
   shell: string;
   command: string;
@@ -232,7 +327,8 @@ export interface BoxSpec {
  * working folder whose name the whitelist refuses still runs (read-only).
  */
 export function bwrapArgs(o: BoxSpec): string[] {
-  assertSafe([...o.writable, ...o.readOnly, o.shell]);
+  const hidden = o.hidden ?? { dirs: [], files: [] };
+  assertSafe([...o.writable, ...o.readOnly, ...hidden.dirs, ...hidden.files, o.shell]);
   const a = [
     "--die-with-parent", "--new-session",
     "--unshare-user-try", "--unshare-ipc", "--unshare-uts", "--unshare-cgroup-try",
@@ -242,6 +338,9 @@ export function bwrapArgs(o: BoxSpec): string[] {
   for (const w of o.writable) a.push("--bind", w, w);
   // After the writable binds, so a protected path inside one wins.
   for (const r of o.readOnly) a.push("--ro-bind-try", r, r);
+  // Last of all, so a secret inside a writable or read-only bind is still hidden.
+  for (const d of hidden.dirs) a.push("--tmpfs", d, "--remount-ro", d);
+  for (const f of hidden.files) a.push("--ro-bind", "/dev/null", f);
   a.push("--", o.shell, "-c", o.command);
   return a;
 }
@@ -252,8 +351,9 @@ export function bwrapArgs(o: BoxSpec): string[] {
  * the protected paths. Network off denies IP but leaves Unix sockets, which
  * is also what an unshared network namespace does on Linux.
  */
-export function sbplProfile(o: Pick<BoxSpec, "writable" | "readOnly" | "network">): string {
-  assertSafe([...o.writable, ...o.readOnly]);
+export function sbplProfile(o: Pick<BoxSpec, "writable" | "readOnly" | "network" | "hidden">): string {
+  const hidden = o.hidden ?? { dirs: [], files: [] };
+  assertSafe([...o.writable, ...o.readOnly, ...hidden.dirs, ...hidden.files]);
   const lines = [
     "(version 1)",
     "(allow default)",
@@ -268,6 +368,9 @@ export function sbplProfile(o: Pick<BoxSpec, "writable" | "readOnly" | "network"
       : `(allow file-write* (subpath "${w}"))`);
   }
   if (!o.network) lines.push("(deny network*)", "(allow network* (remote unix-socket))");
+  // Last, so they win over the allows above: secrets can be neither read nor written.
+  for (const d of hidden.dirs) lines.push(`(deny file-read* file-write* (subpath "${d}"))`);
+  for (const f of hidden.files) lines.push(`(deny file-read* file-write* (literal "${f}"))`);
   return lines.join("\n");
 }
 
@@ -366,7 +469,7 @@ export function setDetectionForTests(d: Detection | null): void {
 // ---------------------------------------------------------------------------
 
 export type Plan =
-  | { kind: "sandboxed"; engine: Engine; file: string; args: string[]; label: string; writes: WriteSet; network: boolean; mode: SandboxMode }
+  | { kind: "sandboxed"; engine: Engine; file: string; args: string[]; label: string; writes: WriteSet; network: boolean; mode: SandboxMode; hidden: HiddenSet }
   | { kind: "host"; label: string; why: string; askFirst: boolean }
   | { kind: "refuse"; text: string };
 
@@ -398,6 +501,8 @@ export function decide(o: {
   detection: Detection;
   unsandboxed: boolean;
   writes: WriteSet;
+  /** Secret paths to hide inside the box; none when absent. */
+  hidden?: HiddenSet;
   shell: string;
   command: string;
   home: string;
@@ -435,16 +540,18 @@ export function decide(o: {
     const why = "it launches an app, which has to live in your desktop session";
     return { kind: "host", label: `[unsandboxed: ${why}]`, why, askFirst: false };
   }
+  const hidden = o.hidden ?? { dirs: [], files: [], skipped: [] };
   const spec: BoxSpec = {
     writable: o.writes.writable, readOnly: o.writes.readOnly, network: settings.network,
-    shell: o.shell, command: o.command,
+    hidden, shell: o.shell, command: o.command,
   };
   const engine = detection.engine;
   const args = engine === "bwrap" ? bwrapArgs(spec) : sandboxExecArgs(spec);
   const label =
     `[sandboxed by ${ENGINE_NAME[engine]} — writes only to: ${show(o.writes.writable, o.home) || "nowhere"}` +
-    `${o.writes.cwdNote ? ` (read-only here: ${o.writes.cwdNote})` : ""}; network ${settings.network ? "on" : "off"}]`;
-  return { kind: "sandboxed", engine, file: engine, args, label, writes: o.writes, network: settings.network, mode: settings.mode };
+    `${o.writes.cwdNote ? ` (read-only here: ${o.writes.cwdNote})` : ""}; network ${settings.network ? "on" : "off"}` +
+    `${hidden.dirs.length + hidden.files.length ? "; keys and sign-ins hidden" : ""}]`;
+  return { kind: "sandboxed", engine, file: engine, args, label, writes: o.writes, network: settings.network, mode: settings.mode, hidden };
 }
 
 /** One line for the approval card, so the operator knows what a yes lets loose. */
@@ -485,6 +592,19 @@ export function explainSandboxFailure(output: string, plan: Plan, home = os.home
     return (
       `\n\n[sandbox] That looks like the sandbox refusing a write, not a fault in the command: it may write only ` +
       `to ${show(plan.writes.writable, home) || "nowhere"}${guarded}. Do not hunt for another path or a workaround. ${way}`
+    );
+  }
+  const hiddenCount = plan.hidden.dirs.length + plan.hidden.files.length;
+  if (hiddenCount && /Permission denied \(publickey|Host key verification failed|could not read (Username|Password)|gh auth login|Unable to locate credentials|no credentials|gpg: .*(secret key|keyring)|\/\.ssh\/|\.git-credentials|\.netrc/i.test(output)) {
+    return (
+      `\n\n[sandbox] That looks like a missing key, and that is the sandbox: ssh keys, git and cloud credentials, ` +
+      `keyrings and browser profiles are hidden from sandboxed commands (${show([...plan.hidden.dirs, ...plan.hidden.files], home)}), ` +
+      `so nothing in the box can read them and send them anywhere. Do not hunt for the key or another route. ` +
+      (plan.mode === "required"
+        ? "sandbox.mode is \"required\", so there is no card for this: tell the operator, who can run it themselves "
+        : "If it genuinely needs the key, call run_command again with the same command and unsandboxed: true — the " +
+          "operator is asked every time. If git over ssh is everyday work, the operator ") +
+      `can add "~/.ssh" to sandbox.reveal in claw.config.json.`
     );
   }
   if (!plan.network && /Could not resolve host|Temporary failure in name resolution|Network is unreachable|EAI_AGAIN|ENOTFOUND|ENETUNREACH/.test(output)) {
@@ -532,6 +652,21 @@ export function currentWrites(cwd: string, settings = sandboxSettings(), home = 
   });
 }
 
+function isDirectory(p: string): boolean {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+export function currentHidden(settings = sandboxSettings(), home = os.homedir()): HiddenSet {
+  return planHidden({
+    defaults: DEFAULT_HIDDEN, extra: settings.hide, reveal: settings.reveal, own: ownSecrets(),
+    home, real: realOrNull, isDir: isDirectory,
+  });
+}
+
 /** Decide how `command` runs from `cwd`. HARD_DENY has already run; this never relaxes it. */
 export async function prepareCommand(o: { command: string; cwd: string; shell?: string; unsandboxed: boolean }): Promise<Plan> {
   const settings = sandboxSettings();
@@ -539,8 +674,9 @@ export async function prepareCommand(o: { command: string; cwd: string; shell?: 
   const off: Detection = { engine: null, why: "", fix: "" };
   const detection = settings.mode === "off" ? off : await detect();
   const writes = detection.engine ? currentWrites(o.cwd, settings, home) : { writable: [], readOnly: [], skipped: [], cwdNote: "" };
+  const hidden = detection.engine ? currentHidden(settings, home) : undefined;
   const shell = o.shell && isSafePath(o.shell) ? o.shell : "/bin/sh";
-  return decide({ settings, detection, unsandboxed: o.unsandboxed, writes, shell, command: o.command, home });
+  return decide({ settings, detection, unsandboxed: o.unsandboxed, writes, hidden, shell, command: o.command, home });
 }
 
 /** One clause for the model's self-knowledge. Starts the probe if nothing has yet. */
@@ -579,9 +715,13 @@ export async function sandboxDoctor(deps: DetectDeps = realDeps): Promise<{ stat
   const note = refused.length
     ? ` · ignored in sandbox.writable: ${refused.map((k) => `${k.path} (${k.why})`).join(", ")}`
     : "";
+  const h = currentHidden(s, home);
+  const hiddenList = [...h.dirs, ...h.files].map((p) => collapseHome(p, home));
+  const hiddenNote = hiddenList.length ? `; hidden from commands: ${hiddenList.join(", ")}` : "";
+  const unhidden = h.skipped.length ? ` · could not hide: ${h.skipped.map((k) => `${k.path} (${k.why})`).join(", ")}` : "";
   return {
-    status: refused.length ? "warn" : "ok",
+    status: refused.length || h.skipped.length ? "warn" : "ok",
     line: `Shell sandbox: ${ENGINE_NAME[d.engine]} (${s.mode}) — commands write only to their own folder, ` +
-      `the temp dir and ${s.writable.join(", ") || "no other folders"}; network ${s.network ? "on" : "off"}${note}`,
+      `the temp dir and ${s.writable.join(", ") || "no other folders"}; network ${s.network ? "on" : "off"}${hiddenNote}${note}${unhidden}`,
   };
 }
