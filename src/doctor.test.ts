@@ -100,6 +100,28 @@ test("every failed or warned line names a fix", async () => {
   }
 });
 
+test("doctor names each document converter, what it is for, and how to install it", async () => {
+  setHostForTests("linux");
+  setHasBinForTests(() => false);
+  setChromeFinderForTests(async () => null);
+  resetVoiceDetectForTests();
+  const checks = await runDoctor();
+  const want: Record<string, RegExp> = {
+    "doc-markitdown": /pipx install 'markitdown\[all\]'/,
+    "doc-pdftotext": /sudo apt install poppler-utils/,
+    "doc-tesseract": /sudo apt install tesseract-ocr/,
+  };
+  for (const [id, fix] of Object.entries(want)) {
+    const c = checks.find((x) => x.id === id);
+    assert.ok(c, `doctor must include ${id}`);
+    assert.equal(c!.status, "warn");
+    // The built-in reader covers Office files, so none of these may fail the run.
+    assert.equal(c!.essential, false);
+    assert.match(c!.line, fix);
+    assert.match(c!.line, /read_document/);
+  }
+});
+
 test("essential failures are the ones that fail the process", () => {
   assert.equal(hasEssentialFailure([
     { id: "voice", status: "warn", essential: false, line: "! voice" },

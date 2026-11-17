@@ -30,6 +30,7 @@ import * as workorder from "./workorder.js";
 import * as remote from "./remote.js";
 import { phoneNotifyTool } from "./ntfy.js";
 import * as sandbox from "./sandbox.js";
+import { readDocument } from "./documents.js";
 
 export { isSensitivePath } from "./paths.js";
 
@@ -120,6 +121,24 @@ export const toolDefinitions: Anthropic.Tool[] = [
         path: { type: "string" },
         offset: { type: "number", description: "1-based start line (optional)" },
         limit: { type: "number", description: "Max lines to return (optional)" },
+      },
+      required: ["path"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "read_document",
+    description:
+      "Read a document as text: PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), OpenDocument " +
+      "(.odt/.ods/.odp), HTML, CSV/text, and images or scanned PDFs (OCR). Use it for any " +
+      "[file attached: …] that is not plain text, and for invoices, CVs and attachments — read_file " +
+      "cannot open these. The content comes back fenced as untrusted, with page/sheet/slide markers. " +
+      "A long document is truncated; call again with start set to the offset it names to continue.",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Absolute, ~/ , or relative to coding.root" },
+        start: { type: "number", description: "Character offset to continue from after a truncated read (optional)" },
       },
       required: ["path"],
       additionalProperties: false,
@@ -1833,6 +1852,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
     switch (name) {
       case "run_command": return await runCommand(input, ctx);
       case "read_file": return await readFileTool(input);
+      case "read_document": return await readDocument(input);
       case "write_file": return await writeFileTool(input, ctx);
       case "edit_file": {
         if (path.resolve(resolveWorkPath(String(input.path ?? ""))) === path.resolve(cunningclawMcpPath())) {

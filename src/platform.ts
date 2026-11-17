@@ -103,6 +103,20 @@ const INSTALL: Record<string, Partial<Record<Host, string>>> = {
     win32: "Windows has no volume CLI. Download nircmd from nirsoft.net and put it on PATH.",
   },
   ffplay: { win32: "winget install Gyan.FFmpeg" },
+  // read_document. markitdown 0.1 puts its PDF and Office readers in extras,
+  // so the bare package name installs a converter that reads almost nothing.
+  markitdown: {
+    linux: "pipx install 'markitdown[all]'  (or: pip install 'markitdown[all]')",
+    darwin: "pipx install 'markitdown[all]'  (pipx itself: brew install pipx)",
+    win32: "pipx install markitdown[all]  (or: py -m pip install markitdown[all])",
+  },
+  pdftotext: { linux: "sudo apt install poppler-utils", darwin: "brew install poppler", win32: "choco install poppler" },
+  pdftoppm: { linux: "sudo apt install poppler-utils", darwin: "brew install poppler", win32: "choco install poppler" },
+  tesseract: {
+    linux: "sudo apt install tesseract-ocr",
+    darwin: "brew install tesseract",
+    win32: "winget install UB-Mannheim.TesseractOCR",
+  },
 };
 
 export function installHint(tool: string, forHost: Host = host()): string | undefined {

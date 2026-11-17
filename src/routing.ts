@@ -26,6 +26,8 @@ export const UNTRUSTED_TOOLS = new Set([
   "check_whatsapp", "read_chat", "draft_chat", "send_chat",
   "http_request", "web_search", "clipboard", "read_file", "landscape",
   "look",
+  // Documents are what strangers send: the invoice, the CV, the attachment.
+  "read_document",
 ]);
 
 /**
@@ -65,6 +67,9 @@ const REACHES_OUT = [
   /\b[a-z0-9-]+\.(com|co\.uk|org|net|io|dev|ai|app|cloud|uk|me|xyz|pages\.dev|workers\.dev)\b/i,
   // Opening or visiting a named thing generally means the outside world.
   /\b(open|visit|go to|load|pull up|check)\b.{0,24}\b(site|page|link|tab|browser)\b/i,
+  // A document someone sent: the paperclip's marker, an office file by name,
+  // or the words for one. The read happens mid-turn, after the brain is chosen.
+  /\[file attached:|\.(pdf|docx?|xlsx?|pptx?|od[tsp])\b|\b(pdf|attachment)s?\b/i,
 ];
 
 function hasRecordedContent(text: string): boolean {
