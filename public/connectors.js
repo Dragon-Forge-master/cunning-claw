@@ -134,6 +134,19 @@
       else add("Refresh", "Restart this local server and reload its tools", () => act("connect", c.id));
     }
     if (c.owned) add("Remove", "Remove from ~/.config/cunningclaw/mcp.json", () => act("remove", c.id));
+    // Someone who has never made an API key needs a person, not a button: hand
+    // the job to the claw, which walks it one step at a time from the same
+    // catalogue (connector_guide). Connected cards get it too — "teach him how
+    // I use it" is the step after connecting.
+    if (typeof window.sendMessage === "function") {
+      const ask = c.status === "connected"
+        ? `Help me get the most from ${c.label} (${c.id}), and learn how I like it used.`
+        : `Walk me through connecting ${c.label} (${c.id}), one step at a time.`;
+      add("Guide me", `Ask the claw to walk you through ${c.label}`, () => {
+        setOpen(false);
+        window.sendMessage(ask);
+      });
+    }
     return wrap;
   }
 

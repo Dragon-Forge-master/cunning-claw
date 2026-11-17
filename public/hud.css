@@ -459,8 +459,8 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; position: relative; }
 .mcp-status.ok .mcp-mark { border: 1px solid var(--cyan-dim); color: var(--cyan); }
 .mcp-status.warn .mcp-mark { border: 1px solid var(--amber); color: var(--amber); }
 .mcp-status.err .mcp-mark { border: 1px solid var(--red); color: var(--red); }
-.mcp-actions { display: flex; gap: 6px; justify-content: flex-end; }
-.mcp-actions .ctl { letter-spacing: 1px; font-size: 10px; padding: 3px 8px; }
+.mcp-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.mcp-actions .ctl { letter-spacing: 1px; font-size: 10px; padding: 3px 8px; white-space: nowrap; }
 .mcp-empty { color: var(--cyan-dim); font-size: 12px; padding: 18px 8px; }
 
 @media (max-width: 900px) {

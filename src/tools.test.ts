@@ -403,3 +403,17 @@ test("where bubblewrap works, run_command really is boxed", async (t) => {
     fs.rmSync(probe, { force: true });
   }
 });
+
+test("connector_guide answers from the catalogue through executeTool, with no approval card", async () => {
+  // The operator asked for the claw to be the advisor on setting connectors
+  // up; the advice must come from the CONNECT sheet's own catalogue, and
+  // reading a guide is never a consequence.
+  const { executeTool } = await import("./tools.js");
+  const cards: string[] = [];
+  const ctx = { requestApproval: async (s: string) => { cards.push(s); return false; }, emit: () => {} } as any;
+  const out = String(await executeTool("connector_guide", { query: "canva" }, ctx));
+  assert.match(out, /CONNECTOR GUIDE — Canva \(canva\)/);
+  assert.match(out, /mcp\.canva\.com/);
+  assert.deepEqual(cards, []);
+  assert.ok(toolDefinitions.some((t: any) => t.name === "connector_guide"));
+});

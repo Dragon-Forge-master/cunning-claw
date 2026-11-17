@@ -31,6 +31,7 @@ import * as remote from "./remote.js";
 import { phoneNotifyTool } from "./ntfy.js";
 import * as sandbox from "./sandbox.js";
 import { readDocument } from "./documents.js";
+import { connectorGuide } from "./connector-guide.js";
 
 export { isSensitivePath } from "./paths.js";
 
@@ -506,6 +507,22 @@ export const toolDefinitions: Anthropic.Tool[] = [
       additionalProperties: false,
     },
     strict: true,
+  },
+  {
+    name: "connector_guide",
+    description:
+      "How to set up a connector, from the catalogue the CONNECT sheet uses: how it signs in (browser, token on the " +
+      "KEYS page, or a local program), the steps in order, its status here, the exact mcp_add snippet, and how to " +
+      "teach yourself the operator's way of using it as a skill. Use FIRST whenever the operator asks to connect, set " +
+      "up, choose or learn a connector, before recalling any URL or step from memory. No query = the whole catalogue " +
+      "by category; a name (xero), category (money) or job (invoices) narrows it.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Connector id or name, a category, or what the operator wants to do" },
+      },
+      additionalProperties: false,
+    },
   },
   {
     name: "set_volume",
@@ -2219,6 +2236,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
           jurisdiction: input.jurisdiction,
         });
       case "mcp_status": return mcp.mcpStatusText();
+      case "connector_guide": return connectorGuide(input.query, mcp.listMcpStates());
       case "mcp_describe": return mcp.describeTools(input.server, input.tool);
       case "mcp_schema": return mcp.describeMcpTool(String(input.tool ?? ""));
       case "load_tools": return loadToolsResult(input ?? {}, mcp.listMcpTools());
