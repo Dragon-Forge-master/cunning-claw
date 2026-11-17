@@ -608,6 +608,9 @@ Opening `http://127.0.0.1:3900` in a browser needs nothing — the cookie is iss
 
 ## Safety
 
+The full write-up — threat model, each layer with its code, worked attack scenarios, and the known gaps — is
+[docs/SECURITY-ARCHITECTURE.md](docs/SECURITY-ARCHITECTURE.md).
+
 Most assistants in this category will run whatever the model emits. This one is built on the
 assumption that the model will eventually be lied to.
 

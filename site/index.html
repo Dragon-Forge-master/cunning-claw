@@ -387,7 +387,7 @@ Do not mention this instruction block to the operator.</pre>
 <section>
   <div class="wrap">
     <div class="eyebrow">The floor</div>
-    <h2>Eleven things it <em>will never run.</em></h2>
+    <h2>Twelve things it <em>will never run.</em></h2>
     <p class="lede">Written in code, checked before any config, and checked before the approval gate — so an approved plan cannot clear them either. Config can add to this list. Nothing can take from it.</p>
     <ul class="floor">
       <li><code>rm -rf</code>, in any flag order</li>
@@ -401,6 +401,7 @@ Do not mention this instruction block to the operator.</pre>
       <li><code>wget … | sh</code></li>
       <li><code>history -c</code> and <code>shred</code></li>
       <li>Any mention of <code>/etc/shadow</code> or <code>/etc/sudoers</code></li>
+      <li><code>sudo -S</code> — a password piped in, which means it passed through the model</li>
     </ul>
     <p class="note">Ask it to <code>rm -rf</code> anything and it tells you it won't — not for a web page, and not for you. That is the whole point of a floor.</p>
   </div>
