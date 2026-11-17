@@ -214,6 +214,27 @@ sent out is redacted first, and the bot cannot @-mention anyone, so a hostile pa
 summarised into a reply cannot make it ping your server. `npm run doctor` reports
 both lines.
 
+### ntfy
+
+A third way to reach your phone, with no account at all: [ntfy](https://ntfy.sh)
+(free app, iOS and Android). It is outbound only — the claw listens on
+127.0.0.1, which your phone cannot reach — so it tells you things but takes no
+orders: briefings and other scheduled results, heartbeat alerts, remote jobs
+finishing, `notify` with `to: phone`, and an alert when an approval has waited
+15 seconds unanswered. That alert names the action, never the command, and has
+no buttons; you answer on the HUD, Telegram or Discord.
+
+1. Install the ntfy app and subscribe to a new topic with a long random name —
+   `npm run doctor` suggests one.
+2. Put that name in `.env` as `NTFY_TOPIC=`.
+3. Restart the claw. `npm run doctor` and the HUD status panel show it as on.
+
+**A public ntfy.sh topic is readable by anyone who guesses its name.** The name
+is the only lock, so treat it like a password, and know that everything sent is
+redacted, has paths, the hostname, LAN and email addresses taken out, and is cut
+short. For a private line, run your own ntfy server (`ntfy.server` in
+`claw.config.json`) or use a protected topic with an access token in `NTFY_TOKEN`.
+
 Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screencapture`, `osascript`, `pbcopy`, `afplay`/`say`) and **Windows** (PowerShell — nothing to install). Missing tools return a message naming what to install, never a silent no-op. See the platform table below.
 
 ```

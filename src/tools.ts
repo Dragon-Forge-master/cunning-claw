@@ -27,6 +27,7 @@ import { newStandingOrders, SCHEDULE_FILE, type ScheduleEntry } from "./schedule
 import { CONFIG_FILE } from "./config.js";
 import * as workorder from "./workorder.js";
 import * as remote from "./remote.js";
+import { phoneNotifyTool } from "./ntfy.js";
 
 export { isSensitivePath } from "./paths.js";
 
@@ -1025,10 +1026,17 @@ export const toolDefinitions: Anthropic.Tool[] = [
   },
   {
     name: "notify",
-    description: "Show a desktop notification popup.",
+    description:
+      "Show a desktop notification popup, or push one to the operator's phone (to: phone / both) " +
+      "through ntfy when it is set up. The phone gets a scrubbed, shortened copy; keep it to one line " +
+      "worth a glance. Asks first in a turn that has read outside content.",
     input_schema: {
       type: "object",
-      properties: { title: { type: "string" }, body: { type: "string" } },
+      properties: {
+        title: { type: "string" },
+        body: { type: "string" },
+        to: { type: "string", enum: ["desktop", "phone", "both"], description: "Default desktop." },
+      },
       required: ["title", "body"],
       additionalProperties: false,
     },
@@ -2402,7 +2410,14 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         }
         return await desktop.typeOnDesktop(input.text, input.window);
       }
-      case "notify": return await desktop.notify(input.title, input.body);
+      case "notify": {
+        const out: string[] = [];
+        if (input.to !== "phone") out.push(await desktop.notify(input.title, input.body));
+        if (input.to === "phone" || input.to === "both") {
+          out.push(await phoneNotifyTool(input.title, input.body, ctx, outsideContentWarning(ctx)));
+        }
+        return out.join("\n");
+      }
       case "clipboard":
         return input.action === "write"
           ? await desktop.clipboardWrite(String(input.text ?? ""))

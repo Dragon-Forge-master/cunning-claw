@@ -30,6 +30,7 @@ import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatu
 import { createRequire } from "node:module";
 import { startTelegram, sendApprovalCard, approvalSettled, telegramStatus } from "./telegram.js";
 import { startDiscord, sendApprovalCard as sendDiscordCard, approvalSettled as discordSettled, discordStatus } from "./discord.js";
+import { startNtfy, sendApprovalAlert, approvalSettled as ntfySettled, ntfyStatus } from "./ntfy.js";
 import { openPreview, closePreview, reloadPreview, previewState, servedDir } from "./preview.js";
 import fs from "node:fs";
 import { isSensitivePath } from "./paths.js";
@@ -187,6 +188,7 @@ function requestApproval(summary: string, detail: string): Promise<boolean> {
       broadcast("approval_resolved", { id, approved, timedOut });
       approvalSettled(id, approved);
       discordSettled(id, approved);
+      ntfySettled(id);
       resolve(approved);
     };
     timer = setTimeout(() => finish(false, true), config.commandPolicy.approvalTimeoutMs);
@@ -194,6 +196,11 @@ function requestApproval(summary: string, detail: string): Promise<boolean> {
     broadcast("approval_request", { id, summary, detail });
     void sendApprovalCard(id, summary, detail);
     void sendDiscordCard(id, summary, detail);
+    // ntfy cannot carry the verdict back, so it says where to give it.
+    sendApprovalAlert(id, summary, [
+      ...(telegramStatus().enabled ? ["Telegram"] : []),
+      ...(discordStatus().enabled ? ["Discord"] : []),
+    ]);
   });
 }
 
@@ -499,6 +506,7 @@ app.get("/api/status", async (_req, res) => {
     landscapeCount: landscape.systems.length,
     telegram: telegramStatus(),
     discord: discordStatus(),
+    ntfy: ntfyStatus(),
     toolCount: toolDefinitions.length,
     spend: sessionSpend(),
     turn: turnInFlight(),
@@ -670,6 +678,8 @@ const httpServer = app.listen(port, host, async () => {
     console.log("  Scripts authenticate with:  Authorization: Bearer $CLAW_TOKEN\n");
   }
 
+  // Armed before anything that can push: the late briefing fires at boot.
+  startNtfy();
   startHeartbeat(agentEvents);
   startSchedule(agentEvents);
   startRemoteWatch(agentEvents);

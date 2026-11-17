@@ -2,6 +2,7 @@ import { config } from "./config.js";
 import { runTurn, type AgentEvents } from "./agent.js";
 import { readHeartbeat } from "./workspace.js";
 import { beatDue, CREDIT_FAILURE, freshBackoff, recordBeat } from "./heartbeat-backoff.js";
+import { notifyPhone } from "./ntfy.js";
 
 let lastAt: string | null = null;
 
@@ -45,12 +46,17 @@ export function startHeartbeat(events: AgentEvents): void {
       { kind: "heartbeat" },
     ).then((reply) => {
       if (reply !== null) lastAt = new Date().toISOString();
+      // Anything but the quiet word is the beat saying something needs action.
+      if (reply?.trim() && reply.trim() !== "HEARTBEAT_OK") {
+        void notifyPhone({ kind: "heartbeat", title: "Heartbeat", body: reply });
+      }
       // A turn refused because another was in flight is not a verdict either way.
       if (reply === null && !creditFailure) return;
       const notice = recordBeat(backoff, { creditFailure }, Date.now());
       if (notice) {
         console.log(`  ${notice}`);
         events.emit("notice", { message: notice });
+        void notifyPhone({ kind: "heartbeat", title: "Heartbeat", body: notice });
       }
     });
   }, ms);

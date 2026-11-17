@@ -180,6 +180,21 @@ export interface ClawConfig {
   telegram?: { enabled?: boolean };
   discord?: { enabled?: boolean };
   /**
+   * ntfy pushes — outbound only, no account. The topic and any access token
+   * are secrets and live in .env under the names given here; on public
+   * ntfy.sh the topic's name is the only lock on it.
+   */
+  ntfy?: {
+    enabled?: boolean;
+    server?: string;
+    topicEnv?: string;
+    tokenEnv?: string;
+    /** 1 (min) to 5 (max); approval alerts are sent at no less than 4. */
+    priority?: number;
+    /** How long an approval may wait unanswered before the phone is told. 0 = at once. */
+    approvalDelaySeconds?: number;
+  };
+  /**
    * Approve the plan once instead of every step of it. Off means every action
    * keeps asking individually, which is the old behaviour.
    */

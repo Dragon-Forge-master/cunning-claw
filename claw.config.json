@@ -128,6 +128,14 @@
     "enabled": true,
     "intervalMinutes": 30
   },
+  "ntfy": {
+    "enabled": true,
+    "server": "https://ntfy.sh",
+    "topicEnv": "NTFY_TOPIC",
+    "tokenEnv": "NTFY_TOKEN",
+    "priority": 3,
+    "approvalDelaySeconds": 15
+  },
   "brains": {
     "default": "flashlite",
     "heartbeat": "lite",
