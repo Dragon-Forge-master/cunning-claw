@@ -286,3 +286,22 @@ export function isSecretReply(previousAssistant: string, reply: string): boolean
   if (/[\/~]/.test(r) || /\.[a-z0-9]{1,5}$/i.test(r)) return false;
   return true;
 }
+
+/**
+ * A reply bound for a group (a Telegram group, a Discord server channel),
+ * with the machine taken out of it.
+ *
+ * Redaction removes secrets; it does not remove where the claw lives. A group
+ * has strangers in it, so home paths, the hostname and LAN addresses come out
+ * as well. The operator's private chat keeps them — it is the operator's own
+ * machine they are reading about.
+ */
+export function groupSafeText(text: string, host = os.hostname()): string {
+  let t = String(text ?? "")
+    .replace(/(?:\/home|\/Users)\/[^\s/'"`)]+(?:\/[^\s'"`)]*)?/g, "[path]")
+    .replace(/[A-Za-z]:\\Users\\[^\s'"`)]+/g, "[path]")
+    .replace(/~\/[^\s'"`)]*/g, "[path]")
+    .replace(/\b(?:10|127)(?:\.\d{1,3}){3}\b|\b192\.168(?:\.\d{1,3}){2}\b|\b172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}\b/g, "[local address]");
+  if (host && host.length >= 3) t = t.split(host).join("[this machine]");
+  return t;
+}

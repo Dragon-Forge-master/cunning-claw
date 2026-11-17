@@ -201,8 +201,9 @@ page, under *Privileged Gateway Intents*, turn on **Message Content** — withou
 the bot hears silence. Under OAuth2 → URL Generator tick `bot`, then *Send
 Messages* and *Read Message History*, and open the URL to invite it to your server.
 Message it `/whoami` and put your user id in `DISCORD_ALLOWED_USER_ID`.
-`DISCORD_CHANNEL_ID` is optional: where cards for work started on the HUD should
-land; otherwise the last channel you spoke in.
+Approval cards and the boot greeting go only to a DM with each allowlisted user,
+never to a server channel, and a button press counts only in a DM. Replies in a
+server channel have paths, the hostname and LAN addresses taken out.
 
 There is also a **managed brain** in the catalogue (`id: managed`) for the
 forthcoming Just Works subscription — inert without a `DRAGONFORGE_TOKEN`; see

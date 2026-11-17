@@ -6,7 +6,12 @@ import {
   INTENTS,
   MESSAGE_LIMIT,
   approvalCardPayload,
+  armDiscord,
+  channelText,
   discordStatus,
+  handleInteraction,
+  handleMessage,
+  sendApprovalCard,
   maskUserId,
   onlineText,
   outboundChunks,
@@ -268,5 +273,91 @@ test("a renamed claw greets under its own name, not the brand", () => {
     assert.doesNotMatch(onlineText(), /CUNNING CLAW/i);
   } finally {
     config.persona.name = saved;
+  }
+});
+
+// ── Rooms are not people ────────────────────────────────────────────────────
+// The rule telegram.ts learnt for groups. Cards went to the last channel the
+// operator spoke in — a public server channel as easily as a DM — so the
+// command, the path and the EXECUTE button sat in front of everyone there.
+
+const OP_A = "819273645501";
+const OP_B = "819273645502";
+
+/** A fake Discord REST API: records every call, opens a DM per user, numbers messages. */
+function fakeRest() {
+  const calls: { method: string; path: string; body: any }[] = [];
+  let n = 0;
+  const fetchFn = (async (url: string, init: any) => {
+    const p = String(url).replace("https://discord.com/api/v10", "");
+    const body = init?.body ? JSON.parse(init.body) : undefined;
+    calls.push({ method: init?.method, path: p, body });
+    if (p === "/users/@me/channels") return new Response(JSON.stringify({ id: `dm-${body.recipient_id}`, type: 1 }), { status: 200 });
+    if (/\/callback$/.test(p)) return new Response(null, { status: 204 });
+    return new Response(JSON.stringify({ id: `msg-${++n}` }), { status: 200 });
+  }) as unknown as typeof fetch;
+  return { calls, fetchFn };
+}
+
+const quiet = { emit: () => {}, requestApproval: async () => false } as any;
+
+test("approval cards go only to each operator's DM, never the server channel they last spoke in", async () => {
+  const net = fakeRest();
+  try {
+    armDiscord(TOKEN, new Set([OP_A, OP_B]), () => true, net.fetchFn);
+    // The operator speaks in a server channel first: under the old rule this
+    // made it the place the next card landed.
+    await handleMessage({ id: "m1", channelId: "guild-chan", guildId: "g1", userId: OP_A, bot: false, content: "/help" }, quiet);
+    net.calls.length = 0;
+    await sendApprovalCard("req-1", "Run shell command", "ls ~/projects");
+    const opened = net.calls.filter((c) => c.path === "/users/@me/channels").map((c) => c.body.recipient_id);
+    assert.deepEqual(opened.sort(), [OP_A, OP_B], "a DM is opened by user id for each operator");
+    const cards = net.calls.filter((c) => /\/messages$/.test(c.path));
+    assert.deepEqual(cards.map((c) => c.path).sort(), [`/channels/dm-${OP_A}/messages`, `/channels/dm-${OP_B}/messages`]);
+    assert.ok(!net.calls.some((c) => c.path.includes("guild-chan")), "nothing went to the server channel");
+  } finally {
+    armDiscord(null, new Set(), null);
+  }
+});
+
+test("a button pressed in a server channel settles nothing, even the operator's; in a DM it settles", async () => {
+  const net = fakeRest();
+  let settled = 0;
+  try {
+    armDiscord(TOKEN, new Set([OP_A]), () => { settled++; return true; }, net.fetchFn);
+    const press = { id: "i1", token: "itok", userId: OP_A, messageContent: "⚠ card", approvalId: "req-2", approved: true };
+    await handleInteraction({ ...press, channelId: "guild-chan", guildId: "g1" });
+    assert.equal(settled, 0, "a room is not the place to approve");
+    const refusal = net.calls.find((c) => c.path.endsWith("/callback"));
+    assert.equal(refusal?.body.type, 4);
+    assert.equal(refusal?.body.data.flags, 64, "told privately");
+    assert.match(refusal?.body.data.content, /DM/);
+
+    await handleInteraction({ ...press, id: "i2", channelId: `dm-${OP_A}`, guildId: null });
+    assert.equal(settled, 1, "the same press from a DM counts");
+  } finally {
+    armDiscord(null, new Set(), null);
+  }
+});
+
+test("text bound for a server channel has the machine taken out; a DM keeps it", async () => {
+  const line = `Saved to /home/sam/notes.md on forgebox, HUD at 192.168.1.20, key ${ANTHROPIC}`;
+  const room = channelText(line, false, "forgebox");
+  assert.doesNotMatch(room, /\/home\/sam|forgebox|192\.168/);
+  assert.doesNotMatch(room, /sk-ant-api03-EXAMPLEfake/);
+  const dm = channelText(line, true, "forgebox");
+  assert.match(dm, /\/home\/sam\/notes\.md/);
+  assert.doesNotMatch(dm, /sk-ant-api03-EXAMPLEfake/, "redacted everywhere");
+
+  // And /status in a server channel says to ask in a DM rather than send it.
+  const net = fakeRest();
+  try {
+    armDiscord(TOKEN, new Set([OP_A]), () => true, net.fetchFn);
+    await handleMessage({ id: "m2", channelId: "guild-chan", guildId: "g1", userId: OP_A, bot: false, content: "/status" }, quiet);
+    const sent = net.calls.filter((c) => c.path === "/channels/guild-chan/messages").map((c) => c.body.content);
+    assert.equal(sent.length, 1);
+    assert.match(sent[0], /Ask me for \/status in a DM/);
+  } finally {
+    armDiscord(null, new Set(), null);
   }
 });
