@@ -7,7 +7,9 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-WorkingDirectory="@@ROOT@@"
+# Never quoted: systemd takes the rest of the line as the path, spaces and all,
+# and rejects a quoted one as "not absolute" — the unit then refuses to start.
+WorkingDirectory=@@ROOT@@
 ExecStart="@@NPM@@" run dev
 Restart=on-failure
 RestartSec=5

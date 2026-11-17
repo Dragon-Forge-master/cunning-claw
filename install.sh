@@ -122,7 +122,8 @@ install_user_unit() {
   local npm_bin node_dir
   npm_bin="$(command -v npm)"
   node_dir="$(dirname "$(command -v node)")"
-  # Escape \ and & for sed replacement, keep spaces — the unit quotes WorkingDirectory.
+  # Escape \ and & for sed replacement and keep spaces: WorkingDirectory takes the
+  # whole line as the path, so a folder like "Game Dev" needs no quoting there.
   local root_esc path_esc npm_esc
   root_esc="$(printf '%s' "$ROOT" | sed -e 's/[&\\]/\\&/g')"
   npm_esc="$(printf '%s' "$npm_bin" | sed -e 's/[&\\]/\\&/g')"
