@@ -2187,7 +2187,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "get_weather": return await getWeather(input);
       case "memory_save": return remember(input.key, input.value, ctx.tainted?.() ?? false);
       case "memory_forget": return forget(input.key);
-      case "memory_search": return searchMemory(String(input.query ?? ""));
+      case "memory_search": return await searchMemory(String(input.query ?? ""));
       case "browser_open": {
         const parsed = parseNavigableUrl(String(input.url ?? ""));
         if (!parsed.ok) return parsed.error;

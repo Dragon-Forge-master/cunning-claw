@@ -173,6 +173,21 @@ export interface ClawConfig {
   };
   agent?: { maxTurnMinutes?: number };
   /**
+   * Memory search by meaning. "auto" picks a keyed provider (Ollama first when
+   * the default brain is local); "off" is keyword search only. Memory text goes
+   * only to a provider you have keyed — Ollama keeps it on this machine.
+   */
+  memory?: {
+    embeddings?: "auto" | "gemini" | "openrouter" | "ollama" | "off";
+    model?: string;
+    /** Ollama's root URL; defaults to a local brain on :11434, then 127.0.0.1:11434. */
+    ollamaUrl?: string;
+    timeoutMs?: number;
+    /** Cosine floor for a meaning-only hit; the default depends on the provider. */
+    minSimilarity?: number;
+    maxResults?: number;
+  };
+  /**
    * The phone lines' master switches. The token in .env says a line *can*
    * run; these say whether *this* claw may — a second claw (film studio, QA)
    * shares .env and must be able to decline the bot without editing secrets.

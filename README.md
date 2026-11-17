@@ -274,7 +274,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **Accounts** | Jurisdiction packs (UK first; IE, US, AU, DE as stubs) plus Xero via the official local MCP. It will not invent a foreign tax rate or file a return |
 | **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Claw" wake word |
 | **Reads kindly** | **Aa** on the HUD switches every page to OpenDyslexic, bundled so it works offline. Code and commands stay monospace. The choice is saved per install |
-| **Remembers** | Markdown memory and a dated journal that survive restarts |
+| **Remembers** | Markdown memory and a dated journal that survive restarts, searched by meaning as well as by words |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
 | **Reaches you** | Telegram or Discord, so it isn't trapped at your desk — approval cards arrive as buttons you press |
 | **Works elsewhere** | Any other machine you own over ssh — a spare PC or a cloud VM. Long jobs run **detached**: builds and servers survive the conversation ending and your laptop closing, which they cannot do here |
@@ -342,6 +342,29 @@ API; loopback and private-range hosts skip the key check entirely.
 > code guarantee, and small models are measurably worse at it. So turns that can see
 > untrusted content are forced onto a trusted brain — see below. Offline is for privacy and
 > cost, not for handing your inbox to a 7B model.
+
+## Memory
+
+`memory_save` keeps a fact; `memory_search` finds it again. Search works two ways at once:
+
+- **By words**, with no network: every word of the question counts on its own, in any
+  order, through plurals and *-ing*, so "Pontypridd paint repair" finds "mobile paint repair
+  in Pontypridd".
+- **By meaning**, when an embeddings provider is available: "the car spraying job" finds
+  the same fact with no word in common. Vectors are cached in `data/memory-vectors.json`
+  and re-made only for a memory that was edited, or when the model changes.
+
+```jsonc
+// claw.config.json — optional; "auto" is the default
+"memory": { "embeddings": "auto" }   // "gemini" | "openrouter" | "ollama" | "off"
+```
+
+**Where your memories go.** Memory text is sent to an embeddings provider only if you have
+keyed that provider — Gemini (`GEMINI_API_KEY`, model `gemini-embedding-001`) or OpenRouter
+(`OPENROUTER_API_KEY`, `openai/text-embedding-3-small`) — and it is redacted first. With
+`"ollama"` (`ollama pull nomic-embed-text`) nothing leaves the machine, and `"auto"` picks
+Ollama by itself when your default brain is local. If the provider is down, unkeyed or
+`"off"`, search falls back to words alone and says why in the log; it never fails.
 
 ---
 
