@@ -5,6 +5,7 @@ import { runTurn, turnInFlight, type AgentEvents } from "./agent.js";
 import { fenceUntrusted } from "./browser-ax.js";
 import { defuse } from "./workspace.js";
 import { redact } from "./redact.js";
+import { notifyPhone } from "./ntfy.js";
 import {
   findBox, safeJobName, loadJobs, parseJobStatus, rememberJob, saveJobs, shQuote, sshArgs, statusScript,
   type Box, type JobRecord, type JobState,
@@ -134,9 +135,9 @@ export function startRemoteWatch(events: AgentEvents): void {
             if (Date.now() - job.startedAt > LOST_AFTER_MS) {
               rememberJob({ ...job, lastState: "unknown", reportedAt: Date.now() });
               events.emit("remote_job", { name: job.name, box: boxId, state: "unknown" });
-              events.emit("notice", {
-                message: `Lost track of job "${job.name}" on ${boxId} — the box has not answered for a day. No longer watching it.`,
-              });
+              const lost = `Lost track of job "${job.name}" on ${boxId} — the box has not answered for a day. No longer watching it.`;
+              events.emit("notice", { message: lost });
+              void notifyPhone({ kind: "job", title: "Remote job", body: lost });
             }
           }
           continue;
@@ -155,6 +156,8 @@ export function startRemoteWatch(events: AgentEvents): void {
             ? `Job "${job.name}" on ${boxId} finished, exit ${status.exit}.`
             : `Job "${job.name}" on ${boxId} died without an exit code.`;
           events.emit("notice", { message: headline });
+          // The three-in-the-morning case: the operator is not at the HUD.
+          void notifyPhone({ kind: "job", title: "Remote job", body: headline });
 
           // A turn costs tokens, so only wake one when the turn queue is free
           // and there is something worth saying. A busy claw is told next tick.

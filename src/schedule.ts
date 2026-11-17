@@ -4,6 +4,7 @@ import { DATA_DIR } from "./config.js";
 import { runTurn, turnInFlight, type AgentEvents } from "./agent.js";
 import { entryKey, parseSchedule, SCHEDULE_FILE, type ScheduleEntry } from "./schedule-format.js";
 import { wrapRecorded } from "./workspace.js";
+import { notifyPhone } from "./ntfy.js";
 
 // Re-exported: this is where callers and tests have always looked for them.
 export { parseSchedule, SCHEDULE_FILE, type ScheduleEntry };
@@ -134,12 +135,17 @@ export function startSchedule(events: AgentEvents): void {
           },
         };
         void runTurn(message, watched, { kind: "user" }).then((reply) => {
-          if (!runFailed(reply, spoke)) return;
+          if (!runFailed(reply, spoke)) {
+            // The briefing is for someone who is not at the desk yet.
+            if (reply?.trim()) void notifyPhone({ kind: "schedule", title: due.entry.target, body: reply });
+            return;
+          }
           const state = loadState();
           const notice = failedRun(state, due, reason || "no reply", new Date());
           saveState(state);
           console.log(`  Schedule: ${notice}`);
           events.emit("notice", { message: notice });
+          void notifyPhone({ kind: "schedule", title: due.entry.target, body: notice });
         });
       },
     });

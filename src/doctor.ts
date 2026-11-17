@@ -12,6 +12,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { boxes as remoteBoxes, sshArgs, shQuote, type Box as RemoteBox } from "./remote.js";
 import { expandHome } from "./paths.js";
+import { ntfyDoctorLine } from "./ntfy.js";
 
 const execFileAsync = promisify(execFile);
 import { detect } from "./voice.js";
@@ -443,6 +444,8 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
   // the bot connects and answers nobody, which reads as broken.
   out.push(channelRow("telegram", "Telegram", process.env.TELEGRAM_BOT_TOKEN, process.env.TELEGRAM_CHAT_ID, "TELEGRAM_CHAT_ID"));
   out.push(channelRow("discord", "Discord", process.env.DISCORD_BOT_TOKEN, process.env.DISCORD_ALLOWED_USER_ID, "DISCORD_ALLOWED_USER_ID"));
+  const push = ntfyDoctorLine();
+  out.push(row("ntfy", push.status, false, push.text));
 
   const historyFile = path.join(DATA_DIR, "history.json");
   let raw: string | null = null;

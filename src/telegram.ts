@@ -1,6 +1,6 @@
-import os from "node:os";
 import { config } from "./config.js";
 import { redact } from "./redact.js";
+import { groupSafeText } from "./group-safe.js";
 import type { AgentEvents } from "./agent.js";
 import { runTurn } from "./agent.js";
 import { systemStatusText } from "./tools.js";
@@ -75,23 +75,10 @@ export function mayCommand(chatId: string, fromId: string): boolean {
   return allowed.has(chatId) && operators.has(fromId);
 }
 
-/**
- * A reply bound for a group, with the machine taken out of it.
- *
- * Redaction removes secrets; it does not remove where the claw lives. A group
- * has strangers in it, so home paths, the hostname and LAN addresses come out
- * as well. The operator's private chat keeps them — it is the operator's own
- * machine they are reading about.
- */
-export function groupSafeText(text: string, host = os.hostname()): string {
-  let t = String(text ?? "")
-    .replace(/(?:\/home|\/Users)\/[^\s/'"`)]+(?:\/[^\s'"`)]*)?/g, "[path]")
-    .replace(/[A-Za-z]:\\Users\\[^\s'"`)]+/g, "[path]")
-    .replace(/~\/[^\s'"`)]*/g, "[path]")
-    .replace(/\b(?:10|127)(?:\.\d{1,3}){3}\b|\b192\.168(?:\.\d{1,3}){2}\b|\b172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}\b/g, "[local address]");
-  if (host && host.length >= 3) t = t.split(host).join("[this machine]");
-  return t;
-}
+// A reply bound for a group has the machine taken out of it. The function
+// moved to a leaf so ntfy can share it without an import cycle; it is
+// re-exported here because this is where callers and tests have looked.
+export { groupSafeText };
 
 /**
  * A chat id is a personal identifier, and the telemetry panel it lands on gets
