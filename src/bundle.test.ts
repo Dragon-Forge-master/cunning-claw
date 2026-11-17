@@ -35,4 +35,6 @@ test("every target names a real Node download, and the read-me says how to get p
   assert.match(readMe("win", "0.0.0"), /More info.*Run anyway/s);
   assert.match(readMe("darwin", "0.0.0"), /Right-click.*Open/s);
   for (const os of ["win", "darwin", "linux"]) assert.match(readMe(os, "0.0.0"), /no Cunning Claw crypto token/);
+  // The no-terminal path must tell a first-timer that a free key exists.
+  for (const os of ["win", "darwin", "linux"]) assert.match(readMe(os, "0.0.0"), /free Google\s+Gemini key/);
 });

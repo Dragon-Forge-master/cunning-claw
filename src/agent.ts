@@ -15,7 +15,7 @@ import * as coherence from "./coherence.js";
 import { toolDefinitions as mcpToolDefinitions, listMcpStates, listMcpTools } from "./mcp.js";
 import * as diet from "./tool-diet.js";
 import { skillIndex, workspaceSnapshot } from "./workspace.js";
-import { pinnedBrainId, pickBrain, nextBrain, shouldFailOver, isCreditExhausted, brainKeyEnv, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
+import { pinnedBrainId, pickBrain, nextBrain, shouldFailOver, isCreditExhausted, isGoogleAllowanceSpent, brainKeyEnv, describeBrain, missingKeyHint, brainHasKey, catalog, recordUsage, type BrainSpec } from "./brain.js";
 import { completeOpenAi } from "./openai-compat.js";
 import { appendJournal, todayJournalSnippet } from "./journal.js";
 import { chromeProfileDir } from "./browser.js";
@@ -1066,6 +1066,11 @@ export async function runTurn(
       msg = `My API credentials appear to be invalid, ${addressed()}. Check the API key in .env for the active brain.`;
     } else if (err instanceof Anthropic.RateLimitError) {
       msg = "We've hit the API rate limit. A brief pause is in order.";
+    } else if (isGoogleAllowanceSpent(err, spec)) {
+      // Midnight Pacific is 8 am in the UK in winter and in summer alike.
+      msg = `Google's free allowance is used up for now, ${addressed()}. If it is the per-minute limit, ` +
+        `wait a minute and ask again; the daily one comes back at midnight Pacific time (8 am in the UK). ` +
+        `For no limits, add billing in Google AI Studio or an OpenRouter key on the KEYS page.`;
     } else if (isCreditExhausted(err)) {
       msg = `The ${spec.label} brain's account is out of credit for a request this size, ${addressed()}. ` +
         `Top it up (OpenRouter: openrouter.ai/settings/credits), or pick the Local brain in the picker.`;

@@ -25,6 +25,9 @@
   .choice h3 b{color:var(--cyan);font-weight:400;font-size:10px;letter-spacing:2px;margin-left:8px}
   .choice .hint{color:var(--cyan-dim);font-size:11.5px;line-height:1.6;margin:6px 0 10px}
   .choice a{color:var(--cyan)}
+  .steps{color:var(--text);font-size:12px;line-height:1.75;margin:4px 0 10px 20px;max-width:62ch}
+  .steps li{padding-left:4px;margin:3px 0}
+  .steps b{color:var(--cyan);font-weight:400}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   input,select{flex:1;min-width:200px;background:rgba(0,0,0,.35);border:1px solid var(--cyan-dim);
     color:var(--text);padding:9px 11px;font:inherit;font-size:12.5px;letter-spacing:.5px}
@@ -52,28 +55,37 @@
 
   <section class="step" id="step-brain">
     <h2><span>1 · GIVE HIM A BRAIN</span><span class="tick" id="tick-brain"></span></h2>
-    <p>The brain is the AI model he thinks with. Pick one — you can add others later from the KEYS page.</p>
+    <p>The brain is the AI model he thinks with. Pick one — you can add others later from the KEYS page. Not sure? Take the free Google one.</p>
 
     <div class="choice">
-      <h3>OpenRouter <b>RECOMMENDED</b></h3>
-      <div class="hint">One key, every model, pay as you go. The everyday brain costs a fraction of a penny a message.
+      <h3>Google Gemini <b>FREE · NO CARD NEEDED</b></h3>
+      <div class="hint">The easiest start. Any Google account (your Gmail) gets a free key in about two minutes:</div>
+      <ol class="steps">
+        <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a> and sign in with your Google account.</li>
+        <li>Tick to accept Google's terms if it asks. Google sets up a project and a key for you.
+          If no key is listed, press <b>Create API key</b>.</li>
+        <li>Press the <b>copy</b> button beside the key (a long string of letters and numbers).</li>
+        <li>Paste it in the box below and press <b>CHECK &amp; SAVE</b>. He checks it with Google before keeping it.</li>
+      </ol>
+      <div class="hint">Good to know: the free plan has a daily limit — if he says it is used up, it comes back at 8&nbsp;am UK time.
+        On the free plan Google may use what you send to improve its products; for private work, turn on billing in
+        AI Studio, or use the offline brain.</div>
+      <div class="row">
+        <input id="gm-key" type="password" placeholder="Paste your Gemini key here" autocomplete="off" spellcheck="false" aria-label="Google Gemini key">
+        <button id="gm-save">CHECK &amp; SAVE</button>
+      </div>
+      <div class="msg" id="gm-msg" role="status"></div>
+    </div>
+
+    <div class="choice">
+      <h3>OpenRouter <b>PAY AS YOU GO · EVERY BRAIN</b></h3>
+      <div class="hint">One key, every model, no daily limit. The everyday brain costs a fraction of a penny a message.
         Get a key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">openrouter.ai/keys</a>, add a little credit, and paste it here.</div>
       <div class="row">
         <input id="or-key" type="password" placeholder="sk-or-…" autocomplete="off" spellcheck="false" aria-label="OpenRouter key">
         <button id="or-save">CHECK &amp; SAVE</button>
       </div>
       <div class="msg" id="or-msg" role="status"></div>
-    </div>
-
-    <div class="choice">
-      <h3>Google Gemini</h3>
-      <div class="hint">A key straight from Google, no broker. Make one at
-        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a>.</div>
-      <div class="row">
-        <input id="gm-key" type="password" placeholder="AIza…" autocomplete="off" spellcheck="false" aria-label="Google Gemini key">
-        <button id="gm-save">CHECK &amp; SAVE</button>
-      </div>
-      <div class="msg" id="gm-msg" role="status"></div>
     </div>
 
     <div class="choice">

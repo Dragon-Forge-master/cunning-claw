@@ -40,7 +40,9 @@ export const TARGETS = {
 };
 
 /** Files at the repository root that a running claw reads. */
-const TOP_FILES = ["claw.config.json", ".env.example", "package.json", "package-lock.json", "LICENSE", "README.md"];
+// The setup scripts ride along because the HUD and doctor name them (local
+// ears, Piper's voice); a hint pointing at a file the bundle lacks is a lie.
+const TOP_FILES = ["claw.config.json", ".env.example", "package.json", "package-lock.json", "LICENSE", "README.md", "setup-ears.sh", "setup-voice.sh"];
 const TRACKED_DIRS = ["public", "workspace", "senses"];
 
 function run(cmd, args, opts = {}) {
@@ -189,8 +191,11 @@ export function readMe(os, version) {
     `  ${firstTime}`,
     "",
     "A small window stays open while he runs; your browser opens on his page.",
-    "The first run opens a setup page: paste an OpenRouter or Google key, or",
-    "choose the offline brain, then give your name and town. That is all.",
+    "The first run opens a setup page. The easiest brain is a free Google",
+    "Gemini key: any Google account gets one in about two minutes, no card",
+    "needed, and the page walks you through it step by step. (Or paste an",
+    "OpenRouter key, or choose the offline brain.) Then give your name and",
+    "town. That is all.",
     "",
     "To stop him: close the window.",
     "",

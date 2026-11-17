@@ -293,14 +293,14 @@
         "id": "google",
         "label": "Google direct",
         "provider": "openai",
-        "model": "gemini-2.5-flash",
+        "model": "gemini-3.6-flash",
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "apiKeyEnv": "GEMINI_API_KEY",
         "price": {
-          "in": 0.3,
-          "out": 2.5
+          "in": 0.75,
+          "out": 3.75
         },
-        "note": "a Gemini key straight from Google AI Studio — no broker in between"
+        "note": "a Gemini key straight from Google AI Studio — no broker in between. Free of charge on Google's free plan within its daily limits (Google may use free-plan prompts to improve its products); the price shown is the paid rate"
       },
       {
         "id": "openai-direct",

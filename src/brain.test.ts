@@ -10,6 +10,7 @@ import {
   defaultBrainId,
   formatCost,
   heartbeatBrainId,
+  isGoogleAllowanceSpent,
   isFailoverError,
   lastTurnCost,
   pickBrain,
@@ -207,4 +208,23 @@ test("the shipped defaults keep the everyday brain on Gemini and nothing dearer 
   if (config.routing?.capableWhenMaking && def?.price && capable?.price) {
     assert.ok(def.price.out < capable.price.out, "the default is the cheaper of the two");
   }
+});
+
+test("Google's free-plan 429 is recognised as a spent allowance, and only for Google", () => {
+  const google = { baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/" };
+  const openrouter = { baseUrl: "https://openrouter.ai/api/v1" };
+  const spent = new Error('OpenAI-compatible API 429: [{"error":{"code":429,"status":"RESOURCE_EXHAUSTED"}}]');
+  assert.equal(isGoogleAllowanceSpent(spent, google), true);
+  assert.equal(isGoogleAllowanceSpent(spent, openrouter), false);
+  assert.equal(isGoogleAllowanceSpent(new Error("OpenAI-compatible API 500: oops"), google), false);
+  assert.equal(isGoogleAllowanceSpent(spent, undefined), false);
+});
+
+test("the Google direct brain is on a model Google still serves", () => {
+  // gemini-2.5-flash is deprecated with a shutdown date of 1 December 2026
+  // (Google AI Studio's deprecations page); the setup page sends free-key
+  // users straight to this brain, so it must not sit on a retiring model.
+  const g = catalog().find((b) => b.id === "google");
+  assert.ok(g, "google brain missing from the roster");
+  assert.notEqual(g!.model, "gemini-2.5-flash");
 });

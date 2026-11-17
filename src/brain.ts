@@ -237,6 +237,19 @@ export function isFailoverError(err: unknown): boolean {
 }
 
 /**
+ * Google's free plan answered 429: a per-minute or daily allowance is spent.
+ * The free key is the path the setup page offers people who have never seen
+ * an API key, so "OpenAI-compatible API 429: RESOURCE_EXHAUSTED…" is the
+ * wrong thing to show them — they need to know it is a limit, not a fault,
+ * and when it comes back.
+ */
+export function isGoogleAllowanceSpent(err: unknown, spec: Pick<BrainSpec, "baseUrl"> | undefined): boolean {
+  if (!spec?.baseUrl || !/generativelanguage\.googleapis\.com/.test(spec.baseUrl)) return false;
+  const m = err instanceof Error ? err.message : String(err ?? "");
+  return /API 429\b|RESOURCE_EXHAUSTED|exceeded your current quota/i.test(m);
+}
+
+/**
  * The provider refused because the account's credit cannot cover the request
  * (OpenRouter answers 402, sometimes as "Prompt tokens limit exceeded" when a
  * smaller request would still fit). Every brain on the same key fails the same

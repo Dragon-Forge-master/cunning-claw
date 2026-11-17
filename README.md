@@ -67,11 +67,30 @@ were being had. Which is exactly what this does when a web page tries to give it
 Each tagged release has a download for Windows, macOS (Apple silicon and Intel)
 and Linux on the [Releases page](https://github.com/Dragon-Forge-master/cunning-claw/releases).
 Unzip it and double-click **Cunning Claw** — Node is inside, there is nothing else
-to install. Your browser opens on the setup page. The bundles are not code-signed
+to install. Your browser opens on the setup page, which walks you through a
+[free Google key](#a-free-brain-the-google-key-step-by-step). The bundles are not code-signed
 yet, so Windows and macOS ask once before the first run; `READ ME FIRST.txt` in
 the download says exactly what to click. Each one is started from its own launcher
 on a real Windows, macOS and Linux machine (`.github/workflows/bundle.yml`) before
 it is published.
+
+### A free brain: the Google key, step by step
+
+Never made an API key? This is the free one, and it takes about two minutes. No card is needed.
+
+1. Open **[aistudio.google.com/apikey](https://aistudio.google.com/apikey)** and sign in with any Google account (your Gmail will do).
+2. Accept Google's terms if it asks. Google sets up a project and a key for you; if no key is listed, press **Create API key**.
+3. Press the **copy** button beside the key.
+4. On Cunning Claw's setup page, paste it into the **Google Gemini** box and press **CHECK & SAVE**. He checks the key with Google before keeping it.
+
+He then runs on Gemini 3.6 Flash through Google directly. Two things to know about the free plan, both from
+[Google's pricing page](https://aistudio.google.com/docs/pricing):
+
+- **There is a limit.** Free use is capped per minute and per day. When it is spent he says so in plain words; the daily
+  allowance comes back at midnight Pacific time, which is 8 am in the UK. Google shows your own limits at
+  [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit).
+- **Free is paid for with data.** On the free plan Google may use what you send to improve its products. For private work,
+  turn on billing in AI Studio (paid use is not used that way), use an OpenRouter key, or choose the offline brain.
 
 ### From source
 
