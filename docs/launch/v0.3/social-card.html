@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Cunning Claw 0.3 — social card</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* 1600×900, the same frame as site/social.png. Palette and type from docs/BRAND.md. */
+  :root{--ink:#0a111c;--ink2:#0e1826;--cyan:#35d6ed;--deep:#1a8ba0;--text:#dfe9f2;--dim:#8496a8;--gold:#f5a623}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1600px;height:900px;background:radial-gradient(1100px 700px at 78% 38%,rgba(53,214,237,.13),transparent 60%),var(--ink);color:var(--text);font-family:"Public Sans",sans-serif;overflow:hidden;position:relative}
+  .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(53,214,237,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(53,214,237,.05) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(900px 600px at 70% 45%,#000,transparent 75%)}
+  .left{position:absolute;left:96px;top:92px;width:760px}
+  .brand{display:flex;align-items:center;gap:18px;font-family:"IBM Plex Mono",monospace;letter-spacing:.32em;color:var(--cyan);font-size:22px}
+  .brand img{width:64px;height:64px}
+  .ver{display:inline-block;margin-top:46px;font-family:"IBM Plex Mono",monospace;font-size:20px;letter-spacing:.24em;color:var(--ink);background:var(--cyan);padding:6px 14px}
+  h1{font-family:"Fraunces",serif;font-weight:700;font-size:84px;line-height:1.02;margin-top:26px;letter-spacing:-.5px}
+  h1 em{font-style:italic;color:var(--cyan)}
+  .sub{margin-top:26px;font-size:26px;line-height:1.5;color:var(--dim);max-width:700px}
+  .foot{position:absolute;left:96px;bottom:70px;font-family:"IBM Plex Mono",monospace;font-size:19px;letter-spacing:.14em;color:var(--dim)}
+  .foot b{color:var(--gold);font-weight:500}
+  .list{position:absolute;right:96px;top:120px;width:560px;border:1px solid var(--deep);background:rgba(14,24,38,.82)}
+  .list div{display:flex;gap:18px;align-items:baseline;padding:17px 26px;border-top:1px solid rgba(26,139,160,.35);font-size:22px}
+  .list div:first-child{border-top:0}
+  .list span{font-family:"IBM Plex Mono",monospace;color:var(--cyan);font-size:17px;min-width:34px}
+</style></head>
+<body>
+<div class="grid"></div>
+<div class="left">
+  <div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div>
+  <div class="ver">NEW IN 0.3</div>
+  <h1>Cheaper. Harder to fool. <em>More private.</em></h1>
+  <p class="sub">The local AI assistant from Cardiff that runs on your machine — and now starts free, with no terminal.</p>
+</div>
+<div class="list">
+  <div><span>01</span>Carries only the tools a message needs</div>
+  <div><span>02</span>A sandbox round his shell on Linux &amp; Mac</div>
+  <div><span>03</span>Hears you on your own machine</div>
+  <div><span>04</span>Remembers by meaning, not just words</div>
+  <div><span>05</span>Reads PDF, Word, Excel and scans</div>
+  <div><span>06</span>Flags text that tries to give him orders</div>
+  <div><span>07</span>Push alerts with no account</div>
+  <div><span>08</span>Starts free: a Google key, step by step</div>
+</div>
+<div class="foot">OPEN SOURCE · BUILT IN CARDIFF · <b>NO CRYPTO TOKEN, EVER</b></div>
+</body></html>
