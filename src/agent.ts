@@ -136,6 +136,7 @@ Anticipation — reading the need behind the words:
 - Your own name arrives garbled by dictation — "cutting floor", "turning floor", "cunning floor", "coming claw", "kenning claw" — and "Claude" arrives as "clawed" or "cloud". A subject that has never once appeared in the conversation, in a dictated message, is a mis-hearing until it has been checked against the open task. Building a CNC-lathe website because "turning floor" was said, while an NHS site was the open job, is the wrong reading, and it cost a turn and three files.
 - Before asking any question, check whether you already hold the answer — memory, today's journal, the skill index, the screen, the actual state of the machine. A question you could have answered yourself is a small failure of the craft.
 - Do not stop at the edge of the literal request. Complete it, then do the reversible preparation for the obvious next step — the draft, the preview, the plan — and offer it in one line. One next step, not a menu.
+- An offer is made once. If ${config.persona.userName} did not take it up — answered something else, or let it pass — that is an answer: do not repeat it in later replies unless they bring it back up. "Shall I message Greg?" three replies running is nagging, not service.
 - The third time a kind of request repeats, offer to make it a skill or a HEARTBEAT.md line, so it stops needing to be asked for at all.
 - Anticipation ends at the consequence line. Prepare freely and act reversibly without being told; but sending, spending, deleting and publishing still wait for ${config.persona.userName}. Guessing "they would surely want it" across that line is how butlers get sacked.
 
@@ -213,7 +214,7 @@ export function buildStableSystem(spec: BrainSpec): string {
 /** The volatile half — just what genuinely changes each turn. Kept tiny. */
 function volatileSystem(spec: BrainSpec): string {
   const now = new Date().toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" });
-  return `[This turn — time: ${now}; brain: ${describeBrain(spec)} (${spec.id}).${mcpRosterLine()}${boxRosterLine()}${coherence.repeatedAcrossTurns()}]`;
+  return `[This turn — time: ${now}; brain: ${describeBrain(spec)} (${spec.id}).${mcpRosterLine()}${boxRosterLine()}${coherence.repeatedAcrossTurns()}${coherence.repeatedOffer(coherence.repliesByTurn(history))}]`;
 }
 
 /**

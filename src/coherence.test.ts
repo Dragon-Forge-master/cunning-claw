@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { signature, read, notice, repeatedAcrossTurns, dominantShape, admit, type CoherenceReading } from "./coherence.js";
+import { signature, read, notice, repeatedAcrossTurns, dominantShape, admit, offersIn, repeatedOffer, repliesByTurn, type CoherenceReading } from "./coherence.js";
 
 /**
  * The repetition ratio comes from the Quantum Coherence Kernel:
@@ -234,4 +234,46 @@ test("a refused call does not count, so a real change of tack can still run", ()
   assert.notEqual(admit(shapes, "run_command", { command: "git log -S handleClick" }).verdict, "halt");
   // …while the same move again is refused again.
   assert.equal(admit(shapes, ...stuck).verdict, "halt");
+});
+
+// The same offer, again. Field transcript: three replies running ended
+// "Shall I message Greg?" while the operator talked about other things.
+
+test("the same offer closing two of the last three replies is noticed before a third", () => {
+  const replies = [
+    "The quote came in at £420. Shall I message Greg?",
+    "The van's MOT is due on the 3rd. Want me to message Greg about the quote?",
+  ];
+  const warning = repeatedOffer(replies);
+  assert.match(warning, /same offer \((?:message greg|greg message)/);
+  assert.match(warning, /do not offer it again unless they bring it back up/);
+  // Named by content words only: a reply's own text never reaches the prompt.
+  assert.doesNotMatch(warning, /Shall I|£420/);
+  // A gap between the two still counts — two of the last three.
+  assert.notEqual(repeatedOffer([replies[0], "Done, the calendar is updated.", replies[1]]), "");
+});
+
+test("one offer, different offers, or an offer dropped raise nothing", () => {
+  assert.equal(repeatedOffer(["Shall I message Greg?"]), "", "once is an offer, not a pattern");
+  assert.equal(repeatedOffer(["Shall I message Greg?", "Shall I book the MOT?"]), "", "a new offer is not a repeat");
+  assert.equal(repeatedOffer(["Shall I message Greg?", "Shall I message Greg?", "Sent the invoice."]), "",
+    "the latest reply let it go, so there is nothing to stop");
+  assert.equal(repeatedOffer(["Greg says hello.", "Greg called again."]), "", "a name is not an offer");
+});
+
+test("offers are found by shape, and a turn's reply is its last words, not its tool chatter", () => {
+  assert.equal(offersIn("Here is the plan. Would you like me to draft the email to Sian?").length, 1);
+  assert.equal(offersIn("I can draft it for you if you like.").length, 1);
+  assert.equal(offersIn("The build passed. Nothing else to do.").length, 0);
+  const history = [
+    { role: "user", content: "[09:00] check the quote" },
+    { role: "assistant", content: [{ type: "text", text: "Let me look." }, { type: "tool_use", id: "t1", name: "read_file", input: {} }] },
+    { role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: "£420" }] },
+    { role: "assistant", content: [{ type: "text", text: "£420. Shall I message Greg?" }] },
+    { role: "user", content: "[09:05] what about the van" },
+    { role: "assistant", content: "MOT on the 3rd. Shall I message Greg?" },
+    { role: "user", content: "[09:10] and the weather" },
+  ];
+  assert.deepEqual(repliesByTurn(history), ["£420. Shall I message Greg?", "MOT on the 3rd. Shall I message Greg?"]);
+  assert.notEqual(repeatedOffer(repliesByTurn(history)), "");
 });

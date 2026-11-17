@@ -280,3 +280,94 @@ export function repeatedAcrossTurns(recent = loadShapes()): string {
     `than declaring it fixed a third time.`
   );
 }
+
+// ---------------------------------------------------------------------------
+// The same offer, again
+// ---------------------------------------------------------------------------
+
+/**
+ * A field transcript had the claw end three replies running with the same
+ * offer — "Shall I message Greg?" — while the operator talked about other
+ * things. An offer not taken up is an answer; repeating it is nagging. The
+ * doctrine says so, and this spots it in the claw's own last replies so the
+ * volatile line can say so at the moment it matters.
+ *
+ * Cheap on purpose: offer-shaped sentences, reduced to their content words,
+ * compared by overlap. The warning names the offer by those words only —
+ * never by quoting the reply, which may carry text a web page put there into
+ * the system prompt.
+ */
+const OFFER = /^(?:shall|should) i\b|^(?:do you )?want me to\b|^would you like me to\b|^(?:i can|i could|happy to)\b.*\b(?:if you(?:'d| would)? (?:like|want)|for you)\b|^let me know if you(?:'d| would)? (?:like|want) me to\b|^say the word\b/i;
+const OFFER_FILLER = new Set([
+  "shall", "should", "i", "me", "you", "your", "do", "want", "would", "like", "to", "the", "a", "an", "it",
+  "that", "this", "for", "if", "can", "could", "happy", "let", "know", "say", "word", "and", "or", "of", "on",
+  "in", "with", "about", "now", "then", "too", "also", "just", "them", "him", "her", "any", "so", "be", "go",
+  "ahead", "next", "there", "here", "up", "is", "are", "ll", "d", "s",
+]);
+
+/** The offers in one reply, each as its set of content words. */
+export function offersIn(reply: string): Set<string>[] {
+  const out: Set<string>[] = [];
+  for (const sentence of String(reply ?? "").split(/(?<=[?.!])\s+|\n+/)) {
+    const s = sentence.trim().replace(/^[-*•>\s]+/, "");
+    if (!OFFER.test(s)) continue;
+    const words = new Set(
+      s.toLowerCase().replace(/[’']/g, " ").split(/[^a-z0-9]+/).filter((w) => w.length > 1 && !OFFER_FILLER.has(w)),
+    );
+    if (words.size >= 1) out.push(words);
+  }
+  return out;
+}
+
+function sameOffer(a: Set<string>, b: Set<string>): boolean {
+  let shared = 0;
+  for (const w of a) if (b.has(w)) shared++;
+  return shared >= 1 && shared / Math.min(a.size, b.size) >= 0.6;
+}
+
+/**
+ * The claw's final words per turn, oldest first: assistant text up to each
+ * operator message. A tool_result is the loop talking, not the operator, so
+ * it does not end a turn.
+ */
+export function repliesByTurn(messages: Array<{ role: string; content: unknown }>): string[] {
+  const turns: string[] = [];
+  let current = "";
+  for (const m of messages) {
+    if (m.role === "user") {
+      const isResult = Array.isArray(m.content) && (m.content as any[]).some((b) => b?.type === "tool_result");
+      if (isResult) continue;
+      if (current.trim()) turns.push(current.trim());
+      current = "";
+    } else if (m.role === "assistant") {
+      const text = typeof m.content === "string"
+        ? m.content
+        : (m.content as any[]).filter((b) => b?.type === "text").map((b) => String(b.text ?? "")).join(" ");
+      // Only the last text of a turn is its reply; "Let me check" mid-turn is not an offer to the operator.
+      if (text.trim()) current = text;
+    }
+  }
+  if (current.trim()) turns.push(current.trim());
+  return turns;
+}
+
+/**
+ * Has the same offer closed two of the last three replies? Then the next one
+ * must not make it a third time. Returns the line for the volatile system
+ * prompt, or "".
+ */
+export function repeatedOffer(replies: string[]): string {
+  const recent = replies.slice(-3).map(offersIn);
+  if (recent.length < 2) return "";
+  const latest = recent[recent.length - 1];
+  for (const offer of latest) {
+    const times = 1 + recent.slice(0, -1).filter((r) => r.some((o) => sameOffer(o, offer))).length;
+    if (times < 2) continue;
+    const about = [...offer].slice(0, 5).join(" ");
+    return (
+      ` You have made the same offer (${about}) in ${times} of your last ${recent.length} replies, and ` +
+      `${config.persona.userName} has not taken it up. That is an answer: do not offer it again unless they bring it back up.`
+    );
+  }
+  return "";
+}
