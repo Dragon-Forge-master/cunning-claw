@@ -56,6 +56,12 @@ export interface ClawConfig {
     timeoutMs: number;
     approvalTimeoutMs: number;
   };
+  /**
+   * The box around run_command (src/sandbox.ts). auto: bubblewrap or
+   * sandbox-exec when present, the host with a visible note when not;
+   * required: no sandbox, no command. Only writes are confined.
+   */
+  sandbox?: { mode?: "off" | "auto" | "required"; network?: boolean; writable?: string[] };
   voice: {
     enabled: boolean;
     engine: "auto" | "piper" | "spd-say" | "say";

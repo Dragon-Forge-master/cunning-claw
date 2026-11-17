@@ -305,3 +305,90 @@ test("skill and lesson cards show exactly what is stored, nothing past a cut", a
   assert.match(String(long), /Shorten it/);
   assert.equal(cards.length, 1, "no card for a body too long to show");
 });
+
+test("leaving the sandbox always raises a card — no auto-approve or work order rides over it", async () => {
+  // The escape hatch is the one run_command argument that widens what a
+  // command may touch, so it is the one consent cannot be borrowed for.
+  // Fails with the hook reverted: `ls` auto-approves and the covered step
+  // runs without a card.
+  const { executeTool } = await import("./tools.js");
+  const sandbox = await import("./sandbox.js");
+  const workorder = await import("./workorder.js");
+  sandbox.setDetectionForTests({ engine: "bwrap", why: "", fix: "" });
+  const asked: string[] = [];
+  const ctx = { emit() {}, requestApproval: async (s: string) => { asked.push(s); return false; } };
+  try {
+    const ls = String(await executeTool("run_command", { command: "ls", unsandboxed: true }, ctx));
+    assert.match(ls, /declined to run this outside the sandbox/);
+    assert.equal(asked.length, 1, "an auto-approvable command still asks once it leaves the box");
+    assert.match(asked[0], /OUTSIDE the sandbox/);
+
+    workorder.reset();
+    const p = workorder.prepare("Say hello", [{ tool: "run_command", match: "echo covered-step", summary: "hello" }], (c) => classifyCommand(c) === "deny");
+    assert.equal(p.ok, true);
+    if (p.ok) workorder.activate(p.order);
+    await executeTool("run_command", { command: "echo covered-step", unsandboxed: true }, ctx);
+    assert.equal(asked.length, 2, "a work order covered the command, not the command with the walls down");
+  } finally {
+    workorder.reset();
+    sandbox.setDetectionForTests(null);
+  }
+});
+
+test("a shell result says whether it ran sandboxed", async () => {
+  // The model must know which world a result came from: a read-only refusal
+  // inside the box and the same refusal on the host mean different things.
+  const { executeTool } = await import("./tools.js");
+  const sandbox = await import("./sandbox.js");
+  const ctx = { emit() {}, requestApproval: async () => true };
+  try {
+    sandbox.setDetectionForTests({ engine: null, why: "bubblewrap is not installed", fix: "" });
+    const host = String(await executeTool("run_command", { command: "echo plain" }, ctx));
+    assert.match(host, /^\[unsandboxed: bubblewrap is not installed — this ran directly on the host\]/);
+    assert.match(host, /plain/);
+  } finally {
+    sandbox.setDetectionForTests(null);
+  }
+});
+
+test("sandbox.mode required refuses rather than running on the host", async () => {
+  const { executeTool } = await import("./tools.js");
+  const { config } = await import("./config.js");
+  const sandbox = await import("./sandbox.js");
+  const saved = config.sandbox;
+  config.sandbox = { ...saved, mode: "required" };
+  sandbox.setDetectionForTests({ engine: null, why: "bubblewrap is not installed", fix: "sudo apt install bubblewrap" });
+  const asked: string[] = [];
+  const ctx = { emit() {}, requestApproval: async (s: string) => { asked.push(s); return true; } };
+  try {
+    const out = String(await executeTool("run_command", { command: "echo should-not-run" }, ctx));
+    assert.match(out, /^Refused: sandbox\.mode is "required"/);
+    assert.equal(asked.length, 0, "nothing to approve when nothing can run");
+  } finally {
+    config.sandbox = saved;
+    sandbox.setDetectionForTests(null);
+  }
+});
+
+test("where bubblewrap works, run_command really is boxed", async (t) => {
+  const sandbox = await import("./sandbox.js");
+  sandbox.setDetectionForTests(null);
+  const live = await sandbox.detect();
+  if (live.engine !== "bwrap") return t.skip(`no usable bubblewrap: ${live.why}`);
+  const { executeTool } = await import("./tools.js");
+  const ctx = { emit() {}, requestApproval: async () => true };
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "claw-run-"));
+  const probe = path.join(ROOT, `.sandbox-probe-${process.pid}`);
+  try {
+    const inside = String(await executeTool("run_command", { command: "echo hi > made.txt", cwd: work }, ctx));
+    assert.match(inside, /^\[sandboxed by bubblewrap/);
+    assert.equal(fs.readFileSync(path.join(work, "made.txt"), "utf-8"), "hi\n");
+    const outside = String(await executeTool("run_command", { command: `echo no > ${probe}`, cwd: work }, ctx));
+    assert.match(outside, /Read-only file system/);
+    assert.match(outside, /unsandboxed: true/, "the refusal names the way out");
+    assert.equal(fs.existsSync(probe), false);
+  } finally {
+    fs.rmSync(work, { recursive: true, force: true });
+    fs.rmSync(probe, { force: true });
+  }
+});

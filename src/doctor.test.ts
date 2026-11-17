@@ -77,6 +77,11 @@ test("Linux doctor names apt packages for missing desktop tools", async () => {
   assert.ok(chrome);
   assert.match(chrome!.line, /google-chrome|browser\.binary/);
   assert.equal(checks.find((c) => c.id === "node")?.status, "ok");
+  // The shell sandbox: absent bubblewrap is a warning with the package named.
+  const box = checks.find((c) => c.id === "sandbox");
+  assert.ok(box, "doctor must say what run_command runs inside");
+  assert.equal(box!.status, "warn");
+  assert.match(box!.line, /sudo apt install bubblewrap/);
 });
 
 test("every failed or warned line names a fix", async () => {

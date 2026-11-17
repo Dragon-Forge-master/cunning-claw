@@ -27,6 +27,7 @@ import { newStandingOrders, SCHEDULE_FILE, type ScheduleEntry } from "./schedule
 import { CONFIG_FILE } from "./config.js";
 import * as workorder from "./workorder.js";
 import * as remote from "./remote.js";
+import * as sandbox from "./sandbox.js";
 
 export { isSensitivePath } from "./paths.js";
 
@@ -83,7 +84,9 @@ export const toolDefinitions: Anthropic.Tool[] = [
     description:
       "Run a shell command on the user's Linux machine and return stdout/stderr. " +
       "Safe read-only commands run immediately; anything else asks the user for approval first. " +
-      "Destructive commands (disk wipes, shutdown) are blocked entirely.",
+      "Destructive commands (disk wipes, shutdown) are blocked entirely. " +
+      "Where a sandbox exists it runs inside one, writing only to its working folder, the temp dir and " +
+      "configured folders; the result says whether it ran sandboxed. To launch an app, use open.",
     input_schema: {
       type: "object",
       properties: {
@@ -91,6 +94,12 @@ export const toolDefinitions: Anthropic.Tool[] = [
         cwd: {
           type: "string",
           description: "Working directory (default: this Cunning Claw install). Pass ~ for the home folder.",
+        },
+        unsandboxed: {
+          type: "boolean",
+          description:
+            "Run outside the sandbox. Only after a sandboxed run was refused a write it genuinely needs: " +
+            "it always asks the operator, whatever else has been approved.",
         },
       },
       required: ["command"],
@@ -1289,32 +1298,13 @@ async function gate(
 export const SYNTHETIC_INPUT_RE =
   /\b(?:xdotool\s+(?:[^|;&]*\b)?(?:type|key|click)\b|ydotool\s+(?:type|key|click)\b|wtype\b|dotool\b|import\s+pyautogui|pyautogui\.|keyboard\.(?:write|press|send)|osascript\b[^|;&]*keystroke)/i;
 
-async function runCommand(input: { command: string; cwd?: string }, ctx: ToolContext): Promise<string> {
+async function runCommand(input: { command: string; cwd?: string; unsandboxed?: boolean }, ctx: ToolContext): Promise<string> {
   const verdict = classifyCommand(input.command);
   if (verdict === "deny") {
     return "BLOCKED: this command matches the destructive-command denylist and will never be run.";
   }
-  if (SYNTHETIC_INPUT_RE.test(input.command)) {
-    const ok = await ctx.requestApproval(
-      "Inject keystrokes/clicks into the focused window — this can type into and submit ANYTHING, including messengers",
-      `${input.command}\n\nIf this is aimed at WhatsApp, email, or any compose box: use the dedicated ` +
-        `draft/send tools instead — they verify delivery and never lie about it.`,
-    );
-    if (!ok) {
-      return (
-        "The user declined the synthetic input. If you were trying to send a message, use the " +
-        "dedicated tool (draft_chat + send_chat, send_email) — it verifies the send actually happened."
-      );
-    }
-  } else if (verdict === "approve") {
-    const ok = await gate(
-      ctx,
-      { tool: "run_command", match: input.command },
-      "Run shell command",
-      input.command,
-    );
-    if (!ok) return "The user declined to run this command.";
-  }
+  // Resolved before any card, so the card can say where the command may write
+  // and a doomed directory is reported without the operator approving it first.
   const cwd = resolveCommandCwd(input.cwd);
   if (!fs.existsSync(cwd)) {
     return (
@@ -1323,15 +1313,47 @@ async function runCommand(input: { command: string; cwd?: string }, ctx: ToolCon
       `Pass an absolute path that exists (try list_dir on ~), or omit cwd to run from this install.`
     );
   }
-  const ran = await execIn(input.command, cwd);
+  // After HARD_DENY, never instead of it. Leaving the box asks directly, not
+  // through gate(): a work order or a task grant approved the command, not
+  // the command with every wall taken down.
+  const box = await sandbox.prepareCommand({ command: input.command, cwd, shell: shellPath, unsandboxed: input.unsandboxed === true });
+  if (box.kind === "refuse") return box.text;
+  const boxNote = sandbox.cardNote(box);
+  if (SYNTHETIC_INPUT_RE.test(input.command)) {
+    const ok = await ctx.requestApproval(
+      "Inject keystrokes/clicks into the focused window — this can type into and submit ANYTHING, including messengers",
+      `${input.command}\n\nIf this is aimed at WhatsApp, email, or any compose box: use the dedicated ` +
+        `draft/send tools instead — they verify delivery and never lie about it.${boxNote}`,
+    );
+    if (!ok) {
+      return (
+        "The user declined the synthetic input. If you were trying to send a message, use the " +
+        "dedicated tool (draft_chat + send_chat, send_email) — it verifies the send actually happened."
+      );
+    }
+  } else if (box.kind === "host" && box.askFirst) {
+    const ok = await ctx.requestApproval("Run shell command OUTSIDE the sandbox", input.command + boxNote);
+    if (!ok) return "The user declined to run this outside the sandbox. Nothing ran.";
+  } else if (verdict === "approve") {
+    const ok = await gate(
+      ctx,
+      { tool: "run_command", match: input.command },
+      "Run shell command",
+      input.command + boxNote,
+    );
+    if (!ok) return "The user declined to run this command.";
+  }
+  const ran = await execIn(input.command, cwd, box);
   if (
     /not a git repository/i.test(ran) &&
     path.resolve(cwd) !== path.resolve(ROOT)
   ) {
-    const retry = await execIn(input.command, ROOT);
-    return `cwd ${cwd} is not a git repo. Re-ran in this install:\n${ROOT}\n\n${retry}`;
+    const again = await sandbox.prepareCommand({ command: input.command, cwd: ROOT, shell: shellPath, unsandboxed: input.unsandboxed === true });
+    if (again.kind === "refuse") return `${box.label}\n${ran}`;
+    const retry = await execIn(input.command, ROOT, again);
+    return `cwd ${cwd} is not a git repo. Re-ran in this install:\n${ROOT}\n\n${again.label}\n${retry}${sandbox.explainSandboxFailure(retry, again)}`;
   }
-  return ran;
+  return `${box.label}\n${ran}${sandbox.explainSandboxFailure(ran, box)}`;
 }
 
 /**
@@ -1387,7 +1409,7 @@ export function clipMiddle(text: string, max: number, head = Math.floor(max / 4)
   return `${text.slice(0, head)}\n[… ${cut} characters omitted from the middle; the end follows …]\n${text.slice(-tail)}`;
 }
 
-async function execIn(command: string, cwd: string): Promise<string> {
+async function execIn(command: string, cwd: string, box?: sandbox.Plan): Promise<string> {
   // cmd.exe treats every newline as a new command — a multi-line quoted
   // python -c that bash swallows whole gets shredded here, "succeeding" into
   // phantom files and half-run scripts. Refuse before the mangling.
@@ -1401,18 +1423,21 @@ async function execIn(command: string, cwd: string): Promise<string> {
   }
   for (;;) {
     try {
-      const { stdout, stderr } = await execAsync(command, {
-        cwd,
-        timeout: config.commandPolicy.timeoutMs,
-        maxBuffer: 1024 * 1024,
-        shell: shellPath,
-      });
+      const { stdout, stderr } = box?.kind === "sandboxed"
+        ? await execFileAsync(box.file, box.args, { cwd, timeout: config.commandPolicy.timeoutMs, maxBuffer: 1024 * 1024 })
+        : await execAsync(command, {
+          cwd,
+          timeout: config.commandPolicy.timeoutMs,
+          maxBuffer: 1024 * 1024,
+          shell: shellPath,
+        });
       const out = [stdout && `stdout:\n${stdout}`, stderr && `stderr:\n${stderr}`]
         .filter(Boolean)
         .join("\n");
       return `(cwd ${cwd})\n` + clipMiddle(out || "(no output)", 20000);
     } catch (err: any) {
-      if (isShellSpawnFailure(err)) {
+      // A missing bwrap is not a missing shell; explainSandboxFailure says so.
+      if (isShellSpawnFailure(err) && box?.kind !== "sandboxed") {
         // Node reports a MISSING CWD with the exact same "spawn <shell> ENOENT"
         // it uses for a missing shell. Check the mundane cause before the exotic:
         // blaming the environment for a wrong directory sent model and maintainer

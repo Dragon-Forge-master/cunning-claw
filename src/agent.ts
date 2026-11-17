@@ -19,6 +19,7 @@ import { appendJournal, todayJournalSnippet } from "./journal.js";
 import { chromeProfileDir } from "./browser.js";
 import { boxes as remoteBoxes, loadJobs as loadRemoteJobs } from "./remote.js";
 import { detected as voiceDetected } from "./voice.js";
+import { sandboxSummary } from "./sandbox.js";
 
 const HISTORY_FILE = path.join(DATA_DIR, "history.json");
 
@@ -247,7 +248,7 @@ function whatYouAreLine(): string {
     process.env.DISCORD_BOT_TOKEN && process.env.DISCORD_ALLOWED_USER_ID ? "Discord" : "",
   ].filter(Boolean);
   return `What you are: ${platformName()} install; ${voice}; ${toolDefinitions.length} built-in tools; ` +
-    `phone line: ${phone.join(" + ") || "none configured"}. Speech-to-text is the HUD's browser microphone. ` +
+    `phone line: ${phone.join(" + ") || "none configured"}; ${sandboxSummary()}. Speech-to-text is the HUD's browser microphone. ` +
     `Nothing here needs building — it is what you have. You build websites yourself: write_file into ~/sites/<name>/, ` +
     `then preview that folder — no special tool is needed.\n` +
     `Your mark: the Forge Claw — a dragon's claw gripping an anvil, always one colour, cyan #35d6ed on ink #0a111c ` +

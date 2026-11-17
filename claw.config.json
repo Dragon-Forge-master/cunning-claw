@@ -40,6 +40,16 @@
     "timeoutMs": 180000,
     "approvalTimeoutMs": 180000
   },
+  "sandbox": {
+    "mode": "auto",
+    "network": true,
+    "writable": [
+      "~/sites",
+      "~/Documents/CunningClaw",
+      "~/.npm",
+      "~/.cache"
+    ]
+  },
   "server": {
     "port": 3900,
     "host": "127.0.0.1"
