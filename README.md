@@ -593,6 +593,14 @@ assumption that the model will eventually be lied to.
   reads of `/etc/shadow`. Config can add to it, never subtract.
 - **Approval gates** on everything that changes the world — shell, file writes, clicks,
   keystrokes, purchases, device control.
+- A **sandbox around the shell**, where one exists: bubblewrap on Linux (`sudo apt install
+  bubblewrap`), `sandbox-exec` on macOS. A command may write only to its own folder under
+  home, the temp dir and the folders in `sandbox.writable`; the claw's config, `.env`, data
+  and workspace stay read-only even then. Reads are not confined. To write anywhere else the
+  model must ask with `unsandboxed: true`, which always raises a card, even under a work
+  order. `sandbox.mode` is `auto` (run on the host and say so when there is no sandbox),
+  `required` or `off`; Windows has none, and every result says which it was.
+  `npm run doctor` reports it.
 - A **host allowlist** for HTTP. Blocked hosts are reported, never silently dropped.
 - **Credential redaction** on every disk write and every event, so a pasted key never lands
   in the transcript.

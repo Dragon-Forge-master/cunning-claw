@@ -1,0 +1,258 @@
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+import { promisify } from "node:util";
+import {
+  bwrapArgs,
+  decide,
+  detectEngine,
+  explainSandboxFailure,
+  isLauncher,
+  normalisePath,
+  planWrites,
+  sandboxDoctor,
+  sandboxSettings,
+  sbplProfile,
+  tooBroad,
+  type DetectDeps,
+  type Detection,
+  type WriteSet,
+} from "./sandbox.js";
+
+const execFileAsync = promisify(execFile);
+const HOME = "/home/owner";
+const identity = (p: string) => p;
+
+function writes(over: Partial<WriteSet> = {}): WriteSet {
+  return { writable: ["/tmp", "/home/owner/proj"], readOnly: [], skipped: [], cwdNote: "", ...over };
+}
+const BWRAP: Detection = { engine: "bwrap", why: "", fix: "" };
+const NONE: Detection = { engine: null, why: "bubblewrap is not installed", fix: "sudo apt install bubblewrap" };
+
+test("a path with anything that could close a quote never reaches a bind", () => {
+  for (const bad of ["~/sites/$(rm -rf ~)", '/tmp/a"b', "/tmp/a\\b", "/tmp/a\nb", "/tmp/`x`", "/tmp/a;b", "/tmp/*", "/tmp/café"]) {
+    assert.ok("why" in normalisePath(bad, HOME), `refused: ${JSON.stringify(bad)}`);
+  }
+  assert.ok("why" in normalisePath("sites", HOME), "relative paths are refused, not resolved against wherever we are");
+  assert.deepEqual(normalisePath("~/sites", HOME), { path: "/home/owner/sites" });
+  assert.deepEqual(normalisePath("/home/owner/a/../b", HOME), { path: "/home/owner/b" });
+});
+
+test("nothing as wide as home, its parents or a system folder can be made writable", () => {
+  assert.ok(tooBroad("/", HOME));
+  assert.ok(tooBroad(HOME, HOME));
+  assert.ok(tooBroad("/home", HOME));
+  assert.ok(tooBroad("/etc/cron.d", HOME));
+  assert.ok(tooBroad("/usr/local/bin", HOME));
+  assert.equal(tooBroad("/home/owner/sites", HOME), null);
+  assert.equal(tooBroad("/srv/www", HOME), null);
+});
+
+test("the working folder is writable only when it is an ordinary folder under home", () => {
+  const plan = (cwd: string, configured: string[] = []) =>
+    planWrites({ cwd, configured, home: HOME, tmpDirs: ["/tmp"], protectedPaths: [], real: identity });
+  assert.ok(plan("/home/owner/proj").writable.includes("/home/owner/proj"));
+  assert.equal(plan("/home/owner/proj").cwdNote, "");
+  // The model picks cwd; cwd must never be how ~, a dotdir or /etc becomes writable.
+  for (const cwd of [HOME, "/home/owner/.config/autostart", "/etc", "/opt/thing", "/"]) {
+    const w = plan(cwd);
+    assert.ok(!w.writable.includes(cwd), `${cwd} stays read-only`);
+    assert.notEqual(w.cwdNote, "", `${cwd} says why`);
+  }
+  // Inside a configured folder needs no bind of its own.
+  assert.deepEqual(plan("/home/owner/sites/garage", ["~/sites"]).writable, ["/tmp", "/home/owner/sites"]);
+});
+
+test("configured folders are realpath'd, so a symlink cannot smuggle / in", () => {
+  const real = (p: string) => (p === "/home/owner/sites" ? "/" : p === "/home/owner/gone" ? null : p);
+  const w = planWrites({
+    cwd: "/tmp", configured: ["~/sites", "~", "~/gone", "~/ok", "bad$name"], home: HOME,
+    tmpDirs: ["/tmp"], protectedPaths: [], real,
+  });
+  assert.deepEqual(w.writable, ["/tmp", "/home/owner/ok"]);
+  const why = Object.fromEntries(w.skipped.map((k) => [k.path, k.why]));
+  assert.match(why["~/sites"], /whole filesystem/);
+  assert.match(why["~"], /whole home/);
+  assert.match(why["~/gone"], /does not exist/);
+  assert.match(why["bad$name"], /characters/);
+});
+
+test("the claw's own config, keys and workspace stay read-only inside a writable folder", () => {
+  const w = planWrites({
+    cwd: "/home/owner/cunning-claw", configured: [], home: HOME, tmpDirs: ["/tmp"],
+    protectedPaths: ["/home/owner/cunning-claw/claw.config.json", "/home/owner/cunning-claw/workspace", "/home/owner/elsewhere/.env"],
+    real: identity,
+  });
+  assert.ok(w.readOnly.includes("/home/owner/cunning-claw/claw.config.json"));
+  assert.ok(w.readOnly.includes("/home/owner/cunning-claw/workspace"));
+  assert.ok(!w.readOnly.includes("/home/owner/elsewhere/.env"), "outside every writable folder it is read-only already");
+
+  const args = bwrapArgs({ writable: w.writable, readOnly: w.readOnly, network: true, shell: "/bin/bash", command: "true" });
+  const lastWritable = args.lastIndexOf("--bind");
+  const firstGuard = args.indexOf("--ro-bind-try");
+  assert.ok(firstGuard > lastWritable, "guards are mounted over the writable binds, so they win");
+
+  const sbpl = sbplProfile({ writable: w.writable, readOnly: w.readOnly, network: true });
+  assert.match(sbpl, /\(require-not \(subpath "\/home\/owner\/cunning-claw\/claw\.config\.json"\)\)/);
+});
+
+test("bwrap argv: read-only root, chosen binds, real ps, and the command as one argument", () => {
+  const command = "git status; echo done";
+  const a = bwrapArgs({ writable: ["/tmp", "/home/owner/proj"], readOnly: [], network: true, shell: "/bin/bash", command });
+  for (const flag of ["--die-with-parent", "--new-session", "--unshare-ipc"]) assert.ok(a.includes(flag), flag);
+  assert.deepEqual(a.slice(a.indexOf("--ro-bind"), a.indexOf("--ro-bind") + 3), ["--ro-bind", "/", "/"]);
+  assert.deepEqual(a.slice(a.indexOf("--dev"), a.indexOf("--dev") + 2), ["--dev", "/dev"]);
+  assert.ok(a.join("\0").includes(["--bind", "/home/owner/proj", "/home/owner/proj"].join("\0")));
+  assert.deepEqual(a.slice(-4), ["--", "/bin/bash", "-c", command], "the command is never split or spliced");
+  // ps is auto-approved: a private PID namespace would make it report a quiet machine.
+  assert.ok(!a.includes("--unshare-pid") && !a.includes("--unshare-all"));
+  assert.ok(!a.includes("--unshare-net"), "network on by default");
+  assert.ok(bwrapArgs({ writable: [], readOnly: [], network: false, shell: "/bin/sh", command: "x" }).includes("--unshare-net"));
+  assert.throws(() => bwrapArgs({ writable: ['/tmp/a"b'], readOnly: [], network: true, shell: "/bin/sh", command: "x" }));
+});
+
+test("the macOS profile denies writes except the chosen folders, and the network on request", () => {
+  const p = sbplProfile({ writable: ["/private/tmp", "/Users/owner/proj"], readOnly: [], network: false });
+  assert.match(p, /\(allow default\)/);
+  assert.match(p, /\(deny file-write\*\)/);
+  assert.match(p, /\(allow file-write\* \(subpath "\/Users\/owner\/proj"\)\)/);
+  assert.match(p, /\(deny network\*\)/);
+  assert.ok(p.indexOf("(deny file-write*)") < p.indexOf('(subpath "/Users/owner/proj")'), "the allow comes after the deny, so it wins");
+  assert.doesNotMatch(sbplProfile({ writable: [], readOnly: [], network: true }), /deny network/);
+  assert.throws(() => sbplProfile({ writable: ['/x") (allow file-write* (subpath "/'], readOnly: [], network: true }));
+});
+
+test("decide: off, missing and required each say what happened, and only an escape asks", () => {
+  const base = { unsandboxed: false, writes: writes(), shell: "/bin/bash", command: "npm test", home: HOME };
+  const off = decide({ ...base, settings: { mode: "off", network: true, writable: [] }, detection: BWRAP });
+  assert.equal(off.kind, "host");
+  assert.match(off.kind === "host" ? off.label : "", /^\[unsandboxed: sandbox\.mode is "off"/);
+
+  const missing = decide({ ...base, settings: { mode: "auto", network: true, writable: [] }, detection: NONE });
+  assert.equal(missing.kind === "host" && missing.askFirst, false, "falling back is not the model's doing, so no extra card");
+  assert.match(missing.kind === "host" ? missing.label : "", /unsandboxed: bubblewrap is not installed/);
+
+  const required = decide({ ...base, settings: { mode: "required", network: true, writable: [] }, detection: NONE });
+  assert.equal(required.kind, "refuse");
+  assert.match(required.kind === "refuse" ? required.text : "", /Nothing ran.*sudo apt install bubblewrap/);
+
+  const boxed = decide({ ...base, settings: { mode: "auto", network: true, writable: [] }, detection: BWRAP });
+  assert.equal(boxed.kind, "sandboxed");
+  assert.match(boxed.kind === "sandboxed" ? boxed.label : "", /^\[sandboxed by bubblewrap — writes only to: \/tmp, ~\/proj; network on\]$/);
+
+  const escape = decide({ ...base, unsandboxed: true, settings: { mode: "auto", network: true, writable: [] }, detection: BWRAP });
+  assert.equal(escape.kind === "host" && escape.askFirst, true);
+  const noEscape = decide({ ...base, unsandboxed: true, settings: { mode: "required", network: true, writable: [] }, detection: BWRAP });
+  assert.equal(noEscape.kind, "refuse", "required means required, approval or not");
+});
+
+test("the label is the same every time, so the Ouroboros guard still sees repeats", () => {
+  const o = { unsandboxed: false, writes: writes(), shell: "/bin/bash", command: "ls", home: HOME,
+    settings: { mode: "auto" as const, network: true, writable: [] }, detection: BWRAP };
+  const a = decide(o);
+  const b = decide(o);
+  assert.equal(a.kind === "sandboxed" && a.label, b.kind === "sandboxed" && b.label);
+});
+
+test("a lone launcher leaves the box, a chained one does not", () => {
+  assert.equal(isLauncher("xdg-open https://example.com"), true);
+  assert.equal(isLauncher("gio open notes.pdf"), true);
+  assert.equal(isLauncher("xdg-open x; rm -r ~/proj"), false);
+  assert.equal(isLauncher("xdg-open $(cat list)"), false);
+  assert.equal(isLauncher("opener run"), false);
+});
+
+test("a write the sandbox refused is explained, and the way out is the card", () => {
+  const settings = { mode: "auto" as const, network: false, writable: [] };
+  const plan = decide({ unsandboxed: false, writes: writes(), shell: "/bin/bash", command: "x", home: HOME, settings, detection: BWRAP });
+  const erofs = explainSandboxFailure("touch: cannot touch '/etc/x': Read-only file system", plan, HOME);
+  assert.match(erofs, /sandbox refusing a write/);
+  assert.match(erofs, /unsandboxed: true/);
+  assert.match(explainSandboxFailure("curl: (6) Could not resolve host: example.com", plan, HOME), /no network/);
+  assert.match(explainSandboxFailure("bwrap: Creating new namespace failed", plan, HOME), /failed to start/);
+  assert.equal(explainSandboxFailure("ordinary failure", plan, HOME), "");
+
+  const strict = decide({ unsandboxed: false, writes: writes(), shell: "/bin/bash", command: "x", home: HOME,
+    settings: { ...settings, mode: "required" }, detection: BWRAP });
+  assert.doesNotMatch(explainSandboxFailure("Read-only file system", strict, HOME), /unsandboxed: true/,
+    "required never offers an escape it will refuse");
+  const host = decide({ unsandboxed: false, writes: writes(), shell: "/bin/bash", command: "x", home: HOME, settings, detection: NONE });
+  assert.equal(explainSandboxFailure("Read-only file system", host, HOME), "");
+});
+
+function fakeDeps(h: "linux" | "darwin" | "win32", bins: string[], probeError: string | null = null) {
+  const probes: string[][] = [];
+  const deps: DetectDeps = {
+    host: () => h,
+    hasBin: async (b) => bins.includes(b),
+    probe: async (file, args) => { probes.push([file, ...args]); return probeError; },
+  };
+  return { deps, probes };
+}
+
+test("detection is honest per platform, and probes bwrap with the real flags", async () => {
+  const win = await detectEngine(fakeDeps("win32", []).deps);
+  assert.equal(win.engine, null);
+  assert.match(win.why, /Windows has no shell sandbox/);
+
+  const bare = await detectEngine(fakeDeps("linux", []).deps);
+  assert.equal(bare.engine, null);
+  assert.match(bare.fix, /apt install bubblewrap/);
+
+  const blocked = await detectEngine(fakeDeps("linux", ["bwrap"], "bwrap: setting up uid map: Permission denied").deps);
+  assert.equal(blocked.engine, null, "installed is not the same as usable");
+  assert.match(blocked.why, /cannot start here/);
+
+  const { deps, probes } = fakeDeps("linux", ["bwrap"]);
+  assert.equal((await detectEngine(deps)).engine, "bwrap");
+  assert.ok(probes[0].includes("--die-with-parent"), "the probe uses the same argv builder as real runs");
+
+  assert.equal((await detectEngine(fakeDeps("darwin", ["sandbox-exec"]).deps)).engine, "sandbox-exec");
+});
+
+test("doctor names the fix when bubblewrap is missing", async () => {
+  const row = await sandboxDoctor(fakeDeps("linux", []).deps);
+  assert.equal(row.status, "warn");
+  assert.match(row.line, /sudo apt install bubblewrap/);
+  const win = await sandboxDoctor(fakeDeps("win32", []).deps);
+  assert.match(win.line, /unsandboxed/);
+});
+
+test("settings default to auto with the network on, and a typo is not off", () => {
+  assert.deepEqual(sandboxSettings(undefined).mode, "auto");
+  assert.equal(sandboxSettings(undefined).network, true);
+  assert.ok(sandboxSettings(undefined).writable.includes("~/sites"));
+  assert.equal(sandboxSettings({ mode: "of" }).mode, "auto");
+  assert.equal(sandboxSettings({ mode: "required", network: false }).network, false);
+});
+
+// The real thing, where this machine can run it. Skipped (and saying so) where
+// bubblewrap is absent or user namespaces are off, so the suite stays green on
+// a Mac or a locked-down CI runner.
+const live = await detectEngine();
+test("bubblewrap really refuses a write outside the box and allows one inside", { skip: live.engine !== "bwrap" ? `no usable bubblewrap: ${live.why}` : false }, async () => {
+  const inside = fs.mkdtempSync(path.join(os.tmpdir(), "claw-sbx-in-"));
+  const other = fs.mkdtempSync(path.join(os.tmpdir(), "claw-sbx-out-"));
+  const guarded = path.join(inside, "claw.config.json");
+  fs.writeFileSync(guarded, "{}");
+  try {
+    // Only `inside` is writable here — /tmp itself deliberately is not.
+    const run = (command: string) => execFileAsync("bwrap", bwrapArgs({
+      writable: [fs.realpathSync(inside)], readOnly: [fs.realpathSync(guarded)], network: false,
+      shell: "/bin/sh", command,
+    }), { cwd: inside }).then(() => "ok", (e) => String(e.stderr));
+
+    assert.equal(await run("echo hi > made.txt"), "ok");
+    assert.equal(fs.readFileSync(path.join(inside, "made.txt"), "utf-8"), "hi\n");
+    assert.match(await run(`echo no > ${other}/escaped.txt`), /Read-only file system/);
+    assert.equal(fs.existsSync(path.join(other, "escaped.txt")), false);
+    assert.match(await run(`echo '{"sandbox":{"mode":"off"}}' > claw.config.json`), /Read-only file system|Device or resource busy/);
+    assert.equal(fs.readFileSync(guarded, "utf-8"), "{}", "the protected file inside the box is untouched");
+  } finally {
+    fs.rmSync(inside, { recursive: true, force: true });
+    fs.rmSync(other, { recursive: true, force: true });
+  }
+});

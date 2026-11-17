@@ -13,6 +13,7 @@ import { promisify } from "node:util";
 import { boxes as remoteBoxes, sshArgs, shQuote, type Box as RemoteBox } from "./remote.js";
 import { expandHome } from "./paths.js";
 import { ntfyDoctorLine } from "./ntfy.js";
+import { sandboxDoctor } from "./sandbox.js";
 
 const execFileAsync = promisify(execFile);
 import { detect } from "./voice.js";
@@ -402,6 +403,11 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
   } else if (origins === "hardened") {
     out.push(row("chrome-origins", "ok", false, "Chrome's debug port refuses foreign origins"));
   }
+
+  // What run_command runs inside. Never essential: the approval card is still
+  // the boundary, and a machine without bubblewrap works as it always did.
+  const shellBox = await sandboxDoctor();
+  out.push(row("sandbox", shellBox.status, false, shellBox.line));
 
   // Boxes are optional, so every check here warns and none is essential.
   for (const box of remoteBoxes()) {
