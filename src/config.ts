@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { applyOwner, loadOwner } from "./owner.js";
+import { addressAs, applyOwner, loadOwner } from "./owner.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -220,5 +220,13 @@ export const config: ClawConfig = JSON.parse(
 // setup page writes it, and a tracked file edited by hand is what makes
 // `npm run update` refuse to pull.
 applyOwner(config, loadOwner(DATA_DIR));
+
+/**
+ * How a fixed line addresses the operator, read at call time: the setup page
+ * can change it while the claw is running.
+ */
+export function addressed(start = false): string {
+  return addressAs(config.persona.addressUserAs, start);
+}
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });

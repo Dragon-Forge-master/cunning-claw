@@ -21,6 +21,7 @@ import {
   wrapPcmToWav,
   type SpeakingState,
 } from "./voice.js";
+import { config } from "./config.js";
 
 test("WAV wrapper is a real RIFF header over the PCM payload", () => {
   const pcm = Buffer.from([0x00, 0x01, 0x02, 0x03]);
@@ -206,6 +207,24 @@ test("a heartbeat with news waits for the operator's reply to finish instead of 
   await tick();
   assert.equal(speakers().length, 2, "then speaks");
   assert.ok(speakers()[1].args.includes("Sir, the build has finished."));
+});
+
+test("the approval chime and a reminder address the operator as chosen at setup, not 'sir'", async () => {
+  // Issue #5: the model's words honoured persona.addressUserAs, these fixed
+  // lines did not. Fails with "Requesting authorisation, sir." put back.
+  const saved = config.persona.addressUserAs;
+  try {
+    config.persona.addressUserAs = "madam";
+    useEngine({ engine: "spd-say", detail: "default" });
+    react("approval_request", { id: "a1" });
+    await tick();
+    assert.ok(speakers()[0].args.includes("Requesting authorisation, madam."), speakers()[0].args.join(" "));
+    react("timer_fired", { label: "the MOT" });
+    await tick();
+    assert.ok(speakers().at(-1)!.args.includes("Madam, a reminder: the MOT"), speakers().at(-1)!.args.join(" "));
+  } finally {
+    config.persona.addressUserAs = saved;
+  }
 });
 
 test("a heartbeat queued behind a reply is dropped when the operator stops the voice", async () => {

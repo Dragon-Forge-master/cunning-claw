@@ -89,6 +89,8 @@ export interface BannerInfo {
   voice?: string;
   heartbeat?: string;
   tools?: number;
+  /** How the sign-off addresses the operator (persona.addressUserAs). */
+  addressAs?: string;
 }
 
 export function banner(info: BannerInfo): string {
@@ -139,7 +141,7 @@ export function banner(info: BannerInfo): string {
   out.push("  " + lit("“" + cymraeg + "”"));
   out.push("  " + dim("  — " + saesneg + "  · arysgrif y dydd"));
   out.push("");
-  out.push("  " + dim("At your service, sir."));
+  out.push("  " + dim(`At your service, ${info.addressAs?.trim() || "sir"}.`));
   out.push("");
 
   return out.join("\n");

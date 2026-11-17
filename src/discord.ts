@@ -16,7 +16,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT, config } from "./config.js";
+import { ROOT, addressed, config } from "./config.js";
 import { redact } from "./redact.js";
 import type { AgentEvents } from "./agent.js";
 import { runTurn } from "./agent.js";
@@ -502,7 +502,7 @@ async function handleMessage(m: InboundMessage, events: AgentEvents): Promise<vo
   void rest("POST", `/channels/${m.channelId}/typing`).catch(() => {});
   const reply = await runTurn(text, events, { kind: "user" });
   if (reply === null) {
-    await send(m.channelId, "Still working on the previous request, sir.");
+    await send(m.channelId, `Still working on the previous request, ${addressed()}.`);
     return;
   }
   if (reply.trim() && reply.trim() !== "HEARTBEAT_OK") await send(m.channelId, reply);

@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { config, ROOT } from "./config.js";
+import { addressed, config, ROOT } from "./config.js";
 import { hasBin, host, missing, POWERSHELL, psArgs } from "./platform.js";
 import * as win from "./windows.js";
 
@@ -267,10 +267,10 @@ export function react(event: string, data: unknown): void {
       if (turnKind === "heartbeat" && speakingNow) queued = d.text;
       else void speak(d.text);
     }
-  } else if (event === "timer_fired") void speak(`Sir, a reminder: ${String(d.label ?? "")}`);
-  else if (event === "approval_request") void speak("Requesting authorisation, sir.");
+  } else if (event === "timer_fired") void speak(`${addressed(true)}, a reminder: ${String(d.label ?? "")}`);
+  else if (event === "approval_request") void speak(`Requesting authorisation, ${addressed()}.`);
   else if (event === "agent_error" && typeof d.message === "string" && d.message) void speak(d.message);
-  else if (event === "preview" && d.action === "open") void speak("Preview on the glass, sir.");
+  else if (event === "preview" && d.action === "open") void speak(`Preview on the glass, ${addressed()}.`);
   // heartbeat_ok is silent on purpose — OpenClaw-style.
 }
 
