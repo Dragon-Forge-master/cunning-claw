@@ -5,6 +5,7 @@ import { config, DATA_DIR, ROOT } from "./config.js";
 import { getHistory, resetHistory, runTurn, cancelTurn, turnInFlight, CONTEXT_END, type AgentEvents } from "./agent.js";
 import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
+import * as ears from "./ears.js";
 import { redactDeep } from "./redact.js";
 import { banner } from "./banner.js";
 import { board } from "./board.js";
@@ -491,6 +492,7 @@ app.get("/api/status", async (_req, res) => {
     serverVoiceAvailable: await voice.isAvailable(),
     voiceEngine: (await voice.detect()).engine,
     voiceDetail: (await voice.detect()).detail,
+    ears: ears.earsStatus(await ears.detectEars()),
     skills: listSkills().length,
     skillCatalog: skillCatalog(),
     heartbeat: hb,
@@ -631,6 +633,31 @@ app.post("/api/hud-prefs", (req, res) => {
   res.json(savePrefs(DATA_DIR, req.body));
 });
 
+// --- Ears: the mic, transcribed on this machine (src/ears.ts) ---------------
+// Behind requireAuth and its Origin check like the rest of /api. The body is
+// raw WAV, read with a hard cap; the client chooses nothing but the audio.
+app.get("/api/listen", async (_req, res) => {
+  // Fresh on every HUD load, so a whisper installed while running is picked up.
+  res.json(ears.earsStatus(await ears.detectEars(undefined, undefined, true)));
+});
+
+app.post("/api/listen", async (req, res) => {
+  const s = ears.earsSettings();
+  try {
+    const body = await ears.readCapped(req, s.maxBytes, Number(req.headers["content-length"]));
+    if (!body) {
+      // The rest of an oversize body is not worth reading; close the socket.
+      res.set("Connection", "close");
+      return res.status(413).json({ error: `audio too large (cap ${Math.round(s.maxBytes / 1e6)} MB)` });
+    }
+    const heard = await ears.listen(body, { settings: s });
+    res.json({ ...heard, engine: "whisper" });
+  } catch (err) {
+    const status = err instanceof ears.EarsError ? err.status : 500;
+    res.status(status).json({ error: String((err as Error)?.message ?? err) });
+  }
+});
+
 app.get("/api/voices", (_req, res) => {
   res.json({ piper: voice.listPiperVoices(), active: config.voice.piper.model });
 });
@@ -660,6 +687,9 @@ const httpServer = app.listen(port, host, async () => {
     heartbeat: hb.enabled ? `every ${hb.intervalMinutes}m` : "off",
     tools: toolDefinitions.length,
   }));
+
+  const heard = ears.earsStatus(await ears.detectEars());
+  console.log(`  Ears: ${heard.label} · ${heard.detail}\n`);
 
   await connectMcp((line) => console.log(line));
   const mcpCount = listMcpTools().length;

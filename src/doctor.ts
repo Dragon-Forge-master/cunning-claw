@@ -15,6 +15,7 @@ import { expandHome } from "./paths.js";
 
 const execFileAsync = promisify(execFile);
 import { detect } from "./voice.js";
+import { detectEars, earsSettings } from "./ears.js";
 
 export type CheckStatus = "ok" | "fail" | "warn";
 
@@ -327,6 +328,8 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
     out.push(row("player", "warn", false, missing(player)));
   }
 
+  out.push(await earsCheck());
+
   if (await ollamaUp()) {
     out.push(row("ollama", "ok", false, "Ollama reachable on 11434"));
   } else {
@@ -452,6 +455,18 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
   out.push(checkHistoryJson(raw, "data/history.json"));
 
   return out;
+}
+
+/**
+ * The mic. Browser ears work, so this never fails — but in Chrome they send
+ * the operator's voice to Google, and the doctor is where that gets said with
+ * the fix beside it rather than discovered later.
+ */
+export async function earsCheck(root = ROOT): Promise<DoctorCheck> {
+  const found = await detectEars(earsSettings(), root, true);
+  if (found.engine === "whisper") return row("ears", "ok", false, `Ears: local — ${found.detail}`);
+  if (found.engine === "off") return row("ears", earsSettings().engine === "off" ? "ok" : "warn", false, `Ears: off — ${found.detail}`);
+  return row("ears", "warn", false, `Ears: ${found.detail}`);
 }
 
 function channelRow(id: string, label: string, token: string | undefined, allow: string | undefined, allowName: string): DoctorCheck {

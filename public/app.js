@@ -297,7 +297,7 @@ function clawSpeaking(source, on, text) {
     pauseHearing();
     return;
   }
-  if (state === "SPEAKING") setState(recognizer ? "LISTENING" : "STANDBY");
+  if (state === "SPEAKING") setState(recognizer || localRecording() ? "LISTENING" : "STANDBY");
   resumeTimer = setTimeout(() => {
     resumeTimer = null;
     if (!isClawSpeaking()) resumeHearing();
@@ -361,16 +361,17 @@ function isOwnEcho(heard, spoken) {
 // ---------------------------------------------------------------------------
 // Speech recognition (push-to-talk + wake word)
 // ---------------------------------------------------------------------------
+// The browser's recogniser is the FALLBACK ears: in Chrome it streams the
+// operator's voice to Google (Safari: Apple, Edge: Microsoft). Local ears —
+// whisper.cpp on this machine, further down — are used whenever the server
+// has them, and the chip under the reactor says which is listening.
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const micBtn = $("mic-btn");
 let recognizer = null;
 let wakeRecognizer = null;
+let browserMicClick = null;  // set below when the browser has a recogniser
 
-if (!SR) {
-  micBtn.classList.add("unsupported");
-  micBtn.title = "Speech recognition not supported in this browser";
-  $("wake-toggle").classList.add("unsupported");
-} else {
+if (SR) {
   /**
    * The mic is a dictaphone, not a trigger.
    *
@@ -484,7 +485,7 @@ if (!SR) {
     openRecognizer();
   };
 
-  micBtn.addEventListener("click", () => {
+  browserMicClick = () => {
     // Talking over the claw means "be quiet, I'm speaking" — never "send".
     // silenceClaw() reopens a paused dictation; a closed one opens now.
     if (isClawSpeaking()) {
@@ -501,11 +502,15 @@ if (!SR) {
     }
     if (recognizer) { sendOnStop = true; recognizer.stop(); return; }
     startDictation();
-  });
+  };
 }
 
 function startWakeLoop() {
-  if (!SR || !wakeEnabled) return;
+  // The wake word is a recogniser left running on the room. Only browser ears
+  // can do that today; with local ears it would mean shipping the room to
+  // Google for the sake of one word, so it stays off (a local wake word is a
+  // follow-up).
+  if (!SR || !wakeEnabled || ears.engine !== "browser") return;
   // resumeHearing() restarts it once the claw has finished speaking, and one
   // listener at a time — a second would hear every command twice.
   if (wakeRecognizer || mustNotHear()) return;
@@ -533,6 +538,347 @@ function startWakeLoop() {
   r.onerror = () => {};
   try { r.start(); } catch { wakeRecognizer = null; /* already running */ }
 }
+
+// ---------------------------------------------------------------------------
+// Local ears — the mic transcribed on this machine (src/ears.ts, whisper.cpp)
+// ---------------------------------------------------------------------------
+// local-ears:begin — src/ears.test.ts runs this exact block, so keep it
+// self-contained: no globals, no DOM.
+const EARS_RATE = 16000;
+
+/** Root-mean-square level of one block of samples, 0..1. */
+function frameRms(f32) {
+  let sum = 0;
+  for (let i = 0; i < f32.length; i++) sum += f32[i] * f32[i];
+  return f32.length ? Math.sqrt(sum / f32.length) : 0;
+}
+
+/**
+ * Any rate → 16 kHz, which is what whisper.cpp wants. A box filter first so
+ * a 48 kHz mic's hiss does not fold down into the speech band, then linear
+ * interpolation. AudioContext({ sampleRate: 16000 }) would be simpler, but
+ * Firefox refuses to connect a mic at another rate into it.
+ */
+function downsampleTo16k(f32, fromRate) {
+  if (fromRate === EARS_RATE) return f32;
+  const ratio = fromRate / EARS_RATE;
+  let src = f32;
+  const width = Math.floor(ratio);
+  if (width > 1) {
+    src = new Float32Array(f32.length);
+    let acc = 0;
+    for (let i = 0; i < f32.length; i++) {
+      acc += f32[i];
+      if (i >= width) acc -= f32[i - width];
+      src[i] = acc / Math.min(i + 1, width);
+    }
+  }
+  const out = new Float32Array(Math.floor(f32.length / ratio));
+  for (let i = 0; i < out.length; i++) {
+    const pos = i * ratio;
+    const j = Math.floor(pos);
+    const a = src[j] || 0;
+    const b = j + 1 < src.length ? src[j + 1] : a;
+    out[i] = a + (b - a) * (pos - j);
+  }
+  return out;
+}
+
+/** Mono 16-bit PCM WAV. Plain JS, so no ffmpeg is needed on either side. */
+function encodeWav16(f32, rate) {
+  const buf = new ArrayBuffer(44 + f32.length * 2);
+  const v = new DataView(buf);
+  const ascii = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  ascii(0, "RIFF"); v.setUint32(4, 36 + f32.length * 2, true); ascii(8, "WAVE");
+  ascii(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  ascii(36, "data"); v.setUint32(40, f32.length * 2, true);
+  for (let i = 0; i < f32.length; i++) {
+    const s = Math.max(-1, Math.min(1, f32[i]));
+    v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return buf;
+}
+
+/**
+ * Voice-activity detection: has the operator started, and stopped, talking?
+ * Energy against a noise floor seeded from the first block, that drops at once
+ * to anything quieter and creeps up over ~10 s — so a fan is the room, not
+ * someone talking, and a long sentence is not mistaken for the room either.
+ * (Seeded from a fixed floor instead, a fan read as speech from the first
+ * block and was sent to whisper, which wrote words for it.) Speech is 150 ms above threshold; the end is 1.2 s
+ * of quiet after it — long enough for a breath, short enough not to wait.
+ * feed() answers "speech" | "silence" | "end" (stop, transcribe) | "none"
+ * (no speech at all: stop, send nothing).
+ */
+function createVad(opts) {
+  const o = Object.assign({ hangoverMs: 1200, noSpeechMs: 8000, maxMs: 60000, minSpeechMs: 150, floor: 0.008, factor: 3 }, opts || {});
+  let elapsed = 0, voiced = 0, quiet = 0, started = false, noise = null;
+  return {
+    feed(rms, ms) {
+      elapsed += ms;
+      if (noise === null) noise = rms;
+      const loud = rms > Math.max(o.floor, noise * o.factor);
+      noise = rms < noise ? rms : noise + (rms - noise) * (1 - Math.exp(-ms / 10000));
+      if (loud) {
+        voiced += ms;
+        quiet = 0;
+        if (voiced >= o.minSpeechMs) started = true;
+      } else {
+        quiet += ms;
+        if (!started) voiced = 0;   // a click or a cough is not speech starting
+      }
+      if (elapsed >= o.maxMs) return started ? "end" : "none";
+      if (started && quiet >= o.hangoverMs) return "end";
+      if (!started && elapsed >= o.noSpeechMs) return "none";
+      return loud ? "speech" : "silence";
+    },
+    get started() { return started; },
+  };
+}
+
+/**
+ * What the ears chip says. Honest about where the audio goes: the browser's
+ * recogniser is a cloud service whichever browser it is, and whose depends on
+ * the browser.
+ */
+function earsLabel(status, userAgent, vendor) {
+  const engine = status && status.engine;
+  if (engine === "whisper") {
+    const model = String(status.detail || "").split("·").pop().trim();
+    return { text: `LOCAL EARS${model ? ` · ${model}` : ""}`, cls: "local", cloud: "" };
+  }
+  if (engine === "browser") {
+    const cloud = /Edg\//.test(userAgent || "") ? "Microsoft" : /Apple/.test(vendor || "") ? "Apple" : "Google";
+    return { text: `BROWSER EARS — audio goes to ${cloud}`, cls: "cloud", cloud };
+  }
+  if (engine === "off") return { text: "EARS OFF", cls: "off", cloud: "" };
+  return { text: "", cls: "", cloud: "" };
+}
+// local-ears:end
+
+let ears = { engine: "unknown", label: "EARS", detail: "" };
+let localRec = null;          // the recording in progress, if any
+let warnedCloudEars = false;  // the "your voice goes to Google" line, once a load
+
+function localRecording() {
+  return Boolean(localRec && !localRec.done);
+}
+
+function paintEars() {
+  const chip = $("ears-chip");
+  const l = earsLabel(ears, navigator.userAgent, navigator.vendor);
+  if (chip) {
+    chip.textContent = l.text;
+    chip.className = l.cls;
+    chip.title = ears.detail || "";
+  }
+  const usable = ears.engine === "whisper" || (ears.engine === "browser" && SR);
+  micBtn.classList.toggle("unsupported", !usable && ears.engine !== "unknown");
+  micBtn.title = ears.engine === "whisper"
+    ? "Local ears: click to speak — it stops when you do; click again to send"
+    : ears.engine === "browser" && SR
+      ? `Browser ears (audio goes to ${l.cloud}): click to speak, click again to send`
+      : ears.engine === "off" ? `Ears off — ${ears.detail}` : "No speech recognition available";
+  $("wake-toggle").classList.toggle("unsupported", !(SR && ears.engine === "browser"));
+}
+
+function setEars(next) {
+  if (!next || typeof next.engine !== "string") return;
+  ears = next;
+  paintEars();
+}
+
+const earsReady = (async () => {
+  try { setEars(await (await fetch("/api/listen")).json()); } catch { /* the status poll retries */ }
+})();
+
+/**
+ * The worklet that taps the mic. Inline, from a Blob, so the HUD stays a set
+ * of static files with no build step; it batches the 128-sample render quanta
+ * into 2048 so the main thread is not woken 375 times a second.
+ */
+const TAP_WORKLET = `
+class ClawTap extends AudioWorkletProcessor {
+  constructor() { super(); this.buf = new Float32Array(2048); this.n = 0; }
+  process(inputs) {
+    const ch = inputs[0] && inputs[0][0];
+    if (ch) for (let i = 0; i < ch.length; i++) {
+      this.buf[this.n++] = ch[i];
+      if (this.n === this.buf.length) { this.port.postMessage(this.buf.slice()); this.n = 0; }
+    }
+    return true;
+  }
+}
+registerProcessor("claw-tap", ClawTap);`;
+
+async function openTap(ac, source, onFrame) {
+  try {
+    const url = URL.createObjectURL(new Blob([TAP_WORKLET], { type: "text/javascript" }));
+    try { await ac.audioWorklet.addModule(url); } finally { URL.revokeObjectURL(url); }
+    const node = new AudioWorkletNode(ac, "claw-tap");
+    node.port.onmessage = (e) => onFrame(e.data);
+    source.connect(node);
+    return node;
+  } catch {
+    // Older Safari, or a page where Blob modules are refused.
+    const node = ac.createScriptProcessor(2048, 1, 1);
+    node.onaudioprocess = (e) => onFrame(new Float32Array(e.inputBuffer.getChannelData(0)));
+    source.connect(node);
+    return node;
+  }
+}
+
+/**
+ * Press-to-talk that lets go by itself. Same dictaphone rules as the browser
+ * path: the words land in the box for the operator to read; only a second
+ * press sends. The VAD ending the clip never sends — that is the original
+ * sin, a half-thought posted on a pause for breath.
+ */
+async function startLocalDictation() {
+  const input = $("msg-input");
+  const rec = { done: false, sendOnStop: false, transcribing: false, finish: null };
+  localRec = rec;
+  micBtn.classList.add("listening");
+  setState("LISTENING");
+  input.placeholder = "LOCAL EARS — listening on this machine; it stops when you do";
+
+  let stream, ac;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+    ac = new AudioContext();
+    await ac.resume();
+  } catch (err) {
+    addMsg("system", `⚠ Microphone: ${err && err.message ? err.message : err}`);
+    endLocalDictation(rec);
+    return;
+  }
+  const source = ac.createMediaStreamSource(stream);
+  const chunks = [];
+  const vad = createVad();
+  const rate = ac.sampleRate;
+  let node = null;  // a quick second press can finish before the tap exists
+
+  const teardown = () => {
+    try { node && node.disconnect(); } catch { /* gone */ }
+    try { source.disconnect(); } catch { /* gone */ }
+    for (const t of stream.getTracks()) t.stop();
+    ac.close().catch(() => {});
+  };
+
+  rec.finish = async (heardNothing) => {
+    if (rec.done || rec.transcribing) return;
+    rec.transcribing = true;
+    teardown();
+    if (heardNothing || (!vad.started && !rec.sendOnStop) || chunks.length === 0) {
+      if (!rec.sendOnStop) addMsg("system", "I heard nothing, sir.");
+      return endLocalDictation(rec);
+    }
+    input.placeholder = "transcribing on this machine…";
+    micBtn.classList.add("busy");
+    let total = 0;
+    for (const c of chunks) total += c.length;
+    const all = new Float32Array(total);
+    let off = 0;
+    for (const c of chunks) { all.set(c, off); off += c.length; }
+    const wav = encodeWav16(downsampleTo16k(all, rate), EARS_RATE);
+    try {
+      const res = await fetch("/api/listen", { method: "POST", headers: { "Content-Type": "audio/wav" }, body: wav });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`);
+      const text = String(out.text || "").trim();
+      if (text && isOwnEcho(text, lastSpoken)) noteEchoDropped();
+      else if (text) {
+        const base = input.value.trim();
+        input.value = base ? `${base} ${text}` : text;
+      } else if (!rec.sendOnStop) addMsg("system", "I heard nothing, sir.");
+    } catch (err) {
+      addMsg("system", `⚠ Local ears: ${err.message}`);
+      rec.sendOnStop = false;  // a failure is never the operator saying "send"
+    }
+    endLocalDictation(rec);
+  };
+
+  node = await openTap(ac, source, (f32) => {
+    if (rec.done || rec.transcribing) return;
+    // The claw's own voice is never recorded, and does not count as the
+    // operator's silence either: the clip simply skips it.
+    if (mustNotHear()) return;
+    chunks.push(f32);
+    const verdict = vad.feed(frameRms(f32), (f32.length / rate) * 1000);
+    if (verdict === "end") rec.finish(false);
+    else if (verdict === "none") rec.finish(true);
+  });
+  // A ScriptProcessor only runs while connected to the speakers; through a
+  // muted gain, so the operator never hears themselves.
+  const mute = ac.createGain();
+  mute.gain.value = 0;
+  node.connect(mute);
+  mute.connect(ac.destination);
+  if (rec.done || rec.transcribing) teardown();
+}
+
+// While the claw speaks, the clip skips frames (see mustNotHear above); the
+// placeholder says so, as it does for the browser recogniser.
+{
+  const pause = pauseDictation;
+  const resume = resumeDictation;
+  pauseDictation = () => {
+    if (localRecording() && !localRec.transcribing) $("msg-input").placeholder = "paused while I speak — press the mic to talk over me";
+    pause();
+  };
+  resumeDictation = () => {
+    if (localRecording() && !localRec.transcribing) $("msg-input").placeholder = "LOCAL EARS — listening on this machine; it stops when you do";
+    resume();
+  };
+}
+
+function endLocalDictation(rec) {
+  rec.done = true;
+  if (localRec === rec) localRec = null;
+  micBtn.classList.remove("listening", "busy");
+  if (state === "LISTENING") setState("STANDBY");
+  const input = $("msg-input");
+  input.placeholder = "At your service, sir…";
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  if (rec.sendOnStop && input.value.trim()) $("input-bar").requestSubmit();
+}
+
+function localMicClick() {
+  if (isClawSpeaking() || resumeTimer !== null) {
+    // Talking over the claw: hush it. Never "send".
+    if (isClawSpeaking()) silenceClaw();
+    else { clearTimeout(resumeTimer); resumeTimer = null; resumeHearing(); }
+    if (!localRecording()) startLocalDictation();
+    return;
+  }
+  if (localRecording()) {
+    // The second press: done talking, send what was said.
+    localRec.sendOnStop = true;
+    if (localRec.finish && !localRec.transcribing) localRec.finish(false);
+    return;
+  }
+  startLocalDictation();
+}
+
+micBtn.addEventListener("click", async () => {
+  await earsReady;
+  if (ears.engine === "whisper") return localMicClick();
+  if (ears.engine === "browser" && browserMicClick) {
+    if (!warnedCloudEars && !recognizer) {
+      warnedCloudEars = true;
+      const { cloud } = earsLabel(ears, navigator.userAgent, navigator.vendor);
+      addMsg("system", `Browser ears: what you say is sent to ${cloud} to be transcribed. For private ears, run ./setup-ears.sh (npm run doctor shows the fix).`);
+    }
+    return browserMicClick();
+  }
+  addMsg("system", ears.engine === "off"
+    ? `The mic is off — ${ears.detail}`
+    : "No speech recognition here: this browser has none and whisper.cpp is not set up. Run ./setup-ears.sh.");
+});
 
 // ---------------------------------------------------------------------------
 // Server-sent events
@@ -1103,7 +1449,12 @@ $("tts-toggle").addEventListener("click", async (e) => {
 });
 
 $("wake-toggle").addEventListener("click", (e) => {
-  if (!SR) return;
+  if (!SR || ears.engine !== "browser") {
+    addMsg("system", ears.engine === "whisper"
+      ? "WAKE needs a recogniser listening to the room all the time, and only the browser's (cloud) one can — so it stays off with local ears."
+      : "WAKE needs speech recognition, and this browser has none.");
+    return;
+  }
   wakeEnabled = !wakeEnabled;
   e.target.classList.toggle("active", wakeEnabled);
   if (wakeEnabled) startWakeLoop();
@@ -1250,9 +1601,11 @@ async function pollStatus() {
     const {
       text, online, serverVoice: sv, serverVoiceAvailable: sva,
       skills, heartbeat, landscapeCount, landscapeUpdated,
-      brain, brains, telegram, discord, toolCount, preview, spend,
+      brain, brains, telegram, discord, toolCount, preview, spend, ears: earsNow,
     } = await res.json();
     renderBrainPicker(brains);
+    // whisper set up while the HUD is open: the chip, and the mic, follow.
+    if (earsNow && (earsNow.engine !== ears.engine || earsNow.detail !== ears.detail) && !localRecording() && !recognizer) setEars(earsNow);
     if (preview?.open && preview.url) {
       const showing = $("hud").classList.contains("previewing") && previewUrl === preview.url;
       if (!showing) applyPreview({ action: "open", url: preview.url, open: true });

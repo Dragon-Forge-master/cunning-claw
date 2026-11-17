@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test, { afterEach } from "node:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
   checkHistoryJson,
+  earsCheck,
   hasEssentialFailure,
   noKeyGuide,
   nodeMajor,
@@ -11,12 +15,42 @@ import {
 import { envLooksSet } from "./brain.js";
 import { setHasBinForTests, setHostForTests } from "./platform.js";
 import { resetVoiceDetectForTests } from "./voice.js";
+import { resetEarsForTests } from "./ears.js";
 
 afterEach(() => {
   setHostForTests(null);
   setHasBinForTests(null);
   setChromeFinderForTests(null);
   resetVoiceDetectForTests();
+  resetEarsForTests();
+});
+
+test("doctor says the mic's audio leaves the machine, and names the fix for local ears", async () => {
+  setHostForTests("linux");
+  setHasBinForTests(() => false);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "cunningclaw-doctor-ears-"));
+  try {
+    const cloud = await earsCheck(root);
+    assert.equal(cloud.status, "warn");
+    assert.equal(cloud.essential, false);
+    assert.match(cloud.line, /audio leaves this machine/);
+    assert.match(cloud.line, /setup-ears\.sh/);
+    assert.match(cloud.line, /github\.com\/ggml-org\/whisper\.cpp/);
+    assert.match(cloud.line, /ggml-base\.en\.bin/);
+
+    setHostForTests("darwin");
+    assert.match((await earsCheck(root)).line, /brew install whisper-cpp/);
+
+    fs.mkdirSync(path.join(root, ".whisper", "bin"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".whisper", "bin", "whisper-cli"), "#!/bin/sh\n", { mode: 0o755 });
+    fs.mkdirSync(path.join(root, "models"));
+    fs.writeFileSync(path.join(root, "models", "ggml-base.en.bin"), "x");
+    const local = await earsCheck(root);
+    assert.equal(local.status, "ok");
+    assert.match(local.line, /Ears: local — whisper\.cpp · base\.en/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("Node 22 is the floor", () => {

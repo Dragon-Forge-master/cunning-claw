@@ -194,6 +194,12 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; position: relative; }
 }
 #mic-btn.listening { border-color: var(--red); color: var(--red); box-shadow: 0 0 12px rgba(255,84,112,0.5); animation: pulse-border 1s infinite; }
 #mic-btn.unsupported { opacity: 0.3; cursor: not-allowed; }
+/* Transcribing: still red, but no longer listening — a steady ring, no pulse. */
+#mic-btn.listening.busy { animation: none; opacity: 0.7; }
+/* Where the mic's audio goes. Local is quiet; a cloud recogniser is amber. */
+#ears-chip { font-size: 10px; letter-spacing: 2px; min-height: 13px; color: var(--cyan-dim); }
+#ears-chip.cloud { color: var(--amber); }
+#ears-chip.off { opacity: 0.5; }
 
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
