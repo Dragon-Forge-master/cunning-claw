@@ -3,7 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { applyOwner, loadOwner, normaliseOwner, saveOwner } from "./owner.js";
+import { addressAs, applyOwner, loadOwner, normaliseOwner, saveOwner } from "./owner.js";
+import { banner } from "./banner.js";
 
 /**
  * The setup page writes who the operator is to the data dir, and config.ts
@@ -33,4 +34,16 @@ test("anything that could break the prompt is refused, not stored", () => {
   assert.deepEqual(normaliseOwner({ userName: "x".repeat(61) }), {});
   assert.deepEqual(normaliseOwner({ userName: 42, weatherPlace: "  Cardiff  " }), { weatherPlace: "Cardiff" });
   assert.deepEqual(normaliseOwner(null), {});
+});
+
+test("fixed lines address the operator as they chose — sir, madam or a name", () => {
+  // Issue #5. A name keeps its own capitals mid-sentence; the front of a
+  // sentence is capitalised; nothing chosen falls back to the config default.
+  assert.equal(addressAs("madam"), "madam");
+  assert.equal(addressAs("madam", true), "Madam");
+  assert.equal(addressAs("Sam"), "Sam");
+  assert.equal(addressAs("  "), "sir");
+  const out = banner({ addressAs: "Sam" });
+  assert.match(out, /At your service, Sam\./, "the boot banner signs off to the operator");
+  assert.doesNotMatch(out, /\bsir\b/i);
 });

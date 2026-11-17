@@ -13,11 +13,18 @@
  * is answered privately and ignored. Everything outbound is redacted at the
  * one chokepoint, and the bot is forbidden from @-mentioning, so a hostile
  * page summarised into a reply cannot make it ping a server.
+ *
+ * A server channel is a room, not a person — the rule telegram.ts learnt for
+ * groups. Approval cards used to go to the last channel the operator spoke
+ * in, which could be a public server channel: the exact command and path in
+ * front of everyone there, and the EXECUTE button beside it. Cards now go only
+ * to a DM with each allowlisted user, a press counts only in a DM, and
+ * anything sent into a server channel has the machine taken out of it.
  */
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT, config } from "./config.js";
-import { redact } from "./redact.js";
+import { ROOT, addressed, config } from "./config.js";
+import { groupSafeText, redact } from "./redact.js";
 import type { AgentEvents } from "./agent.js";
 import { runTurn } from "./agent.js";
 import { systemStatusText } from "./tools.js";
@@ -63,12 +70,19 @@ type ResolveApproval = (id: string, approved: boolean) => boolean;
 let botToken: string | null = null;
 let allowed = new Set<string>();
 let resolveApproval: ResolveApproval | null = null;
-let configuredChannel: string | null = null;
-/** The last channel the operator spoke in — where cards go when none is configured. */
-let lastChannel: string | null = null;
+/** Each operator's DM channel, opened once with POST /users/@me/channels. */
+const dmByUser = new Map<string, string>();
+/**
+ * Channels known to be DMs: ones we opened, or ones a message arrived in with
+ * no guild. Anything else — including a channel never seen — is treated as a
+ * room, because the safe mistake is masking a DM, not unmasking a server.
+ */
+const dmChannels = new Set<string>();
 let gateway: Gateway | null = null;
 let contentHintShown = false;
-const approvalMsgs = new Map<string, { channelId: string; messageId: string }>();
+/** Every DM a card went to, so a press on one strips the buttons from the rest. */
+const approvalMsgs = new Map<string, { channelId: string; messageId: string }[]>();
+let fetchImpl: typeof fetch = (...args) => fetch(...args);
 
 const VERSION = (() => {
   try {
@@ -118,6 +132,16 @@ export function outboundChunks(text: string, limit = MESSAGE_LIMIT): string[] {
   return out;
 }
 
+/**
+ * What may be said in this channel: redacted everywhere, and outside a DM the
+ * machine comes out too — home paths, the hostname, LAN addresses. Redacted
+ * before the masking so a hostname inside a key cannot split it.
+ */
+export function channelText(text: string, dm: boolean, host?: string): string {
+  const clean = redact(String(text ?? ""));
+  return dm ? clean : groupSafeText(clean, host);
+}
+
 /** The card: a redacted summary, the detail in a code fence, two buttons. */
 export function approvalCardPayload(id: string, summary: string, detail: string) {
   const head = redact(String(summary ?? "")).slice(0, 150);
@@ -154,6 +178,8 @@ export interface Interaction {
   token: string;
   userId: string;
   channelId: string;
+  /** Set when the button was pressed in a server channel rather than a DM. */
+  guildId: string | null;
   messageContent: string;
   approvalId: string;
   approved: boolean;
@@ -171,6 +197,7 @@ export function parseInteraction(d: any): Interaction | null {
     token: String(d.token),
     userId,
     channelId: String(d.channel_id ?? ""),
+    guildId: d.guild_id ? String(d.guild_id) : null,
     messageContent: String(d.message?.content ?? ""),
     approvalId: m[2],
     approved: m[1] === "approve",
@@ -362,7 +389,7 @@ function safePath(p: string): string {
 }
 
 async function rest(method: string, p: string, body?: unknown, retried = false): Promise<any> {
-  const res = await fetch(`${API}${p}`, {
+  const res = await fetchImpl(`${API}${p}`, {
     method,
     headers: {
       Authorization: `Bot ${botToken}`,
@@ -384,51 +411,91 @@ async function rest(method: string, p: string, body?: unknown, retried = false):
   return res.json();
 }
 
-/** Every message this module sends leaves through here: redacted, chunked, mention-proof. */
+/**
+ * Every message this module sends leaves through here: redacted, chunked,
+ * mention-proof — and, unless the channel is a known DM, with home paths, the
+ * hostname and LAN addresses taken out first, as Telegram does for a group.
+ */
 async function send(channelId: string, text: string): Promise<any> {
   if (!botToken) return null;
   let last: any = null;
-  for (const content of outboundChunks(text)) {
+  for (const content of outboundChunks(channelText(text, dmChannels.has(channelId)))) {
     last = await rest("POST", `/channels/${channelId}/messages`, { content, allowed_mentions: { parse: [] } });
   }
   return last;
 }
 
+/** The operator's DM channel, opened on first use. A user id, never a server channel. */
+async function dmChannel(userId: string): Promise<string | null> {
+  const known = dmByUser.get(userId);
+  if (known) return known;
+  const ch = await rest("POST", "/users/@me/channels", { recipient_id: userId });
+  const id = ch?.id ? String(ch.id) : "";
+  if (!id) return null;
+  dmByUser.set(userId, id);
+  dmChannels.add(id);
+  return id;
+}
+
 export async function sendApprovalCard(id: string, summary: string, detail: string): Promise<void> {
   if (!botToken || !allowed.size) return;
-  const channel = configuredChannel ?? lastChannel;
-  if (!channel) return; // nowhere to put it yet; the HUD still has the card
-  try {
-    const msg = await rest("POST", `/channels/${channel}/messages`, {
-      ...approvalCardPayload(id, summary, detail),
-      allowed_mentions: { parse: [] },
-    });
-    if (msg?.id) approvalMsgs.set(id, { channelId: channel, messageId: String(msg.id) });
-  } catch (err: any) {
-    console.error("  Discord approval send failed:", err?.message ?? err);
+  // Cards go to each operator's DM and nowhere else — never the channel they
+  // last spoke in. A card in a server channel shows strangers the command and
+  // the path, and puts EXECUTE in front of all of them.
+  const refs: { channelId: string; messageId: string }[] = [];
+  for (const userId of allowed) {
+    try {
+      const channel = await dmChannel(userId);
+      if (!channel) continue;
+      const msg = await rest("POST", `/channels/${channel}/messages`, {
+        ...approvalCardPayload(id, summary, detail),
+        allowed_mentions: { parse: [] },
+      });
+      if (msg?.id) refs.push({ channelId: channel, messageId: String(msg.id) });
+    } catch (err: any) {
+      console.error(`  Discord approval card to ${maskUserId(userId)} not sent:`, err?.message ?? err);
+    }
   }
+  if (refs.length) approvalMsgs.set(id, refs);
 }
 
 /** Strip the buttons once the HUD, Telegram or Discord has settled it. */
 export function approvalSettled(id: string, approved: boolean): void {
-  const ref = approvalMsgs.get(id);
+  const refs = approvalMsgs.get(id);
   approvalMsgs.delete(id);
-  if (!ref || !botToken) return;
-  void rest("PATCH", `/channels/${ref.channelId}/messages/${ref.messageId}`, { components: [] }).catch(() => {});
-  void send(ref.channelId, approved ? "Authorised." : "Denied.").catch(() => {});
+  if (!refs || !botToken) return;
+  for (const ref of refs) {
+    void rest("PATCH", `/channels/${ref.channelId}/messages/${ref.messageId}`, { components: [] }).catch(() => {});
+    void send(ref.channelId, approved ? "Authorised." : "Denied.").catch(() => {});
+  }
 }
 
 // ── Inbound ────────────────────────────────────────────────────────────────
 
-async function handleInteraction(i: Interaction): Promise<void> {
+export async function handleInteraction(i: Interaction): Promise<void> {
   const callback = `/interactions/${i.id}/${i.token}/callback`;
   if (!allowed.has(i.userId)) {
     // 4 = reply; flags 64 = only they see it. Nothing is settled.
     await rest("POST", callback, { type: 4, data: { content: "That button is not yours to press.", flags: 64 } }).catch(() => {});
     return;
   }
-  // The card is consumed here so approvalSettled does not send a second line.
+  if (i.guildId) {
+    // No card is ever sent to a server channel, so a press from one is a stale
+    // card or a forged one. Even from the operator, a room is not the place.
+    await rest("POST", callback, {
+      type: 4,
+      data: { content: "Approvals are settled in a DM with me, not in a server channel.", flags: 64 },
+    }).catch(() => {});
+    return;
+  }
+  // The card is consumed here so approvalSettled does not send a second line;
+  // the copies in any other operator's DM lose their buttons.
+  const refs = approvalMsgs.get(i.approvalId) ?? [];
   approvalMsgs.delete(i.approvalId);
+  for (const ref of refs) {
+    if (ref.channelId === i.channelId) continue;
+    void rest("PATCH", `/channels/${ref.channelId}/messages/${ref.messageId}`, { components: [] }).catch(() => {});
+  }
   const settled = resolveApproval?.(i.approvalId, i.approved) ?? false;
   const line = settled ? (i.approved ? "▸ Authorised." : "▸ Denied.") : "▸ That request had already been settled.";
   // 7 = update the message the button was on: buttons gone, verdict appended.
@@ -438,8 +505,9 @@ async function handleInteraction(i: Interaction): Promise<void> {
   }).catch((err: any) => console.error("  Discord interaction reply failed:", err?.message ?? err));
 }
 
-async function handleMessage(m: InboundMessage, events: AgentEvents): Promise<void> {
+export async function handleMessage(m: InboundMessage, events: AgentEvents): Promise<void> {
   if (m.bot || !m.channelId || !m.userId) return;
+  if (!m.guildId) dmChannels.add(m.channelId);
   const text = m.content.trim();
 
   if (!text) {
@@ -468,8 +536,6 @@ async function handleMessage(m: InboundMessage, events: AgentEvents): Promise<vo
     return;
   }
 
-  lastChannel = m.channelId;
-
   if (text === "/start" || text === "/help") {
     await send(
       m.channelId,
@@ -484,6 +550,10 @@ async function handleMessage(m: InboundMessage, events: AgentEvents): Promise<vo
   }
 
   if (text === "/status") {
+    if (m.guildId) {
+      await send(m.channelId, `I don't share machine details in a server channel, ${addressed()}. Ask me for /status in a DM.`);
+      return;
+    }
     const body = await systemStatusText();
     const a = catalogStatus().active;
     await send(
@@ -502,7 +572,7 @@ async function handleMessage(m: InboundMessage, events: AgentEvents): Promise<vo
   void rest("POST", `/channels/${m.channelId}/typing`).catch(() => {});
   const reply = await runTurn(text, events, { kind: "user" });
   if (reply === null) {
-    await send(m.channelId, "Still working on the previous request, sir.");
+    await send(m.channelId, `Still working on the previous request, ${addressed()}.`);
     return;
   }
   if (reply.trim() && reply.trim() !== "HEARTBEAT_OK") await send(m.channelId, reply);
@@ -516,15 +586,32 @@ export function startDiscord(events: AgentEvents, hooks: { resolveApproval: Reso
   if (config.discord?.enabled === false) return;
   const token = process.env.DISCORD_BOT_TOKEN?.trim();
   if (!token) return;
-  botToken = token;
-  resolveApproval = hooks.resolveApproval;
-  allowed = parseUserAllowlist(process.env.DISCORD_ALLOWED_USER_ID ?? "");
-  configuredChannel = process.env.DISCORD_CHANNEL_ID?.trim() || null;
+  armDiscord(token, parseUserAllowlist(process.env.DISCORD_ALLOWED_USER_ID ?? ""), hooks.resolveApproval);
   if (!allowed.size) {
     console.warn("  ⚠ DISCORD_BOT_TOKEN set but DISCORD_ALLOWED_USER_ID missing — commands disabled (safety).");
     console.warn("    Message the bot anything; it replies with your user id for .env.");
   }
   void connect(events);
+}
+
+/**
+ * Hold the token, allowlist and approval hook — and the network, so a test can
+ * arm the module against a fake fetch without opening a Gateway. Pass a null
+ * token to disarm. Telegram's armTelegram is the sibling.
+ */
+export function armDiscord(
+  token: string | null,
+  allow: Set<string>,
+  resolve: ResolveApproval | null,
+  withFetch: typeof fetch = (...args) => fetch(...args),
+): void {
+  fetchImpl = withFetch;
+  botToken = token;
+  allowed = token ? allow : new Set();
+  resolveApproval = token ? resolve : null;
+  approvalMsgs.clear();
+  dmByUser.clear();
+  dmChannels.clear();
 }
 
 async function connect(events: AgentEvents): Promise<void> {
@@ -543,8 +630,11 @@ async function connect(events: AgentEvents): Promise<void> {
     log: (line) => console.log(`  ${line}`),
     onReady: () => {
       console.log(`  Discord: connected (allow ${[...allowed].map(maskUserId).join(", ") || "nobody yet"})`);
-      if (configuredChannel && allowed.size) {
-        void send(configuredChannel, onlineText()).catch(() => {});
+      // The greeting names the HUD's address, so it goes to a DM, as Telegram's
+      // goes to a private chat — never to a server channel.
+      const first = [...allowed][0];
+      if (first) {
+        void dmChannel(first).then((ch) => ch && send(ch, onlineText())).catch(() => {});
       }
     },
     onMessage: (m) => void handleMessage(m, events).catch((err) =>

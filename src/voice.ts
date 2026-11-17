@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { config, ROOT } from "./config.js";
+import { addressed, config, ROOT } from "./config.js";
 import { hasBin, host, missing, POWERSHELL, psArgs } from "./platform.js";
 import * as win from "./windows.js";
 
@@ -267,10 +267,10 @@ export function react(event: string, data: unknown): void {
       if (turnKind === "heartbeat" && speakingNow) queued = d.text;
       else void speak(d.text);
     }
-  } else if (event === "timer_fired") void speak(`Sir, a reminder: ${String(d.label ?? "")}`);
-  else if (event === "approval_request") void speak("Requesting authorisation, sir.");
+  } else if (event === "timer_fired") void speak(`${addressed(true)}, a reminder: ${String(d.label ?? "")}`);
+  else if (event === "approval_request") void speak(`Requesting authorisation, ${addressed()}.`);
   else if (event === "agent_error" && typeof d.message === "string" && d.message) void speak(d.message);
-  else if (event === "preview" && d.action === "open") void speak("Preview on the glass, sir.");
+  else if (event === "preview" && d.action === "open") void speak(`Preview on the glass, ${addressed()}.`);
   // heartbeat_ok is silent on purpose — OpenClaw-style.
 }
 
@@ -297,15 +297,34 @@ function halt(): void {
 }
 
 /** Strip markup and artefacts that sound wrong when read aloud. */
+/**
+ * What reaches the speaker. Markdown aside, the brand line in the prompt put
+ * "cyan #35d6ed on ink #0a111c" into replies, and Piper read it out as "hash
+ * three five d six e d" — as it did commit hashes, session ids and every
+ * slash of a URL. None of that is for ears: a URL is said as its site, a
+ * colour code, hash or long id is dropped, a code block is announced, not
+ * read. The HUD's browser voice runs a copy of this (speech-clean block in
+ * public/app.js); voice.test.ts checks the two agree.
+ */
+const LOCAL_HOST = /^(?:localhost|127(?:\.\d+){3}|0\.0\.0\.0|10(?:\.\d+){3}|192\.168(?:\.\d+){2})$/i;
+
 export function cleanForSpeech(text: string): string {
-  return text
+  return String(text ?? "")
     .replace(/```[\s\S]*?```/g, " — code omitted — ")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/https?:\/\/\S+/g, "a link")
+    .replace(/\b(?:https?:\/\/|www\.)(?:www\.)?([^\s/?#:]+)\S*?([.,;:!?)]*)(?=\s|$)/gi, (_m, host: string, tail: string) =>
+      (LOCAL_HOST.test(host.replace(/\.$/, "")) ? "a local address" : host) + tail)
+    .replace(/(^|[^\w&])#(?:[0-9a-f]{6}(?:[0-9a-f]{2})?|(?=[0-9]*[a-f])[0-9a-f]{3,4})\b/gi, "$1")
+    .replace(/\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b/gi, "")
+    .replace(/\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,}\b/gi, "")
+    .replace(/\b(?=[\w-]*\d)(?=[\w-]*[a-z])[\w-]{16,}\b/gi, "")
+    .replace(/\b\d{12,}\b/g, "")
     .replace(/^\s{0,3}#{1,6}\s*/gm, "")
     .replace(/^\s*[-*•]\s+/gm, "")
     .replace(/[*_~`>|#]/g, "")
+    .replace(/\(\s*\)|\[\s*\]/g, "")
+    .replace(/\s+([.,;:!?])/g, "$1")
     .replace(/\s+/g, " ")
     .trim();
 }

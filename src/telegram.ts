@@ -1,6 +1,5 @@
-import { config } from "./config.js";
-import { redact } from "./redact.js";
-import { groupSafeText } from "./group-safe.js";
+import { addressed, config } from "./config.js";
+import { groupSafeText, redact } from "./redact.js";
 import type { AgentEvents } from "./agent.js";
 import { runTurn } from "./agent.js";
 import { systemStatusText } from "./tools.js";
@@ -75,10 +74,10 @@ export function mayCommand(chatId: string, fromId: string): boolean {
   return allowed.has(chatId) && operators.has(fromId);
 }
 
-// A reply bound for a group has the machine taken out of it. The function
-// moved to a leaf so ntfy can share it without an import cycle; it is
-// re-exported here because this is where callers and tests have looked.
-export { groupSafeText };
+// groupSafeText lives in redact.ts — Discord's server channels and ntfy
+// topics are rooms too — and is re-exported so this module's callers and
+// tests are unchanged.
+export { groupSafeText } from "./redact.js";
 
 /**
  * A chat id is a personal identifier, and the telemetry panel it lands on gets
@@ -517,7 +516,7 @@ export async function handleCallback(cb: any): Promise<void> {
   const approved = m[1] === "yes";
   const id = m[2];
   if (!resolveApproval?.(id, approved)) {
-    await send(chatId, "That request has already been settled, sir.");
+    await send(chatId, `That request has already been settled, ${addressed()}.`);
   }
 }
 
@@ -550,7 +549,7 @@ export async function handleMessage(msg: any, events: AgentEvents): Promise<void
   }
 
   if (group && text === "/status") {
-    await send(chatId, "I don't share machine details in a group, sir. Ask me for /status in a private chat.");
+    await send(chatId, `I don't share machine details in a group, ${addressed()}. Ask me for /status in a private chat.`);
     return;
   }
 
@@ -587,7 +586,7 @@ export async function handleMessage(msg: any, events: AgentEvents): Promise<void
 
   const reply = await runTurn(text, events, { kind: "user" });
   if (reply === null) {
-    await send(chatId, "Still working on the previous request, sir.");
+    await send(chatId, `Still working on the previous request, ${addressed()}.`);
     return;
   }
   if (reply.trim() && reply.trim() !== "HEARTBEAT_OK") {

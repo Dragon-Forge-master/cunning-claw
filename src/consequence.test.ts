@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyBrowserAction, needsApproval } from "./consequence.js";
+import { classifyBrowserAction, needsApproval, publishVisibilityNote } from "./consequence.js";
 
 /**
  * Sending one WhatsApp message took six approvals, of which one mattered. Five
@@ -78,4 +78,19 @@ test("paranoid mode gates everything", async () => {
   assert.equal(needsApproval("click", "Search"), true, "opt-in mode gates navigation too");
   assert.equal(needsApproval("type", "#msg", { submit: false }), true);
   config.browser.approveEveryAction = false;
+});
+
+test("a creating MCP tool's card states visibility, and says so when the arguments are silent", () => {
+  // Issue #4: create_repository went through with no visibility argument, the
+  // vendor defaulted to public, and the card never said the word.
+  assert.equal(
+    publishVisibilityNote("mcp__github__create_repository", { name: "notes", description: "x" }),
+    "visibility not specified — vendor default applies (may be public)",
+  );
+  assert.equal(publishVisibilityNote("mcp__github__create_repository", { name: "n", private: true }), "visibility — private: true");
+  assert.match(publishVisibilityNote("mcp__canva__publishDesign", { opts: { visibility: "unlisted" } }), /visibility: unlisted/);
+  assert.match(publishVisibilityNote("mcp__lovable__deploy_project", {}), /not specified/);
+  // Not a creating tool: nothing to add. The server name is not the verb.
+  assert.equal(publishVisibilityNote("mcp__github__update_issue", {}), "");
+  assert.equal(publishVisibilityNote("mcp__create__list_files", {}), "");
 });

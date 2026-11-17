@@ -46,6 +46,43 @@ test("a renamed claw's system prompt says so — no hardcoded identity line", { 
   }
 });
 
+test("an operator addressed as madam is never called sir, nor 'he', in the assembled prompt", { timeout: 60_000 }, async () => {
+  // Issue #5: the setup page offers Sir / Madam / a name, and the persona line
+  // honoured it — but SOUL.md, loaded into the same prompt, still said
+  // 'address the operator as "sir"', and the doctrine called the operator
+  // "he". Fails with either put back. The whole stable half is checked, not
+  // just the persona text, because the workspace files ride in it.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "claw-madam-"));
+  try {
+    const cfgPath = path.join(dir, "madam.json");
+    const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "claw.config.json"), "utf-8"));
+    cfg.persona.addressUserAs = "madam";
+    cfg.persona.userName = "Sam";
+    fs.writeFileSync(cfgPath, JSON.stringify(cfg));
+    const { stdout } = await execFileAsync(
+      "npx",
+      [
+        "tsx",
+        "-e",
+        `import("${path.join(ROOT, "src/agent.js")}").then((m) => { const p = m.buildStableSystem(undefined); ` +
+          `console.log(JSON.stringify({ madam: /address them as "madam"/.test(p), sir: (p.match(/.{0,40}\\bsir\\b.{0,40}/gi) || []), ` +
+          `he: (p.match(/Sam[^.]{0,80}\\b(he|his|him)\\b[^.]{0,20}/g) || []).concat(p.match(/how he looks|what he meant|he must scan|in his pocket/g) || []) })); process.exit(0); })`,
+      ],
+      {
+        cwd: ROOT,
+        timeout: 50_000,
+        env: { ...process.env, CLAW_DATA_DIR: path.join(dir, "data"), CLAW_CONFIG: cfgPath },
+      },
+    );
+    const got = JSON.parse(String(stdout).trim().split("\n").pop() ?? "{}");
+    assert.equal(got.madam, true, "the persona line carries the chosen address");
+    assert.deepEqual(got.sir, [], "no line of the prompt still says sir");
+    assert.deepEqual(got.he, [], "the operator is not assumed to be a man");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 /**
  * A whole turn against a fake brain. The model is a local OpenAI-compatible
  * server (127.0.0.1 needs no key), answering from a queue, so the loop's

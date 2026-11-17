@@ -7,6 +7,17 @@ const stateLabel = $("state-label");
 let state = "STANDBY"; // STANDBY | THINKING | SPEAKING | LISTENING
 let resetDictation = () => {}; // reassigned by the mic block when supported
 let currentBubble = null;
+// How the fixed lines address the operator — "sir", "madam" or their name, as
+// chosen at setup. The server says so in /api/status; "sir" only until it does.
+let addressAs = "sir";
+const sir = (start) => (start ? addressAs.charAt(0).toUpperCase() + addressAs.slice(1) : addressAs);
+const servicePlaceholder = () => `At your service, ${sir()}…`;
+function learnAddress(s) {
+  if (typeof s?.addressAs !== "string" || !s.addressAs.trim()) return;
+  addressAs = s.addressAs.trim();
+  const input = $("msg-input");
+  if (input && input.placeholder.startsWith("At your service")) input.placeholder = servicePlaceholder();
+}
 let ttsEnabled = true;
 let wakeEnabled = false;
 let serverVoice = false;   // server-side TTS active (Linux/spd-say)
@@ -19,6 +30,7 @@ let serverVoiceAvailable = false;
   let brain = "claude-opus-5";
   try {
     const s = await (await fetch("/api/status")).json();
+    learnAddress(s);
     if (s.brains?.active) brain = `${s.brains.active.id} / ${s.brains.active.model}`;
     else if (s.brain?.model) brain = `${s.brain.provider} / ${s.brain.model}`;
   } catch { /* boot copy is cosmetic */ }
@@ -30,7 +42,7 @@ let serverVoiceAvailable = false;
     "restoring long-term memory .......... journal + MEMORY.md",
     "establishing event stream ........... ok",
     "",
-    "All systems nominal. Good day, sir.",
+    `All systems nominal. Good day, ${sir()}.`,
   ];
   const el = $("boot-text");
   for (const line of BOOT_LINES) {
@@ -240,6 +252,33 @@ function pickVoice() {
 speechSynthesis.onvoiceschanged = pickVoice;
 pickVoice();
 
+// speech-clean:begin — a copy of cleanForSpeech in src/voice.ts, for the
+// browser's own voice; src/voice.test.ts runs this exact block against it.
+// Colour codes, hashes and long ids are dropped and a URL is said as its site,
+// or "#35d6ed" is read out as "hash three five d six e d".
+const LOCAL_HOST = /^(?:localhost|127(?:\.\d+){3}|0\.0\.0\.0|10(?:\.\d+){3}|192\.168(?:\.\d+){2})$/i;
+function speechText(text) {
+  return String(text ?? "")
+    .replace(/```[\s\S]*?```/g, " — code omitted — ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\b(?:https?:\/\/|www\.)(?:www\.)?([^\s/?#:]+)\S*?([.,;:!?)]*)(?=\s|$)/gi, (_m, host, tail) =>
+      (LOCAL_HOST.test(host.replace(/\.$/, "")) ? "a local address" : host) + tail)
+    .replace(/(^|[^\w&])#(?:[0-9a-f]{6}(?:[0-9a-f]{2})?|(?=[0-9]*[a-f])[0-9a-f]{3,4})\b/gi, "$1")
+    .replace(/\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b/gi, "")
+    .replace(/\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,}\b/gi, "")
+    .replace(/\b(?=[\w-]*\d)(?=[\w-]*[a-z])[\w-]{16,}\b/gi, "")
+    .replace(/\b\d{12,}\b/g, "")
+    .replace(/^\s{0,3}#{1,6}\s*/gm, "")
+    .replace(/^\s*[-*•]\s+/gm, "")
+    .replace(/[*_~`>|#]/g, "")
+    .replace(/\(\s*\)|\[\s*\]/g, "")
+    .replace(/\s+([.,;:!?])/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+// speech-clean:end
+
 function speak(text, { after = false } = {}) {
   // When the server has a real TTS engine it speaks for us — don't double up.
   if (serverVoiceAvailable) return;
@@ -248,8 +287,7 @@ function speak(text, { after = false } = {}) {
   // speechSynthesis queues by itself; letting a heartbeat wait is just not
   // cancelling what is already being read.
   if (!after) speechSynthesis.cancel();
-  // Strip markdown-ish noise for cleaner speech
-  const clean = text.replace(/[*_`#]/g, "").replace(/\[.*?\]\(.*?\)/g, "");
+  const clean = speechText(text);
   const utter = new SpeechSynthesisUtterance(clean);
   if (cunningclawVoice) utter.voice = cunningclawVoice;
   utter.rate = 1.05;
@@ -410,7 +448,7 @@ if (!SR) {
     micBtn.classList.remove("listening");
     if (state === "LISTENING") setState("STANDBY");
     paint("");                 // drop any uncommitted interim text
-    input.placeholder = "At your service, sir…";
+    input.placeholder = servicePlaceholder();
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
     if (sendOnStop) {
@@ -523,7 +561,7 @@ function startWakeLoop() {
       if (isOwnEcho(text, lastSpoken)) { noteEchoDropped(); return; }
       const cmd = m[1].trim();
       if (cmd) sendMessage(cmd);
-      else speak("Yes, sir?");
+      else speak(`Yes, ${sir()}?`);
     }
   };
   r.onend = () => {
@@ -800,7 +838,7 @@ es.onerror = () => { sseConnected = false; paintConnection(); };
 es.addEventListener("timer_fired", (e) => {
   const { label } = sseData(e);
   addMsg("system", `⏰ ${label}`);
-  speak(`Sir, a reminder: ${label}`);
+  speak(`${sir(true)}, a reminder: ${label}`);
 });
 
 es.addEventListener("approval_request", (e) => {
@@ -824,7 +862,7 @@ es.addEventListener("approval_request", (e) => {
   card.querySelector(".task").onclick = () => resolveApproval(id, true, "task");
   card.querySelector(".no").onclick = () => resolveApproval(id, false);
   $("approval-area").appendChild(card);
-  speak("Requesting authorisation, sir.");
+  speak(`Requesting authorisation, ${sir()}.`);
 });
 
 es.addEventListener("approval_resolved", (e) => {
@@ -1251,7 +1289,9 @@ async function pollStatus() {
       text, online, serverVoice: sv, serverVoiceAvailable: sva,
       skills, heartbeat, landscapeCount, landscapeUpdated,
       brain, brains, telegram, discord, ntfy, toolCount, preview, spend, toolDiet,
+      addressAs: as,
     } = await res.json();
+    learnAddress({ addressAs: as });
     renderBrainPicker(brains);
     if (preview?.open && preview.url) {
       const showing = $("hud").classList.contains("previewing") && previewUrl === preview.url;

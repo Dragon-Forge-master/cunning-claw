@@ -21,6 +21,7 @@ import {
   wrapPcmToWav,
   type SpeakingState,
 } from "./voice.js";
+import { config } from "./config.js";
 
 test("WAV wrapper is a real RIFF header over the PCM payload", () => {
   const pcm = Buffer.from([0x00, 0x01, 0x02, 0x03]);
@@ -38,6 +39,42 @@ test("cleanForSpeech strips markdown so it is not read aloud", () => {
   assert.match(out, /code/);
   assert.doesNotMatch(out, /https/);
   assert.doesNotMatch(out, /`/);
+});
+
+function hudSpeechText(): (text: string) => string {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = fs.readFileSync(path.join(here, "..", "public", "app.js"), "utf-8");
+  const start = src.indexOf("// speech-clean:begin");
+  const end = src.indexOf("// speech-clean:end");
+  assert.ok(start >= 0 && end > start, "public/app.js must carry the speech-clean block");
+  return vm.runInNewContext(`${src.slice(start, end)}\nspeechText`);
+}
+
+// What the voice must never read out character by character. Each case is
+// [reply text, what is said]; both the server voice and the HUD's say it.
+const SPOKEN: [string, string][] = [
+  // The brand line: "hash three five d six e d", twice.
+  ["Your mark is cyan #35d6ed on ink #0a111c.", "Your mark is cyan on ink."],
+  ["The accent (#fff) stays.", "The accent stays."],
+  ["Merged as 626d48f, see commit ca35aa660ba1e7e9ad284da7505ed9f0a05cc045 for the rest.", "Merged as, see commit for the rest."],
+  ["Session session_01WKx8stV5FGA8fRNerFMUSx is done.", "Session is done."],
+  ["Job 3f2b8c1e-9a4d-4e2b-8c1f-0a1b2c3d4e5f finished.", "Job finished."],
+  ["Your user id is 819273645501.", "Your user id is."],
+  ["The docs are at https://github.com/Dragon-Forge-master/cunning-claw/blob/main/README.md.", "The docs are at github.com."],
+  ["See www.example.co.uk/path?q=1, then (https://docs.anthropic.com/en/api).", "See example.co.uk, then (docs.anthropic.com)."],
+  ["The HUD is on http://127.0.0.1:3900/docs right now.", "The HUD is on a local address right now."],
+  ["Run this:\n```bash\nnpm test\n```\nThen check.", "Run this: — code omitted — Then check."],
+  // Ordinary words, issue numbers and short numbers are left alone.
+  ["Issue #4 and #45 are fixed; the faded decade cafe opens at 0900.", "Issue 4 and 45 are fixed; the faded decade cafe opens at 0900."],
+  ["Call 07700 900123 about the MOT on 17 November.", "Call 07700 900123 about the MOT on 17 November."],
+];
+
+test("colour codes, hashes, long ids, URLs and code blocks are not read out character by character", () => {
+  const hud = hudSpeechText();
+  for (const [text, said] of SPOKEN) {
+    assert.equal(cleanForSpeech(text), said, `server voice: ${text}`);
+    assert.equal(hud(text), said, `HUD voice: ${text}`);
+  }
 });
 
 test("the prompt can read what detect() found without waiting, and never mistakes 'not looked' for 'no voice'", async () => {
@@ -206,6 +243,24 @@ test("a heartbeat with news waits for the operator's reply to finish instead of 
   await tick();
   assert.equal(speakers().length, 2, "then speaks");
   assert.ok(speakers()[1].args.includes("Sir, the build has finished."));
+});
+
+test("the approval chime and a reminder address the operator as chosen at setup, not 'sir'", async () => {
+  // Issue #5: the model's words honoured persona.addressUserAs, these fixed
+  // lines did not. Fails with "Requesting authorisation, sir." put back.
+  const saved = config.persona.addressUserAs;
+  try {
+    config.persona.addressUserAs = "madam";
+    useEngine({ engine: "spd-say", detail: "default" });
+    react("approval_request", { id: "a1" });
+    await tick();
+    assert.ok(speakers()[0].args.includes("Requesting authorisation, madam."), speakers()[0].args.join(" "));
+    react("timer_fired", { label: "the MOT" });
+    await tick();
+    assert.ok(speakers().at(-1)!.args.includes("Madam, a reminder: the MOT"), speakers().at(-1)!.args.join(" "));
+  } finally {
+    config.persona.addressUserAs = saved;
+  }
 });
 
 test("a heartbeat queued behind a reply is dropped when the operator stops the voice", async () => {

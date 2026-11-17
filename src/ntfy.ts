@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import { config, type ClawConfig } from "./config.js";
-import { redact } from "./redact.js";
-import { groupSafeText } from "./group-safe.js";
+import { groupSafeText, redact } from "./redact.js";
 
 /**
  * ntfy — the third way to reach the operator's phone, and the only one that

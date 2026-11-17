@@ -64,3 +64,16 @@ export function applyOwner(
   if (owner.addressUserAs) cfg.persona.addressUserAs = owner.addressUserAs;
   if (owner.weatherPlace) cfg.board = { ...(cfg.board ?? {}), weatherPlace: owner.weatherPlace };
 }
+
+/**
+ * The form of address for a canned line — "Still working on it, sir." — as
+ * the operator chose it at setup: "sir", "madam", or their own name. The
+ * model's speech already followed persona.addressUserAs; about ten fixed
+ * strings (the busy notice, the approval chime, the banner) said "sir"
+ * regardless (issue #5). `start` capitalises it for the front of a sentence;
+ * mid-sentence it is left as typed, so a name keeps its own capitals.
+ */
+export function addressAs(as: string | undefined, start = false): string {
+  const a = (as ?? "").trim() || "sir";
+  return start ? a.charAt(0).toUpperCase() + a.slice(1) : a;
+}

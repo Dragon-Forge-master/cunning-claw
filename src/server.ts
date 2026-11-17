@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import express from "express";
-import { config, DATA_DIR, ROOT } from "./config.js";
+import { addressed, config, DATA_DIR, ROOT } from "./config.js";
 import { getHistory, resetHistory, runTurn, cancelTurn, turnInFlight, CONTEXT_END, type AgentEvents } from "./agent.js";
 import { systemStatusText, toolDefinitions } from "./tools.js";
 import * as voice from "./voice.js";
@@ -247,8 +247,8 @@ app.post("/api/chat", (req, res) => {
     const stopped = cancelTurn("operator said stop");
     broadcast("notice", {
       message: stopped
-        ? `Stopped, sir — abandoned after ${Math.round(forMs / 1000)}s.`
-        : "Nothing was running, sir.",
+        ? `Stopped, ${addressed()} — abandoned after ${Math.round(forMs / 1000)}s.`
+        : `Nothing was running, ${addressed()}.`,
     });
     // Also when nothing was running: "stop" while he is reading a reply out
     // means stop reading. stopped: true is what voice.react() cancels on.
@@ -509,6 +509,7 @@ app.get("/api/status", async (_req, res) => {
     discord: discordStatus(),
     ntfy: ntfyStatus(),
     toolCount: toolDefinitions.length,
+    addressAs: addressed(),
     spend: sessionSpend(),
     turn: turnInFlight(),
     lastTurn: lastTurnCost(),
@@ -651,7 +652,7 @@ app.post("/api/voice/sample", async (req, res) => {
   await voice.sample({
     model: model ? String(model) : undefined,
     voiceName: voiceName ? String(voiceName) : undefined,
-    text: String(text || "Good evening, sir. All systems are nominal."),
+    text: String(text || `Good evening, ${addressed()}. All systems are nominal.`),
   });
   res.json({ ok: true });
 });
@@ -670,6 +671,7 @@ const httpServer = app.listen(port, host, async () => {
     voice: v.engine === "none" ? "none — run ./setup-voice.sh" : `${v.engine} · ${v.detail}`,
     heartbeat: hb.enabled ? `every ${hb.intervalMinutes}m` : "off",
     tools: toolDefinitions.length,
+    addressAs: addressed(),
   }));
 
   await connectMcp((line) => console.log(line));

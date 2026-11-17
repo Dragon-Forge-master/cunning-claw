@@ -192,6 +192,17 @@ test("a skill called as a tool gets its instructions, not a dead end", async () 
   assert.doesNotMatch(plain, /is a skill/);
 });
 
+test("an MCP card for a creating tool names visibility in its title (#4)", async () => {
+  // Fails with the card back to a bare "MCP tool: <name>". The tool is not
+  // connected here; an unknown MCP tool still asks, and declining stops it.
+  const { executeTool } = await import("./tools.js");
+  const cards: string[] = [];
+  const ctx = { requestApproval: async (s: string) => { cards.push(s); return false; }, emit: () => {} } as any;
+  const out = String(await executeTool("mcp__github__create_repository", { name: "notes" }, ctx));
+  assert.match(out, /declined/);
+  assert.match(cards[0] ?? "", /^MCP tool: mcp__github__create_repository — visibility not specified — vendor default applies \(may be public\)$/);
+});
+
 test("skill and lesson approval cards say when the turn read outside content", async () => {
   // A skill is read back as instructions, so the card that approves one must
   // not hide that a stranger's text was in the conversation.
