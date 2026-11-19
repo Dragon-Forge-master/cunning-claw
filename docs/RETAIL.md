@@ -16,7 +16,7 @@ no Stripe account is wired, no token has ever been issued.
 | Setup | Put a key in `.env` or the HUD Keys page | Paste one Dragon Forge token |
 | Model traffic | Your machine → provider, directly | Your machine → Dragon Forge relay → provider |
 | Capability | Everything | Everything. The same everything. |
-| Status | **BUILT** (`.env` path; the Keys page is **PLANNED**) | **PLANNED** |
+| Status | **BUILT** (`.env`, the HUD Keys page `public/keys.html`, and the first-run setup page `public/welcome.html`, which walks a first-timer through a free Google key) | **PLANNED** |
 
 **Bring your own key** is the current behaviour: `install.sh` asks for an OpenRouter key,
 the brain catalogue in `claw.config.json` points at `https://openrouter.ai/api/v1`, and
@@ -117,7 +117,7 @@ tier is therefore one catalogue entry, no new code path:
   "note": "the subscription — one token, no accounts anywhere else" }
 ```
 
-The **Keys page** (HUD, **PLANNED** — not in `public/` yet) is where the two tiers meet:
+The **Keys page** (HUD, **BUILT** as `public/keys.html`; it already has a `DRAGONFORGE_TOKEN` slot, which does nothing until the relay is live) is where the two tiers meet:
 one page listing each brain's key slot. For the managed tier its whole job is: one field
 labelled **"Your Dragon Forge token"**, paste, save (writes `DRAGONFORGE_TOKEN` to `.env`
 via the existing redaction-aware config path), and the claw switches its default brain to

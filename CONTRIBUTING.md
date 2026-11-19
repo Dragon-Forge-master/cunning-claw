@@ -20,11 +20,22 @@ src/documents.ts   read_document: PDF/Office/OpenDocument/HTML/images to fenced 
 src/remote.ts      ssh to another machine: boxes, detached jobs, file transfer
 src/workorder.ts   approve a plan once instead of every step of it
 src/injection.ts   scans fenced text for orders aimed at the model; warns, flags, alarms the turn
+src/sandbox.ts     the shell's box: bubblewrap / sandbox-exec argv, writable folders, hidden key stores, scrubbed env
+src/tool-diet.ts   which MCP schemas go to the model this call; the roster; fence-aware result trimming
+src/connector-guide.ts  connector_guide: how each catalogue connector signs in, and the steps, from the catalogue
+src/embed.ts       embeddings client (Gemini, OpenRouter, Ollama) for memory search by meaning
+src/memory.ts      memory facts, hybrid keyword + meaning search, testimony stamps
+src/ears.ts        local speech-to-text through whisper.cpp (POST /api/listen)
+src/ntfy.ts        outbound-only push alerts; redacted, group-safe, never an approve button
+src/first-run.ts   what boot needs; the setup page decides the rest (public/welcome.html)
+src/owner.ts       the operator's name, address and town, kept in data/owner.json
+src/keys.ts        the Keys page: saving keys to .env, and checking them with the provider for free
 src/voice.ts       Piper / spd-say / say
 src/doctor.ts      npm run doctor
 src/workspace.ts   SOUL.md / MEMORY.md / skills
 workspace/skills/  agentskills.io SKILL.md files
-packaging/         systemd --user unit
+packaging/         systemd --user unit; npm/ is the `npx cunningclaw` installer
+scripts/bundle.mjs the download-and-double-click bundles (npm run bundle; .github/workflows/bundle.yml)
 ```
 
 Tune behaviour in `claw.config.json`, not with new constants.

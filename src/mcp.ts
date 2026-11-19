@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { createRequire } from "node:module";
 import type Anthropic from "@anthropic-ai/sdk";
 import { config, ROOT } from "./config.js";
 import {
@@ -69,6 +70,15 @@ interface Pending {
 
 const PROTOCOL = "2025-03-26";
 
+/** What we tell servers we are — from package.json, so a release cannot leave it behind (it said 0.2.0 into 0.3). */
+const CLIENT_VERSION: string = (() => {
+  try {
+    return createRequire(import.meta.url)("../package.json").version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+})();
+
 class McpConnection {
   private proc: ChildProcess | null = null;
   private buffer = "";
@@ -87,7 +97,7 @@ class McpConnection {
       const init = await this.rpc("initialize", {
         protocolVersion: PROTOCOL,
         capabilities: {},
-        clientInfo: { name: "cunningclaw", version: "0.2.0" },
+        clientInfo: { name: "cunningclaw", version: CLIENT_VERSION },
       });
       if (init?.protocolVersion) this.protocol = String(init.protocolVersion);
       await this.httpNotify("notifications/initialized", {});
@@ -123,7 +133,7 @@ class McpConnection {
     await this.rpc("initialize", {
       protocolVersion: PROTOCOL,
       capabilities: {},
-      clientInfo: { name: "cunningclaw", version: "0.2.0" },
+      clientInfo: { name: "cunningclaw", version: CLIENT_VERSION },
     });
     this.notify("notifications/initialized", {});
   }

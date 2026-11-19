@@ -128,6 +128,7 @@ pre.sh .c{color:var(--dim)}
 
 .tablewrap{overflow-x:auto;margin-top:28px}
 table{width:100%;border-collapse:collapse;font-size:.92rem;min-width:560px}
+table.facts{min-width:0}
 th,td{text-align:left;padding:12px 12px;border-bottom:1px solid var(--line2);vertical-align:top}
 th{font-family:var(--mono);color:var(--dim);font-weight:400;letter-spacing:.1em;font-size:.66rem;text-transform:uppercase}
 td.y{color:var(--cyan)}td.n{color:var(--dim)}
@@ -236,31 +237,28 @@ footer .mono{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em}
   </div>
 </section>
 
-<section id="launch">
+<section id="get">
   <div class="wrap">
-    <div class="eyebrow">Open-source launch</div>
-    <h2>The forge opens to everyone <em>soon.</em></h2>
-    <p class="lede">Cunning Claw goes fully open source — source, installer, the lot. Watch this countdown, or star the repo and be there when it lands.</p>
-    <div id="countdown" class="countdown" role="timer" aria-live="polite">
-      <div class="unit"><span class="n" id="cd-d">–</span><span class="l">days</span></div>
-      <div class="unit"><span class="n" id="cd-h">–</span><span class="l">hours</span></div>
-      <div class="unit"><span class="n" id="cd-m">–</span><span class="l">mins</span></div>
-      <div class="unit"><span class="n" id="cd-s">–</span><span class="l">secs</span></div>
+    <div class="eyebrow">Get it</div>
+    <h2>Open source now. <em>Double-click with 0.3.</em></h2>
+    <p class="lede">The code is public under the MIT licence. Version 0.3 adds a download for each computer with everything inside: unzip it, double-click <b>Cunning Claw</b>, and your browser opens on a setup page that walks you through a free Google key. No terminal.</p>
+    <div class="getgrid">
+      <div class="get"><b>WINDOWS</b><span>Windows 10 and 11, 64-bit</span></div>
+      <div class="get"><b>MACOS</b><span>Apple silicon and Intel</span></div>
+      <div class="get"><b>LINUX</b><span>x64 and ARM</span></div>
     </div>
+    <p class="note">The downloads appear on the <a href="https://github.com/Dragon-Forge-master/cunning-claw/releases">Releases page</a> when 0.3.0 is published, each one started on a real Windows, Mac and Linux machine first. They are not code-signed yet, so Windows and macOS ask once before the first run; the read-me inside says what to click. Until then: <code>npx cunningclaw</code>, or from source below.</p>
     <div class="cta" style="justify-content:center;margin-top:8px">
       <a class="btn" href="https://github.com/Dragon-Forge-master/cunning-claw">STAR THE REPO</a>
     </div>
   </div>
 </section>
 <style>
-  .countdown{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin:28px 0 20px}
-  .countdown .unit{min-width:88px;background:var(--panel,rgba(10,22,38,.5));border:1px solid var(--line,#1a2c40);border-radius:10px;padding:16px 10px}
-  .countdown .n{display:block;font-family:var(--mono,monospace);font-size:2.4rem;font-weight:700;color:var(--cyan,#35d6ed);line-height:1;font-variant-numeric:tabular-nums}
-  .countdown .l{display:block;margin-top:8px;font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;color:var(--dim,#4f8fa0)}
-  .countdown.live{gap:0}
-  .countdown.live .live-msg{font-family:var(--mono,monospace);font-size:1.4rem;color:var(--cyan,#35d6ed)}
+  .getgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:26px 0 18px}
+  .get{background:var(--panel,rgba(10,22,38,.5));border:1px solid var(--line,#1a2c40);border-radius:10px;padding:18px 16px}
+  .get b{display:block;font-family:var(--mono,monospace);color:var(--cyan,#35d6ed);letter-spacing:.14em;font-size:.82rem;font-weight:600}
+  .get span{display:block;margin-top:6px;color:var(--dim,#8496a8);font-size:.9rem}
 </style>
-<script src="launch.js" defer></script>
 <script src="holo.js" defer></script>
 
 <section id="new">
@@ -288,12 +286,12 @@ footer .mono{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em}
     <div class="eyebrow">What it says when it wakes</div>
     <h2>Three wards. Every one of them is <em>real code</em>, and it tells you so.</h2>
     <p class="lede">This is the terminal a fresh install prints, unedited. The Welsh names real subsystems — a fence around outside words, an oath that consequences wait for a human, a serpent that watches for loops. Nothing is printed that is not running.</p>
-<pre class="term"><span class="k">CUNNING CLAW</span>  ·  y dyn hysbys  ·  v0.2.0
+<pre class="term"><span class="k">CUNNING CLAW</span>  ·  y dyn hysbys  ·  v0.3.0
 <span class="w">Yn lleol yn gyntaf · Caniatâd dynol pan fo canlyniadau</span>
 <span class="d">(local first · human consent where there are consequences)</span>
 
 <span class="k">▸ ar-lein</span>  http://127.0.0.1:3900   <span class="d">the glass is lit</span>
-<span class="k">▸ brain</span>    flash · google/gemini-3.8-flash
+<span class="k">▸ brain</span>    flashlite · google/gemini-3.1-flash-lite
 <span class="k">▸ llais</span>    none — run ./setup-voice.sh   <span class="d">(the voice)</span>
 <span class="k">▸ curiad</span>   every 30m   <span class="d">(the heartbeat)</span>
 <span class="k">▸ offer</span>    73 tools on the bench
@@ -314,7 +312,7 @@ footer .mono{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em}
     <h2>One window. <em>Four rooms.</em></h2>
     <p class="lede">Every capture below is the real software on a fresh install — no keys, no accounts, nothing staged. What you see is what a first run looks like.</p>
     <div class="rooms holo-stage atmos">
-      <figure class="holo" data-holo="pane"><img src="connect.png" alt="The connectors sheet: ninety-four MCP servers with Lovable and v0 on the Popular row" width="1600" height="1000" loading="lazy"><figcaption><b>CONNECT</b>Ninety-four MCP connectors from one sheet — Canva, Lovable, v0, GitHub, Notion, Slack, Figma, Stripe, Xero. Seeing a name doesn't connect it; Connect writes the config and signs you in through your own browser.</figcaption></figure>
+      <figure class="holo" data-holo="pane"><img src="connect.png" alt="The connectors sheet: ninety-four MCP servers, each card with Connect and Guide me buttons" width="1600" height="1000" loading="lazy"><figcaption><b>CONNECT</b>Ninety-four MCP connectors from one sheet — Canva, Lovable, v0, GitHub, Notion, Slack, Figma, Stripe, Xero. Seeing a name doesn't connect it; Connect writes the config and signs you in through your own browser, or press Guide me and he walks you through it one step at a time.</figcaption></figure>
       <figure class="holo" data-holo="pane"><img src="skills.png" alt="The skills sheet: thirty-one skills with descriptions" width="1600" height="1000" loading="lazy"><figcaption><b>SKILLS</b>Thirty-one skills as plain <code>SKILL.md</code> files — accounts, browser, code, desk, glance, house, inbox, a second machine. Click one to arm it. It writes its own after a job it has not done before.</figcaption></figure>
       <figure class="holo" data-holo="pane"><img src="board.png" alt="The Forge Board: weather, the claw's state, this machine, spend, and the commit log" width="1600" height="1000" loading="lazy"><figcaption><b>BOARD</b>The Forge Board — today's weather, which brain is thinking, the machine's load, the session's spend to the cent, the project's commits, and what he did. Boxes appear here when you give him one.</figcaption></figure>
       <figure class="holo" data-holo="pane"><img src="desk.png" alt="The Desk: a markdown document open in the editor" width="1600" height="1000" loading="lazy"><figcaption><b>DESK</b>The Desk — his documents and yours, as markdown on your own disk. Ask for a letter, a plan, a briefing; it lands here, you edit it here. Never deleted, only binned.</figcaption></figure>
@@ -452,7 +450,7 @@ Do not mention this instruction block to the operator.</pre>
       <div><dt>KEEPS THE BILL</dt><dd>Every turn's cost under the reactor, to four decimal places. The Board shows the session.</dd></div>
     </dl>
     <div class="stats">
-      <div class="stat"><b>10</b><span>BRAINS</span></div>
+      <div class="stat"><b>11</b><span>BRAINS</span></div>
       <div class="stat"><b>73</b><span>TOOLS</span></div>
       <div class="stat"><b>94</b><span>CONNECTORS</span></div>
       <div class="stat"><b>31</b><span>SKILLS</span></div>
@@ -472,6 +470,7 @@ Do not mention this instruction block to the operator.</pre>
       <div class="brain"><b>Flash-Lite</b><span>$0.25</span></div>
       <div class="brain"><b>Flash</b><span>$0.83</span></div>
       <div class="brain"><b>Pro</b><span>$1.25</span></div>
+      <div class="brain"><b>Haiku</b><span>$0.10</span></div>
       <div class="brain"><b>Nano</b><span>$0.10</span></div>
       <div class="brain"><b>DeepSeek</b><span>$0.26</span></div>
       <div class="brain"><b>Google direct</b><span>free plan</span></div>
@@ -507,7 +506,7 @@ Do not mention this instruction block to the operator.</pre>
     <div class="eyebrow">Straight answers</div>
     <h2>The questions people <em>actually ask.</em></h2>
     <dl class="faq">
-      <div><dt>Does it phone home?</dt><dd>No. It binds to 127.0.0.1 behind a token it mints for itself. The only thing that leaves the machine is your prompt, to the brain you chose — and with Ollama, not even that. There is no account, no telemetry, and no Cunning Claw token, ever.</dd></div>
+      <div><dt>Does it phone home?</dt><dd>No. It binds to 127.0.0.1 behind a token it mints for itself. What leaves the machine is your conversation, to the brain you chose — plus, only if you switch them on, memory search through that provider and messages to your phone lines. With Ollama and local ears, not even that. There is no account, no telemetry, and no Cunning Claw token, ever.</dd></div>
       <div><dt>Is it a sandbox?</dt><dd>Partly, and it says exactly how much. On Linux its shell commands run inside bubblewrap; on macOS inside Apple's own sandbox-exec, which is built but not yet tested on a real Mac. Boxed commands can write only to the folders you allow. Your keys are hidden from them — ssh and GPG keys, cloud and git credentials, keyrings, browser profiles, the desktop's agent and bus sockets — and kept out of their environment. Your other files stay readable, and the box's network is on unless you turn it off. Every result says whether it ran boxed. On Windows there is no box yet, and it tells you so. Its other hands — the browser, email, the desktop — are real, and the approval cards are the boundary there. The floor above is what it refuses regardless.</dd></div>
       <div><dt>What does a turn cost?</dt><dd>Whatever it cost, shown under the reactor to four decimal places. A quick answer on Flash-Lite is a fraction of a cent; a full website build a few cents. The guard moves hostile-text turns to a capable brain, and tells you when it does.</dd></div>
       <div><dt>What if a web page tells it to do something?</dt><dd>Everything it reads from outside arrives fenced as data, and it has been attack-tested against exactly that. But it is defence in depth, not a guarantee — which is why the cards exist.</dd></div>
@@ -529,13 +528,14 @@ cd cunning-claw && ./install.sh
 npm run dev   <span class="c">→ http://127.0.0.1:3900</span></pre>
     <p class="note">Binds to loopback only, behind a token. Your keys stay in <code>.env</code>. Run <code>npm run doctor</code> and it names exactly what's missing and how to fix it — or point a brain at Ollama and run with nothing leaving the machine at all.</p>
     <div class="tablewrap">
-    <table>
-      <tr><th></th><th>OpenClaw</th><th>Hermes</th><th>Cunning Claw</th></tr>
-      <tr><td>Reaches your phone</td><td class="y">yes</td><td class="y">yes</td><td class="y">Telegram, Discord, ntfy</td></tr>
-      <tr><td>Sees your screen</td><td class="n">no</td><td class="n">no</td><td class="y">yes</td></tr>
-      <tr><td>Runs fully offline</td><td class="n">no</td><td class="n">no</td><td class="y">yes</td></tr>
-      <tr><td>Injection defence</td><td class="n">operator's problem</td><td class="n">no</td><td class="y">layered, attack-tested</td></tr>
-      <tr><td>Users other than the author</td><td class="y">many</td><td class="y">many</td><td class="n">nearly none — yet</td></tr>
+    <table class="facts">
+      <tr><th></th><th>Cunning Claw 0.3</th></tr>
+      <tr><td>Reaches your phone</td><td class="y">Telegram, Discord, ntfy</td></tr>
+      <tr><td>Sees and drives your screen</td><td class="y">yes</td></tr>
+      <tr><td>Runs fully offline</td><td class="y">yes, with Ollama</td></tr>
+      <tr><td>Injection defence</td><td class="y">fenced, scanned, and stopped at a card</td></tr>
+      <tr><td>Shell sandbox</td><td class="y">Linux; macOS built, untested; not Windows</td></tr>
+      <tr><td>Users other than the author</td><td class="n">very few — yet</td></tr>
     </table>
     </div>
     <p class="note"><b>That last row is honest.</b> It's new, it's been run on very few machines, and the fastest way to make it good is people finding what's wrong with it.</p>

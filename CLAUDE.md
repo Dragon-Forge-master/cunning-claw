@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Cunning Claw is a local-first personal AI assistant: one TypeScript/Node 22 process that serves a
 browser HUD on `127.0.0.1:3900`, runs a streaming tool loop against a chosen model, and has real
 hands on the operator's machine — shell, files, Chrome over CDP, the desktop, Gmail, WhatsApp,
-MCP servers, a second machine over ssh, Telegram and Discord as phone lines. It goes open-source
+MCP servers, a second machine over ssh, Telegram and Discord as phone lines, ntfy for push alerts. It goes open-source
 imminently and is also a product (Dragon Forge AI, Cardiff). The threat model is prompt injection:
 it reads strangers' text and must never take orders from it.
 
@@ -68,7 +68,9 @@ history. Add any new tool that reads outside content to that list.
 `sendApprovalCard`, `approvalSettled`, `xStatus()`: `src/telegram.ts` polls, `src/discord.ts`
 holds a Gateway WebSocket (a state machine with sockets and timers injected, so it is fully
 tested without a token). Trust is the allowlist and nothing else; every outbound message is
-redacted *before* it is truncated or chunked.
+redacted *before* it is truncated or chunked. Approval cards go to private chats only, never a
+group or a server channel. `src/ntfy.ts` is outbound only — it says where to answer, never
+carries an approve button.
 
 ## Rules that are not obvious from the code
 
@@ -85,6 +87,10 @@ redacted *before* it is truncated or chunked.
   a status string disables it. `remote.ts` `statusText` is the model to copy.
 - **The model never supplies a host, user or ssh option** (`src/remote.ts`). Boxes are chosen
   by id from config; remote paths are whitelisted characters because scp hands them to a shell.
+- **The shell's box is `src/sandbox.ts`, and its environment is part of it.** A sandboxed child
+  gets `sandboxEnv()`, never `process.env` — `.env` is loaded into process.env, so inheriting it
+  put every key one `printenv` away. Key stores and the session's sockets are hidden by mounting
+  over them, last. Each of these has a live bubblewrap test; keep them failing without the fix.
 - **Personal data does not reach the glass.** Home collapses to `~` (`collapseHome`), chat ids
   show four digits (`maskChatId`); the HUD is screenshotted and filmed.
 

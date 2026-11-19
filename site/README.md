@@ -23,7 +23,7 @@ before the rebrand.
   `cunningclaw-demo.mp4` from this folder, but neither is committed (they are
   large and change often). Whoever runs `wrangler pages deploy` must have both
   files in `site/` on that machine first, or the players show a black box.
-- Scripts live in their own files (`launch.js`). `_headers` sets a CSP with no
+- Scripts live in their own files (`holo.js`). `_headers` sets a CSP with no
   `script-src`, so `default-src 'self'` applies and an inline `<script>` is
   silently refused by the browser — it will look fine locally and be dead live.
 
@@ -32,9 +32,9 @@ before the rebrand.
 - `cunningclaw-demo.mp4` is 11MB. Pages serves it fine. If it ever needs to be
   smaller, re-encode at CRF 24 rather than dropping to 720p — the text in the
   frames is what suffers first.
-- The numbers on the page (10 brains, 73 tools, 94 connectors, 31 skills, 622 tests, 2 dependencies) are
+- The numbers on the page (11 brains, 73 tools, 94 connectors, 31 skills, 622 tests, 2 dependencies) are
   real. Update them here when they change, or don't state them. Count them:
-  brains from `claw.config.json`, tools with `grep -c '^    name: "' src/tools.ts`,
+  brains from `claw.config.json` (the catalogue less `managed`, which is not live until the relay is), tools with `grep -c '^    name: "' src/tools.ts`,
   tests from what `npm test` reports, connectors from `MCP_CATALOGUE.length` in
   `src/mcp-catalog.ts`, skills with `ls workspace/skills/*/SKILL.md`.
 - `hud.png`, `connect.png`, `skills.png`, `board.png` and `desk.png` are real captures of the HUD at rest on a fresh install (no keys, no
