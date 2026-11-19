@@ -3,10 +3,14 @@
 Everything for the 0.3 launch, what each piece is for, and whether it can go
 out now. The plan that sequences it is [MARKETING-PLAN.md](MARKETING-PLAN.md).
 
-**R-day** is the day the v0.3.0 downloads (Windows, Mac and Linux; unzip and
-double-click, Node inside) go live on the GitHub releases page. They are built
-and have been tested on real Windows, Mac and Linux machines in CI, but are not
-published yet. Nothing in this kit prints a download link.
+**R-day was Thursday 19 November 2026.** v0.3.0 is published, every
+download smoke-tested on real Windows, Mac and Linux machines before release,
+and the Linux one downloaded and started again from the live release page
+afterwards. The link for every post:
+**https://github.com/Dragon-Forge-master/cunning-claw/releases/tag/v0.3.0**
+— or cunningclaw.com, whose download buttons point at the same files. Pieces
+marked "waits for R-day" below can go out now; the four-week sequence in the
+plan counts from this date.
 
 Status key:
 
