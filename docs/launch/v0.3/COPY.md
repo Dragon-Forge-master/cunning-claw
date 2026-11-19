@@ -11,7 +11,7 @@ Rules for using it:
   **[R-day]** mention the downloads and wait for it. Never paste a download
   link: point to cunningclaw.com or the repository, and let the releases page
   speak for itself.
-- **Re-check the numbers** (73 tools, 94 connectors, 31 skills, 622 tests,
+- **Re-check the numbers** (73 tools, 94 connectors, 31 skills, 623 tests,
   2 runtime dependencies) on the morning you post.
 - **"He" or "it".** The consumer pieces call the assistant *he*, as the site's
   0.3 section does. The developer pieces (HN, Reddit) say *it*: those readers
@@ -84,7 +84,7 @@ Rules for using it:
 > - Document converters run outside the sandbox (without your keys in their
 >   environment).
 >
-> Numbers you can check: 73 tools, 622 tests passing (`npm test`), two
+> Numbers you can check: 73 tools, 623 tests passing (`npm test`), two
 > runtime dependencies (@anthropic-ai/sdk and express; Node 22's own fetch,
 > WebSocket and node:test do the rest). MIT. The threat model, with every
 > claim pointing at the file that implements it, is
@@ -157,7 +157,7 @@ some subreddits only allow it on set days. Say plainly that you built it.
 >
 > Source and the full security write-up:
 > github.com/Dragon-Forge-master/cunning-claw (docs/SECURITY-ARCHITECTURE.md).
-> 622 tests, MIT. Issues very welcome.
+> 623 tests, MIT. Issues very welcome.
 
 ---
 
@@ -203,7 +203,7 @@ Read the subreddit's rules on the day, and say plainly that you built it.
 > confines writes, not reads; macOS's box is untested on a real Mac and
 > Windows has none.
 >
-> github.com/Dragon-Forge-master/cunning-claw: MIT, 622 tests, two runtime
+> github.com/Dragon-Forge-master/cunning-claw: MIT, 623 tests, two runtime
 > dependencies. Security write-up in docs/SECURITY-ARCHITECTURE.md.
 
 ---
@@ -333,7 +333,7 @@ The carousel is `carousel/01-cover.png` to `carousel/11-close.png`, in order.
 8. Upgrade 7, push alerts: ntfy on your phone with no account, personal details scrubbed, never an approve button.
 9. Upgrade 8, connector coach: a "Guide me" button on every one of the 94 connectors walks you through setup.
 10. Upgrade 9, a free start: a free Google Gemini key in four steps, no card. Google's free plan has daily limits and Google may use what you send.
-11. Closing slide: every send, spend and publish waits for your yes. 73 tools, 94 connectors, 31 skills, 622 tests, 2 dependencies. Free forever with your own key. Alpha. No crypto token, ever.
+11. Closing slide: every send, spend and publish waits for your yes. 73 tools, 94 connectors, 31 skills, 623 tests, 2 dependencies. Free forever with your own key. Alpha. No crypto token, ever.
 
 ### Story [ready now]
 

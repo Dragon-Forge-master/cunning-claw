@@ -53,7 +53,7 @@ Cunning Claw 0.3, a local AI assistant:
 • flags pages that try to give it orders
 • starts free with a Google key
 
-Open source. 622 tests. No token, ever.
+Open source. 623 tests. No token, ever.
 
 ---
 
@@ -83,5 +83,5 @@ threat that matters. This release is mostly about that, and about cost:
   Google Gemini key, and the new downloads for Windows, macOS and Linux need
   no terminal.
 
-It's alpha, with very few users so far. Two runtime dependencies. 622 tests.
+It's alpha, with very few users so far. Two runtime dependencies. 623 tests.
 Built in Cardiff by Dragon Forge AI.

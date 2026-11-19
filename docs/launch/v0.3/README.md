@@ -15,7 +15,7 @@ Status key:
 - **Just Works**: mentions the £7-a-month plan as *coming*; update it the day the plan goes live.
 
 Before posting anything, re-check the numbers (73 tools, 94 connectors, 31
-skills, 622 tests, 2 runtime dependencies); the plan's first table says how.
+skills, 623 tests, 2 runtime dependencies); the plan's first table says how.
 
 ## Written
 

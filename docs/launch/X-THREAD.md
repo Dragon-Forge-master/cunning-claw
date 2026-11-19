@@ -52,7 +52,7 @@ Plus: speech-to-text on your own machine, memory by meaning, PDF/Word/Excel/scan
 
 Downloads for Windows, Mac and Linux: unzip, double-click.
 
-73 tools. 622 tests. 2 runtime dependencies. MIT.
+73 tools. 623 tests. 2 runtime dependencies. MIT.
 
 **7/**
 It's alpha, with very few users so far, and I'd rather be told what's broken than be flattered. If you break the fences, file it.

@@ -64,7 +64,7 @@ People who run their own services, use local models, or build with agents.
 - **What we tell them:** the threat model is prompt injection, and the
   boundaries are in code: fencing, the scanner, the approval card, the floor,
   the bubblewrap sandbox with key stores hidden. One Node process, two runtime
-  dependencies, 622 tests, MIT. Runs on a model you choose, including local
+  dependencies, 623 tests, MIT. Runs on a model you choose, including local
   models through Ollama.
 - **What we must be straight about:** alpha; nothing independently audited;
   the scanner is a heuristic; the box confines writes, not reads, and the
@@ -98,7 +98,7 @@ Four things we say, each with the proof that lets it survive "how do we know?"
 |---|---|---|
 | **He asks before he acts** | Every send, spend and publish waits for your yes. | Consequential actions (send, spend, publish, run outside the box) raise an approval card; no answer in three minutes is a no; a new message from you cancels every pending card; Discord cards only ever go to a private message. Twelve commands are refused whoever asks. |
 | **Your computer, your keys** | He runs on your own computer, not in someone else's cloud. | One program, opened in your browser at 127.0.0.1:3900. No account and no telemetry. Speech-to-text on your machine with whisper.cpp; the Desk keeps documents as markdown on your disk; a local model through Ollama if you want nothing to leave at all. |
-| **Hard to fool, and honest about how hard** | Outside words are data, never orders — and here is exactly where that stops. | Fencing, the injection scanner (hidden Unicode stripped), the bubblewrap sandbox with ssh/GPG keys, credentials, keyrings and browser profiles hidden. The limits are published next to the guarantees in SECURITY-ARCHITECTURE.md. 622 tests, each required to fail with its fix reverted. |
+| **Hard to fool, and honest about how hard** | Outside words are data, never orders — and here is exactly where that stops. | Fencing, the injection scanner (hidden Unicode stripped), the bubblewrap sandbox with ssh/GPG keys, credentials, keyrings and browser profiles hidden. The limits are published next to the guarantees in SECURITY-ARCHITECTURE.md. 623 tests, each required to fail with its fix reverted. |
 | **Free to start, cheap to run** | Start free with a Google key. | The setup page walks a first-timer through a free Gemini key in four steps, no card. Free forever with your own key. In a test with 150 connector tools, 80% fewer tokens of tool lists per message. |
 
 A supporting theme, not a pillar: **built in Cardiff, in the open**, by a
