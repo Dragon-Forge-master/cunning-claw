@@ -317,12 +317,13 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **Reads mail** | Gmail through that Chrome session — search operators, category tabs, whole threads, drafts. Send is always an approval. No credentials handled |
 | **WhatsApp** | WhatsApp Web / Business in the same Chrome — chat list, title unread count, draft, send. Send is always an approval. QR is scanned in that window |
 | **Accounts** | Jurisdiction packs (UK first; IE, US, AU, DE as stubs) plus Xero via the official local MCP. It will not invent a foreign tax rate or file a return |
-| **Speaks** | Neural TTS (Piper), offline. Push-to-talk and a "Claw" wake word |
+| **Speaks and listens** | Neural TTS (Piper), offline. Push-to-talk transcribed on this machine by whisper.cpp once `./setup-ears.sh` has run; until then the browser's recogniser hears, and the HUD says so. The "Claw" wake word works with the browser's ears only, for now |
 | **Reads kindly** | **Aa** on the HUD switches every page to OpenDyslexic, bundled so it works offline. Code and commands stay monospace. The choice is saved per install |
 | **Remembers** | Markdown memory and a dated journal that survive restarts, searched by meaning as well as by words |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
-| **Reaches you** | Telegram or Discord, so it isn't trapped at your desk — approval cards arrive as buttons you press |
+| **Reaches you** | Telegram or Discord, so it isn't trapped at your desk — approval cards arrive as buttons you press, in a private chat only. ntfy for a push alert with no account |
 | **Works elsewhere** | Any other machine you own over ssh — a spare PC or a cloud VM. Long jobs run **detached**: builds and servers survive the conversation ending and your laptop closing, which they cannot do here |
+| **Connects** | 94 MCP connectors from one sheet. **Guide me** on any card and he walks you through setting it up, one step at a time, from the same catalogue — then offers to save how you like it used as a skill |
 | **Extends** | Skills as `SKILL.md` files ([agentskills.io](https://agentskills.io)). Click **SKILLS** on the HUD to arm them, the same idea as Claude’s capabilities list |
 
 <div align="center">
