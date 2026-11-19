@@ -125,10 +125,32 @@ async function fetchNode(version, target) {
   return path.join(unpacked, name);
 }
 
-async function download(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  return Buffer.from(await res.arrayBuffer());
+/**
+ * Fetch with retries. Run 4 of the bundles workflow (17 Nov) died when
+ * nodejs.org reset the connection partway through a 30 MB runtime
+ * ("TypeError: terminated … ECONNRESET"): one dropped socket sank every
+ * platform's build. A dropped or 5xx download is retried with backoff; a
+ * 4xx is not, because the file is not there. The checksum check after this
+ * is what decides whether the bytes are good.
+ */
+export async function download(url, { tries = 4, fetchImpl = fetch, wait = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+  let last;
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    try {
+      const res = await fetchImpl(url);
+      if (res.ok) return Buffer.from(await res.arrayBuffer());
+      last = new Error(`${url}: HTTP ${res.status}`);
+      if (res.status < 500) throw last;
+    } catch (err) {
+      if (err === last && last.message.includes("HTTP 4")) throw err;
+      last = err;
+    }
+    if (attempt < tries) {
+      console.log(`  ↻ ${url} failed (${last?.message ?? last}); retrying (${attempt + 1}/${tries})`);
+      await wait(2000 * attempt);
+    }
+  }
+  throw last;
 }
 
 function sha256(file) {

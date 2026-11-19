@@ -38,3 +38,27 @@ test("every target names a real Node download, and the read-me says how to get p
   // The no-terminal path must tell a first-timer that a free key exists.
   for (const os of ["win", "darwin", "linux"]) assert.match(readMe(os, "0.0.0"), /free Google\s+Gemini key/);
 });
+
+test("a dropped download is retried; a missing file is not", async () => {
+  // Run 4 of the bundles workflow died on one ECONNRESET from nodejs.org.
+  const { download } = await import("../scripts/bundle.mjs");
+  let calls = 0;
+  const flaky = async () => {
+    calls++;
+    if (calls < 3) throw new TypeError("terminated");
+    return new Response("node-bytes");
+  };
+  const got = await download("https://nodejs.org/x", { fetchImpl: flaky, wait: async () => {} });
+  assert.equal(String(got), "node-bytes");
+  assert.equal(calls, 3);
+
+  let missing = 0;
+  const notFound = async () => { missing++; return new Response("nope", { status: 404 }); };
+  await assert.rejects(download("https://nodejs.org/y", { fetchImpl: notFound, wait: async () => {} }), /HTTP 404/);
+  assert.equal(missing, 1, "a 404 is not worth retrying");
+
+  let busy = 0;
+  const unavailable = async () => { busy++; return new Response("busy", { status: 503 }); };
+  await assert.rejects(download("https://nodejs.org/z", { fetchImpl: unavailable, wait: async () => {}, tries: 3 }), /HTTP 503/);
+  assert.equal(busy, 3);
+});

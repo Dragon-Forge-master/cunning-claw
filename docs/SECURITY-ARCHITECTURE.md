@@ -4,7 +4,7 @@
 points at the file that implements it, and the limits are stated next to the
 guarantees, because a security document that overclaims is worse than none.*
 
-Status as of 17 November 2026: version 0.3 on `main`, 622 automated tests
+Status as of 17 November 2026: version 0.3 on `main`, 623 automated tests
 passing (`npm test`), two runtime dependencies (`@anthropic-ai/sdk`, `express`).
 The project is new and has run on very few machines. Nothing here has been
 independently audited.
@@ -470,7 +470,7 @@ deployed as such without an independent assessment.
 | Converter environment, zip refusals | `npx tsx --test src/documents.test.ts` |
 | Testimony stamp in search results | `npx tsx --test src/memory.test.ts` |
 | Discord cards only in direct messages | `npx tsx --test src/discord.test.ts` |
-| Everything | `npm test` — 622 passing at the time of writing |
+| Everything | `npm test` — 623 passing at the time of writing |
 
 Every test in the suite is required to fail with its fix reverted
 (`CLAUDE.md`, "Tests"), and the commit that added it says so.
