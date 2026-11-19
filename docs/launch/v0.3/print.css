@@ -1,0 +1,32 @@
+/* Shared print styles for the two A4 one-pagers. Print is the light ground
+   BRAND.md allows: parchment, ink type, and the Forge Claw as a maker's stamp
+   in ink (forge-mark-ink.svg). Cyan is too pale to read on parchment, so it is
+   used only as deep cyan rules and labels; gold marks the honest bits. */
+@page{size:A4;margin:0}
+:root{
+  --ink:#0a111c; --deep:#1a8ba0; --gold:#f5a623; --parch:#f2ede3; --red:#e0442e;
+  --soft:#4a5866; --rule:rgba(10,17,28,.16);
+  --display:"Fraunces",Georgia,serif;
+  --body:"Public Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--parch)}
+body{color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:210mm;height:297mm;overflow:hidden;position:relative;background:var(--parch);display:flex;flex-direction:column}
+/* forge-mark-ink.svg is forge-mark.svg with currentColor set to ink: a mask
+   or <use> pointing at the master is refused across file:// origins. */
+.stamp{display:block;object-fit:contain}
+.head{display:flex;justify-content:space-between;align-items:center}
+.wm{display:flex;align-items:center;gap:3mm;font-family:var(--mono);letter-spacing:.3em;font-weight:600}
+.by{font-family:var(--mono);letter-spacing:.14em;color:var(--soft)}
+h1{font-family:var(--display);font-weight:700;letter-spacing:-.01em;line-height:1.04;text-wrap:balance}
+h1 em{font-style:italic;color:var(--deep)}
+h2{font-family:var(--mono);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--deep);border-bottom:1.2px solid var(--deep);padding-bottom:1.2mm}
+p,li,dd{text-wrap:pretty}
+code{font-family:var(--mono);font-size:.92em}
+.honest{border-left:2.2px solid var(--gold);background:rgba(245,166,35,.12)}
+.honest b{font-family:var(--mono);letter-spacing:.16em;font-weight:600}
+.foot{margin-top:auto;border-top:1px solid var(--rule);display:flex;justify-content:space-between;align-items:flex-end;font-family:var(--mono);color:var(--soft)}
+.foot .welsh{text-align:right}
+.foot .welsh span{display:block}

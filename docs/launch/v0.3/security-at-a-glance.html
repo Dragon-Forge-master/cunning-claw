@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8">
+<title>Cunning Claw — security at a glance</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="print.css">
+<style>
+  /* One A4 page summarising docs/SECURITY-ARCHITECTURE.md for an engineer
+     or a security lead. Nothing here goes beyond that document; where it
+     states a limit, so does this page. If the architecture document changes,
+     this changes with it. */
+  .page{padding:11mm 13mm 8mm}
+  .head .wm{font-size:9pt}
+  .head .stamp{width:11mm;height:10mm}
+  .head .by{font-size:7pt}
+  h1{font-size:23pt;margin-top:4mm}
+  .status{font-family:var(--mono);font-size:7pt;letter-spacing:.06em;color:var(--soft);margin-top:1.6mm}
+  .lede{font-size:9.3pt;line-height:1.45;margin-top:2.6mm}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 7mm;margin-top:1mm}
+  h2{font-size:7.4pt;margin-top:3.8mm;padding-bottom:1mm}
+  p,li{font-size:8.1pt;line-height:1.42}
+  p{margin-top:1.8mm}
+  table{width:100%;border-collapse:collapse;margin-top:2mm;font-size:7.6pt;line-height:1.3}
+  th{font-family:var(--mono);font-weight:600;font-size:6.4pt;letter-spacing:.12em;text-align:left;color:var(--soft);padding:0 1.5mm 1mm 0;border-bottom:1px solid var(--rule)}
+  td{padding:1.1mm 1.5mm 1.1mm 0;border-bottom:1px solid var(--rule);vertical-align:top}
+  td:first-child{font-weight:700;white-space:nowrap}
+  td.k{font-family:var(--mono);font-size:6.8pt;white-space:nowrap}
+  td.det{color:var(--deep);font-weight:600}
+  ul{list-style:none;margin-top:1.6mm}
+  ul li{position:relative;padding-left:3.6mm;margin-bottom:1mm}
+  ul li::before{content:"";position:absolute;left:0;top:1.55mm;width:1.5mm;height:1.5mm;background:var(--deep)}
+  ul.floor{columns:2;column-gap:4mm}
+  ul.floor li{break-inside:avoid;font-size:7.6pt;margin-bottom:.6mm}
+  ul.floor li::before{content:"×";background:none;color:var(--red);font-family:var(--mono);font-weight:600;top:0;width:auto;height:auto}
+  pre{font-family:var(--mono);font-size:6.6pt;line-height:1.45;background:rgba(10,17,28,.06);border-left:2px solid var(--deep);padding:1.6mm 2.4mm;margin-top:2mm;white-space:pre-wrap}
+  ol.gaps{margin-top:1mm;padding-left:4.4mm;columns:2;column-gap:9mm}
+  ol.gaps li{margin-bottom:.8mm;padding-left:.6mm;break-inside:avoid;font-size:7.8pt}
+  .honest{padding:2.4mm 3.4mm 2.6mm;margin-top:3.4mm}
+  .honest b{font-size:6.8pt;display:block;margin-bottom:.6mm}
+  .honest ol{margin-top:0}
+  .foot{padding-top:2.4mm;font-size:6.8pt;line-height:1.5;letter-spacing:.02em;white-space:nowrap}
+  .foot .right{text-align:right}
+</style></head>
+<body>
+<div class="page">
+  <div class="head">
+    <div class="wm"><img class="stamp" src="forge-mark-ink.svg" alt="">CUNNING CLAW</div>
+    <div class="by">DRAGON FORGE AI · CARDIFF</div>
+  </div>
+  <h1>Security <em>at a glance</em></h1>
+  <div class="status">VERSION 0.3 · 622 AUTOMATED TESTS PASSING · 2 RUNTIME DEPENDENCIES · NOT INDEPENDENTLY AUDITED</div>
+  <p class="lede">Cunning Claw is a local agent with real authority on its operator’s machine: a shell, the file system, a signed-in browser, email, WhatsApp, third-party connectors and ssh. It also reads strangers’ text. A model does not separate instructions from data, so the threat is <b>prompt injection</b>, a confused-deputy attack: persuade the agent and it uses the operator’s privileges for you. The design assumes the model <b>will</b> sometimes be fooled, and puts the boundaries that matter in code.</p>
+
+  <div class="grid">
+    <div>
+      <h2>Seven layers, outside in</h2>
+      <table>
+        <tr><th>LAYER</th><th>WHAT IT DOES</th><th>KIND</th></tr>
+        <tr><td>Fencing</td><td>Outside text wrapped as data; fence tags inside it stripped so it cannot close the fence</td><td>behavioural</td></tr>
+        <tr><td>Scanner</td><td>Flags text addressed to the model, strips hidden characters</td><td>behavioural</td></tr>
+        <tr><td>Routing</td><td>Turns that read outside text are pinned to a trusted brain</td><td>behavioural</td></tr>
+        <tr><td>Approval cards</td><td>Consequential actions wait for a human yes, showing what they will do</td><td class="det">code</td></tr>
+        <tr><td>The floor</td><td>Commands refused regardless of config, plan or approval</td><td class="det">code</td></tr>
+        <tr><td>The sandbox</td><td>Shell commands can write only to allowed folders; key stores hidden</td><td class="det">code</td></tr>
+        <tr><td>Redaction</td><td>Recognised secrets masked wherever text leaves the process</td><td class="det">code</td></tr>
+      </table>
+
+      <h2>The floor: twelve, checked first</h2>
+      <ul class="floor">
+        <li><code>rm -rf</code>, any flag order</li>
+        <li><code>mkfs</code></li>
+        <li><code>dd</code> onto a block device</li>
+        <li>Redirection onto a disk</li>
+        <li>The fork bomb</li>
+        <li><code>shutdown</code>, <code>reboot</code>, <code>poweroff</code>, <code>halt</code></li>
+        <li>Recursive <code>chmod</code>/<code>chown</code> on <code>/</code></li>
+        <li><code>curl … | sh</code></li>
+        <li><code>wget … | sh</code></li>
+        <li><code>history -c</code> and <code>shred</code></li>
+        <li><code>/etc/shadow</code>, <code>/etc/sudoers</code></li>
+        <li><code>sudo -S</code>, a piped password</li>
+      </ul>
+      <p><code>HARD_DENY</code> in <code>src/tools.ts</code> runs before config, the approval gate and the sandbox. Config can add patterns; nothing removes these, and an approved plan cannot clear them.</p>
+
+      <h2>Approvals</h2>
+      <ul>
+        <li>Raised for commands off the auto-approve list, every email or chat send, irreversible browser actions, and MCP tools not recognised as reads.</li>
+        <li>Answered in the HUD, or from Telegram or Discord by an allow-listed operator; Discord cards go only to direct messages.</li>
+        <li>Unanswered in three minutes means <b>no</b>. A new message from the operator cancels every pending card.</li>
+        <li>Publishing cards state the resulting visibility.</li>
+      </ul>
+    </div>
+
+    <div>
+      <h2>The sandbox</h2>
+      <p><b>Linux: bubblewrap.</b> The whole file system is mounted read-only; only the working folder, the temp directory and folders in <code>sandbox.writable</code> are writable, and the agent’s own config, keys and data stay read-only inside those. Fresh minimal <code>/dev</code>; <code>--new-session</code> blocks terminal keystroke injection. The model never chooses a bind path or a flag. Every result begins with a label saying how it ran.</p>
+      <p><b>Hidden:</b> <code>~/.ssh</code>, <code>~/.gnupg</code>, <code>~/.aws</code>, <code>~/.azure</code>, <code>~/.kube</code>, gcloud and gh config, docker config, <code>.netrc</code>, <code>.git-credentials</code>, the password store, keyrings, everyday browser profiles, and the agent’s own <code>.env</code>, connector sign-ins and Chrome profile. Credential-like and <code>.env</code>-defined variables are stripped from the environment; ssh and GnuPG agent, keyring, D-Bus and X11/Wayland sockets are hidden.</p>
+      <p><b>Leaving the box</b> (<code>unsandboxed: true</code>) always raises its own card, even under a plan; with <code>sandbox.mode: "required"</code> it is refused. <b>macOS:</b> <code>sandbox-exec</code> profile, unit-tested, <b>not yet run on a real Mac</b>. <b>Windows:</b> no sandbox, and every result says so.</p>
+
+      <h2>The injection scanner</h2>
+      <p>Runs on every tool result before it enters history, scoring thirteen signals: override phrases (in six languages), text addressed to an AI, false authority, role and fence spoofing, secret requests, tool bait, image and link exfiltration, data URLs, encoded blobs, and hidden Unicode. Tag characters, variation-selector smuggling, zero-width and bidi controls are <b>removed</b>, and what they spelled is scored. A hit suspends task grants and plan cover for committing steps for the rest of the turn, and rewords every card. Content is flagged, never blocked.</p>
+
+      <h2>What leaves the machine</h2>
+      <p>HUD and API bind to <code>127.0.0.1</code> behind a self-minted token. No telemetry, no account. Leaving: the conversation to the chosen model provider (none with a local model via Ollama), embeddings requests if a cloud provider is set, and messages to enabled phone lines. Speech-to-text is local with whisper.cpp; without it the browser recogniser is used and the HUD says audio goes to the vendor.</p>
+
+    </div>
+  </div>
+
+  <div class="honest"><b>KNOWN GAPS, IN PRIORITY ORDER</b>
+        <ol class="gaps">
+          <li>Boxed commands can still read the operator’s other files and, with network on (the default), send them. Mitigation: <code>sandbox.network: false</code>.</li>
+          <li>Document converters run outside the sandbox.</li>
+          <li>No sandbox on Windows.</li>
+          <li>macOS sandbox untested on hardware.</li>
+          <li>The scanner is a heuristic in an open file: evadable by design. Its 23 + 23 sample corpus is a regression floor, not a detection rate.</li>
+          <li>The approval card works only if a person reads it.</li>
+        </ol>
+      </div>
+  <div class="foot">
+    <div>Summary of docs/SECURITY-ARCHITECTURE.md · check it with <code>npm test</code><br>Not certified for clinical, safety-critical or regulated use · alpha</div>
+    <div class="right">github.com/Dragon-Forge-master/cunning-claw<br>cunningclaw.com · MIT · no crypto token, ever</div>
+  </div>
+</div>
+</body></html>

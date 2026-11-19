@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8">
+<title>Cunning Claw 0.3 — LinkedIn banner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* 1584×396, LinkedIn's profile and page banner. The profile photo (or the
+     page logo) covers the lower left, and phones crop the sides, so the left
+     ~420px carries only the ground and everything to be read sits in a block
+     from x=440 that survives a centre crop. */
+  body{width:1584px;height:396px}
+  .banner{width:1584px;height:396px;--glow-x:62%;--glow-y:40%;--glow-w:900px;--glow-h:420px}
+  .block{position:absolute;left:440px;right:84px;top:58px;bottom:52px;display:flex;flex-direction:column;justify-content:space-between}
+  .row{display:flex;justify-content:space-between;align-items:center}
+  .brand{font-size:21px}
+  .brand img{width:56px;height:56px}
+  .url{font-family:var(--mono);font-size:24px;letter-spacing:.08em;color:var(--cyan)}
+  h1{font-size:60px;line-height:1.04}
+  .facts{font-family:var(--mono);font-size:19px;letter-spacing:.1em;color:var(--dim);white-space:nowrap}
+  .facts b{color:var(--gold);font-weight:500}
+</style></head>
+<body>
+<div class="banner frame">
+  <div class="block">
+    <div class="row"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="url">cunningclaw.com</div></div>
+    <h1>The local AI assistant that <em>asks before it acts.</em></h1>
+    <div class="facts">OPEN SOURCE · 94 CONNECTORS · 622 TESTS · CARDIFF · <b>NO CRYPTO TOKEN, EVER</b></div>
+  </div>
+</div>
+</body></html>

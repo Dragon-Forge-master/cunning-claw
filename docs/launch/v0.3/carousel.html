@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8">
+<title>Cunning Claw 0.3 — carousel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* 1080×1080, eleven slides: a cover, one per upgrade, a close. render.cjs
+     screenshots each .slide on its own into carousel/NN-name.png. Every claim
+     is one of the nine in POSTS.md / COPY.md, with its limit on the same slide
+     — a carousel slide travels alone, so its caveat has to travel with it. */
+  body{width:1080px}
+  .slide{width:1080px;height:1080px;display:flex;flex-direction:column;padding:76px 88px 70px;--glow-x:78%;--glow-y:22%;--glow-w:900px;--glow-h:760px}
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .top .brand{font-size:24px}
+  .top .brand img{width:62px;height:62px}
+  .top .count{font-family:var(--mono);font-size:24px;letter-spacing:.16em;color:var(--dim)}
+  .top .count b{color:var(--cyan);font-weight:500}
+  .main{flex:1;display:flex;flex-direction:column;justify-content:center;gap:34px;padding:20px 0}
+  .main .eyebrow{font-size:28px}
+  h2{font-size:74px;line-height:1.06;max-width:900px}
+  .main p{font-size:35px;line-height:1.45;color:var(--text);max-width:880px}
+  .main p q{color:var(--cyan);quotes:"\201C" "\201D"}
+  .proof,.honest{font-size:29px;line-height:1.42;max-width:900px}
+  .proof{padding:24px 30px}
+  .honest{padding:6px 0 6px 28px}
+  .proof b,.honest b{font-size:21px;margin-bottom:8px}
+  .numeral{position:absolute;right:56px;bottom:-40px;font-family:var(--display);font-style:italic;font-weight:700;font-size:440px;line-height:1;color:rgba(53,214,237,.06);pointer-events:none}
+  .foot{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:23px;letter-spacing:.16em;color:var(--dim)}
+  .dots{display:flex;gap:10px}
+  .dots i{width:12px;height:12px;border:1.5px solid var(--deep);display:block}
+  .dots i.on{background:var(--cyan);border-color:var(--cyan)}
+
+  /* cover and close */
+  .cover .main{gap:30px}
+  .cover .tag{font-size:26px;padding:8px 16px;align-self:flex-start}
+  .cover h1{font-size:104px;line-height:1.0;max-width:900px}
+  .cover .main p{font-size:37px;color:var(--dim);max-width:860px}
+  .close h2{font-size:78px}
+  .close .main{gap:30px}
+  .stats{display:flex;justify-content:space-between;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:24px 0}
+  .stats div{font-family:var(--mono);font-size:20px;letter-spacing:.12em;color:var(--dim)}
+  .stats b{display:block;font-family:var(--display);font-size:60px;letter-spacing:0;color:var(--cyan);font-weight:600;line-height:1.05}
+  .close .url{font-family:var(--mono);font-size:40px;letter-spacing:.08em;color:var(--cyan)}
+  .close .welsh{font-family:var(--mono);font-size:21px;letter-spacing:.14em;color:var(--cyan);opacity:.85}
+  .close .welsh span{display:block;color:var(--dim);margin-top:6px;letter-spacing:.1em}
+</style></head>
+<body>
+
+<section class="slide frame cover" data-name="01-cover">
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>0.3</b></div></div>
+  <div class="main">
+    <div class="tag">NEW IN 0.3</div>
+    <h1>Cheaper. Harder to fool. <em>More private.</em></h1>
+    <p>Nine upgrades to the AI assistant that runs on your own computer, and asks before anything that matters.</p>
+  </div>
+  <div class="foot"><span>SWIPE FOR ALL NINE →</span><span>OPEN SOURCE · CARDIFF</span></div>
+</section>
+
+<section class="slide frame" data-name="02-costs-less">
+  <div class="numeral">1</div>
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>01</b> / 09</div></div>
+  <div class="main">
+    <div class="eyebrow">Costs less</div>
+    <h2>He only carries the tools a message needs.</h2>
+    <p>Connector tools are fetched when a job calls for them, instead of riding along with every message.</p>
+    <div class="proof"><b>MEASURED</b>In a test with 150 connector tools: 80% fewer tokens of tool lists per message.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="03-boxed-shell">
+  <div class="numeral">2</div>
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>02</b> / 09</div></div>
+  <div class="main">
+    <div class="eyebrow">Boxed shell</div>
+    <h2>His commands run inside a box.</h2>
+    <p>On Linux, a command can write only to folders you allow. Your ssh and GPG keys, cloud and git logins, keyrings, browser profiles and his own keys are hidden from it.</p>
+    <div class="honest"><b>THE HONEST BIT</b>Mac: built, not yet tested on a real Mac. Windows: no box yet, and he says so. Boxed commands can still read your other files.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="04-private-ears">
+  <div class="numeral">3</div>
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>03</b> / 09</div></div>
+  <div class="main">
+    <div class="eyebrow">Private ears</div>
+    <h2>He hears you without your voice leaving the machine.</h2>
+    <p>Speech-to-text runs on your own computer, with whisper.cpp.</p>
+    <div class="honest"><b>THE HONEST BIT</b>It needs a one-off setup script. Without it the browser’s recogniser is used, and the screen tells you that audio goes to Google.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="05-remembers">
+  <div class="numeral">4</div>
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>04</b> / 09</div></div>
+  <div class="main">
+    <div class="eyebrow">Remembers by meaning</div>
+    <h2>He remembers what you meant, not just the words.</h2>
+    <p>Ask about <q>the car spraying job</q> and he finds the note that says <q>mobile paint repair</q>. Not one word in common.</p>
+    <div class="proof"><b>HOW WE KNOW</b>That exact case is one of the automated tests. Meaning search uses an embeddings service you choose, or Ollama on your own machine.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="06-reads-documents">
+  <div class="numeral">5</div>
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>05</b> / 09</div></div>
+  <div class="main">
+    <div class="eyebrow">Reads documents</div>
+    <h2>PDF, Word, Excel, PowerPoint and scans.</h2>
+    <p>Hand him the supplier’s invoice or the scanned letter. Every document is treated as a stranger’s words: read as information, never taken as orders.</p>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="07-notices-tricks">
+  <div class="numeral">6</div>
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>06</b> / 09</div></div>
+  <div class="main">
+    <div class="eyebrow">Notices tricks</div>
+    <h2>If a page tries to give him orders, he flags it.</h2>
+    <p>Even instructions hidden in invisible characters. Any pre-approval is suspended for the rest of that turn, and the approval card says why.</p>
+    <div class="honest"><b>THE HONEST BIT</b>The scanner is a heuristic and can be evaded. The approval card is the real boundary.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="08-push-alerts">
+  <div class="numeral">7</div>
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>07</b> / 09</div></div>
+  <div class="main">
+    <div class="eyebrow">Push alerts</div>
+    <h2>A nudge on your phone, with no account.</h2>
+    <p>ntfy joins Telegram and Discord. He tells you when he is waiting on you, with personal details scrubbed, and never with an approve button.</p>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="09-connector-coach">
+  <div class="numeral">8</div>
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>08</b> / 09</div></div>
+  <div class="main">
+    <div class="eyebrow">Connector coach</div>
+    <h2>Press “Guide me” and he walks you through it.</h2>
+    <p>Every one of the 94 connectors, from Xero and Canva to GitHub and Stripe, has the button. One step at a time, then he offers to learn how you like it used, and saves that as a skill.</p>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="10-free-start">
+  <div class="numeral">9</div>
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>09</b> / 09</div></div>
+  <div class="main">
+    <div class="eyebrow">A free start</div>
+    <h2>Start free, with a Google key.</h2>
+    <p>The setup page walks a first-timer through a free Google Gemini key in four steps. No card.</p>
+    <div class="honest"><b>THE HONEST BIT</b>Google’s free plan has daily limits, and on it Google may use what you send to improve its products. Any other key works too.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame close" data-name="11-close">
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>0.3</b></div></div>
+  <div class="main">
+    <h2>Every send, spend and publish <em>waits for your yes.</em></h2>
+    <div class="stats">
+      <div><b>73</b>TOOLS</div><div><b>94</b>CONNECTORS</div><div><b>31</b>SKILLS</div><div><b>622</b>TESTS</div><div><b>2</b>DEPENDENCIES</div>
+    </div>
+    <p>Free forever with your own key. Open source, MIT licence.</p>
+    <div class="url">cunningclaw.com</div>
+    <div class="honest"><b>ALPHA</b>Very few users so far, so tell us what breaks.<br>No crypto token, ever.</div>
+  </div>
+  <div class="foot"><div class="welsh">YN LLEOL YN GYNTAF · CANIATÂD DYNOL PAN FO CANLYNIADAU<span>local first · human consent where there are consequences</span></div></div>
+</section>
+
+</body></html>
