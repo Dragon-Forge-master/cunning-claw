@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8">
+<title>Cunning Claw for your business</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="print.css">
+<style>
+  /* One A4 page for a small-business owner who has never heard of an API.
+     No jargon that is not explained on the spot; every capability is one of
+     the verified facts in COPY.md, and the limits are on the page, not in a
+     footnote. The "start free" steps describe the downloads, so this sheet
+     waits for R-day (see README.md). */
+  .page{padding:12mm 15mm 9mm}
+  .head .wm{font-size:10pt}
+  .head .stamp{width:13mm;height:12mm}
+  .head .by{font-size:7.6pt}
+  h1{font-size:28pt;margin-top:6mm}
+  .lede{font-size:11.5pt;line-height:1.45;margin-top:3mm;max-width:170mm}
+  h2{font-size:8.2pt;margin-top:5.5mm}
+  .can{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3.4mm 6mm;margin-top:3mm}
+  .can div{font-size:9pt;line-height:1.4}
+  .can b{display:block;font-weight:700;font-size:9.6pt;margin-bottom:.4mm}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 8mm}
+  ol.steps{list-style:none;counter-reset:s;margin-top:3mm}
+  ol.steps li{counter-increment:s;position:relative;padding-left:8mm;font-size:9.2pt;line-height:1.4;margin-bottom:2mm}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:-.2mm;width:5.2mm;height:5.2mm;border:1.2px solid var(--deep);color:var(--deep);font-family:var(--mono);font-weight:600;font-size:8pt;display:flex;align-items:center;justify-content:center}
+  .small{font-size:8.2pt;line-height:1.4;color:var(--soft)}
+  ul.safe{list-style:none;margin-top:3mm}
+  ul.safe li{position:relative;padding-left:5mm;font-size:9.2pt;line-height:1.4;margin-bottom:1.8mm}
+  ul.safe li::before{content:"";position:absolute;left:0;top:1.9mm;width:2mm;height:2mm;background:var(--deep)}
+  .price{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:3.2mm}
+  .price div{border:1.2px solid var(--ink);padding:3mm 4mm;font-size:9pt;line-height:1.4}
+  .price .soon{border-style:dashed;border-color:var(--soft)}
+  .price b{display:block;font-family:var(--display);font-size:15pt;font-weight:700;margin-bottom:1mm}
+  .price i{font-style:normal;font-family:var(--mono);font-size:7.4pt;letter-spacing:.16em;font-weight:600;color:var(--deep);display:block;margin-bottom:1mm}
+  .price .soon i{color:#9a6200}
+  .honest{margin-top:4.5mm;padding:3mm 4mm;font-size:9.3pt;line-height:1.45}
+  .honest b{font-size:7.6pt;margin-right:2mm}
+  .foot{padding-top:3mm;font-size:7pt;letter-spacing:.02em;line-height:1.55;white-space:nowrap}
+  .foot .right{text-align:right}
+  .doctrine{font-family:var(--mono);font-size:6.8pt;letter-spacing:.06em;color:var(--deep);text-align:center;margin-top:2mm;white-space:nowrap}
+  .doctrine span{color:var(--soft);letter-spacing:.02em}
+  .foot .url{font-size:10pt;color:var(--ink);font-weight:600;letter-spacing:.04em}
+</style></head>
+<body>
+<div class="page">
+  <div class="head">
+    <div class="wm"><img class="stamp" src="forge-mark-ink.svg" alt="">CUNNING CLAW</div>
+    <div class="by">DRAGON FORGE AI · CARDIFF</div>
+  </div>
+
+  <h1>Cunning Claw <em>for your business</em></h1>
+  <p class="lede">An AI assistant that works on your own computer: reading, drafting, sorting and reminding. Before anything that sends, spends or publishes, he stops and asks you.</p>
+
+  <h2>What he can do for you</h2>
+  <div class="can">
+    <div><b>Your inbox</b>Sign in to Gmail once in his browser. He reads and searches your mail and drafts replies. Nothing is sent until you say yes.</div>
+    <div><b>Your paperwork</b>He reads PDFs, Word, Excel, PowerPoint and scanned letters: invoices, price lists, forms.</div>
+    <div><b>Your documents</b>Letters, quotes and plans land on the Desk, as ordinary files on your own computer that you can open and edit.</div>
+    <div><b>Your standing jobs</b>“Every Friday at five, check for unpaid invoices.” He runs jobs on a schedule, with day names in English or Welsh.</div>
+    <div><b>The tools you already use</b>94 connectors, including Xero, Canva, Stripe, Slack and Notion. Press “Guide me” and he walks you through connecting one, step by step.</div>
+    <div><b>Your phone</b>A message on Telegram, Discord or ntfy when he needs you, so you are not tied to the desk. WhatsApp Web works through his browser too, and every send waits for you.</div>
+  </div>
+
+  <div class="cols">
+    <div>
+      <h2>Start free, in four steps</h2>
+      <ol class="steps">
+        <li>Download Cunning Claw for Windows, Mac or Linux from <b>cunningclaw.com</b>. Unzip it and double-click. Everything it needs is inside.</li>
+        <li>Your web browser opens on a setup page.</li>
+        <li>The page walks you through getting a free Google Gemini key, in four steps. No card.</li>
+        <li>Tell him how you would like to be addressed, and ask for something.</li>
+      </ol>
+      <p class="small">Google’s free plan has daily limits, and on it Google may use what you send to improve its products. If you handle customers’ personal details, use a paid key instead: any key from Google, OpenAI, Anthropic or OpenRouter works.</p>
+    </div>
+    <div>
+      <h2>Safety, in plain words</h2>
+      <ul class="safe">
+        <li>He runs on your computer, not ours. No account with us, and no tracking. Your words go to the AI service whose key you use.</li>
+        <li>Anything that sends, spends or publishes waits for you to press yes. No answer in three minutes means no.</li>
+        <li>Emails and web pages are treated as strangers’ words. If one tries to give him orders, he flags it.</li>
+        <li>There are twelve dangerous commands he refuses, whoever asks. Even you.</li>
+        <li>On Linux his commands run in a box that hides your passwords and keys. On Mac the box is built but still being tested; on Windows there is none yet, and he says so.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>What it costs</h2>
+  <div class="price">
+    <div><i>AVAILABLE</i><b>Free, for good</b>The whole assistant, with your own key. You pay the AI service directly, often pennies, or nothing on Google’s free plan. Never cut down, never nagging.</div>
+    <div class="soon"><i>COMING · NOT YET AVAILABLE</i><b>Just Works · £7 a month</b>One code to paste in, no keys to set up. For people who want it to work and never want to learn what an API is.</div>
+  </div>
+
+  <div class="honest"><b>THE HONEST BIT</b>Cunning Claw is new: alpha software with very few users so far. It is not certified for clinical, safety-critical or regulated work. Tell us what breaks, and we will fix it.</div>
+
+  <div class="foot">
+    <div><span class="url">cunningclaw.com</span><br>github.com/Dragon-Forge-master/cunning-claw · open source, MIT</div>
+    <div class="right">Dragon Forge AI · Cardiff<br>No crypto token, ever</div>
+  </div>
+  <div class="doctrine">YN LLEOL YN GYNTAF · CANIATÂD DYNOL PAN FO CANLYNIADAU <span>— local first, human consent where there are consequences</span></div>
+</div>
+</body></html>
