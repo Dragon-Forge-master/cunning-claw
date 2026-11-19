@@ -15,7 +15,16 @@ on:
       - .github/workflows/bundle.yml
       - src/boot.ts
       - src/first-run.ts
+  # Run by hand to build and test; give `release` a version tag (v0.3.0) to
+  # publish as well. This exists because a tag cannot always be pushed from
+  # where the release is decided, and GitHub can make the tag itself — still
+  # only after all three smoke tests pass.
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish a GitHub Release with this tag, e.g. v0.3.0 (empty = build and test only)"
+        required: false
+        default: ""
 
 jobs:
   build:
@@ -112,7 +121,7 @@ jobs:
           echo "Bundle smoke passed: ${{ matrix.target }} started from its own launcher and opened on setup"
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release != '')
     needs: smoke
     runs-on: ubuntu-latest
     permissions:
@@ -124,7 +133,14 @@ jobs:
       - name: Publish to the GitHub Release for this tag
         env:
           GH_TOKEN: ${{ github.token }}
+          # Through env, never ${{ }} inside the script: an input is text someone typed.
+          TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.release }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --title "Cunning Claw ${GITHUB_REF_NAME}" \
+          case "$TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "Not a version tag: $TAG"; exit 1 ;; esac
+          # The tag must name the version that was built, or the downloads and the release disagree.
+          built="v$(ls cunningclaw-*-linux-x64.tar.gz | sed -E 's/^cunningclaw-(.*)-linux-x64\.tar\.gz$/\1/')"
+          if [ "$built" != "$TAG" ]; then echo "Tag $TAG does not match the built version $built (package.json)"; exit 1; fi
+          # --target makes the tag at the tested commit when it does not exist yet.
+          gh release create "$TAG" --repo "${GITHUB_REPOSITORY}" --target "${GITHUB_SHA}" --title "Cunning Claw $TAG" \
             --notes "Download the one for your computer, unzip it, and read READ ME FIRST.txt. Not code-signed yet: Windows and macOS will ask once before the first run." \
             cunningclaw-*.zip cunningclaw-*.tar.gz
