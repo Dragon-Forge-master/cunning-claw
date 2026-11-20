@@ -367,7 +367,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
                                                           █████▀▀   ▀▀█████     
 
   ──────────────────────────────────────────────────────────────
-  CUNNING CLAW  ·  y dyn hysbys  ·  v0.4.0
+  CUNNING CLAW  ·  y dyn hysbys  ·  v0.5.0
   Yn lleol yn gyntaf · Caniatâd dynol pan fo canlyniadau
   (local first · human consent where there are consequences)
 
@@ -863,7 +863,7 @@ nothing is machine-translated. The design and its reasons: [docs/LEARN-MODE.md](
 The claw carries a liturgy. Boot it and the terminal greets you like a grimoire opening:
 
 ```
-  CUNNING CLAW  ·  y dyn hysbys  ·  v0.4.0
+  CUNNING CLAW  ·  y dyn hysbys  ·  v0.5.0
   Yn lleol yn gyntaf · Caniatâd dynol pan fo canlyniadau
   (local first · human consent where there are consequences)
 
