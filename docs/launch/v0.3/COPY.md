@@ -512,7 +512,7 @@ until he has.
 > **Notes to editors**
 >
 > - About Dragon Forge AI: see the 100-word boilerplate below.
-> - Facts as of release: 73 tools, 94 connectors, 31 skills, 622 automated
+> - Facts as of release: 73 tools, 94 connectors, 31 skills, 623 automated
 >   tests passing, two runtime dependencies. MIT licence.
 > - There is no Cunning Claw crypto token, and there never will be.
 > - Images: `site-social-0.3.png` (1600×900), carousel slides (1080×1080).
