@@ -78,11 +78,10 @@ batch.
    commit d420d5e), with `cunningclaw-0.5.0-` downloads for win-x64,
    darwin-arm64, darwin-x64, linux-x64 and linux-arm64. Nothing here waits
    for a release any more.
-2. **cunningclaw.com offering 0.5.0.** On 20 November 2026 the live site
-   still offered the 0.3.0 downloads; the page that offers 0.5.0 is in
-   `site/` (commit 8e103f5) and waits to be deployed. Every piece with the
-   QR code or the address sends people there, so open the site and check
-   its download links say 0.5.0 before anything goes out.
+2. **cunningclaw.com offering 0.5.0 — done.** Deployed on 20 November 2026
+   and checked live the same day: "Version 0.5.0 is out", the 0.5.0
+   download links, 83 tools and 957 tests. Every piece with the QR code or
+   the address sends people there, so look once more on the day you send.
 3. **A Welsh speaker.** Every piece carries "Rhodd o Gymru"; see the next
    section. Nothing with Welsh in it goes out until it is checked.
 4. **Welsh-language pitches wait for a Welsh version.** Golwg360, BBC Cymru
