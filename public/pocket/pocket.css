@@ -1,0 +1,145 @@
+/* Pocket Claw. Phone first: one column, 16px gutters, thumbs at the bottom.
+   Palette and faces from docs/BRAND.md — dark-first ink and cyan; the light
+   theme is parchment and ink, the maker's-stamp reading. The brand faces are
+   not shipped, so their documented fallbacks are what render. */
+:root {
+  --bg: #0a111c;
+  --card: #0e1826;
+  --line: #1a3346;
+  --text: #dfe9f2;
+  --dim: #8496a8;
+  --accent: #35d6ed;
+  --accent-ink: #0a111c;
+  --deep: #1a8ba0;
+  --gold: #f5a623;
+  --red: #e0442e;
+  --gutter: 16px;
+  --display: "Fraunces", Georgia, serif;
+  --body: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Roboto Mono", monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f2ede3;
+    --card: #fbf8f2;
+    --line: #d9d0bf;
+    --text: #0a111c;
+    --dim: #4f5d6b;
+    /* Cyan on parchment is too faint to read; ink carries the action. */
+    --accent: #0a111c;
+    --accent-ink: #f2ede3;
+    --deep: #1a8ba0;
+    color-scheme: light;
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  -webkit-text-size-adjust: 100%;
+}
+[hidden] { display: none !important; }
+
+.bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px var(--gutter);
+  border-bottom: 1px solid var(--line);
+}
+.mark { width: 28px; height: 28px; }
+.wordmark { font-family: var(--mono); letter-spacing: 3px; font-size: 14px; color: var(--deep); font-weight: 600; }
+@media (prefers-color-scheme: dark) { .wordmark { color: var(--accent); } }
+.lock-state { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--dim); letter-spacing: 1px; }
+
+main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.screen { padding: 18px var(--gutter) 24px; display: flex; flex-direction: column; gap: 14px; min-height: 100%; }
+h1 { font-family: var(--display); font-weight: 650; font-size: 26px; line-height: 1.2; }
+.welsh { font-family: var(--mono); font-size: 12px; color: var(--dim); letter-spacing: 2px; font-weight: 400; vertical-align: middle; }
+.lede { color: var(--dim); }
+.small { font-size: 15px; }
+.msg-line { min-height: 1.4em; color: var(--dim); }
+.msg-line.bad { color: var(--gold); }
+
+button, .field input, #say {
+  font: inherit; color: inherit;
+}
+button {
+  border: 1px solid var(--line); background: var(--card); color: var(--text);
+  border-radius: 12px; padding: 10px 16px; min-height: 44px; cursor: pointer;
+}
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button.big { min-height: 56px; font-size: 18px; width: 100%; }
+button.quiet { background: transparent; }
+button:disabled { opacity: 0.5; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--deep); outline-offset: 2px; }
+
+.field { display: flex; flex-direction: column; gap: 6px; color: var(--dim); font-size: 15px; }
+.field input, #say {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px; min-height: 48px; color: var(--text); width: 100%;
+}
+
+/* Talk */
+#screen-talk { padding-bottom: 0; gap: 0; }
+.log { flex: 1; display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; }
+.bubble { max-width: 88%; padding: 10px 14px; border-radius: 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bubble.me { align-self: flex-end; background: var(--deep); color: #fff; border-bottom-right-radius: 4px; }
+.bubble.claw { align-self: flex-start; background: var(--card); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.bubble.sys { align-self: center; max-width: 100%; color: var(--dim); font-size: 14px; text-align: center; padding: 2px 8px; }
+.bubble.tool { align-self: flex-start; color: var(--dim); font-family: var(--mono); font-size: 13px; padding: 0 6px; }
+.locked { display: flex; flex-direction: column; gap: 12px; padding: 20px 0; text-align: center; color: var(--dim); }
+.composer {
+  position: sticky; bottom: 0; display: flex; gap: 8px; align-items: center;
+  padding: 10px 0 12px; background: var(--bg); border-top: 1px solid var(--line);
+}
+.composer #say { flex: 1; min-width: 0; }
+.round { width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.round svg { width: 22px; height: 22px; fill: currentColor; }
+.round.live { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* Approvals: big, readable, the exact action text. */
+.card { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--gold); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.card + .card { margin-top: 12px; }
+.card .what { font-family: var(--display); font-size: 21px; line-height: 1.3; }
+.card pre {
+  font-family: var(--mono); font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; max-height: 40vh; overflow-y: auto;
+}
+.card .verdict { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.card .verdict button { min-height: 56px; font-size: 18px; }
+.card .note { color: var(--dim); font-size: 14px; min-height: 1.2em; }
+.empty { color: var(--dim); text-align: center; padding: 30px 0; }
+
+/* Share */
+.share-preview { display: flex; flex-direction: column; gap: 8px; }
+.share-preview img { max-width: 100%; max-height: 40vh; object-fit: contain; border-radius: 10px; border: 1px solid var(--line); background: var(--card); }
+.share-preview .file { font-family: var(--mono); font-size: 14px; color: var(--dim); }
+.share-actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* Phone */
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; }
+.facts dt { color: var(--dim); }
+
+/* Tabs: where the thumb is. */
+.tabs {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line); background: var(--card);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tabs a {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 56px; color: var(--dim); text-decoration: none; font-weight: 600; font-size: 15px;
+}
+.tabs a.on { color: var(--text); box-shadow: inset 0 3px 0 var(--deep); }
+.badge {
+  min-width: 22px; height: 22px; border-radius: 11px; padding: 0 6px;
+  background: var(--gold); color: #0a111c; font-size: 13px; display: inline-grid; place-items: center;
+}
