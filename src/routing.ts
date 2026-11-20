@@ -28,6 +28,10 @@ export const UNTRUSTED_TOOLS = new Set([
   "look",
   // Documents are what strangers send: the invoice, the CV, the attachment.
   "read_document",
+  // A foreman job's summary and file list are written by Claude Code after
+  // reading the project's files — dependencies, fixtures, other people's
+  // READMEs. The words of a model that read strangers are strangers' words.
+  "code_job_report",
 ]);
 
 /**

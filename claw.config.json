@@ -416,6 +416,18 @@
     "maxOutputChars": 20000,
     "boxes": []
   },
+  "foreman": {
+    "enabled": true,
+    "bin": "claude",
+    "maxTurns": 40,
+    "timeoutMinutes": 45,
+    "maxParallel": 2,
+    "permissionMode": "acceptEdits",
+    "settingSources": "user",
+    "allowHooks": false,
+    "auth": "login",
+    "projects": []
+  },
   "board": {
     "weatherPlace": "Cardiff",
     "staleAfterDays": 30

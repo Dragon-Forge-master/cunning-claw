@@ -1423,6 +1423,196 @@ document.addEventListener("keydown", (e) => {
 });
 loadSkills();
 
+// ---------------------------------------------------------------------------
+// Mission control
+// ---------------------------------------------------------------------------
+// Every job the server registers (src/jobs.ts), kept live by the "job" event.
+// An opened review is held here by id, not in the DOM, so the next event's
+// re-render does not wipe what the operator just opened — the shape of the
+// bug the connectors sheet and the Desk both had.
+// jobs-apply:begin
+const jobsById = new Map();
+const jobReviews = new Map(); // id -> report text, or "" while it loads
+const jobCancelling = new Set();
+const LIVE_JOB_STATES = ["queued", "running", "needs-approval"];
+
+/**
+ * Keep the newest word on each job. The reply to a Cancel click carries the
+ * job as it was when the server answered; the stream can already have said
+ * it stopped. Found driving the HUD: the reply landed second and put a
+ * cancelled job back to "running" on the glass. The registry's rev orders them.
+ */
+function applyJob(job) {
+  if (!job || !job.id) return;
+  const have = jobsById.get(job.id);
+  if (have && (Number(have.rev) || 0) > (Number(job.rev) || 0)) return;
+  jobsById.set(job.id, job);
+}
+// jobs-apply:end
+
+function jobClock(ms) {
+  return ms ? new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+}
+
+function renderJobsBadge() {
+  const live = [...jobsById.values()].filter((j) => LIVE_JOB_STATES.includes(j.state)).length;
+  const badge = $("jobs-badge");
+  if (badge) {
+    badge.hidden = live === 0;
+    badge.textContent = String(live);
+  }
+  const count = $("jobs-count");
+  if (count) count.textContent = jobsById.size ? `${live} live · ${jobsById.size} in all` : "";
+}
+
+function renderJobs() {
+  renderJobsBadge();
+  const root = $("jobs-list");
+  if (!root || $("jobs-overlay")?.hidden) return;
+  root.replaceChildren();
+  const list = [...jobsById.values()].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  if (!list.length) {
+    const empty = document.createElement("p");
+    empty.className = "jobs-empty";
+    empty.textContent = "Nothing on the board. Ask for a coding job — “have Claude Code fix …” — and it appears here, live.";
+    root.appendChild(empty);
+    return;
+  }
+  for (const j of list) {
+    const card = document.createElement("div");
+    card.className = "job-card";
+    card.dataset.state = j.state;
+    card.dataset.id = j.id;
+
+    const top = document.createElement("div");
+    top.className = "job-top";
+    const state = document.createElement("span");
+    state.className = "job-state";
+    state.textContent = j.state;
+    const title = document.createElement("span");
+    title.className = "job-title";
+    title.textContent = j.title;
+    top.append(state, title);
+
+    const meta = document.createElement("div");
+    meta.className = "job-meta";
+    const started = jobClock(j.startedAt || j.createdAt);
+    const ended = jobClock(j.finishedAt);
+    meta.textContent = `${j.kind} · ${String(j.id).slice(0, 8)}${started ? ` · from ${started}` : ""}${ended ? ` · ended ${ended}` : ""}`;
+
+    const status = document.createElement("div");
+    status.className = "job-status";
+    status.textContent = j.status || "";
+
+    card.append(top, meta, status);
+
+    const actions = document.createElement("div");
+    actions.className = "job-actions";
+    // needs-approval is answered on its card, not here: Cancel would only be
+    // a second, quieter way of saying no.
+    if (j.state === "running" || j.state === "queued") {
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "ctl cancel";
+      const busy = jobCancelling.has(j.id);
+      cancel.disabled = busy;
+      cancel.textContent = busy ? "CANCELLING…" : "CANCEL";
+      cancel.onclick = () => cancelJob(j.id);
+      actions.appendChild(cancel);
+    }
+    if (j.kind === "foreman" && j.reviewable && !LIVE_JOB_STATES.includes(j.state)) {
+      const open = jobReviews.has(j.id);
+      const review = document.createElement("button");
+      review.type = "button";
+      review.className = "ctl" + (open ? " active" : "");
+      review.textContent = open ? "HIDE" : "REVIEW";
+      review.onclick = () => toggleReview(j.id);
+      actions.appendChild(review);
+    }
+    if (actions.childElementCount) card.appendChild(actions);
+
+    if (jobReviews.has(j.id)) {
+      const pre = document.createElement("pre");
+      pre.className = "job-review";
+      // The report carries Claude Code's own words inside the fence: text,
+      // never markup.
+      pre.textContent = jobReviews.get(j.id) || "Loading the report…";
+      card.appendChild(pre);
+    }
+    root.appendChild(card);
+  }
+}
+
+async function cancelJob(id) {
+  jobCancelling.add(id);
+  renderJobs();
+  try {
+    const res = await fetch(`/api/jobs/${encodeURIComponent(id)}/cancel`, { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    if (body.job) applyJob(body.job);
+    if (!res.ok && body.message) addMsg("system", body.message);
+  } catch {
+    addMsg("system", "Could not reach the claw to cancel that job.");
+  } finally {
+    jobCancelling.delete(id);
+    renderJobs();
+  }
+}
+
+async function toggleReview(id) {
+  if (jobReviews.has(id)) {
+    jobReviews.delete(id);
+    renderJobs();
+    return;
+  }
+  jobReviews.set(id, "");
+  renderJobs();
+  try {
+    const res = await fetch(`/api/jobs/${encodeURIComponent(id)}/review`);
+    const body = await res.json().catch(() => ({}));
+    jobReviews.set(id, res.ok ? String(body.text || "") : String(body.error || "No report."));
+  } catch {
+    jobReviews.set(id, "Could not reach the claw for the report.");
+  }
+  renderJobs();
+}
+
+async function loadJobs() {
+  try {
+    const res = await fetch("/api/jobs");
+    if (!res.ok) return;
+    const data = await res.json();
+    for (const j of Array.isArray(data.jobs) ? data.jobs : []) applyJob(j);
+    renderJobs();
+  } catch { /* the stream fills it in */ }
+}
+
+function setJobsOpen(open) {
+  const overlay = $("jobs-overlay");
+  const btn = $("jobs-toggle");
+  if (!overlay || !btn) return;
+  overlay.hidden = !open;
+  btn.classList.toggle("active", open);
+  if (open) renderJobs();
+}
+
+es.addEventListener("job", (e) => {
+  applyJob(sseData(e));
+  renderJobs();
+});
+// A reconnect may have missed changes; the list is cheap to fetch again.
+es.addEventListener("hello", () => loadJobs());
+
+$("jobs-toggle")?.addEventListener("click", () => setJobsOpen($("jobs-overlay").hidden));
+$("jobs-close")?.addEventListener("click", () => setJobsOpen(false));
+$("jobs-overlay")?.addEventListener("click", (e) => {
+  if (e.target === $("jobs-overlay")) setJobsOpen(false);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("jobs-overlay") && !$("jobs-overlay").hidden) setJobsOpen(false);
+});
+loadJobs();
+
 async function sendMessage(text) {
   addMsg("user", text);
   currentBubble = null;

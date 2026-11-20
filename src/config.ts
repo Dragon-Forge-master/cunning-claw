@@ -313,6 +313,33 @@ export interface ClawConfig {
       allowSudo?: boolean; allowReboot?: boolean; note?: string;
     }[];
   };
+  /**
+   * The foreman (src/foreman.ts): coding jobs handed to Claude Code, headless,
+   * each in a fresh worktree beside the project. Projects are named here and
+   * chosen by id — the model never supplies a path. The permission mode,
+   * allow rules and deny rules pass through a floor in code: bypassPermissions
+   * and auto are refused, a bare Bash allow rule is dropped, and the deny
+   * list can only grow. `auth` is "login" (Claude Code's own sign-in, the
+   * default), "apiKey" or "oauthToken", read from the variable `authEnv` names.
+   */
+  foreman?: {
+    enabled?: boolean;
+    bin?: string;
+    maxTurns?: number;
+    timeoutMinutes?: number;
+    maxParallel?: number;
+    model?: string;
+    permissionMode?: string;
+    allowedTools?: string[];
+    disallowedTools?: string[];
+    settingSources?: string;
+    allowHooks?: boolean;
+    auth?: "login" | "apiKey" | "oauthToken";
+    authEnv?: string;
+    worktreeRoot?: string;
+    maxBriefChars?: number;
+    projects?: { id: string; label?: string; path: string; base?: string; addDirs?: string[]; note?: string }[];
+  };
   board?: { githubOwner?: string; weatherPlace?: string; staleAfterDays?: number };
   server: { port: number; host: string };
   /**

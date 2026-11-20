@@ -16,6 +16,7 @@ import { boxes as remoteBoxes, sshArgs, shQuote, type Box as RemoteBox } from ".
 import { expandHome } from "./paths.js";
 import { ntfyDoctorLine } from "./ntfy.js";
 import { sandboxDoctor } from "./sandbox.js";
+import { foremanDoctor } from "./foreman.js";
 import { DOCUMENT_TOOLS } from "./documents.js";
 
 const execFileAsync = promisify(execFile);
@@ -422,6 +423,12 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
   // the boundary, and a machine without bubblewrap works as it always did.
   const shellBox = await sandboxDoctor();
   out.push(row("sandbox", shellBox.status, false, shellBox.line));
+
+  // The foreman is optional: without Claude Code, delegate_code says so and
+  // the rest of the claw is untouched. So it warns, and is never essential.
+  for (const [i, r] of (await foremanDoctor()).entries()) {
+    out.push(row(i === 0 ? "claude-code" : `foreman-${i}`, r.status, false, r.line));
+  }
 
   // Boxes are optional, so every check here warns and none is essential.
   for (const box of remoteBoxes()) {

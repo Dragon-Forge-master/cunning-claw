@@ -42,6 +42,8 @@ import { setupNeeded, markLocalReady, localRuntimeReachable, openInBrowser, hasU
 import { saveOwner, applyOwner } from "./owner.js";
 import { pinBrain, catalog as brainCatalog } from "./brain.js";
 import { dietStatus } from "./tool-diet.js";
+import { jobs, TERMINAL_STATES } from "./jobs.js";
+import { foreman, reportText, startForeman } from "./foreman.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -126,6 +128,10 @@ function broadcast(event: string, data: unknown): void {
   // waits its turn, live in voice.react() where they are tested.
   voice.react(event, data);
 }
+
+// Mission control: every change to a job reaches the HUD through the one
+// redacted chokepoint, never a side channel.
+jobs.setEmitter((job) => broadcast("job", job));
 
 // The HUD's mic must know when the speakers are talking, or it hears the claw
 // and posts the reply back as the operator's words (24 Oct). The spoken text
@@ -267,6 +273,33 @@ app.post("/api/chat", (req, res) => {
   }
   res.json({ ok: true });
   void runTurn(message, agentEvents);
+});
+
+// --- Mission control ----------------------------------------------------------
+// The list, a cancel, and a foreman job's report. Behind requireAuth like the
+// rest of /api; redacted like everything else that reaches the glass.
+app.get("/api/jobs", (_req, res) => {
+  res.json(redactDeep({ jobs: jobs.list().map((j) => ({ ...j, cancellable: jobs.canCancel(j.id) })) }));
+});
+
+app.post("/api/jobs/:id/cancel", async (req, res) => {
+  const job = jobs.get(req.params.id);
+  if (!job) return res.status(404).json({ error: "No such job" });
+  const r = await jobs.cancel(job.id);
+  res.status(r.ok ? 200 : 409).json({ ...r, job: redactDeep(jobs.get(job.id)) });
+});
+
+app.get("/api/jobs/:id/review", (req, res) => {
+  const job = jobs.get(req.params.id);
+  if (!job) return res.status(404).json({ error: "No such job" });
+  if (job.kind !== "foreman" || !TERMINAL_STATES.includes(job.state)) {
+    return res.status(409).json({ error: "Only a finished coding job has a report to review" });
+  }
+  const record = foreman().get(job.id);
+  if (!record) return res.status(404).json({ error: "The report for that job is gone" });
+  // The same text the model reads: our facts plain, Claude Code's words
+  // inside the fence. The HUD renders it with textContent.
+  res.json(redactDeep({ id: job.id, text: reportText(record) }));
 });
 
 // --- The Keys page: the easy-secrets place -----------------------------------
@@ -721,6 +754,14 @@ const httpServer = app.listen(port, host, async () => {
   startHeartbeat(agentEvents);
   startSchedule(agentEvents);
   startRemoteWatch(agentEvents);
+  // A coding job that lands is told like a remote job is: a notice, the phone,
+  // and a heartbeat-authority turn when the claw is free. Injected here so
+  // foreman.ts never imports agent.ts.
+  startForeman(agentEvents, {
+    runTurn: (message, events, opts) => runTurn(message, events, opts),
+    busy: () => turnInFlight().busy,
+    push: (text) => void notifyPhone({ kind: "job", title: "Coding job", body: text }),
+  });
   startTelegram(agentEvents, { resolveApproval: settleApproval });
   startDiscord(agentEvents, { resolveApproval: settleApproval });
   // After the phone lines, which it pushes through. It is given emit and the
