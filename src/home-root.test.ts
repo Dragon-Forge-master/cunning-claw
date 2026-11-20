@@ -246,10 +246,13 @@ test("an installed claw's keys, config, data, workspace and shell all follow the
     fs.copyFileSync(path.join(HERE, "claw.config.json"), path.join(code, "claw.config.json"));
     fs.cpSync(path.join(HERE, "workspace", "SOUL.md"), path.join(code, "workspace", "SOUL.md"), { recursive: true });
     write(path.join(code, INSTALL_MARKER), "{}");
-    const owner = path.join(fakeHome, ".local", "share", "cunningclaw");
+    const env: NodeJS.ProcessEnv = { ...process.env, CLAW_ROOT: code, HOME: fakeHome, XDG_DATA_HOME: "" };
+    // The owner's folder is the platform's own (Application Support on a Mac,
+    // ~/.local/share on Linux): CI runs this on both, so ask userFolder rather
+    // than write one platform's path into the test.
+    const owner = userFolder(process.platform, env, fakeHome);
     write(path.join(owner, ".env"), "TELEGRAM_CHAT_ID=4242\n");
 
-    const env: NodeJS.ProcessEnv = { ...process.env, CLAW_ROOT: code, HOME: fakeHome, XDG_DATA_HOME: "" };
     delete env.CLAW_DATA_DIR;
     delete env.CLAW_CONFIG;
     delete env.CLAW_HOME;
