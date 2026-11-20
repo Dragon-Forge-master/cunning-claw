@@ -64,6 +64,10 @@ header {
 }
 .brand { color: var(--cyan); font-size: 20px; letter-spacing: 4px; text-shadow: 0 0 12px var(--cyan-glow); }
 .brand .sub { font-size: 10px; letter-spacing: 1px; color: var(--cyan-dim); margin-left: 10px; }
+/* The running version, beside the logo: after an update the operator can see
+   it took. Kept on narrow screens, where the subtitle hides. */
+.brand .ver { font-size: 10px; letter-spacing: 1px; color: var(--cyan-dim); border: 1px solid var(--cyan-dim); border-radius: 3px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; text-shadow: none; }
+.brand .ver.updated { color: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 10px var(--cyan-glow); }
 .header-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
 .brain-picker { display: flex; gap: 4px; align-items: center; }

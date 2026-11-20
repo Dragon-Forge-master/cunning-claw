@@ -26,11 +26,36 @@ let serverVoiceAvailable = false;
 // ---------------------------------------------------------------------------
 // Boot sequence
 // ---------------------------------------------------------------------------
+/**
+ * The running version beside the logo. The first time the HUD sees a new
+ * version it says so ("updated from v…") until the next reload, so an
+ * operator who just ran the update can tell it took. The last-seen version
+ * lives in this browser only; without storage the label still shows.
+ */
+function showVersion(version) {
+  const el = document.getElementById("claw-version");
+  if (!el || typeof version !== "string" || !/^\d+\.\d+\.\d+/.test(version)) return;
+  let previous = null;
+  try {
+    previous = localStorage.getItem("claw.lastVersion");
+    localStorage.setItem("claw.lastVersion", version);
+  } catch { /* private window or blocked storage: show the version alone */ }
+  el.textContent = `v${version}`;
+  el.title = `Cunning Claw ${version}`;
+  if (previous && previous !== version) {
+    el.textContent = `v${version} · updated`;
+    el.title = `Updated from v${previous} to v${version}`;
+    el.classList.add("updated");
+  }
+  el.hidden = false;
+}
+
 (async () => {
   let brain = "claude-opus-5";
   try {
     const s = await (await fetch("/api/status")).json();
     learnAddress(s);
+    showVersion(s.version);
     if (s.brains?.active) brain = `${s.brains.active.id} / ${s.brains.active.model}`;
     else if (s.brain?.model) brain = `${s.brain.provider} / ${s.brain.model}`;
   } catch { /* boot copy is cosmetic */ }

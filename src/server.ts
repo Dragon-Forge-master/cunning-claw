@@ -698,6 +698,8 @@ app.get("/api/status", async (_req, res) => {
   const hb = heartbeatStatus();
   const landscape = loadLandscape();
   res.json({
+    // The HUD shows it beside the logo, so an operator can see an update took.
+    version: VERSION,
     text: await systemStatusText(),
     online: brainReady(),
     brain: { provider: activeProvider(), model: brainLabel() },
