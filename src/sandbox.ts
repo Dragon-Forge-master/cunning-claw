@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { config, CONFIG_FILE, DATA_DIR, ROOT } from "./config.js";
+import { config, CONFIG_FILE, DATA_DIR, HOME_ROOT, INSTALLED, ROOT } from "./config.js";
 import { cunningclawMcpPath } from "./mcp-config.js";
 import { collapseHome, PROFILE_DIR } from "./paths.js";
 import { hasBin, host, type Host } from "./platform.js";
@@ -173,7 +173,7 @@ export function sessionSockets(env: NodeJS.ProcessEnv, home: string, opts: { kee
  * `reveal` cannot reach them.
  */
 export function ownSecrets(): string[] {
-  return [path.join(ROOT, ".env"), path.join(DATA_DIR, "mcp-oauth.json"), PROFILE_DIR];
+  return [path.join(HOME_ROOT, ".env"), path.join(DATA_DIR, "mcp-oauth.json"), PROFILE_DIR];
 }
 
 // ---------------------------------------------------------------------------
@@ -347,15 +347,30 @@ export function planWrites(o: {
  * schedule) or the workspace, whose SOUL.md and SCHEDULE.md are read as
  * standing orders — write_file guards those with a card; the shell must not
  * be the way round it.
+ *
+ * An installed claw protects two more things whole: its code, and the
+ * owner's folder. A clone or a download is its own build tree, so a boxed
+ * `npm run build` there is legitimate and its source stays writable (known
+ * gap 5 in docs/SECURITY-ARCHITECTURE.md). An installer's copy is never
+ * built in place — upgrades come from the next installer — so no command has
+ * any business writing it, and wherever it lands (a writable ~/Applications,
+ * an AppImage unpacked under /tmp) it is mounted read-only. The owner's
+ * folder holds nothing a command should change either, and it is where a
+ * planted `.mcp.json` would be read at the next start.
  */
+export function protectedFor(r: {
+  config: string; home: string; data: string; code: string; installed: boolean; mcp: string;
+}): string[] {
+  const out = [r.config, path.join(r.home, ".env"), r.data, path.join(r.home, "workspace"), r.mcp];
+  if (r.installed) out.push(r.code);
+  if (r.home !== r.code) out.push(r.home);
+  return out;
+}
+
 export function protectedPaths(): string[] {
-  return [
-    CONFIG_FILE,
-    path.join(ROOT, ".env"),
-    DATA_DIR,
-    path.join(ROOT, "workspace"),
-    cunningclawMcpPath(),
-  ];
+  return protectedFor({
+    config: CONFIG_FILE, home: HOME_ROOT, data: DATA_DIR, code: ROOT, installed: INSTALLED, mcp: cunningclawMcpPath(),
+  });
 }
 
 function assertSafe(paths: readonly string[]): void {
@@ -747,7 +762,7 @@ export function currentHidden(settings = sandboxSettings(), home = os.homedir())
 /** The boxed command's environment: process.env without credentials or the session's signposts. */
 export function currentSandboxEnv(settings = sandboxSettings(), home = os.homedir()): { env: NodeJS.ProcessEnv; removed: string[] } {
   let names: string[] = [];
-  try { names = dotEnvNames(fs.readFileSync(path.join(ROOT, ".env"), "utf-8")); } catch { /* no .env: nothing extra to drop */ }
+  try { names = dotEnvNames(fs.readFileSync(path.join(HOME_ROOT, ".env"), "utf-8")); } catch { /* no .env: nothing extra to drop */ }
   return sandboxEnv(process.env, names, { keepSshAgent: sshRevealed(settings, home) });
 }
 
@@ -791,7 +806,7 @@ export async function sandboxDoctor(deps: DetectDeps = realDeps): Promise<{ stat
   }
   const home = os.homedir();
   const w = planWrites({
-    cwd: ROOT, configured: s.writable, home, tmpDirs: [os.tmpdir(), "/tmp"],
+    cwd: HOME_ROOT, configured: s.writable, home, tmpDirs: [os.tmpdir(), "/tmp"],
     protectedPaths: protectedPaths(), real: realOrNull,
   });
   // A folder that does not exist yet is not a mistake (it is created, or

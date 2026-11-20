@@ -3,7 +3,7 @@ import net from "node:net";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { config, DATA_DIR, ROOT } from "./config.js";
+import { config, DATA_DIR, HOME_ROOT, ROOT } from "./config.js";
 import { allowedDeskDevice, eyesSettings } from "./eyes.js";
 import { brainHasKey, brainKeyEnv, catalog, envLooksSet, isLocalEndpoint, openAiEndpoint } from "./brain.js";
 import { homeDoctorRows } from "./home-events.js";
@@ -249,7 +249,7 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
     ));
   }
 
-  const envPath = path.join(ROOT, ".env");
+  const envPath = path.join(HOME_ROOT, ".env");
   if (fs.existsSync(envPath)) {
     out.push(row("env", "ok", true, `.env present`));
   } else {
@@ -259,7 +259,9 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
       "env",
       anyKey ? "warn" : "fail",
       !anyKey,
-      `.env is missing — cp .env.example .env and add ${key.envName} (${key.url})`,
+      HOME_ROOT === ROOT
+        ? `.env is missing — cp .env.example .env and add ${key.envName} (${key.url})`
+        : `.env is missing from ${HOME_ROOT} — start Cunning Claw and paste ${key.envName} on the setup page (${key.url})`,
     ));
   }
 
@@ -303,9 +305,9 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
     out.push(row("brains", "ok", true, "At least one brain can run"));
   }
 
-  const piperBin = path.join(ROOT, ".venv", "bin", "piper");
+  const piperBin = path.join(HOME_ROOT, ".venv", "bin", "piper");
   const modelRel = config.voice.piper.model;
-  const modelAbs = path.isAbsolute(modelRel) ? modelRel : path.join(ROOT, modelRel);
+  const modelAbs = path.isAbsolute(modelRel) ? modelRel : path.join(HOME_ROOT, modelRel);
   const voice = await detect();
   if (voice.engine === "none") {
     out.push(row(
@@ -515,14 +517,14 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
  * webcam, which is off by default — so a phone line that could not hear a
  * voice note had nothing in the doctor saying why.
  */
-export async function voiceNotesCheck(root = ROOT): Promise<DoctorCheck> {
+export async function voiceNotesCheck(root = HOME_ROOT): Promise<DoctorCheck> {
   const ffmpeg = await hasBin("ffmpeg");
   const ears = await detectEars(earsSettings(), root);
   const r = voiceNoteDoctorLine({ hear: hearingGap(ffmpeg, ears), speak: speakingGap(ffmpeg, piperMissing()) });
   return row("voice-notes", r.ok ? "ok" : "warn", false, r.line);
 }
 
-export async function earsCheck(root = ROOT): Promise<DoctorCheck> {
+export async function earsCheck(root = HOME_ROOT): Promise<DoctorCheck> {
   const found = await detectEars(earsSettings(), root, true);
   if (found.engine === "whisper") return row("ears", "ok", false, `Ears: local — ${found.detail}`);
   if (found.engine === "off") return row("ears", earsSettings().engine === "off" ? "ok" : "warn", false, `Ears: off — ${found.detail}`);
@@ -547,7 +549,10 @@ export function hasEssentialFailure(checks: DoctorCheck[]): boolean {
 }
 
 export async function main(): Promise<number> {
-  console.log(`CUNNING CLAW doctor  ·  ${host()}  ·  ${ROOT}\n`);
+  console.log(`CUNNING CLAW doctor  ·  ${host()}  ·  ${ROOT}`);
+  // An installed claw's keys, config and memory are not beside its code.
+  if (HOME_ROOT !== ROOT) console.log(`Your things (keys, config, memory, workspace): ${HOME_ROOT}`);
+  console.log("");
   const checks = await runDoctor();
   for (const c of checks) console.log(c.line);
   const failed = hasEssentialFailure(checks);

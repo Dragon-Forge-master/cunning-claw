@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT } from "./config.js";
+import { HOME_ROOT } from "./config.js";
 
 /**
  * Image generation on the key people already have.
@@ -83,7 +83,7 @@ export async function generateImage(
     return { ok: false, message: "Google answered but sent no image — likely a safety refusal for this prompt." };
   }
   const ext = img.mime.includes("jpeg") ? "jpg" : img.mime.includes("webp") ? "webp" : "png";
-  const dir = deps.outDir ?? path.join(ROOT, "workspace", "images");
+  const dir = deps.outDir ?? path.join(HOME_ROOT, "workspace", "images");
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, imageFileName(prompt, deps.now ?? new Date(), ext));
   fs.writeFileSync(file, Buffer.from(img.base64, "base64"));

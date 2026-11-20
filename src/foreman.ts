@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import type { Readable, Writable } from "node:stream";
-import { config, DATA_DIR, ROOT } from "./config.js";
+import { config, DATA_DIR, HOME_ROOT, ROOT } from "./config.js";
 import { redact } from "./redact.js";
 import { fenceUntrusted } from "./browser-ax.js";
 import { defuse } from "./workspace.js";
@@ -1207,7 +1207,7 @@ function realDeps(): ForemanDeps {
     },
     env: process.env,
     dotEnvNames: () => {
-      try { return dotEnvNames(fs.readFileSync(path.join(ROOT, ".env"), "utf-8")); } catch { return []; }
+      try { return dotEnvNames(fs.readFileSync(path.join(HOME_ROOT, ".env"), "utf-8")); } catch { return []; }
     },
     dir: path.join(DATA_DIR, "foreman"),
     settings: () => foremanSettings(),

@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-957%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-981%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -64,15 +64,36 @@ were being had. Which is exactly what this does when a web page tries to give it
 
 ### No terminal: download and double-click
 
-Each tagged release has a download for Windows, macOS (Apple silicon and Intel)
-and Linux on the [Releases page](https://github.com/Dragon-Forge-master/cunning-claw/releases).
-Unzip it and double-click **Cunning Claw** — Node is inside, there is nothing else
-to install. Your browser opens on the setup page, which walks you through a
-[free Google key](#a-free-brain-the-google-key-step-by-step). The bundles are not code-signed
-yet, so Windows and macOS ask once before the first run; `READ ME FIRST.txt` in
-the download says exactly what to click. Each one is started from its own launcher
-on a real Windows, macOS and Linux machine (`.github/workflows/bundle.yml`) before
-it is published.
+Each tagged release on the [Releases page](https://github.com/Dragon-Forge-master/cunning-claw/releases)
+has an installer for your computer — Node is inside, there is nothing else to install:
+
+- **Windows:** `Cunning-Claw-Setup-<version>.exe`. Installs for you alone, no administrator
+  password; Start menu entry, an optional desktop icon, and an uninstaller in *Add or remove
+  programs* that keeps your keys and memory unless you tick the box.
+- **macOS:** `Cunning-Claw-<version>-mac-arm64.dmg` (Apple silicon) or `…-mac-x64.dmg` (Intel).
+  Open it and drag **Cunning Claw** into Applications.
+- **Linux:** `Cunning-Claw-<version>-linux-x86_64.AppImage` (or `aarch64`). One file: allow it
+  to run (*Properties → Permissions → Allow executing file as program*, or `chmod +x`), then
+  double-click it. Without FUSE it unpacks itself to a temporary folder instead; if yours
+  does not, run it with `--appimage-extract-and-run`.
+
+Your browser opens on the setup page, which walks you through a
+[free Google key](#a-free-brain-the-google-key-step-by-step). Your keys, memory and notes live
+in your own folder (`%LOCALAPPDATA%\CunningClaw`, `~/Library/Application Support/cunningclaw`,
+`~/.local/share/cunningclaw`), so upgrading is installing the new version over the old one.
+None of it is code-signed yet, so Windows and macOS ask once before the first run:
+on Windows **More info → Run anyway**; on a Mac **right-click → Open**, or on macOS 15
+*System Settings → Privacy & Security → Open Anyway*.
+
+Prefer a folder you keep yourself? The same release has a `.zip` / `.tar.gz` of each: unzip
+it, double-click **Cunning Claw**, and everything stays inside that folder; `READ ME FIRST.txt`
+says what to click. To move an unzipped claw's keys and memory into the installed one, start
+the installed one once with `--import <the old folder>` (details, signing and the rest in
+[docs/INSTALLERS.md](docs/INSTALLERS.md)). Before a release is published, the Windows
+installer, the Apple-silicon `.dmg`, the x86_64 AppImage and the Windows, Apple-silicon and
+x64 Linux archives are each installed or unzipped and started on a real Windows, macOS and
+Linux machine (`.github/workflows/bundle.yml`). The Arm Linux and Intel Mac builds are not
+run before release yet.
 
 ### A free brain: the Google key, step by step
 
@@ -155,7 +176,8 @@ npm run dev
 
 ### Updating
 
-One command, same on every platform:
+Installed from a release? Install the new version over the old one; your own folder is not
+touched. From source, one command, same on every platform:
 
 ```bash
 npm run update
@@ -918,7 +940,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 957 tests
+npm test        # 981 tests
 npm run check   # tsc --noEmit
 ```
 

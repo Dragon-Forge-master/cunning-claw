@@ -18,6 +18,7 @@ import {
   normalisePath,
   planHidden,
   planWrites,
+  protectedFor,
   sandboxDoctor,
   sandboxSettings,
   sbplProfile,
@@ -234,6 +235,36 @@ test("settings default to auto with the network on, and a typo is not off", () =
   assert.equal(sandboxSettings({ mode: "required", network: false }).network, false);
 });
 
+// Known gap 5: a clone is its own build tree, so its source stays writable to
+// boxed commands. An installer's copy is never built in place, so its code and
+// the owner's folder are protected whole — wherever they land, including an
+// AppImage unpacked under /tmp (a writable temp dir) or a .app in a writable
+// ~/Applications.
+test("an installed claw's code and the owner's folder are read-only to boxed commands; a clone's source is not", () => {
+  const installed = protectedFor({
+    config: "/home/owner/.local/share/cunningclaw/claw.config.json", home: "/home/owner/.local/share/cunningclaw",
+    data: "/home/owner/.local/share/cunningclaw/data", code: "/tmp/appimage_extracted_abc/app", installed: true,
+    mcp: "/home/owner/.config/cunningclaw/mcp.json",
+  });
+  assert.ok(installed.includes("/tmp/appimage_extracted_abc/app"), "the code");
+  assert.ok(installed.includes("/home/owner/.local/share/cunningclaw"), "the owner's folder, where a planted .mcp.json would be read");
+  assert.ok(installed.includes("/home/owner/.local/share/cunningclaw/.env"));
+
+  const w = planWrites({
+    cwd: "/home/owner/Applications/Cunning Claw.app/Contents/Resources/app", configured: [], home: HOME, tmpDirs: ["/tmp"],
+    protectedPaths: [...installed, "/home/owner/Applications/Cunning Claw.app/Contents/Resources/app"], real: identity,
+  });
+  assert.ok(w.readOnly.includes("/tmp/appimage_extracted_abc/app"), "unpacked under a writable /tmp, and mounted read-only over it");
+  assert.ok(w.readOnly.includes("/home/owner/Applications/Cunning Claw.app/Contents/Resources/app"), "even when the model picks it as cwd");
+
+  const clone = protectedFor({
+    config: "/home/owner/cunning-claw/claw.config.json", home: "/home/owner/cunning-claw", data: "/home/owner/cunning-claw/data",
+    code: "/home/owner/cunning-claw", installed: false, mcp: "/home/owner/.config/cunningclaw/mcp.json",
+  });
+  assert.ok(!clone.includes("/home/owner/cunning-claw"), "a clone builds and tests itself in its own folder");
+  assert.ok(clone.includes("/home/owner/cunning-claw/workspace"));
+});
+
 // The real thing, where this machine can run it. Skipped (and saying so) where
 // bubblewrap is absent or user namespaces are off, so the suite stays green on
 // a Mac or a locked-down CI runner.
@@ -262,6 +293,33 @@ test("bubblewrap really refuses a write outside the box and allows one inside", 
   }
 });
 
+
+test("bubblewrap really refuses a write to an installed claw's code unpacked under the temp dir", { skip: live.engine !== "bwrap" ? `no usable bubblewrap: ${live.why}` : false }, async () => {
+  // The AppImage's extract-and-run mode unpacks the code into the temp dir,
+  // which boxed commands may write. protectedFor puts the code root back to
+  // read-only; this is that, for real.
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "claw-sbx-tmp-"));
+  const code = path.join(tmpRoot, "appimage_extracted_test", "app");
+  fs.mkdirSync(path.join(code, "dist"), { recursive: true });
+  fs.writeFileSync(path.join(code, "dist", "boot.js"), "// the claw");
+  try {
+    const real = fs.realpathSync(tmpRoot);
+    const w = planWrites({
+      cwd: real, configured: [], home: os.homedir(), tmpDirs: [real],
+      protectedPaths: protectedFor({ config: "/nonexistent/c.json", home: "/nonexistent/home", data: "/nonexistent/data", code: path.join(real, "appimage_extracted_test", "app"), installed: true, mcp: "/nonexistent/mcp.json" }),
+      real: (p) => { try { return fs.realpathSync(p); } catch { return null; } },
+    });
+    const run = (command: string) => execFileAsync("bwrap", bwrapArgs({
+      writable: w.writable, readOnly: w.readOnly, network: false, shell: "/bin/sh", command,
+    }), { cwd: real }).then(() => "ok", (e) => String(e.stderr));
+
+    assert.equal(await run("echo scratch > scratch.txt"), "ok", "the temp dir itself stays writable");
+    assert.match(await run("echo 'evil()' > appimage_extracted_test/app/dist/boot.js"), /Read-only file system/);
+    assert.equal(fs.readFileSync(path.join(code, "dist", "boot.js"), "utf-8"), "// the claw", "the code is untouched");
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
 
 // --- Secrets hidden from the box -------------------------------------------
 // The box first confined writes only, so `cat ~/.ssh/id_ed25519` worked inside

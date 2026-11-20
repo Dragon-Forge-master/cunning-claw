@@ -1,5 +1,5 @@
 import path from "node:path";
-import { ROOT } from "./config.js";
+import { HOME_ROOT } from "./config.js";
 
 /**
  * The pure half of the schedule: the format, and what counts as a NEW standing
@@ -10,7 +10,7 @@ import { ROOT } from "./config.js";
  * during initialisation.
  */
 
-export const SCHEDULE_FILE = path.join(ROOT, "workspace", "SCHEDULE.md");
+export const SCHEDULE_FILE = path.join(HOME_ROOT, "workspace", "SCHEDULE.md");
 
 export interface ScheduleEntry {
   raw: string;

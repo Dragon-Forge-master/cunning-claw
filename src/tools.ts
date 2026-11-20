@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import type Anthropic from "@anthropic-ai/sdk";
-import { config, DATA_DIR, ROOT } from "./config.js";
+import { config, DATA_DIR, HOME_ROOT, ROOT } from "./config.js";
 import { remember, forget, searchMemory } from "./memory.js";
 import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
@@ -1634,8 +1634,11 @@ async function runCommand(input: { command: string; cwd?: string; unsandboxed?: 
     if (!ok) return "The user declined to run this command.";
   }
   const ran = await execIn(input.command, cwd, box);
+  // Only a clone is a repository; an installed claw's code (ROOT, apart from
+  // HOME_ROOT) is not, and re-running there would fail the same way.
   if (
     /not a git repository/i.test(ran) &&
+    ROOT === HOME_ROOT &&
     path.resolve(cwd) !== path.resolve(ROOT)
   ) {
     const again = await sandbox.prepareCommand({ command: input.command, cwd: ROOT, shell: shellPath, unsandboxed: input.unsandboxed === true });
@@ -1647,7 +1650,9 @@ async function runCommand(input: { command: string; cwd?: string; unsandboxed?: 
 }
 
 /**
- * Shell default is this install (the Cunning Claw repo), not $HOME.
+ * Shell default is this install (the Cunning Claw repo), not $HOME — or,
+ * for an installed claw, the owner's folder: its code is read-only and
+ * nothing to work in (HOME_ROOT, src/config.ts; the same folder for a clone).
  *
  * A bare relative name ("cunningclaw_landing_page") almost always means a
  * folder the model made in $HOME, not one inside this repo — try both. Never
@@ -1656,15 +1661,15 @@ async function runCommand(input: { command: string; cwd?: string; unsandboxed?: 
  * and once sent everyone — model and maintainer alike — hunting sandboxes.
  */
 export function resolveCommandCwd(cwd?: string): string {
-  if (!cwd || !String(cwd).trim()) return ROOT;
+  if (!cwd || !String(cwd).trim()) return HOME_ROOT;
   const given = expandHome(String(cwd).trim());
-  const inRepo = path.resolve(ROOT, given);
+  const inRepo = path.resolve(HOME_ROOT, given);
   if (fs.existsSync(inRepo)) return inRepo;
   if (!path.isAbsolute(given)) {
     const inHome = path.join(os.homedir(), given);
     if (fs.existsSync(inHome)) return inHome;
   }
-  return path.resolve(ROOT, given);
+  return path.resolve(HOME_ROOT, given);
 }
 
 /**
@@ -1819,13 +1824,14 @@ async function readFileTool(input: { path: string; offset?: number; limit?: numb
  */
 export function isPolicyFile(p: string): boolean {
   const abs = path.resolve(p);
-  return abs === path.resolve(CONFIG_FILE) || abs === path.join(ROOT, "claw.config.json") || abs === path.join(ROOT, ".env");
+  return [CONFIG_FILE, ...[ROOT, HOME_ROOT].flatMap((r) => [path.join(r, "claw.config.json"), path.join(r, ".env")])]
+    .some((f) => abs === path.resolve(f));
 }
 
 export function isIdentityFile(p: string): boolean {
   const abs = path.resolve(p);
   return ["SOUL.md", "IDENTITY.md", "HEARTBEAT.md"].some(
-    (f) => abs === path.join(ROOT, "workspace", f),
+    (f) => abs === path.join(HOME_ROOT, "workspace", f),
   );
 }
 
@@ -1881,7 +1887,7 @@ export function freeWriteZone(p: string, exists: boolean): boolean {
   const abs = path.resolve(p);
   const zones = [
     path.join(os.homedir(), "Documents", "CunningClaw"),
-    path.join(ROOT, "workspace"),
+    path.join(HOME_ROOT, "workspace"),
     path.join(os.homedir(), "sites"),
     os.tmpdir(),
   ];
@@ -2029,7 +2035,9 @@ export async function systemStatusText(): Promise<string> {
     `Memory: ${memUsed}GB / ${memTotal}GB used`,
     `Disk /: ${disk || "unknown"}`,
     `Uptime: ${uptimeH}h`,
-    `Install (Cunning Claw repo): ${collapseHome(ROOT)}`,
+    ROOT === HOME_ROOT
+      ? `Install (Cunning Claw repo): ${collapseHome(ROOT)}`
+      : `Install (installed app, read-only): ${collapseHome(ROOT)}\nOwner's folder (keys, config, data, workspace): ${collapseHome(HOME_ROOT)}`,
     topProcs && `Top processes:\n${topProcs}`,
   ].filter(Boolean).join("\n");
 }

@@ -1,6 +1,8 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveHomeRoot, seedHome } from "./home-root.js";
 import { addressAs, applyOwner, loadOwner } from "./owner.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -19,9 +21,33 @@ export const ROOT = process.env.CLAW_ROOT
   ? path.resolve(process.env.CLAW_ROOT)
   : path.resolve(here, "..");
 
+/**
+ * Where the owner's things live: `.env`, `claw.config.json`, `data/`,
+ * `workspace/`. ROOT itself for a clone or an unzipped download, as it always
+ * was; a per-user folder for an installed app, whose code is read-only
+ * (src/home-root.ts says which folder, and why).
+ */
+const homeRoot = resolveHomeRoot({
+  codeRoot: ROOT, env: process.env, platform: process.platform, homedir: os.homedir(), exists: fs.existsSync,
+});
+export const HOME_ROOT = homeRoot.home;
+/** True when this claw runs from an installer's read-only copy (the marker is in ROOT). */
+export const INSTALLED = homeRoot.installed;
+
+// Before anything reads the config or the workspace: a first run gets the
+// shipped defaults, an upgrade refreshes the ones the owner never touched,
+// and nothing the owner made is ever overwritten.
+if (HOME_ROOT !== ROOT) {
+  try {
+    seedHome(ROOT, HOME_ROOT);
+  } catch (err) {
+    console.warn(`  ⚠ Could not set up ${HOME_ROOT}: ${(err as Error).message}`);
+  }
+}
+
 // Load .env before anything else reads process.env (the Anthropic client is
 // constructed at module import time, so this must happen first).
-const envPath = path.join(ROOT, ".env");
+const envPath = path.join(HOME_ROOT, ".env");
 if (fs.existsSync(envPath)) {
   for (const raw of fs.readFileSync(envPath, "utf-8").split("\n")) {
     const line = raw.trim().replace(/^export\s+/, "");
@@ -36,12 +62,18 @@ if (fs.existsSync(envPath)) {
 }
 export const DATA_DIR = process.env.CLAW_DATA_DIR
   ? path.resolve(process.env.CLAW_DATA_DIR)
-  : path.join(ROOT, "data");
+  : path.join(HOME_ROOT, "data");
 
-/** The config file, so two claws on one machine can differ (port, persona, brain). */
+/**
+ * The config file, so two claws on one machine can differ (port, persona,
+ * brain). The shipped one in ROOT only when the home root could not be
+ * seeded — a claw that starts on its defaults beats one that does not start.
+ */
 export const CONFIG_FILE = process.env.CLAW_CONFIG
   ? path.resolve(process.env.CLAW_CONFIG)
-  : path.join(ROOT, "claw.config.json");
+  : fs.existsSync(path.join(HOME_ROOT, "claw.config.json"))
+    ? path.join(HOME_ROOT, "claw.config.json")
+    : path.join(ROOT, "claw.config.json");
 
 /**
  * One thing in the house worth telling the operator about. Declared here, the
