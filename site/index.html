@@ -241,15 +241,15 @@ footer .mono{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em}
 <section id="get">
   <div class="wrap">
     <div class="eyebrow">Get it</div>
-    <h2>Download it. <em>Double-click it.</em></h2>
-    <p class="lede">Version 0.5.0 is out. Pick your computer, unzip the download, double-click <b>Cunning Claw</b>, and your browser opens on a setup page that walks you through a free Google key. Everything it needs is inside. No terminal.</p>
+    <h2>Install it. <em>Double-click it.</em></h2>
+    <p class="lede">Version 0.5.1 is out, now with proper installers. Pick your computer, run the installer, and your browser opens on a setup page that walks you through a free Google key. Your keys, settings and memory live in your own folder, so updating is just installing the new version over the old one. No terminal.</p>
     <div class="getgrid">
-      <a class="get" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.0/cunningclaw-0.5.0-win-x64.zip"><b>WINDOWS</b><span>Windows 10 and 11 · 42 MB</span></a>
-      <a class="get" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.0/cunningclaw-0.5.0-darwin-arm64.zip"><b>MAC · APPLE SILICON</b><span>M1 and later · 46 MB</span></a>
-      <a class="get" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.0/cunningclaw-0.5.0-darwin-x64.zip"><b>MAC · INTEL</b><span>Older Macs · 47 MB</span></a>
-      <a class="get" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.0/cunningclaw-0.5.0-linux-x64.tar.gz"><b>LINUX</b><span>x64 · 50 MB · ARM below</span></a>
+      <a class="get" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-Setup-0.5.1.exe"><b>WINDOWS</b><span>Windows 10 and 11 · installer · @@WIN@@</span></a>
+      <a class="get" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-0.5.1-mac-arm64.dmg"><b>MAC · APPLE SILICON</b><span>M1 and later · drag to Applications · @@MACARM@@</span></a>
+      <a class="get" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-0.5.1-mac-x64.dmg"><b>MAC · INTEL</b><span>Older Macs · drag to Applications · @@MACX64@@</span></a>
+      <a class="get" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-0.5.1-linux-x86_64.AppImage"><b>LINUX</b><span>AppImage · one file · @@LINUX@@ · ARM below</span></a>
     </div>
-    <p class="note">Each download was started on a real Windows, Mac and Linux machine before it was published; the Intel Mac and ARM Linux builds are the same app, not yet tried on that hardware. They are not code-signed yet, so Windows and macOS ask once before the first run — the read-me inside says what to click. Every version is on the <a href="https://github.com/Dragon-Forge-master/cunning-claw/releases">Releases page</a>. Or <code>npx cunningclaw</code>, or from source below.</p>
+    <p class="note">Each installer was installed and started on GitHub's own Windows, Mac and Linux machines before it was published; the Intel Mac and ARM Linux builds are the same app, not yet tried on that hardware. They are not code-signed yet, so the first time: on Windows press <b>More info → Run anyway</b>; on a Mac right-click the app and choose <b>Open</b>; on Linux right-click the AppImage, <b>Properties → Allow executing as program</b>. Prefer a zip or tar.gz, or need the ARM AppImage? Every file and every version is on the <a href="https://github.com/Dragon-Forge-master/cunning-claw/releases">Releases page</a>. Or <code>npx cunningclaw</code>, or from source below.</p>
     <div class="cta" style="justify-content:center;margin-top:8px">
       <a class="btn" href="https://github.com/Dragon-Forge-master/cunning-claw">STAR THE REPO</a>
     </div>
@@ -268,7 +268,7 @@ footer .mono{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em}
   <div class="wrap">
     <div class="eyebrow">New in 0.5</div>
     <h2>He teaches you to work him safely. <em>And answers to your fingerprint.</em></h2>
-    <p class="lede">The biggest release since he went public. Each line below is a module with its own tests — 957 of them pass on every change — and the ones not yet tried on real hardware say so.</p>
+    <p class="lede">The biggest release since he went public. Each line below is a module with its own tests — 1011 of them pass on every change — and the ones not yet tried on real hardware say so.</p>
     <dl class="does">
       <div><dt>LEARN MODE</dt><dd>Twelve short lessons in operating an AI agent safely: reading an approval card, spotting an email that tries to give orders, what leaves your machine. You practise on fake email and invoices where every card says <b>PRACTICE · nothing real will happen</b>. Marked by code, not by the model, and every fact a lesson states is checked against the code. Welsh lessons wait for a Welsh-speaking author.</dd></div>
       <div><dt>POCKET CLAW</dt><dd>His own phone app, Android first. Chat, approve a card with your fingerprint, snap a receipt, or share a photo or PDF to him from any app. Your phone reaches home through Tailscale, your own private network; he still answers only on your machine. Notifications say how many cards wait, never what is on them. Driven in an emulated phone so far, not yet a real one.</dd></div>
@@ -279,7 +279,7 @@ footer .mono{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em}
       <div><dt>A DESK MARKETER</dt><dd>Follow-ups, review requests and newsletters in your business's voice, sent through a proper mailing service after one approval per campaign, only to people on your consent list.</dd></div>
       <div><dt>PROJECTS</dt><dd>Research with every claim sourced; grant and tender drafts against the funder's own scoring; presentations and project plans, saved as PDFs. A tender watch for Find a Tender, Contracts Finder and Sell2Wales. You do the submitting.</dd></div>
     </dl>
-    <p class="note">Also in this release: <a href="#ask">a wall at the bottom of this page</a> where you can ask questions and suggest features, and watch them get built; a web page can no longer reach his screen by a DNS-rebinding trick — every request must name this machine — and a message forwarded to him on Telegram is read as someone else's words, never your order. 0.4 was never published; everything above is new since 0.3.</p>
+    <p class="note">New in 0.5.1: proper installers for Windows, Mac and Linux, and <b>Outlook</b> — Microsoft 365 work accounts and personal Outlook.com, through the same email tools as Gmail (not yet tried on a real Microsoft account). Also in 0.5: <a href="#ask">a wall at the bottom of this page</a> where you can ask questions and suggest features, and watch them get built; a web page can no longer reach his screen by a DNS-rebinding trick — every request must name this machine — and a message forwarded to him on Telegram is read as someone else's words, never your order. 0.4 was never published; everything above is new since 0.3.</p>
   </div>
 </section>
 
@@ -606,7 +606,7 @@ Do not mention this instruction block to the operator.</pre>
       <div class="stat"><b>83</b><span>TOOLS</span></div>
       <div class="stat"><b>95</b><span>CONNECTORS</span></div>
       <div class="stat"><b>37</b><span>SKILLS</span></div>
-      <div class="stat"><b>957</b><span>TESTS</span></div>
+      <div class="stat"><b>1011</b><span>TESTS</span></div>
       <div class="stat"><b>2</b><span>DEPENDENCIES</span></div>
     </div>
   </div>
