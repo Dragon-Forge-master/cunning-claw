@@ -36,7 +36,11 @@ nothing else. Adding a dependency is a decision to argue for in the commit messa
 
 Config is `claw.config.json` (read once at import in `src/config.ts`, which also loads `.env`
 first — the Anthropic client is constructed at import time). `CLAW_ROOT`, `CLAW_DATA_DIR` and
-`CLAW_CONFIG` relocate an install so two claws can run on one machine.
+`CLAW_CONFIG` relocate an install so two claws can run on one machine. `ROOT` is the code;
+`HOME_ROOT` (`src/home-root.ts`) is the owner's things — `.env`, config, `data/`, `workspace/`.
+They are the same folder for a clone or an unzipped download; an installed claw (`installed.json`
+beside the code) keeps them in the per-user folder, or wherever `CLAW_HOME` says. Anything that
+writes beside the install writes under `HOME_ROOT`, never `ROOT`.
 
 ## How a turn flows
 
