@@ -36,3 +36,10 @@ test("a corrupt or hand-edited file falls back to the default rather than breaki
   assert.deepEqual(loadPrefs(dir), DEFAULT_PREFS);
   assert.deepEqual(normalisePrefs({ font: 7, extra: "x" }), DEFAULT_PREFS);
 });
+
+test("the plain face is a choice of its own, stored and read back like the others", () => {
+  const dir = tmpDir();
+  assert.equal(savePrefs(dir, { font: "plain" }).font, "plain");
+  assert.equal(loadPrefs(dir).font, "plain", "plain survives a reload, not quietly reset to standard");
+  assert.equal(normalisePrefs({ font: "plain" }).font, "plain");
+});

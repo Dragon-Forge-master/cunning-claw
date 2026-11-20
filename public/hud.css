@@ -27,6 +27,22 @@
   src: url("/fonts/opendyslexic-latin-700-normal.woff2") format("woff2");
   font-weight: 700; font-style: normal; font-display: swap;
 }
+/* Plain: the system's everyday sans, for anyone who finds a monospace reads
+   like code. Same rule as the dyslexic face — code keeps a true monospace. */
+:root[data-font="plain"] { --mono: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif; }
+:root[data-font="plain"] pre,
+:root[data-font="plain"] code,
+:root[data-font="plain"] kbd,
+:root[data-font="plain"] textarea.code { font-family: var(--code); }
+:root[data-font="plain"] .msg { font-size: 14px; line-height: 1.6; }
+/* The Aa menu: three faces, each shown in its own face so the choice is seen, not described. */
+.font-menu { position: absolute; z-index: 60; background: var(--bg); border: 1px solid var(--cyan-dim); border-radius: 6px; padding: 6px; display: grid; gap: 4px; min-width: 210px; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+.font-menu button { text-align: left; padding: 8px 10px; background: transparent; color: var(--text); border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 13px; letter-spacing: 0; text-transform: none; }
+.font-menu button:hover, .font-menu button:focus-visible { border-color: var(--cyan-dim); outline: none; }
+.font-menu button[aria-checked="true"] { border-color: var(--cyan); color: var(--cyan); }
+.font-menu .f-standard { font-family: "JetBrains Mono", "Fira Code", monospace; }
+.font-menu .f-plain { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif; }
+.font-menu .f-dyslexic { font-family: "OpenDyslexic", "Verdana", sans-serif; }
 :root[data-font="dyslexic"] { --mono: "OpenDyslexic", "Verdana", sans-serif; }
 :root[data-font="dyslexic"] pre,
 :root[data-font="dyslexic"] code,

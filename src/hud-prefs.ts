@@ -13,10 +13,15 @@ import path from "node:path";
  * data dir, so it follows the install across every browser that opens the
  * HUD rather than living in one browser's localStorage.
  *
+ * "plain" was added on 20 Nov 2026 when the operator asked for "normal text
+ * as well": the HUD's own face is a monospace, which reads as code to most
+ * people, and the only alternative was OpenDyslexic. Plain is the system's
+ * everyday sans — what every other app on the machine uses.
+ *
  * A leaf: fs and path only, directory injected so tests need no DATA_DIR.
  */
 
-export const FONTS = ["standard", "dyslexic"] as const;
+export const FONTS = ["standard", "plain", "dyslexic"] as const;
 export type HudFont = (typeof FONTS)[number];
 export type HudPrefs = { font: HudFont };
 
