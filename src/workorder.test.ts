@@ -100,6 +100,15 @@ test("no plan may pre-authorise keystroke injection — a send in disguise", () 
   assert.equal(focusOnly.ok, true, "focus without typing is plannable");
 });
 
+test("no plan may pre-authorise a coding job: its card carries the full brief every time", () => {
+  const verdict = stepIsPermitted(
+    { tool: "delegate_code", match: "start app: fix the pagination", summary: "hand the fix to Claude Code" },
+    isDenied,
+  );
+  assert.equal(verdict.ok, false);
+  assert.match(verdict.ok ? "" : verdict.why, /full brief/);
+});
+
 test("a step must name something concrete", () => {
   const vague = prepare("Do the thing", steps(
     { tool: "run_command", match: "   ", summary: "sort it out" },

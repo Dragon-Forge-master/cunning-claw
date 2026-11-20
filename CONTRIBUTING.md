@@ -18,6 +18,8 @@ src/windows.ts     The Windows half: PowerShell, SendKeys, System.Drawing
 src/paths.ts       expandHome + the sensitive-file denylist every file tool obeys
 src/documents.ts   read_document: PDF/Office/OpenDocument/HTML/images to fenced text; a bounded zip reader
 src/remote.ts      ssh to another machine: boxes, detached jobs, file transfer
+src/foreman.ts     delegate_code: a coding job for Claude Code, headless, in a fresh worktree; card, taint refusal, stripped env
+src/jobs.ts        mission control: the registry of long work the HUD's JOBS sheet and the jobs tool show
 src/workorder.ts   approve a plan once instead of every step of it
 src/injection.ts   scans fenced text for orders aimed at the model; warns, flags, alarms the turn
 src/sandbox.ts     the shell's box: bubblewrap / sandbox-exec argv, writable folders, hidden key stores, scrubbed env

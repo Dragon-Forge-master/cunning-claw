@@ -347,6 +347,45 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; position: relative; }
 }
 .hdr-badge[hidden] { display: none; }
 
+/* Mission control — the jobs sheet, the skills sheet's sibling */
+#jobs-overlay {
+  position: fixed; inset: 0; z-index: 81;
+  background: rgba(4, 8, 15, 0.72);
+  display: flex; align-items: stretch; justify-content: flex-end;
+}
+#jobs-overlay[hidden] { display: none; }
+.jobs-sheet { width: min(520px, 100%); }
+.jobs-empty { font-size: 11px; color: var(--cyan-dim); line-height: 1.5; }
+.job-card {
+  background: rgba(53,214,237,0.04); border: 1px solid var(--cyan-dim);
+  padding: 10px 12px; margin-bottom: 8px; font-family: var(--mono);
+}
+.job-card[data-state="running"] { border-color: var(--cyan); box-shadow: 0 0 10px var(--cyan-glow); }
+.job-card[data-state="needs-approval"], .job-card[data-state="queued"] { border-color: var(--amber); }
+.job-card[data-state="failed"] { border-color: var(--red); }
+.job-card[data-state="cancelled"] { opacity: 0.75; }
+.job-top { display: flex; align-items: baseline; gap: 8px; }
+.job-state {
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 1px 6px;
+  border: 1px solid currentColor; color: var(--cyan-dim); white-space: nowrap;
+}
+.job-card[data-state="running"] .job-state, .job-card[data-state="done"] .job-state { color: var(--cyan); }
+.job-card[data-state="needs-approval"] .job-state, .job-card[data-state="queued"] .job-state { color: var(--amber); }
+.job-card[data-state="failed"] .job-state { color: var(--red); }
+.job-title { color: var(--cyan); font-size: 13px; letter-spacing: 1px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.job-meta { font-size: 10px; color: var(--cyan-dim); margin-top: 4px; letter-spacing: 0.5px; }
+.job-status { font-size: 11px; color: var(--text); line-height: 1.45; margin-top: 4px; overflow-wrap: anywhere; }
+.job-actions { display: flex; gap: 6px; margin-top: 8px; }
+.job-actions .ctl.cancel { border-color: var(--red); color: var(--red); }
+.job-review {
+  margin-top: 8px; max-height: 320px; overflow: auto; white-space: pre-wrap;
+  font-size: 11px; line-height: 1.5; color: var(--text);
+  background: #061018; border: 1px solid var(--cyan-dim); padding: 8px;
+}
+@media (max-width: 900px) {
+  .jobs-sheet { width: 100%; }
+}
+
 /* Connectors — Claude's Customize → Connectors, in this HUD */
 #mcp-overlay {
   position: fixed; inset: 0; z-index: 82;

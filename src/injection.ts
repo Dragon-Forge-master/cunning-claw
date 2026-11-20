@@ -117,7 +117,7 @@ const RULES: Rule[] = [
   { signal: "addressed", weight: 0.55, re: new RegExp(String.raw`\b(?:dear|hey|hello|hi)\s+(?:ai|ai assistant|assistant|chatbot|llm|language model|cunning\s?claw)\s*[,:!]`) },
   { signal: "addressed", weight: 0.55, re: new RegExp(String.raw`\b${AI}s?\s+(?:reading|processing|summari[sz]ing|parsing|browsing|viewing|scraping|analy[sz]ing)\s+(?:this|these)\b`) },
   // Third-party text naming the claw's own tools is aiming at the claw.
-  { signal: "addressed", weight: 0.45, re: /\b(?:run_command|send_email|send_chat|write_file|edit_file|http_request|remote_run|remote_job|skill_write|memory_save|mcp_add|browser_click|desktop_type|work_order)\b/ },
+  { signal: "addressed", weight: 0.45, re: /\b(?:run_command|send_email|send_chat|write_file|edit_file|http_request|remote_run|remote_job|delegate_code|skill_write|memory_save|mcp_add|browser_click|desktop_type|work_order)\b/ },
 
   // --- authority: forged permission, or a request for secrecy -----------
   { signal: "authority", weight: 0.6, re: /\b(?:do not|don't|never)\s+(?:tell|inform|alert|notify|warn|mention (?:this|it) to|let)\s+(?:the|your)\s+(?:user|operator|owner|human|principal|boss|master)\b/ },

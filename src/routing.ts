@@ -34,6 +34,10 @@ export const UNTRUSTED_TOOLS = new Set([
   // A receipt is printed by the shop. Its supplier line is anyone's words,
   // and every receipt tool hands it back — the listing and the fix included.
   "receipt_file", "receipts", "receipt_fix",
+  // A foreman job's summary and file list are written by Claude Code after
+  // reading the project's files — dependencies, fixtures, other people's
+  // READMEs. The words of a model that read strangers are strangers' words.
+  "code_job_report",
 ]);
 
 /**

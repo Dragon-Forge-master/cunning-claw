@@ -20,6 +20,7 @@
         <div id="brain-picker" class="brain-picker" title="Which model thinks. Same tools on every brain."></div>
         <button id="skills-toggle" class="ctl" title="Capabilities — click to arm a skill">SKILLS</button>
         <button id="mcp-toggle" class="ctl" title="Connectors — MCP servers such as Canva, GitHub, Notion">CONNECT<span id="mcp-badge" class="hdr-badge" hidden></span></button>
+        <button id="jobs-toggle" class="ctl" title="Mission control — coding jobs and other long work, live">JOBS<span id="jobs-badge" class="hdr-badge" hidden></span></button>
         <button id="preview-toggle" class="ctl" title="In-HUD browser viewport">VIEWPORT</button>
         <button id="font-toggle" class="ctl" title="Reading face: OpenDyslexic on or off" aria-pressed="false">Aa</button>
         <button id="tts-toggle" class="ctl active" title="Voice output">VOICE</button>
@@ -104,6 +105,19 @@
         <button type="button" id="skills-close" class="ctl">CLOSE</button>
       </div>
       <div id="skills-list"></div>
+    </div>
+  </div>
+
+  <div id="jobs-overlay" hidden>
+    <div class="skills-sheet jobs-sheet">
+      <div class="skills-head">
+        <div>
+          <div class="panel-title">MISSION CONTROL <span id="jobs-count" class="mcp-count"></span></div>
+          <p class="skills-hint">Long work in flight and lately done. A coding job runs in its own worktree and branch; it never pushes or merges — Review shows the branch and the commands to merge it yourself.</p>
+        </div>
+        <button type="button" id="jobs-close" class="ctl">CLOSE</button>
+      </div>
+      <div id="jobs-list"></div>
     </div>
   </div>
 

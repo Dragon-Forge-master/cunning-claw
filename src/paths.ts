@@ -99,6 +99,10 @@ const SENSITIVE_PREFIXES = [
   path.join(DATA_DIR, "history.json"),
   path.join(DATA_DIR, "memory.json"),
   path.join(DATA_DIR, "remote-jobs.json"),
+  // Foreman transcripts and records: every line Claude Code streamed, and the
+  // brief. Redacted on the way in, and still not for read_file to hand out
+  // unfenced — code_job_report is the fenced way to read them.
+  path.join(DATA_DIR, "foreman", "jobs"),
   path.join(ROOT, ".env"),
   // The cookie jar IS the logged-in Gmail and WhatsApp session.
   PROFILE_DIR,

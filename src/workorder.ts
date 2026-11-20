@@ -83,6 +83,12 @@ export function stepIsPermitted(
   if (!step.tool || !step.match?.trim()) {
     return { ok: false, why: "a step must name a tool and the exact thing it does" };
   }
+  // A coding job's brief becomes code that runs on this machine, and its card
+  // is the only place the operator reads that brief in full. A plan line is a
+  // summary of a brief, which is not the same thing.
+  if (step.tool === "delegate_code") {
+    return { ok: false, why: "a coding job for Claude Code shows its own card with the full brief every time — no plan may pre-authorise one" };
+  }
   if (step.tool === "run_command" && isDenied(step.match)) {
     return { ok: false, why: `"${step.match}" is on the destructive-command denylist and no plan can authorise it` };
   }
