@@ -12,8 +12,12 @@ name = "cunningclaw"
 pages_build_output_dir = "."
 compatibility_date = "2026-11-01"
 
-[[d1_databases]]
-binding = "WALL_DB"
-database_name = "cunningclaw-wall"
-# Placeholder. Replace with the id that `npx wrangler d1 create` prints (README.md, step 1).
-database_id = "00000000-0000-0000-0000-000000000000"
+# The wall's database. Off until it exists: Pages refuses a deploy whose binding
+# names a database that is not there, and without it the wall says "opens
+# soon". To switch it on (README.md, step 1): run `npx wrangler d1 create`,
+# remove the # from the four lines below, and put the id it printed in place
+# of the zeros.
+# [[d1_databases]]
+# binding = "WALL_DB"
+# database_name = "cunningclaw-wall"
+# database_id = "00000000-0000-0000-0000-000000000000"

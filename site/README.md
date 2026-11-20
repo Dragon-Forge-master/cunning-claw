@@ -78,8 +78,10 @@ Run these from `site/`, logged in to the Cloudflare account that owns the
    npx wrangler d1 create cunningclaw-wall --jurisdiction=eu
    ```
 
-   Copy the `database_id` it prints into `wrangler.toml`, replacing the
-   placeholder `00000000-0000-0000-0000-000000000000`.
+   In `wrangler.toml`, remove the `#` from the four `[[d1_databases]]` lines
+   (they ship switched off, because Pages refuses a deploy that names a
+   database that does not exist yet) and put the `database_id` it printed in
+   place of the zeros.
 
 2. **Create the tables.**
 
