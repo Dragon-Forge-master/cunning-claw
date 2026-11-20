@@ -11,6 +11,7 @@ import {
   discordStatus,
   handleInteraction,
   handleMessage,
+  sendAlert,
   sendApprovalCard,
   maskUserId,
   onlineText,
@@ -357,6 +358,22 @@ test("text bound for a server channel has the machine taken out; a DM keeps it",
     const sent = net.calls.filter((c) => c.path === "/channels/guild-chan/messages").map((c) => c.body.content);
     assert.equal(sent.length, 1);
     assert.match(sent[0], /Ask me for \/status in a DM/);
+  } finally {
+    armDiscord(null, new Set(), null);
+  }
+});
+
+test("a house alert goes to each operator's DM and nowhere else", async () => {
+  const net = fakeRest();
+  try {
+    armDiscord(TOKEN, new Set([OP_A, OP_B]), () => true, net.fetchFn);
+    await handleMessage({ id: "m9", channelId: "guild-chan", guildId: "g1", userId: OP_A, bot: false, content: "/help" }, quiet);
+    net.calls.length = 0;
+    assert.equal(await sendAlert(`Front door — doorbell pressed at 14:32. ${ANTHROPIC}`), 2);
+    const posts = net.calls.filter((c) => /\/messages$/.test(c.path));
+    assert.deepEqual(posts.map((c) => c.path).sort(), [`/channels/dm-${OP_A}/messages`, `/channels/dm-${OP_B}/messages`]);
+    assert.ok(!net.calls.some((c) => c.path.includes("guild-chan")));
+    assert.ok(posts.every((c) => !String(c.body.content).includes(ANTHROPIC)), "redacted");
   } finally {
     armDiscord(null, new Set(), null);
   }

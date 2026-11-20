@@ -459,6 +459,27 @@ export async function sendApprovalCard(id: string, summary: string, detail: stri
   if (refs.length) approvalMsgs.set(id, refs);
 }
 
+/**
+ * A house alert (src/home-events.ts), to each operator's DM and nowhere else —
+ * the card rule, for the same reason: "everyone has left home" in a server
+ * channel tells a room that the house is empty. Text only. Never rejects.
+ */
+export async function sendAlert(text: string): Promise<number> {
+  if (!botToken || !allowed.size) return 0;
+  let sent = 0;
+  for (const userId of allowed) {
+    try {
+      const channel = await dmChannel(userId);
+      if (!channel) continue;
+      await send(channel, text);
+      sent++;
+    } catch (err: any) {
+      console.error(`  Discord home alert to ${maskUserId(userId)} not sent:`, err?.message ?? err);
+    }
+  }
+  return sent;
+}
+
 /** Strip the buttons once the HUD, Telegram or Discord has settled it. */
 export function approvalSettled(id: string, approved: boolean): void {
   const refs = approvalMsgs.get(id);

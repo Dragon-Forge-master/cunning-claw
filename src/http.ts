@@ -86,36 +86,87 @@ function haHeaders(): Record<string, string> | null {
   return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 }
 
-export async function haStates(filter?: string): Promise<string> {
+/** Switched on and holding a token: worth asking the operator about a call. */
+export function haReady(): boolean {
+  return config.homeAssistant.enabled && Boolean(haHeaders());
+}
+
+const notConfigured = () =>
+  `Home Assistant is not configured. Set homeAssistant.enabled and baseUrl in claw.config.json, ` +
+  `and put a long-lived access token in .env as ${config.homeAssistant.tokenEnv}.`;
+
+function haBase(): string {
+  return config.homeAssistant.baseUrl.replace(/\/+$/, "");
+}
+
+/** Every entity, as HA returns it. home_status and the policy read the attributes. */
+export async function haStatesRaw(): Promise<{ ok: true; states: any[] } | { ok: false; error: string }> {
   const h = haHeaders();
-  if (!config.homeAssistant.enabled || !h) {
-    return `Home Assistant is not configured. Set homeAssistant.enabled and baseUrl in claw.config.json, and put a long-lived access token in .env as ${config.homeAssistant.tokenEnv}.`;
-  }
+  if (!config.homeAssistant.enabled || !h) return { ok: false, error: notConfigured() };
   try {
-    const res = await fetch(`${config.homeAssistant.baseUrl}/api/states`, {
+    const res = await fetch(`${haBase()}/api/states`, {
       headers: h, signal: AbortSignal.timeout(config.http.timeoutMs),
     });
-    if (!res.ok) return `Home Assistant returned HTTP ${res.status}.`;
-    const all = (await res.json()) as any[];
-    const rows = all
-      .filter((e) => !filter || e.entity_id.includes(filter) ||
-        (e.attributes?.friendly_name ?? "").toLowerCase().includes(filter.toLowerCase()))
-      .slice(0, 120)
-      .map((e) => `${e.entity_id} = ${e.state}${e.attributes?.friendly_name ? ` (${e.attributes.friendly_name})` : ""}`);
-    return rows.length ? `Home Assistant entities:\n${rows.join("\n")}` : "No matching entities.";
+    if (!res.ok) return { ok: false, error: `Home Assistant returned HTTP ${res.status}.` };
+    const all = await res.json();
+    return Array.isArray(all)
+      ? { ok: true, states: all }
+      : { ok: false, error: "Home Assistant answered with something that is not a list of states." };
   } catch (err: any) {
-    return `Could not reach Home Assistant: ${err?.message}`;
+    return { ok: false, error: `Could not reach Home Assistant: ${err?.message}` };
   }
 }
 
+export async function haStates(filter?: string): Promise<string> {
+  const got = await haStatesRaw();
+  if (!got.ok) return got.error;
+  const rows = got.states
+    .filter((e) => !filter || e.entity_id.includes(filter) ||
+      (e.attributes?.friendly_name ?? "").toLowerCase().includes(filter.toLowerCase()))
+    .slice(0, 120)
+    .map((e) => `${e.entity_id} = ${e.state}${e.attributes?.friendly_name ? ` (${e.attributes.friendly_name})` : ""}`);
+  return rows.length ? `Home Assistant entities:\n${rows.join("\n")}` : "No matching entities.";
+}
+
+/**
+ * One entity's state and attributes, or null if it could not be read. The
+ * home policy needs the device class (is this cover a garage door?) before it
+ * decides how hard to ask, and null makes it assume the worst.
+ */
+export async function haEntity(entityId: string): Promise<{ state: string; attributes: Record<string, any> } | null> {
+  const h = haHeaders();
+  if (!config.homeAssistant.enabled || !h) return null;
+  if (!/^[a-z0-9_]+\.[a-z0-9_]+$/.test(entityId)) return null;
+  try {
+    const res = await fetch(`${haBase()}/api/states/${entityId}`, {
+      headers: h, signal: AbortSignal.timeout(config.http.timeoutMs),
+    });
+    if (!res.ok) return null;
+    const j = (await res.json()) as any;
+    return {
+      state: String(j?.state ?? ""),
+      attributes: j?.attributes && typeof j.attributes === "object" ? j.attributes : {},
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Call a service. Callers validate first (src/home-policy.ts); the path parts
+ * are checked again here because they go straight into the URL. entity_id is
+ * written LAST: it used to come first, so a data object carrying its own
+ * entity_id replaced the entity the approval card had named.
+ */
 export async function haCall(domain: string, service: string, entityId: string, data?: object): Promise<string> {
   const h = haHeaders();
   if (!config.homeAssistant.enabled || !h) return "Home Assistant is not configured.";
+  if (!/^[a-z0-9_]+$/.test(domain) || !/^[a-z0-9_]+$/.test(service)) return "That is not a Home Assistant service name.";
   try {
-    const res = await fetch(`${config.homeAssistant.baseUrl}/api/services/${domain}/${service}`, {
+    const res = await fetch(`${haBase()}/api/services/${domain}/${service}`, {
       method: "POST",
       headers: h,
-      body: JSON.stringify({ entity_id: entityId, ...(data ?? {}) }),
+      body: JSON.stringify({ ...(data ?? {}), entity_id: entityId }),
       signal: AbortSignal.timeout(config.http.timeoutMs),
     });
     if (!res.ok) return `Home Assistant returned HTTP ${res.status}.`;
@@ -133,20 +184,12 @@ export async function haCameraStill(entityId: string): Promise<
   { ok: true; bytes: Buffer; mediaType: "image/jpeg" | "image/png" } | { ok: false; error: string }
 > {
   const h = haHeaders();
-  if (!config.homeAssistant.enabled || !h) {
-    return {
-      ok: false,
-      error:
-        `Home Assistant is not configured. Set homeAssistant.enabled and baseUrl in claw.config.json, ` +
-        `and put a long-lived access token in .env as ${config.homeAssistant.tokenEnv}.`,
-    };
-  }
+  if (!config.homeAssistant.enabled || !h) return { ok: false, error: notConfigured() };
   if (!/^camera\.[a-z0-9_]+$/.test(entityId)) {
     return { ok: false, error: "That is not a camera entity id." };
   }
   try {
-    const base = config.homeAssistant.baseUrl.replace(/\/+$/, "");
-    const res = await fetch(`${base}/api/camera_proxy/${entityId}`, {
+    const res = await fetch(`${haBase()}/api/camera_proxy/${entityId}`, {
       headers: { Authorization: h.Authorization },
       signal: AbortSignal.timeout(config.http.timeoutMs),
     });

@@ -13,6 +13,7 @@ import {
   outboundText,
   parseChatAllowlist,
   pollLoop,
+  sendAlert,
   sendApprovalCard,
   startTelegram,
   telegramStatus,
@@ -423,4 +424,20 @@ test("a reply into a group has the machine taken out of it; a private reply keep
   assert.equal(groupSafeText("£10.00, version 10.2, 127 tests", "box"), "£10.00, version 10.2, 127 tests", "ordinary numbers survive");
   assert.match(outboundText(raw, true), /\[path\]/);
   assert.match(outboundText(raw, false), /\/home\/owner/, "the operator's own chat is unchanged");
+});
+
+test("a house alert goes to private chats only, redacted, and a group is never told the house is empty", async () => {
+  try {
+    const net = fakeIO(() => ok({ message_id: 3 }));
+    armTelegram(TOKEN, new Set([CHAT, GROUP]), () => true, net.io);
+    const reached = await sendAlert(`Everyone has left home at 08:10. ${ANTHROPIC}`);
+    assert.equal(reached, 1);
+    const sent = net.calls.filter((c) => c.method === "sendMessage");
+    assert.deepEqual(sent.map((c) => String(c.body.chat_id)), [CHAT], "the group heard nothing");
+    assert.ok(!String(sent[0].body.text).includes(ANTHROPIC), "send() redacts on the way out");
+    armTelegram(null, new Set(), null);
+    assert.equal(await sendAlert("anything"), 0, "unarmed: nothing, and no throw");
+  } finally {
+    armTelegram(null, new Set(), null);
+  }
 });

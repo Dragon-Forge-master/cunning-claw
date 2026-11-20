@@ -11,6 +11,7 @@ import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
 import * as eyes from "./eyes.js";
 import * as http from "./http.js";
+import { homeAssistantTool } from "./home.js";
 import * as mcp from "./mcp.js";
 import { gateUnloadedCall, keepLoaded, loadToolsResult } from "./tool-diet.js";
 import * as tax from "./tax.js";
@@ -1148,16 +1149,27 @@ export const toolDefinitions: Anthropic.Tool[] = [
   {
     name: "home_assistant",
     description:
-      "Control the smart home through Home Assistant: list entity states, or call a service " +
-      "(e.g. domain 'light', service 'turn_on', entity 'light.kitchen').",
+      "The smart home through Home Assistant. 'states' lists entities; 'status' is a short overview " +
+      "(who is home, heating, lights on, doors and windows open, alarm, last doorbell) for briefings; " +
+      "'call' runs one service on one entity (domain 'light', service 'turn_on', entityId 'light.kitchen', " +
+      "data {\"brightness_pct\": 40}). data keys are checked per service and a wrong one is refused with the list. " +
+      "Unlocking, disarming, garage doors, gates and sirens always ask the operator, every time.",
     input_schema: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["states", "call"] },
+        action: { type: "string", enum: ["states", "status", "call"] },
         filter: { type: "string", description: "Substring filter, when action is 'states'" },
         domain: { type: "string" },
         service: { type: "string" },
-        entityId: { type: "string" },
+        entityId: { type: "string", description: "Exactly one entity, of the service's own domain" },
+        data: {
+          type: "object",
+          description:
+            "Service data, when action is 'call'. light.turn_on: brightness_pct 0–100, color_temp_kelvin, rgb_color, transition. " +
+            "climate.set_temperature: temperature 5–30 (°C), hvac_mode. climate.set_hvac_mode: hvac_mode. " +
+            "cover.set_cover_position: position 0–100. media_player.volume_set: volume_level 0–1. fan.set_percentage: percentage. " +
+            "Scenes and scripts take none.",
+        },
       },
       required: ["action"],
       additionalProperties: false,
@@ -2517,15 +2529,11 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         return await http.request(input);
       }
       case "home_assistant":
-        if (input.action === "call") {
-          const ok = await ctx.requestApproval(
-            "Control a smart-home device",
-            `${input.domain}.${input.service} → ${input.entityId}`,
-          );
-          if (!ok) return "The user declined the device control.";
-          return await http.haCall(input.domain, input.service, input.entityId);
-        }
-        return await http.haStates(input.filter);
+        // The policy lives in src/home.ts: comfort goes through gate() (so a
+        // work order can carry it); security always raises its own card.
+        return await homeAssistantTool(input, ctx, {
+          gate: (step, summary, detail) => gate(ctx, step, summary, detail),
+        });
       case "set_timer": return setTimer(input, ctx);
       case "skill_read": return readSkill(String(input.name ?? ""));
       case "skill_write": {

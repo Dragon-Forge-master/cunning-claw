@@ -43,6 +43,25 @@ export const CONFIG_FILE = process.env.CLAW_CONFIG
   ? path.resolve(process.env.CLAW_CONFIG)
   : path.join(ROOT, "claw.config.json");
 
+/**
+ * One thing in the house worth telling the operator about. Declared here, the
+ * leaf, so config.ts imports nothing upward to describe it.
+ */
+export interface HomeWatchRule {
+  /** An entity id, or a prefix ending in * — "event.front_door_ding", "person.*". */
+  entity: string;
+  /** Which change counts. Omitted: whatever that kind of entity does (see home-events.ts). */
+  on?: "pressed" | "motion" | "opened" | "arrived" | "left";
+  /** Where the alert goes. Default "both". The visitor log is written either way. */
+  notify?: "phone" | "hud" | "both";
+  /** A camera.* entity to take one still from when this fires. */
+  snapshot?: string;
+  /** "23:00-07:00": inside it the phone stays silent; the HUD and the log still get it. */
+  quiet?: string;
+  /** Overrides homeAssistant.debounceMinutes for this rule. */
+  debounceMinutes?: number;
+}
+
 export interface ClawConfig {
   model: string;
   effort: "low" | "medium" | "high" | "xhigh" | "max";
@@ -104,7 +123,24 @@ export interface ClawConfig {
     requireApprovalFor: string[];
   };
   http: { allowlist: string[]; timeoutMs: number; maxResponseChars: number };
-  homeAssistant: { enabled: boolean; baseUrl: string; tokenEnv: string };
+  homeAssistant: {
+    enabled: boolean;
+    baseUrl: string;
+    tokenEnv: string;
+    /**
+     * Live events (src/home-events.ts). Empty or absent: nothing is watched and
+     * no socket is opened. The operator chooses every rule.
+     */
+    watch?: HomeWatchRule[];
+    /** One alert per entity per this many minutes; a flapping sensor is one alert. Default 5. */
+    debounceMinutes?: number;
+    /** Snapshots and visitor-log lines older than this are deleted. Default 30. */
+    visitorRetentionDays?: number;
+    /** Ask a vision brain for a one-line generic caption of a snapshot. Off unless true. */
+    describeVisitors?: boolean;
+    /** Brain id for that caption; defaults to the first trusted brain, then the default. */
+    visionBrain?: string;
+  };
   /**
    * Butler eyes — one webcam still on demand. Off unless enabled is true.
    * device is /dev/videoN on Linux, an avfoundation index on macOS.

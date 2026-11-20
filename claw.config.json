@@ -121,7 +121,12 @@
   "homeAssistant": {
     "enabled": false,
     "baseUrl": "http://homeassistant.local:8123",
-    "tokenEnv": "HA_TOKEN"
+    "tokenEnv": "HA_TOKEN",
+    "watch": [],
+    "debounceMinutes": 5,
+    "visitorRetentionDays": 30,
+    "describeVisitors": false,
+    "visionBrain": ""
   },
   "eyes": {
     "enabled": true,
