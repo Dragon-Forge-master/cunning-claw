@@ -28,6 +28,22 @@ exactly who walks in the door: someone who wants the thing to work and does not 
 learn what an API is. They subscribe, they receive one `DRAGONFORGE_TOKEN`, they paste it
 once. The word "API" never appears in anything they read.
 
+### Getting it onto the machine
+
+Both tiers start the same way, and for the people the "just works" tier is for, that
+first step has to be an installer: the founder double-clicked a Linux download and it
+"just took me to the files". Details and the evidence for each line in
+[INSTALLERS.md](INSTALLERS.md).
+
+| | Status |
+|---|---|
+| Archives (`.zip` / `.tar.gz`, unzip and double-click) | **BUILT**, started on real Windows, macOS and Linux runners before each release |
+| Windows installer (per-user Setup `.exe`, Start menu, uninstaller that keeps the owner's things) | **BUILT** (`scripts/bundle.mjs`, NSIS) and built on Linux; the Bundles workflow installs, starts and uninstalls it on a Windows runner — that job's first run is still to come |
+| macOS `.app` on a drag-to-Applications `.dmg` | **BUILT** in the repo; it can only be made and started on CI's Mac, whose first run is still to come, and the Finder-to-Terminal launch is untried on hardware |
+| Linux AppImage | **BUILT**; built and run on a Linux machine (mounted and unpacked); CI's run of it is still to come |
+| The owner's things in a per-user folder, upgrades by installing over, `--import` from an old download | **BUILT** (`src/home-root.ts`, `src/home-root.test.ts`) |
+| Code signing and notarisation — no "unknown publisher" warnings | **PLANNED**: the hooks are in the workflow and the Windows one was tried with a throwaway certificate; it needs a Windows certificate and the Apple Developer Program (US$99 a year) |
+
 ### Pricing thinking (all figures estimates, working shown)
 
 The workhorse brain is Gemini flash-class via OpenRouter: **$0.30/M input, $2.50/M output**

@@ -10,6 +10,7 @@ src/server.ts      HTTP + SSE, the Desk document API; wires the approval registr
 src/approvals.ts   the approval registry: real cards to the HUD and phones, practice cards to the HUD only
 src/boot.ts        First-run gate, then loads the server
 src/first-run.ts   what boot needs; the setup page decides the rest (public/welcome.html)
+src/home-root.ts   code root vs the owner's folder: which folder per OS, first-run seeding, --import
 src/agent.ts       Streaming tool loop
 src/brain.ts       Named brains, failover, spend
 src/tools.ts       Tool schemas + dispatcher + HARD_DENY
@@ -59,7 +60,7 @@ src/workspace.ts   SOUL.md / MEMORY.md / skills
 workspace/skills/  agentskills.io SKILL.md files
 site/              cunningclaw.com; site/functions/ is the wall's Pages Function (site/README.md)
 packaging/         systemd --user unit; npm/ is the `npx cunningclaw` installer
-scripts/bundle.mjs the download-and-double-click bundles (npm run bundle; .github/workflows/bundle.yml)
+scripts/bundle.mjs the download-and-double-click bundles and the installers (npm run bundle; docs/INSTALLERS.md)
 ```
 
 Tune behaviour in `claw.config.json`, not with new constants.
@@ -139,6 +140,9 @@ npm run dev
 Give the second one its own port, and turn its voice off unless you enjoy two
 of them talking over each other. `CLAW_ROOT` moves the install directory too,
 but you rarely want that — the code is the code.
+`CLAW_HOME` moves `.env`, the config, `data/` and `workspace/` together — the
+same split the installers make, where the code is read-only and the owner's
+things live in a per-user folder (`src/home-root.ts`).
 
 ## Where this is heading
 

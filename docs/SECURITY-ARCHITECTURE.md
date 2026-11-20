@@ -7,7 +7,7 @@ guarantees, because a security document that overclaims is worse than none.*
 Status as of 20 November 2026: version 0.4.0 on `main`, plus the work due as
 0.5.0 (`docs/releases/v0.5.0.md`) — the host gate, Pocket Claw, the foreman,
 Telegram voice notes and receipts, Learn mode and the site wall, all in
-section 5. 957 automated tests passing (`npm test`), 83 tools, two runtime
+section 5. 981 automated tests passing (`npm test`), 83 tools, two runtime
 dependencies (`@anthropic-ai/sdk`, `express`). The project is new and has run
 on very few machines. Nothing here has been independently audited.
 
@@ -229,7 +229,8 @@ export function bwrapArgs(o: BoxSpec): string[] {
   The whole file system is mounted read-only; only the command's working folder
   (if it is an ordinary folder under home), the temp directory and the folders
   in `sandbox.writable` are writable. The agent's own `.env`, config, data and
-  workspace are re-bound read-only even inside those. `/dev` is a fresh minimal
+  workspace are re-bound read-only even inside those — and, for an installed
+  claw, its code and the owner's whole folder. `/dev` is a fresh minimal
   one (no disks, no camera). `--new-session` blocks keystroke injection into the
   terminal (TIOCSTI); `--die-with-parent` means a timeout kill reaches the
   command.
@@ -770,6 +771,7 @@ deployed as such without an independent assessment.
 | Alarm suspends grants and plans | `src/consequence.test.ts`, `src/workorder.test.ts` |
 | The floor | `HARD_DENY` in `src/tools.ts`; `src/tools.test.ts` |
 | Sandbox arguments, profiles, path refusal, the `unsandboxed` card | `npx tsx --test src/sandbox.test.ts src/tools.test.ts` (includes a live bubblewrap test where bwrap can run) |
+| An installed claw keeps the owner's things out of its read-only code, and boxed commands cannot write either | `npx tsx --test src/home-root.test.ts src/sandbox.test.ts` (a live bubblewrap test against a code root unpacked under the temp dir) |
 | Converter environment, zip refusals | `npx tsx --test src/documents.test.ts` |
 | Testimony stamp in search results | `npx tsx --test src/memory.test.ts` |
 | Discord cards only in direct messages | `npx tsx --test src/discord.test.ts` |
@@ -779,7 +781,7 @@ deployed as such without an independent assessment.
 | Foreman: taint refusal, card, worktree, floor, environment, fence | `npx tsx --test src/foreman.test.ts src/jobs.test.ts` |
 | Voice notes never answer a card; receipts filed as data | `npx tsx --test src/telegram.test.ts src/voice-notes.test.ts src/receipts.test.ts` |
 | The wall: moderation, Turnstile, no IPs; the tool's cards and token | `npx tsx --test src/site-wall.test.ts src/wall.test.ts` |
-| Everything | `npm test` — 957 passing at the time of writing |
+| Everything | `npm test` — 981 passing at the time of writing |
 
 Every test in the suite is required to fail with its fix reverted
 (`CLAUDE.md`, "Tests"), and the commit that added it says so.
@@ -805,6 +807,13 @@ Every test in the suite is required to fail with its fix reverted
    the claw's own code for its next start. Install it anywhere else (the
    download unzips wherever you put it; the default writable folders are
    listed by `npm run doctor`). Next: protect `src/` and `public/` the same way.
+   **Closed for the installers** (`docs/INSTALLERS.md`): an installed claw's code
+   is never built in place, so it and the owner's folder are protected whole
+   (`protectedFor`), even unpacked under the temp dir or named as the working
+   folder; a live bubblewrap test writes to such a code root and is refused
+   (`src/sandbox.test.ts`). On macOS the same list goes into the Seatbelt
+   profile, untried on hardware (gap 6); Windows has no sandbox (gap 3). Still
+   open for a clone or an unzipped download, which is its own build tree.
 6. **macOS sandbox untested on hardware.**
 7. **Pocket Claw untried on a real phone and a real tailnet**, and Cloudflare
    Access's signed header is not checked on the tunnel route (section 5.2).

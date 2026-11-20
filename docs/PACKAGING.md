@@ -52,6 +52,10 @@ the claw already drives its *own* Chrome for automation.
    (`public/welcome.html`), opened at boot when no brain can run.
 3. Tauri shell + tray icon + updater.
 4. Signing certificates and release automation (GitHub Actions builds all
-   three installers per tag).
+   three installers per tag). The installers and the automation are **built** —
+   a per-user Windows Setup `.exe`, a `.dmg` with the `.app`, and an AppImage, from
+   the same bundles, with the owner's things in a per-user folder
+   ([INSTALLERS.md](INSTALLERS.md)). The certificates are not bought; the signing
+   hooks wait for them.
 
 Step 2 is the highest value-per-hour and needs no new technology at all.

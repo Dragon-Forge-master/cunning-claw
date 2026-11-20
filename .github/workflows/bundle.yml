@@ -1,10 +1,14 @@
 name: Bundles
 
-# The download-and-double-click bundles (scripts/bundle.mjs). Built once on
-# Linux — the app is plain JavaScript, only the Node runtime differs — then each
-# system's bundle is unpacked and started by its own launcher on that system,
-# because "it should work on Windows" is not the same as a Windows machine
-# saying so. A tag publishes them to a GitHub Release, only after all three pass.
+# The download-and-double-click bundles and the installers made from them
+# (scripts/bundle.mjs). The bundles are built once on Linux — the app is plain
+# JavaScript, only the Node runtime differs — and so are the AppImages and the
+# Windows installer (makensis runs on Linux). The .dmg needs hdiutil, so it is
+# built on a Mac. Then each system's bundle is unpacked and started by its own
+# launcher on that system, and each installer is installed and started the
+# way an owner would, because "it should work on Windows" is not the same as
+# a Windows machine saying so. A tag publishes them to a GitHub Release, only
+# after every one of them passes.
 
 on:
   push:
@@ -13,12 +17,17 @@ on:
     paths:
       - scripts/bundle.mjs
       - .github/workflows/bundle.yml
+      - packaging/**
       - src/boot.ts
       - src/first-run.ts
-  # Run by hand to build and test; give `release` a version tag (v0.3.0) to
+      - src/config.ts
+      - src/home-root.ts
+      - src/import-old.ts
+  # Run by hand to build and test (Actions → Bundles → Run workflow, choose a
+  # branch, leave `release` empty); give `release` a version tag (v0.3.0) to
   # publish as well. This exists because a tag cannot always be pushed from
   # where the release is decided, and GitHub can make the tag itself — still
-  # only after all three smoke tests pass.
+  # only after every smoke test passes.
   workflow_dispatch:
     inputs:
       release:
@@ -29,6 +38,57 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      node: ${{ steps.node.outputs.version }}
+    env:
+      # The signing hook (docs/INSTALLERS.md). Empty — as on a fork, or until
+      # the project buys a certificate — and the step below is skipped.
+      WINDOWS_SIGN_PFX_BASE64: ${{ secrets.WINDOWS_SIGN_PFX_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - id: node
+        # The .dmg is built on another machine; it must bundle this same Node.
+        run: echo "version=$(node -p process.versions.node)" >> "$GITHUB_OUTPUT"
+      - run: npm ci
+      - name: makensis, for the Windows installer
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq nsis
+      - name: Code-signing certificate (Windows) — skipped without one
+        if: env.WINDOWS_SIGN_PFX_BASE64 != ''
+        env:
+          WINDOWS_SIGN_PASSWORD: ${{ secrets.WINDOWS_SIGN_PASSWORD }}
+        run: |
+          sudo apt-get install -y -qq osslsigncode
+          umask 077
+          printf '%s' "$WINDOWS_SIGN_PFX_BASE64" | base64 -d > "$RUNNER_TEMP/sign.pfx"
+          printf '%s' "$WINDOWS_SIGN_PASSWORD" > "$RUNNER_TEMP/sign.pass"
+          echo "WINDOWS_SIGN_PFX=$RUNNER_TEMP/sign.pfx" >> "$GITHUB_ENV"
+          echo "WINDOWS_SIGN_PASSWORD_FILE=$RUNNER_TEMP/sign.pass" >> "$GITHUB_ENV"
+      - name: Build every bundle, the AppImages and the Windows installer
+        run: npm run bundle -- --all --installer appimage,nsis
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundles
+          path: |
+            release/*.zip
+            release/*.tar.gz
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-linux-windows
+          path: |
+            release/Cunning-Claw-*.AppImage
+            release/Cunning-Claw-Setup-*.exe
+          if-no-files-found: error
+
+  dmg:
+    needs: build
+    runs-on: macos-latest
+    env:
+      MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,14 +96,32 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Build every bundle
-        run: npm run bundle -- --all
+      - name: Developer ID (macOS) — skipped without one
+        if: env.MACOS_CERT_P12_BASE64 != ''
+        env:
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+        run: |
+          kc="$RUNNER_TEMP/sign.keychain-db"; kp="$(uuidgen)"
+          security create-keychain -p "$kp" "$kc"
+          security set-keychain-settings -lut 21600 "$kc"
+          security unlock-keychain -p "$kp" "$kc"
+          printf '%s' "$MACOS_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$kc"
+          security set-key-partition-list -S apple-tool:,apple: -k "$kp" "$kc"
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          echo "MACOS_SIGN_IDENTITY=$MACOS_SIGN_IDENTITY" >> "$GITHUB_ENV"
+      - name: Build Cunning Claw.app and its .dmg, for Apple silicon and Intel
+        env:
+          # Notarisation runs only when these and a Developer ID are all present.
+          MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+          MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+        run: npm run bundle -- --target darwin-arm64 --target darwin-x64 --installer dmg --no-archive --node "${{ needs.build.outputs.node }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: bundles
-          path: |
-            release/*.zip
-            release/*.tar.gz
+          name: installers-mac
+          path: release/Cunning-Claw-*.dmg
           if-no-files-found: error
 
   smoke:
@@ -120,16 +198,141 @@ jobs:
           if [ -z "$ok" ]; then echo "Bundle smoke failed on ${{ matrix.target }}: / -> $home, /welcome -> $welcome"; exit 1; fi
           echo "Bundle smoke passed: ${{ matrix.target }} started from its own launcher and opened on setup"
 
+  # Each installer, installed and started on its own system. Every one ends
+  # by checking the point of an installer: the token the claw writes on its
+  # first start (.env) is in the owner's own folder, not beside the code.
+  smoke-appimage:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      CLAW_NO_BROWSER: "1"
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: installers-linux-windows
+      - name: Mark it executable and start it, unpacked rather than mounted (no FUSE assumed)
+        run: |
+          img=$(ls Cunning-Claw-*-linux-x86_64.AppImage)
+          chmod +x "$img"
+          APPIMAGE_EXTRACT_AND_RUN=1 nohup "./$img" > "$RUNNER_TEMP/boot.log" 2>&1 &
+      - name: It opens on the setup page, and keeps the owner's things in ~/.local/share
+        run: |
+          ok=""
+          for i in $(seq 1 45); do
+            home=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/ || true)
+            welcome=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/welcome || true)
+            if [ "$home" = "302" ] && [ "$welcome" = "200" ]; then ok=1; break; fi
+            sleep 2
+          done
+          echo "--- boot log ---"; cat "$RUNNER_TEMP/boot.log" || true
+          if [ -z "$ok" ]; then echo "AppImage smoke failed: / -> $home, /welcome -> $welcome"; exit 1; fi
+          owner="$HOME/.local/share/cunningclaw"
+          test -f "$owner/.env" || { echo "No .env in $owner"; exit 1; }
+          test -f "$owner/claw.config.json" || { echo "The config was not seeded into $owner"; exit 1; }
+          if ls /tmp/appimage_extracted_*/app/.env 2>/dev/null; then echo ".env was written beside the code"; exit 1; fi
+          echo "AppImage smoke passed: started, opened on setup, and its .env is in $owner"
+
+  smoke-windows-installer:
+    needs: build
+    runs-on: windows-latest
+    env:
+      CLAW_NO_BROWSER: "1"
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: installers-linux-windows
+      # One step: the Windows runner ends what a step started when that step ends.
+      - name: Install silently, start from the Start menu's target, uninstall — keeping the owner's folder
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem "Cunning-Claw-Setup-*.exe" | Select-Object -First 1
+          $p = Start-Process -FilePath $setup.FullName -ArgumentList "/S" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { "Installer exited $($p.ExitCode)"; exit 1 }
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\Cunning Claw"
+          $owner = Join-Path $env:LOCALAPPDATA "CunningClaw"
+          $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\CunningClaw"
+          foreach ($f in @("Cunning Claw.cmd", "app\installed.json", "runtime\node.exe", "Uninstall Cunning Claw.exe")) {
+            if (-not (Test-Path (Join-Path $dir $f))) { "Not installed: $f"; exit 1 }
+          }
+          if (-not (Test-Path (Join-Path ([Environment]::GetFolderPath("Programs")) "Cunning Claw.lnk"))) { "No Start menu entry"; exit 1 }
+          if (-not (Test-Path $key)) { "Not in Add or remove programs"; exit 1 }
+          "Installed: $((Get-ItemProperty $key).DisplayName) $((Get-ItemProperty $key).DisplayVersion)"
+
+          $claw = Start-Process -FilePath (Join-Path $dir "Cunning Claw.cmd") -PassThru `
+            -RedirectStandardOutput "$env:RUNNER_TEMP\boot.log" -RedirectStandardError "$env:RUNNER_TEMP\boot.err"
+          $ok = $false
+          for ($i = 0; $i -lt 45; $i++) {
+            $home_ = & curl.exe -s -o NUL -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/
+            $welcome = & curl.exe -s -o NUL -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/welcome
+            if ($home_ -eq "302" -and $welcome -eq "200") { $ok = $true; break }
+            Start-Sleep -Seconds 2
+          }
+          "--- boot log ---"; Get-Content "$env:RUNNER_TEMP\boot.log", "$env:RUNNER_TEMP\boot.err" -ErrorAction SilentlyContinue
+          if (-not $ok) { "Installer smoke failed: / -> $home_, /welcome -> $welcome"; exit 1 }
+          if (-not (Test-Path (Join-Path $owner ".env"))) { "No .env in $owner"; exit 1 }
+          if (Test-Path (Join-Path $dir "app\.env")) { ".env was written beside the code"; exit 1 }
+          & taskkill.exe /PID $claw.Id /T /F | Out-Null
+
+          # _?= runs the uninstaller in place, so -Wait waits for the real work.
+          $u = Start-Process -FilePath (Join-Path $dir "Uninstall Cunning Claw.exe") -ArgumentList "/S", "_?=$dir" -Wait -PassThru
+          if ($u.ExitCode -ne 0) { "Uninstaller exited $($u.ExitCode)"; exit 1 }
+          if (Test-Path (Join-Path $dir "app")) { "The app is still installed"; exit 1 }
+          if (Test-Path $key) { "Still in Add or remove programs"; exit 1 }
+          if (-not (Test-Path (Join-Path $owner ".env"))) { "The uninstaller deleted the owner's folder unasked"; exit 1 }
+          "Windows installer smoke passed: installed per-user, started, opened on setup, uninstalled, and the owner's folder kept"
+
+  smoke-dmg:
+    needs: dmg
+    runs-on: macos-latest
+    env:
+      CLAW_NO_BROWSER: "1"
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: installers-mac
+      - name: Attach the .dmg and drag the app to Applications, as a user would
+        run: |
+          dmg=$(ls Cunning-Claw-*-mac-arm64.dmg)
+          hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dmg" "$dmg"
+          test -L "$RUNNER_TEMP/dmg/Applications" || { echo "No Applications link to drag onto"; exit 1; }
+          test -f "$RUNNER_TEMP/dmg/READ ME FIRST.txt"
+          cp -R "$RUNNER_TEMP/dmg/Cunning Claw.app" /Applications/
+          hdiutil detach "$RUNNER_TEMP/dmg"
+          plutil -lint "/Applications/Cunning Claw.app/Contents/Info.plist"
+      - name: Start it from its own executable
+        # CLAW_NO_TERMINAL: run where it stands, instead of opening Terminal on
+        # itself as a Finder launch does. That path is untested on hardware
+        # (docs/INSTALLERS.md); this checks everything after it.
+        run: |
+          CLAW_NO_TERMINAL=1 nohup "/Applications/Cunning Claw.app/Contents/MacOS/Cunning Claw" > "$RUNNER_TEMP/boot.log" 2>&1 &
+      - name: It opens on the setup page, and keeps the owner's things in Application Support
+        run: |
+          ok=""
+          for i in $(seq 1 45); do
+            home=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/ || true)
+            welcome=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/welcome || true)
+            if [ "$home" = "302" ] && [ "$welcome" = "200" ]; then ok=1; break; fi
+            sleep 2
+          done
+          echo "--- boot log ---"; cat "$RUNNER_TEMP/boot.log" || true
+          if [ -z "$ok" ]; then echo ".dmg smoke failed: / -> $home, /welcome -> $welcome"; exit 1; fi
+          owner="$HOME/Library/Application Support/cunningclaw"
+          test -f "$owner/.env" || { echo "No .env in $owner"; exit 1; }
+          test -f "$owner/claw.config.json" || { echo "The config was not seeded into $owner"; exit 1; }
+          if [ -e "/Applications/Cunning Claw.app/Contents/Resources/app/.env" ]; then echo ".env was written inside the app"; exit 1; fi
+          echo ".dmg smoke passed: dragged to Applications, started, opened on setup, and its .env is in $owner"
+
   release:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release != '')
-    needs: smoke
+    needs: [smoke, smoke-appimage, smoke-windows-installer, smoke-dmg]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: bundles
+          pattern: "*"
+          merge-multiple: true
       # Only the release notes: docs/releases/<tag>.md, when there is one.
       - uses: actions/checkout@v4
         with:
@@ -148,7 +351,7 @@ jobs:
           # --target makes the tag at the tested commit when it does not exist yet.
           notes="src-notes/docs/releases/$TAG.md"
           if [ -f "$notes" ]; then set -- --notes-file "$notes"; else
-            set -- --notes "Download the one for your computer, unzip it, and read READ ME FIRST.txt. Not code-signed yet: Windows and macOS will ask once before the first run."
+            set -- --notes "Install the one for your computer: the Setup .exe on Windows, the .dmg on a Mac, the .AppImage on Linux. Or take the .zip / .tar.gz, unzip it and read READ ME FIRST.txt. Not code-signed yet: Windows and macOS will ask once before the first run."
           fi
           gh release create "$TAG" --repo "${GITHUB_REPOSITORY}" --target "${GITHUB_SHA}" --title "Cunning Claw $TAG" \
-            "$@" cunningclaw-*.zip cunningclaw-*.tar.gz
+            "$@" cunningclaw-*.zip cunningclaw-*.tar.gz Cunning-Claw-*.exe Cunning-Claw-*.dmg Cunning-Claw-*.AppImage
