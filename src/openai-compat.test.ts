@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
-import { toOpenAiMessages, openAiToolSchema, completeOpenAi } from "./openai-compat.js";
+import { toOpenAiMessages, openAiToolSchema, completeOpenAi, isGeminiDirect, GEMINI_SKIP_SIGNATURE } from "./openai-compat.js";
 import { activeProvider, isFailoverError } from "./brain.js";
 
 test("the default brain is one that can actually run", () => {
@@ -176,4 +176,89 @@ test("a local runtime that is not running is named, not 'fetch failed'", async (
       return true;
     },
   );
+});
+
+/** A local server that answers one chat completion with Google's stream shape. */
+function geminiShapedServer(chunks: unknown[]): Promise<{ url: string; close: () => void }> {
+  const server = http.createServer((req, res) => {
+    req.resume();
+    req.on("end", () => {
+      res.writeHead(200, { "Content-Type": "text/event-stream" });
+      for (const c of chunks) res.write(`data: ${JSON.stringify(c)}\n\n`);
+      res.end("data: [DONE]\n\n");
+    });
+  });
+  return new Promise((resolve) =>
+    server.listen(0, "127.0.0.1", () => {
+      const { port } = server.address() as AddressInfo;
+      resolve({ url: `http://127.0.0.1:${port}/v1`, close: () => server.close() });
+    }),
+  );
+}
+
+test("Gemini's thought signature goes back on the call it came with", async () => {
+  // Google's endpoint returned the signature on the tool call and the adapter
+  // dropped it, so the request after the claw's first delegate_code was
+  // refused: "Function call is missing a thought_signature" (400). Shape and
+  // field names copied from a real gemini-3.6-flash stream.
+  const sig = { google: { thought_signature: "c2lnLWZyb20tZ29vZ2xl" } };
+  const srv = await geminiShapedServer([{
+    choices: [{ delta: { role: "assistant", tool_calls: [
+      { extra_content: sig, function: { arguments: "{\"project\":\"bakery\"}", name: "delegate_code" }, id: "call_sig_one", type: "function" },
+      { function: { arguments: "{}", name: "jobs" }, id: "call_sig_two", type: "function" },
+    ] }, index: 0 }],
+  }]);
+  try {
+    const done = await completeOpenAi({
+      spec: { id: "t", label: "t", provider: "openai", model: "gemini-3.6-flash", baseUrl: srv.url } as any,
+      system: "s", history: [{ role: "user", content: "build it" }], onText: () => {},
+    });
+    // Both calls survive: with no `index`, they used to share slot 0 and fuse
+    // into one call named "delegate_codejobs".
+    assert.deepEqual(done.toolUses.map((t) => t.name), ["delegate_code", "jobs"]);
+    assert.deepEqual(done.toolUses[0].input, { project: "bakery" });
+
+    const history = [
+      { role: "user", content: "build it" },
+      { role: "assistant", content: done.blocks },
+      { role: "user", content: [
+        { type: "tool_result", tool_use_id: "call_sig_one", content: "started" },
+        { type: "tool_result", tool_use_id: "call_sig_two", content: "one job" },
+      ] },
+    ] as any;
+    const toGoogle = toOpenAiMessages("s", history, { gemini: true });
+    const calls = toGoogle[2].tool_calls!;
+    assert.deepEqual(calls[0].extra_content, sig, "the signature rides back on its own call");
+    assert.equal(calls[1].extra_content, undefined, "Google signs only the first call of a step");
+    // Nothing Google-specific reaches any other provider.
+    const elsewhere = toOpenAiMessages("s", history);
+    assert.ok(elsewhere[2].tool_calls!.every((c) => !("extra_content" in c)));
+    // Anthropic-shaped history stays clean: Anthropic refuses unknown fields.
+    assert.ok(done.blocks.every((b: any) => !("extra_content" in b) && !("extra" in b)));
+  } finally {
+    srv.close();
+  }
+});
+
+test("a call Google never signed gets Google's documented skip value", () => {
+  // History from before a restart, or a call another brain made, has no
+  // signature to give back; without one Google refuses the turn outright.
+  const history = [
+    { role: "user", content: "hi" },
+    { role: "assistant", content: [
+      { type: "tool_use", id: "from_another_brain", name: "run_command", input: { command: "date" } },
+      { type: "tool_use", id: "from_another_brain_2", name: "jobs", input: {} },
+    ] },
+    { role: "user", content: [{ type: "tool_result", tool_use_id: "from_another_brain", content: "Wed" }] },
+  ] as any;
+  const msgs = toOpenAiMessages("s", history, { gemini: true });
+  assert.deepEqual(msgs[2].tool_calls![0].extra_content, { google: { thought_signature: GEMINI_SKIP_SIGNATURE } });
+  assert.equal(msgs[2].tool_calls![1].extra_content, undefined);
+});
+
+test("only Google's own endpoint is treated as Gemini direct", () => {
+  assert.equal(isGeminiDirect("https://generativelanguage.googleapis.com/v1beta/openai/"), true);
+  assert.equal(isGeminiDirect("https://openrouter.ai/api/v1"), false);
+  assert.equal(isGeminiDirect("http://localhost:11434/v1"), false);
+  assert.equal(isGeminiDirect("not a url"), false);
 });
