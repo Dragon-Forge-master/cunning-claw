@@ -40,7 +40,7 @@ import { collapseHome, expandHome, isSensitivePath } from "./paths.js";
  *   payment_method  one of PAYMENT_METHODS
  *   note            the operator's own words from the caption
  *   image           the photo, relative to DATA_DIR/receipts
- *   source          "telegram" or "tool"
+ *   source          "telegram", "pocket" (the phone app) or "tool"
  *   status          "read", "unread" (no brain could read it), "corrected", or "void"
  *   read_by         the brain id that read it; "" if none did
  *   edits           every correction: { at, field, from, to } — the audit trail
@@ -61,6 +61,9 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export type ReceiptStatus = "read" | "unread" | "corrected" | "void";
 
+/** Where a receipt came in. Kept through a reload, so the CSV says which glass filed it. */
+export type ReceiptSource = "telegram" | "pocket" | "tool";
+
 export interface ReceiptEdit { at: string; field: string; from: string; to: string }
 
 export interface Receipt {
@@ -75,7 +78,7 @@ export interface Receipt {
   payment_method: PaymentMethod;
   note: string;
   image: string;
-  source: "telegram" | "tool";
+  source: ReceiptSource;
   status: ReceiptStatus;
   read_by: string;
   edits: ReceiptEdit[];
@@ -337,7 +340,7 @@ function normaliseReceipt(r: any): Receipt | null {
     payment_method: normalisePayment(r.payment_method) ?? "unknown",
     note: cleanNote(r.note ?? ""),
     image: String(r.image ?? ""),
-    source: r.source === "telegram" ? "telegram" : "tool",
+    source: r.source === "telegram" || r.source === "pocket" ? r.source : "tool",
     status,
     read_by: String(r.read_by ?? ""),
     edits: Array.isArray(r.edits) ? r.edits.map((e: any) => ({
@@ -400,7 +403,7 @@ export function saveImage(bytes: Buffer, mediaType: "image/jpeg" | "image/png", 
 export interface FileOptions {
   bytes: Buffer;
   note?: string;
-  source: "telegram" | "tool";
+  source: ReceiptSource;
   at?: Date;
   root?: string;
   /** The Desk view's file, or null to leave the Desk alone (tests). */

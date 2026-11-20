@@ -52,7 +52,7 @@ import { dietStatus } from "./tool-diet.js";
 import { jobs, TERMINAL_STATES } from "./jobs.js";
 import { foreman, reportText, startForeman } from "./foreman.js";
 import { hostGate } from "./pocket-host.js";
-import { createPocket } from "./pocket.js";
+import { createPocket, POCKET_LARGE_BODIES } from "./pocket.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -97,6 +97,7 @@ const pocket = createPocket({
   pairingMinutes: config.pocket?.pairingMinutes,
   vapidSubject: config.pocket?.vapidSubject,
   staticDir: path.join(ROOT, "public", "pocket"),
+  jobs,
 });
 
 // Before every route: a request must name this claw. Loopback names get the
@@ -114,7 +115,7 @@ app.use(hostGate(() => ({ bindHost: config.server.host, pocketHosts: pocket.host
 // the route's larger one actually run.
 const smallJson = express.json({ limit: "1mb" });
 app.use((req, res, next) =>
-  req.path === "/api/upload" || req.path === "/pocket/api/upload" ? next() : smallJson(req, res, next),
+  req.path === "/api/upload" || POCKET_LARGE_BODIES.has(req.path) ? next() : smallJson(req, res, next),
 );
 
 // Loading the HUD hands the browser its session, so EventSource — which cannot
