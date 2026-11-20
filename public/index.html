@@ -19,6 +19,7 @@
       <div class="header-controls">
         <div id="brain-picker" class="brain-picker" title="Which model thinks. Same tools on every brain."></div>
         <button id="skills-toggle" class="ctl" title="Capabilities — click to arm a skill">SKILLS</button>
+        <button id="learn-toggle" class="ctl" title="Learn mode — a course in using your claw safely">LEARN<span id="learn-badge" class="hdr-badge" hidden></span></button>
         <button id="mcp-toggle" class="ctl" title="Connectors — MCP servers such as Canva, GitHub, Notion">CONNECT<span id="mcp-badge" class="hdr-badge" hidden></span></button>
         <button id="preview-toggle" class="ctl" title="In-HUD browser viewport">VIEWPORT</button>
         <button id="font-toggle" class="ctl" title="Reading face: OpenDyslexic on or off" aria-pressed="false">Aa</button>
@@ -50,6 +51,10 @@
 
       <section id="chat-panel">
         <div class="panel-title">TRANSCRIPT</div>
+        <div id="practice-banner" hidden>
+          <strong>PRACTICE · nothing real will happen</strong>
+          <span>Cards here are practice cards. The message bar below is your real claw — sending from it ends practice.</span>
+        </div>
         <div id="chat-log"></div>
         <div id="approval-area"></div>
         <div id="armed-row" hidden></div>
@@ -93,6 +98,24 @@
       </section>
     </main>
   </div>
+
+  <aside id="learn-panel" hidden aria-label="Learn mode">
+    <div class="learn-head">
+      <div>
+        <div class="panel-title">LEARN · operating your claw safely</div>
+        <p class="skills-hint">Short lessons. Your own real jobs, a practice ground where nothing real happens, and checks marked by code.</p>
+      </div>
+      <div class="learn-head-actions">
+        <select id="learn-lang" title="Language" aria-label="Language">
+          <option value="en">English</option>
+          <option value="cy">Cymraeg</option>
+        </select>
+        <button type="button" id="learn-close" class="ctl">CLOSE</button>
+      </div>
+    </div>
+    <div id="learn-body"></div>
+    <div id="learn-practice" hidden></div>
+  </aside>
 
   <div id="skills-overlay" hidden>
     <div class="skills-sheet">
@@ -150,5 +173,6 @@
 
   <script src="app.js"></script>
   <script src="connectors.js"></script>
+  <script src="learn.js"></script>
 </body>
 </html>

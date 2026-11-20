@@ -43,7 +43,8 @@ export const TARGETS = {
 // The setup scripts ride along because the HUD and doctor name them (local
 // ears, Piper's voice); a hint pointing at a file the bundle lacks is a lie.
 const TOP_FILES = ["claw.config.json", ".env.example", "package.json", "package-lock.json", "LICENSE", "README.md", "setup-ears.sh", "setup-voice.sh"];
-const TRACKED_DIRS = ["public", "workspace", "senses"];
+// learn/ is the Learn mode course: lessons and practice fixtures the server reads at boot.
+const TRACKED_DIRS = ["public", "workspace", "senses", "learn"];
 
 function run(cmd, args, opts = {}) {
   return execFileSync(cmd, args, { stdio: "inherit", shell: process.platform === "win32", ...opts });

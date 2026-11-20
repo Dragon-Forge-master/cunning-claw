@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import type Anthropic from "@anthropic-ai/sdk";
-import { config, ROOT } from "./config.js";
+import { config, DATA_DIR, ROOT } from "./config.js";
 import { remember, forget, searchMemory } from "./memory.js";
 import * as browser from "./browser.js";
 import * as desktop from "./desktop.js";
@@ -35,6 +35,7 @@ import { readDocument } from "./documents.js";
 import { connectorGuide } from "./connector-guide.js";
 import * as marketing from "./marketing.js";
 import { exportPdf } from "./export-pdf.js";
+import { loadLessons, loadProgress, progressSummary } from "./learn-format.js";
 
 export { isSensitivePath } from "./paths.js";
 
@@ -590,6 +591,13 @@ export const toolDefinitions: Anthropic.Tool[] = [
       required: ["query"],
       additionalProperties: false,
     },
+  },
+  {
+    name: "learn_progress",
+    description:
+      "Read-only: the operator's Learn mode progress — modules passed, lessons in progress, reviews due. " +
+      "Use it when they ask how their course is going. It cannot start, stop or change a lesson: only the operator does that, from the HUD's LEARN panel.",
+    input_schema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
     name: "browser_open",
@@ -1335,6 +1343,23 @@ const HARD_DENY: RegExp[] = [
   /\bsudo\s+(-[a-zA-Z]+(\s+[^-\s]\S*)?\s+)*-[a-zA-Z]*S/, // sudo -S (flags and their arguments may come first): a password piped in, which means it passed through the model
 ];
 
+/** How many shapes the floor refuses — a Learn mode lesson states this number, and a test holds it to it. */
+export function hardDenyCount(): number {
+  return HARD_DENY.length;
+}
+
+/** Does the code-level floor alone refuse this? Config is not consulted, so this is the floor and nothing else. */
+export function hitsFloor(command: string): boolean {
+  return HARD_DENY.some((re) => re.test(command));
+}
+
+/**
+ * The exact words a refused command gets. Exported so the practice ground
+ * returns the same sentence the real shell does — the floor is the lesson,
+ * and a learner should see it word for word as it will appear for real.
+ */
+export const FLOOR_REFUSAL = "BLOCKED: this command matches the destructive-command denylist and will never be run.";
+
 export function classifyCommand(command: string): Verdict {
   // Code-level floor first — config cannot weaken this.
   for (const re of HARD_DENY) {
@@ -1396,7 +1421,10 @@ async function gate(
   summary: string,
   detail: string,
 ): Promise<boolean> {
-  const covered = workorder.consume(step.tool, step.match);
+  // A practice card must be a card. A real plan approved before the scenario
+  // could otherwise cover a practice send without the learner seeing it, and
+  // consuming one of its steps would change real state from the practice ground.
+  const covered = simulator ? { covered: false as const } : workorder.consume(step.tool, step.match);
   if (covered.covered) {
     ctx.emit("plan_step", {
       plan: covered.title,
@@ -1426,7 +1454,7 @@ export const SYNTHETIC_INPUT_RE =
 async function runCommand(input: { command: string; cwd?: string; unsandboxed?: boolean }, ctx: ToolContext): Promise<string> {
   const verdict = classifyCommand(input.command);
   if (verdict === "deny") {
-    return "BLOCKED: this command matches the destructive-command denylist and will never be run.";
+    return FLOOR_REFUSAL;
   }
   // Resolved before any card, so the card can say where the command may write
   // and a doomed directory is reported without the operator approving it first.
@@ -1694,6 +1722,15 @@ function previewEditResult(
     : body.replace(opts.oldString, opts.newString);
 }
 
+/**
+ * The title of the card that arms a standing order. One function for
+ * write_file, edit_file and the practice ground, so the card a learner meets
+ * in practice is the card they will meet for real.
+ */
+export function armingCardSummary(action: string, p: string, count: number): string {
+  return `${action} ${p} — this arms ${count === 1 ? "a standing order that fires" : `${count} standing orders that fire`} on its own, unattended`;
+}
+
 function newlyArmedOrders(p: string, nextContent: string): ScheduleEntry[] {
   if (path.resolve(p) !== path.resolve(SCHEDULE_FILE)) return [];
   try {
@@ -1737,7 +1774,7 @@ async function writeFileTool(
   const armed = newlyArmedOrders(p, input.append ? readIfAny(p) + input.content : input.content);
   if (armed.length) {
     const ok = await ctx.requestApproval(
-      `${action} ${p} — this arms ${armed.length === 1 ? "a standing order that fires" : `${armed.length} standing orders that fire`} on its own, unattended`,
+      armingCardSummary(action, p, armed.length),
       armed.map((e) => e.raw).join("\n"),
     );
     if (!ok) return "The user declined the new standing order.";
@@ -1984,7 +2021,36 @@ export async function sendEmailStep(
   return await io.send();
 }
 
+/**
+ * Learn mode's practice ground (src/learn-sim.ts), when a scenario is running.
+ *
+ * Here, at the one chokepoint every tool call passes, rather than in each
+ * tool: while it is set NO tool reaches its real implementation. A tool the
+ * scenario has a fixture for gets the fixture; any other is refused with a
+ * fixed sentence and never run. Set only by the Learn controller
+ * (src/learn.ts), which only the operator's own HUD routes drive — no tool,
+ * tool result or phone line can set it. Injected rather than imported, so
+ * tools.ts never imports the lesson engine and no cycle is closed.
+ */
+export type PracticeSimulator = (name: string, input: any, ctx: ToolContext) => Promise<ToolOutput>;
+let simulator: PracticeSimulator | null = null;
+
+export function setPracticeSimulator(fn: PracticeSimulator | null): void {
+  simulator = fn;
+}
+
+export function practiceSimulatorActive(): boolean {
+  return simulator !== null;
+}
+
 export async function executeTool(name: string, input: any, ctx: ToolContext): Promise<ToolOutput> {
+  if (simulator) {
+    try {
+      return await simulator(name, input, ctx);
+    } catch (err: any) {
+      return `Practice tool error: ${err?.message ?? err}. Nothing real was run.`;
+    }
+  }
   try {
     switch (name) {
       case "run_command": return await runCommand(input, ctx);
@@ -2015,7 +2081,7 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         }));
         if (armedByEdit.length) {
           const ok = await ctx.requestApproval(
-            `Edit ${plan.path} — this arms ${armedByEdit.length === 1 ? "a standing order that fires" : `${armedByEdit.length} standing orders that fire`} on its own, unattended`,
+            armingCardSummary("Edit", plan.path, armedByEdit.length),
             armedByEdit.map((e) => e.raw).join("\n"),
           );
           if (!ok) return "The user declined the new standing order.";
@@ -2680,6 +2746,14 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         return addLesson(String(input.name ?? ""), lesson).message;
       }
       case "landscape": return landscapeSummary();
+      case "learn_progress": {
+        // Read-only on purpose (T15 in docs/LEARN-MODE.md): a page that could
+        // put the claw "in a lesson" could also make a real card look like
+        // practice. This reads the file; starting and stopping is HUD-only.
+        const now = new Date();
+        const { lessons } = loadLessons(path.join(ROOT, "learn"));
+        return progressSummary(loadProgress(DATA_DIR, now), lessons, now);
+      }
       case "generate_image": {
         const r = await generateImage(String(input.prompt ?? ""));
         return r.message;

@@ -28,9 +28,12 @@ function serverEvents(): Set<string> {
 }
 
 function hudEvents(): Set<string> {
-  const src = fs.readFileSync(path.join(ROOT, "public", "app.js"), "utf-8");
+  // learn.js shares app.js's EventSource (es): Learn mode's listeners live there.
   const names = new Set<string>();
-  for (const m of src.matchAll(/es\.addEventListener\(\s*"([a-z_]+)"/g)) names.add(m[1]);
+  for (const file of ["app.js", "learn.js"]) {
+    const src = fs.readFileSync(path.join(ROOT, "public", file), "utf-8");
+    for (const m of src.matchAll(/es\.addEventListener\(\s*"([a-z_]+)"/g)) names.add(m[1]);
+  }
   return names;
 }
 
@@ -45,7 +48,8 @@ test("every HUD listener corresponds to an event the server emits", () => {
 
 test("safety-relevant events are rendered, not silently dropped", () => {
   const hud = hudEvents();
-  for (const required of ["brain_guard", "approval_request", "approval_resolved", "file_change"]) {
+  // learn_practice is how the glass says PRACTICE: a practice state nobody can see is the confusion it exists to prevent.
+  for (const required of ["brain_guard", "approval_request", "approval_resolved", "file_change", "learn_practice"]) {
     assert.ok(hud.has(required), `HUD must render "${required}" — it is how the operator sees the safety layer`);
   }
 });

@@ -7,11 +7,18 @@ import { WORKSPACE, defuse, wrapRecorded } from "./workspace.js";
 
 export const JOURNAL_DIR = path.join(DATA_DIR, "journal");
 
-export function appendJournal(role: "operator" | "cunningclaw", text: string, now = new Date()): void {
+/**
+ * Learn mode's practice turns are journaled here instead, so a planted email
+ * from the practice inbox never turns up in "Recent journal" — the stable
+ * half of every real turn's prompt — or in memory_search.
+ */
+export const PRACTICE_JOURNAL_DIR = path.join(DATA_DIR, "learn", "practice-journal");
+
+export function appendJournal(role: "operator" | "cunningclaw", text: string, now = new Date(), dir = JOURNAL_DIR): void {
   const day = localDate(now);
-  fs.mkdirSync(JOURNAL_DIR, { recursive: true });
+  fs.mkdirSync(dir, { recursive: true });
   const line = `- ${localTime(now)} ${role}: ${defuse(text).replace(/\s+/g, " ").slice(0, 400)}\n`;
-  fs.appendFileSync(path.join(JOURNAL_DIR, `${day}.md`), redact(line));
+  fs.appendFileSync(path.join(dir, `${day}.md`), redact(line));
 }
 
 /** Last lines of today's log, for the per-turn context block. */

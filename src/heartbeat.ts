@@ -17,7 +17,14 @@ export function heartbeatStatus() {
   };
 }
 
-export function startHeartbeat(events: AgentEvents): void {
+/**
+ * `onBeat` runs on every tick, before the model is asked anything and whether
+ * or not a beat is due: Learn mode's review offer (src/learn.ts nudgeTick) is
+ * a file read and a date comparison, so it costs no tokens and cannot be held
+ * up by a credit backoff. It is handed in, not imported, so this module does
+ * not import the lesson engine.
+ */
+export function startHeartbeat(events: AgentEvents, opts: { onBeat?: () => void } = {}): void {
   if (!config.heartbeat.enabled) {
     console.log("  Heartbeat: off");
     return;
@@ -25,6 +32,7 @@ export function startHeartbeat(events: AgentEvents): void {
   const ms = Math.max(1, config.heartbeat.intervalMinutes) * 60 * 1000;
   console.log(`  Heartbeat: every ${config.heartbeat.intervalMinutes}m`);
   setInterval(() => {
+    try { opts.onBeat?.(); } catch { /* a review reminder must never stop the pulse */ }
     if (!beatDue(backoff, Date.now())) return;
     // Watch this beat's own errors: a credit failure is noted here and shown
     // once as a notice, not as a ⚠ every half hour.
