@@ -394,8 +394,8 @@ memory search tool dropped this stamp; that is fixed and tested.)
 
 ## 5. Surfaces added since 0.4
 
-Six pieces of work landed after 0.4.0, and a seventh, Outlook (5.7), after
-them. Each adds a way in or a way out, so each
+Six pieces of work landed after 0.4.0, and two more, Outlook (5.7) and
+Pocket through the relay (5.8), after them. Each adds a way in or a way out, so each
 is described here the same way as the rest: what it does, where, the test that
 holds it, and what it does not do.
 
@@ -716,6 +716,108 @@ against the real outlook.office.com: no account was available. When the real
 page differs, each step says which landmark it could not find and does
 nothing, rather than guessing.
 
+### 5.8 Pocket through the relay: a way home that Dragon Forge carries but cannot read
+
+The private network (5.2) asks for Tailscale on both ends. The second way asks
+for nothing: the phone opens `cunningclaw.com/pocket`, scans the HUD's QR and
+pairs, and both ends dial *out* to a relay Dragon Forge runs on Cloudflare
+(`relay/pocket/`: a Worker, and one Durable Object per claw holding that
+claw's WebSockets). The specification is `docs/POCKET-RELAY.md`; this is the
+security summary.
+
+**The relay is a transport, not a second Pocket.** Requests that arrive on an
+authenticated channel are dispatched in-process into the same router the
+tailnet name uses (`src/pocket-bridge.ts`), so the lock levels, the fresh
+assertion per card, revoke, receipts, shares and counts-only push are the
+same code, and their tests run again through the relay (*relay: talk, the
+event stream, and an approval with a fresh assertion bound to the card at
+cunningclaw.com's origin*, *relay: the lock levels hold through the relay
+exactly as on the tailnet*, *relay: push for a relay phone is sent by the
+claw itself, and says how many, never what*). No port is opened on the
+operator's machine, and the claw dials out only once a phone is paired this
+way or a relay QR is showing (*relay: the claw does not dial out until a phone
+is paired the easy way, and hangs up when none is*).
+
+**End to end, so the relay cannot read or forge.** The QR carries the relay
+URL, the room id, a one-time 144-bit code (five minutes, single use) and the
+SHA-256 fingerprint of the claw's static P-256 key. The phone makes its own
+key pair with WebCrypto, the private half non-extractable. Each connection
+runs a three-message handshake of three ECDH shares (ephemeral–ephemeral,
+ephemeral–claw static, phone static–ephemeral) through HKDF-SHA-256 over a
+transcript hash that binds the mode, the room and both static keys; while
+pairing, the KDF is salted with a psk derived from the code, which never
+passes through the relay. Both sides prove the keys with HMACs before
+anything is sent. Records are AES-256-GCM with a key and an implicit counter
+per direction, so a tampered, replayed, reordered, dropped or reflected
+record fails and the session dies (*e2e: a tampered, replayed, reordered,
+dropped or reflected record is refused, and the session dies*, *e2e: a relay
+that substitutes the claw's key is caught by the phone, pairing and session*,
+*e2e: a relay that substitutes the phone's key while pairing cannot complete
+the handshake without the code*, *e2e: a handshake moved to another room
+fails, whichever side is told the other room*, *e2e: an expired, reused or
+wrong pairing code fails the handshake*, *e2e: keys that are not points on the
+curve, or one key used twice, are refused before any ECDH*). The phone's half
+is the browser file itself, run against the claw's half in the tests.
+
+**Who may occupy a room.** A room id is SHA-256 of a secret only the claw
+holds, so nobody can squat a room or take one over; a phone enters only with
+a token whose hash the claw listed, or a single-use pairing ticket derived
+from the code; frames, phones, waiting sockets and failed hellos are capped,
+and the failure lockout never applies to the claw or a listed phone (*relay:
+a room belongs to the secret it is a hash of; a stranger who knows the room id
+cannot squat or take it*, *relay: a pairing ticket is single-use and
+expires*, *relay: frames are capped in size and rate, phones and waiting
+sockets in number*, *relay: a room that keeps failing hellos stops listening
+to strangers for a while, never to its claw or its phones*). These rules are
+`relay/pocket/src/room.js`, and the tests run that file.
+
+**WebAuthn and the two paths.** A relay phone's passkey belongs to relying
+party `cunningclaw.com`, and the claw checks assertions against origin
+`https://cunningclaw.com` only on a relay channel, only for a device paired
+through the relay. A relay phone has no token and cannot be used on the
+tailnet name; a tailnet phone cannot be used through the relay; a code is
+minted for one path and cannot be spent on the other (*relay: a relay phone
+cannot be used on the tailnet name, and a tailnet phone cannot be used
+through the relay*, *relay pairing: an expired or used code fails, and a code
+cannot cross from one path to the other*). Revoke drops the phone's token
+from the relay's list, the relay disconnects it, and the claw refuses its key
+even if a dishonest relay lets it back in (*relay: a revoked phone is refused
+— its channel is closed, the relay drops it, and it cannot come back*,
+*relay: a revoked phone's key is refused by the claw even if a dishonest relay
+lets it in*).
+
+**What the relay can see.** Nothing of the content. It sees the room id (a
+stable pseudonym for one claw), when the claw and each phone connect, how
+many phones, and the size and timing of every message; Cloudflare sees IP
+addresses, as for any site it fronts. It keeps nothing on disk and logs
+nothing (*relay: the code Cloudflare runs logs nothing and stores nothing*;
+Workers Logs off in `wrangler.toml`). It can deny service.
+
+**The supply-chain cost, stated plainly.** In this mode the phone runs
+JavaScript that `cunningclaw.com` serves. A site made to serve a different
+app could read what the operator reads in it and ask the fingerprint to
+approve something other than what it shows. It could do no more than a paired
+phone can (the floor, the denylist and the HUD's view of every card are
+untouched), and only to phones that open it while it is compromised.
+Mitigations: a strict CSP for `/pocket/` that allows the app's own scripts and
+the relay and nothing else (*site: /pocket/ has a strict policy of its own
+that still lets it reach the relay, and only the relay*); the site's copy
+generated from the repository, with a `release.json` of SHA-256 hashes, and a
+test that fails if they drift (*site: site/pocket/ is public/pocket/ byte for
+byte, but for the one line that says it is the site and a release manifest of
+hashes*); `npm run doctor` comparing the live scripts with the claw's own
+(*doctor: says whether the website serves this claw's own phone app, file by
+file*); the source open; and the private network beside it on the HUD, where
+the app comes from the operator's own claw and nothing passes through Dragon
+Forge.
+
+**Limits.** The relay is not deployed. The Worker ran under `wrangler dev`
+(workerd) for a Playwright drive with an emulated Pixel 7 and a virtual
+passkey (pair, talk, approve a real card, reload, relay down and back,
+revoke); not on Cloudflare itself, not on a real phone, not on an iPhone. The
+doctor's file check cannot detect a site that serves one phone something
+different from what it serves the check.
+
 ---
 
 ## 6. Scenarios
@@ -856,6 +958,8 @@ Every test in the suite is required to fail with its fix reverted
 6. **macOS sandbox untested on hardware.**
 7. **Pocket Claw untried on a real phone and a real tailnet**, and Cloudflare
    Access's signed header is not checked on the tunnel route (section 5.2).
+   Pocket through the relay trusts the website that serves the app, and the
+   relay is not yet deployed (section 5.8).
 8. **Heuristic scanner.** Open source and evadable by design. An optional
    model-based second opinion is a follow-up.
 9. **The wall has no timer.** Rate-limit rows older than two days are swept on
