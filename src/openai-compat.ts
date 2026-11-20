@@ -11,9 +11,51 @@ export type OpenAiChatMessage = {
     id: string;
     type: "function";
     function: { name: string; arguments: string };
+    extra_content?: unknown;
   }[];
   tool_call_id?: string;
 };
+
+/**
+ * Gemini's thought signatures.
+ *
+ * Gemini 3 thinks before it calls a tool, and through Google's own
+ * OpenAI-compatible endpoint it hands back an opaque signature of that
+ * thinking on the call, as `tool_calls[].extra_content.google.thought_signature`.
+ * The next request must carry it back on the same call, or Google refuses the
+ * whole request: "Function call is missing a thought_signature in functionCall
+ * parts" (400). Found on the first real coding job through the Google direct
+ * brain — the model called delegate_code, and the very next request died, so
+ * every tool-using turn on that brain failed after its first tool call.
+ *
+ * History is stored Anthropic-shaped and may be sent to Anthropic later, which
+ * refuses unknown fields on a tool_use block, so the signature is not written
+ * into history. It is kept here, by tool-call id, and added back only for
+ * Google's endpoint. A call with no signature — history from before a restart,
+ * or a call another brain made — gets the value Google documents for calls it
+ * did not generate ("skip_thought_signature_validator", thought-signatures FAQ),
+ * on the first call of each step, which is the only one Google checks.
+ */
+const signatures = new Map<string, unknown>();
+const SIGNATURE_CAP = 2000;
+export const GEMINI_SKIP_SIGNATURE = "skip_thought_signature_validator";
+
+function rememberSignature(id: string, extra: unknown): void {
+  if (!id || !extra || typeof extra !== "object") return;
+  signatures.delete(id);
+  signatures.set(id, extra);
+  // Oldest first out: a long-running claw must not grow this without bound.
+  while (signatures.size > SIGNATURE_CAP) signatures.delete(signatures.keys().next().value as string);
+}
+
+/** Google's own OpenAI-compatible endpoint, the one that checks signatures. */
+export function isGeminiDirect(baseUrl: string): boolean {
+  try {
+    return new URL(baseUrl).hostname === "generativelanguage.googleapis.com";
+  } catch {
+    return false;
+  }
+}
 
 function flattenToolContent(content: unknown): string {
   if (typeof content === "string") return content;
@@ -81,6 +123,7 @@ function imagesFromToolContent(content: unknown): OpenAiChatMessage[] {
 export function toOpenAiMessages(
   system: string,
   history: Anthropic.MessageParam[],
+  opts: { gemini?: boolean } = {},
 ): OpenAiChatMessage[] {
   const out: OpenAiChatMessage[] = [{ role: "system", content: system }];
   for (const m of history) {
@@ -113,7 +156,11 @@ export function toOpenAiMessages(
           id: b.id,
           type: "function" as const,
           function: { name: b.name, arguments: JSON.stringify(b.input ?? {}) },
+          ...(opts.gemini && signatures.has(b.id) ? { extra_content: signatures.get(b.id) } : {}),
         }));
+      if (opts.gemini && tool_calls.length && !("extra_content" in tool_calls[0])) {
+        (tool_calls[0] as any).extra_content = { google: { thought_signature: GEMINI_SKIP_SIGNATURE } };
+      }
       out.push({
         role: "assistant",
         // Empty string, never null: OpenRouter tolerates null content on
@@ -177,7 +224,7 @@ export async function completeOpenAi(opts: {
     model: brain.model,
     max_tokens: opts.spec.maxTokens ?? config.maxTokens,
     tools: openAiToolSchema(opts.mcpTools !== false, opts.tools),
-    messages: toOpenAiMessages(opts.system, opts.history),
+    messages: toOpenAiMessages(opts.system, opts.history, { gemini: isGeminiDirect(brain.baseUrl) }),
   };
 
   const headers = {
@@ -233,7 +280,7 @@ export async function completeOpenAi(opts: {
   const decoder = new TextDecoder();
   let buffer = "";
   let text = "";
-  const calls = new Map<number, { id: string; name: string; arguments: string }>();
+  const calls = new Map<number, { id: string; name: string; arguments: string; extra?: unknown }>();
   let usage: { inputTokens: number; outputTokens: number } | undefined;
 
   while (true) {
@@ -259,11 +306,22 @@ export async function completeOpenAi(opts: {
         opts.onText(delta.content);
       }
       for (const part of delta.tool_calls ?? []) {
-        const idx = part.index ?? 0;
+        // OpenAI streams a call in fragments and numbers each with `index`.
+        // Google's endpoint sends each call whole, with an id and no index,
+        // so `index ?? 0` put two parallel calls in one chunk into the same
+        // slot and glued their names and arguments together. Without an
+        // index, a new id is a new call; no id continues the last one.
+        let idx: number;
+        if (typeof part.index === "number") idx = part.index;
+        else {
+          const known = part.id ? [...calls.entries()].find(([, c]) => c.id === part.id)?.[0] : undefined;
+          idx = known ?? (part.id ? calls.size : Math.max(0, calls.size - 1));
+        }
         const cur = calls.get(idx) ?? { id: "", name: "", arguments: "" };
         if (part.id) cur.id = part.id;
         if (part.function?.name) cur.name += part.function.name;
         if (part.function?.arguments) cur.arguments += part.function.arguments;
+        if (part.extra_content) cur.extra = part.extra_content;
         calls.set(idx, cur);
       }
       if (json.usage) usage = parseUsage(json.usage);
@@ -274,6 +332,7 @@ export async function completeOpenAi(opts: {
     id: c.id || `call_${i}`,
     name: c.name,
     arguments: c.arguments,
+    extra: c.extra,
   })), usage);
 }
 
@@ -294,16 +353,16 @@ function parseUsage(raw: any): { inputTokens: number; outputTokens: number } | u
 
 function assemble(
   text: string,
-  calls: { id: string; name: string; arguments: string }[],
+  calls: { id: string; name: string; arguments: string; extra?: unknown }[],
   usage?: { inputTokens: number; outputTokens: number },
 ): OpenAiCompletion {
   const toolUses = calls
     .filter((c) => c.name)
-    .map((c, i) => ({
-      id: c.id || `call_${i}`,
-      name: c.name,
-      input: parseToolArgs(c.arguments),
-    }));
+    .map((c, i) => {
+      const id = c.id || `call_${i}`;
+      rememberSignature(id, c.extra);
+      return { id, name: c.name, input: parseToolArgs(c.arguments) };
+    });
   const blocks: any[] = [];
   if (text) blocks.push({ type: "text", text });
   for (const tu of toolUses) {
@@ -320,6 +379,7 @@ function fromNonStream(json: any, onText: (delta: string) => void): OpenAiComple
     id: c.id || `call_${i}`,
     name: c.function?.name ?? "",
     arguments: c.function?.arguments ?? "",
+    extra: c.extra_content,
   }));
   return assemble(text, calls, parseUsage(json.usage));
 }
