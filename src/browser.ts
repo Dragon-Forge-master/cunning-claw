@@ -44,6 +44,22 @@ import {
   type GmailView,
 } from "./gmail.js";
 import {
+  formatOutlookOpenFailure,
+  isMicrosoftSignInUrl,
+  isOutlookMailboxUrl,
+  isOutlookRelatedUrl,
+  outlookCheckEmail,
+  outlookDraftEmail,
+  outlookEmailAction,
+  outlookPeekCompose,
+  outlookReadEmail,
+  outlookSendEmail,
+  type MailPage,
+  type OutlookAction,
+  type OutlookEnv,
+} from "./outlook.js";
+import { GMAIL_HOME, gmailViewFor, type MailChoice } from "./mail-provider.js";
+import {
   WHATSAPP_URL,
   isWhatsAppUrl,
   shouldReuseTab,
@@ -70,7 +86,7 @@ const execFileAsync = promisify(execFile);
 // Lives in paths.ts so the sensitive-path denylist can cover the cookie jar
 // without dragging CDP, Gmail and WhatsApp in behind it. Re-exported here
 // because this is where callers expect to find it.
-import { PROFILE_DIR, chromeProfileDir } from "./paths.js";
+import { PROFILE_DIR, chromeProfileDir, collapseHome } from "./paths.js";
 export { chromeProfileDir };
 
 const PORT = config.browser.debugPort;
@@ -1093,6 +1109,10 @@ export async function screenshotPage(index?: number): Promise<{ data: string; me
 // Email — Gmail through the signed-in Chrome profile, not the Gmail API.
 // Search operators and hash URLs are the stable surface. Keyboard shortcuts
 // (c, r, e, Shift+i, Ctrl+Enter) beat clicking obfuscated buttons.
+// Outlook on the web goes through the same tab finder and is driven by
+// src/outlook.ts over a MailPage (mailPageFor below): buttons by accessible
+// name first, its shortcuts second. Which one a call gets is
+// src/mail-provider.ts's decision, passed in as a MailChoice.
 // ---------------------------------------------------------------------------
 
 async function dispatchChord(s: CdpSession, spec: GmailKeySpec): Promise<void> {
@@ -1143,18 +1163,61 @@ async function dispatchChord(s: CdpSession, spec: GmailKeySpec): Promise<void> {
   }
 }
 
+/**
+ * How to find one mailbox's tab. Gmail's steps were written first and are
+ * kept exactly; Outlook takes the same road with its own hosts, because the
+ * failure cases are the same — no tab, a sign-in page, a tab on something
+ * else — and so is the message the operator needs for each.
+ */
+type MailboxTabSpec = {
+  home: string;
+  isMailbox: (url: string) => boolean;
+  isRelated: (url: string) => boolean;
+  isAuth: (url: string) => boolean;
+  failure: (o: { profileDir: string; tabs: Array<{ title: string; url: string }>; extra?: string }) => string;
+  name: string;
+};
+
+const GMAIL_TAB: MailboxTabSpec = {
+  home: GMAIL_HOME,
+  isMailbox: isGmailMailboxUrl,
+  isRelated: isGmailRelatedUrl,
+  isAuth: isGoogleAuthUrl,
+  failure: formatGmailOpenFailure,
+  name: "Gmail",
+};
+
+function outlookTabSpec(choice: Extract<MailChoice, { provider: "outlook" }>): MailboxTabSpec {
+  const host = new URL(choice.home).hostname;
+  return {
+    home: choice.home + "inbox",
+    // The configured flavour's host, not any Outlook: a tab on Hotmail must
+    // not answer for the business's Microsoft 365 mailbox.
+    isMailbox: (url) => isOutlookMailboxUrl(url, host),
+    isRelated: (url) => isOutlookMailboxUrl(url, host) || isMicrosoftSignInUrl(url),
+    isAuth: isMicrosoftSignInUrl,
+    // The HUD is filmed: the profile path is shown with home as ~.
+    failure: (o) => formatOutlookOpenFailure({ ...o, profileDir: collapseHome(o.profileDir), home: choice.home }),
+    name: "Outlook",
+  };
+}
+
 async function gmailTab(): Promise<{ ok: true; s: CdpSession } | { ok: false; message: string }> {
+  return mailboxTab(GMAIL_TAB);
+}
+
+async function mailboxTab(spec: MailboxTabSpec): Promise<{ ok: true; s: CdpSession } | { ok: false; message: string }> {
   const boot = await ensureBrowser();
   if (!boot.ok) return { ok: false, message: boot.message };
 
-  const inbox = "https://mail.google.com/mail/u/0/#inbox";
+  const inbox = spec.home;
   let tabs: Target[] = [];
   try {
     tabs = await listTargets();
   } catch (err: any) {
     return {
       ok: false,
-      message: formatGmailOpenFailure({
+      message: spec.failure({
         profileDir: PROFILE_DIR,
         tabs: [],
         extra: `Could not list Chrome tabs: ${err?.message ?? err}. Is the debug port ${PORT} the Cunning Claw Chrome?`,
@@ -1163,14 +1226,14 @@ async function gmailTab(): Promise<{ ok: true; s: CdpSession } | { ok: false; me
   }
 
   let target: Target | undefined =
-    tabs.find((t) => isGmailMailboxUrl(t.url)) ||
-    tabs.find((t) => isGmailRelatedUrl(t.url));
+    tabs.find((t) => spec.isMailbox(t.url)) ||
+    tabs.find((t) => spec.isRelated(t.url));
 
   if (!target) {
     const created = await openNewTab(inbox);
     target = (created
-      ? await waitForTarget((t) => t.id === created.id || isGmailRelatedUrl(t.url))
-      : await waitForTarget((t) => isGmailRelatedUrl(t.url))) ?? undefined;
+      ? await waitForTarget((t) => t.id === created.id || spec.isRelated(t.url))
+      : await waitForTarget((t) => spec.isRelated(t.url))) ?? undefined;
   }
 
   if (!target && tabs[0]) {
@@ -1178,16 +1241,16 @@ async function gmailTab(): Promise<{ ok: true; s: CdpSession } | { ok: false; me
       const s = await sessionFor(tabs[0]);
       await s.call("Page.navigate", { url: inbox });
       target = await waitForTarget(
-        (t) => t.id === tabs[0].id || isGmailRelatedUrl(t.url),
+        (t) => t.id === tabs[0].id || spec.isRelated(t.url),
         8000,
       ) ?? tabs[0];
     } catch (err: any) {
       return {
         ok: false,
-        message: formatGmailOpenFailure({
+        message: spec.failure({
           profileDir: PROFILE_DIR,
           tabs,
-          extra: `Tried to navigate an existing tab to Gmail and failed: ${err?.message ?? err}`,
+          extra: `Tried to navigate an existing tab to ${spec.name} and failed: ${err?.message ?? err}`,
         }),
       };
     }
@@ -1198,12 +1261,12 @@ async function gmailTab(): Promise<{ ok: true; s: CdpSession } | { ok: false; me
     try { listed = await listTargets(); } catch { /* keep */ }
     return {
       ok: false,
-      message: formatGmailOpenFailure({ profileDir: PROFILE_DIR, tabs: listed }),
+      message: spec.failure({ profileDir: PROFILE_DIR, tabs: listed }),
     };
   }
 
   const s = await sessionFor(target);
-  if (!isGmailMailboxUrl(target.url) && !isGoogleAuthUrl(target.url)) {
+  if (!spec.isMailbox(target.url) && !spec.isAuth(target.url)) {
     try {
       await s.call("Page.navigate", { url: inbox });
       await settle(s, 400, 10000);
@@ -1212,6 +1275,32 @@ async function gmailTab(): Promise<{ ok: true; s: CdpSession } | { ok: false; me
     }
   }
   return { ok: true, s };
+}
+
+/**
+ * A tab, as the Outlook driver (src/outlook.ts) sees it: real CDP mouse and
+ * key events and the same settle as every other tool. Exported so the
+ * driven test runs the same adapter against its own throwaway Chromium.
+ */
+export function mailPageFor(s: CdpSession): MailPage {
+  return {
+    evaluate: (expression) => evaluate(s, expression),
+    navigate: async (url) => {
+      await s.call("Page.navigate", { url });
+      await settle(s, 500, 12000);
+    },
+    click: (x, y) => mouseClick(s, x, y),
+    key: (spec) => dispatchChord(s, spec),
+    insertText: async (text) => { await s.call("Input.insertText", { text }); },
+    sleep,
+    platform: process.platform,
+  };
+}
+
+async function outlookPage(choice: Extract<MailChoice, { provider: "outlook" }>): Promise<{ ok: true; page: MailPage; env: OutlookEnv } | { ok: false; message: string }> {
+  const tab = await mailboxTab(outlookTabSpec(choice));
+  if (!tab.ok) return tab;
+  return { ok: true, page: mailPageFor(tab.s), env: { home: choice.home, profileDir: collapseHome(PROFILE_DIR) } };
 }
 
 function signInMessage(): string {
@@ -1248,7 +1337,16 @@ async function waitForCompose(s: CdpSession, tries = 10): Promise<boolean> {
   return false;
 }
 
-export async function checkEmail(query?: string, view?: string): Promise<string> {
+export async function checkEmail(query?: string, view?: string, choice?: MailChoice): Promise<string> {
+  if (choice?.provider === "outlook") {
+    const t = await outlookPage(choice);
+    if (!t.ok) return t.message;
+    return await outlookCheckEmail(t.page, t.env, query, view);
+  }
+  // Outlook's folder names, said to Gmail, mean Gmail's own view or search.
+  const mapped = gmailViewFor(view);
+  view = mapped.view;
+  if (mapped.query && !(query ?? "").trim()) query = mapped.query;
   const tab = await gmailTab();
   if (!tab.ok) return tab.message;
   const s = tab.s;
@@ -1283,7 +1381,12 @@ export async function checkEmail(query?: string, view?: string): Promise<string>
   return fenceUntrusted("mail.google.com", text);
 }
 
-export async function readEmail(index: number): Promise<string> {
+export async function readEmail(index: number, choice?: MailChoice): Promise<string> {
+  if (choice?.provider === "outlook") {
+    const t = await outlookPage(choice);
+    if (!t.ok) return t.message;
+    return await outlookReadEmail(t.page, t.env, index);
+  }
   const tab = await gmailTab();
   if (!tab.ok) return tab.message;
   const s = tab.s;
@@ -1310,7 +1413,25 @@ export async function readEmail(index: number): Promise<string> {
   return fenceUntrusted("mail.google.com", formatGmailThread(thread));
 }
 
-export async function peekCompose(): Promise<{ open: boolean; to: string; subject: string; body: string }> {
+export type ComposePreview = {
+  open: boolean;
+  to: string;
+  subject: string;
+  body: string;
+  /** Outlook only: recipients counted on the To/Cc/Bcc lines, with or without a visible address. */
+  recipientCount?: number;
+  /** Outlook only: every recipient as the card shows it, names included. */
+  toShown?: string;
+  /** Outlook only: a reply's quoted history follows the body in the window. */
+  quoted?: boolean;
+};
+
+export async function peekCompose(choice?: MailChoice): Promise<ComposePreview> {
+  if (choice?.provider === "outlook") {
+    const t = await outlookPage(choice);
+    if (!t.ok) return { open: false, to: "", subject: "", body: "" };
+    return await outlookPeekCompose(t.page);
+  }
   const tab = await gmailTab();
   if (!tab.ok) return { open: false, to: "", subject: "", body: "" };
   const draft = await evaluate(tab.s, GMAIL_DRAFT_JS) as {
@@ -1343,7 +1464,12 @@ export async function draftEmail(input: {
   body: string;
   reply?: boolean;
   replyAll?: boolean;
-}): Promise<string> {
+}, choice?: MailChoice): Promise<string> {
+  if (choice?.provider === "outlook") {
+    const t = await outlookPage(choice);
+    if (!t.ok) return t.message;
+    return await outlookDraftEmail(t.page, t.env, input);
+  }
   const tab = await gmailTab();
   if (!tab.ok) return tab.message;
   const s = tab.s;
@@ -1395,7 +1521,12 @@ export async function draftEmail(input: {
   ].join("\n");
 }
 
-export async function sendEmail(): Promise<string> {
+export async function sendEmail(choice?: MailChoice): Promise<string> {
+  if (choice?.provider === "outlook") {
+    const t = await outlookPage(choice);
+    if (!t.ok) return t.message;
+    return await outlookSendEmail(t.page);
+  }
   const tab = await gmailTab();
   if (!tab.ok) return tab.message;
   const s = tab.s;
@@ -1418,7 +1549,12 @@ export async function sendEmail(): Promise<string> {
   return "Email sent. Compose window closed.";
 }
 
-export async function emailAction(action: string, index?: number): Promise<string> {
+export async function emailAction(action: string, index?: number, choice?: MailChoice): Promise<string> {
+  if (choice?.provider === "outlook") {
+    const t = await outlookPage(choice);
+    if (!t.ok) return t.message;
+    return await outlookEmailAction(t.page, t.env, action as OutlookAction, index);
+  }
   if (!GMAIL_ACTIONS.includes(action as GmailAction)) {
     return `Unknown Gmail action "${action}". Use one of: ${GMAIL_ACTIONS.join(", ")}.`;
   }

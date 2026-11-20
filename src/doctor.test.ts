@@ -6,6 +6,7 @@ import path from "node:path";
 import {
   checkHistoryJson,
   earsCheck,
+  emailCheck,
   hasEssentialFailure,
   noKeyGuide,
   nodeMajor,
@@ -151,6 +152,19 @@ test("every failed or warned line names a fix", async () => {
       `failure must name a fix: ${c.line}`,
     );
   }
+});
+
+test("doctor names the mailbox the email tools open, and the one sign-in it still needs", () => {
+  const gmail = emailCheck(undefined);
+  assert.equal(gmail.status, "ok");
+  assert.match(gmail.line, /Email: Gmail \(mail\.google\.com\), in Cunning Claw's own Chrome — sign in there once \(connector_guide "gmail"/);
+  const work = emailCheck({ provider: "outlook" });
+  assert.match(work.line, /Email: Outlook on the web — work or school, Microsoft 365 \(outlook\.office\.com\)/);
+  assert.match(work.line, /connector_guide "outlook"/);
+  assert.match(emailCheck({ provider: "outlook", outlook: "personal" }).line, /Outlook\.com \/ Hotmail \(outlook\.live\.com\)/);
+  const bad = emailCheck({ provider: "outlook", outlookUrl: "https://mail.evil.example/" });
+  assert.equal(bad.status, "warn");
+  assert.match(bad.line, /must be https on an Outlook host.*claw\.config\.json/);
 });
 
 test("doctor names each document converter, what it is for, and how to install it", async () => {

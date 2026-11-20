@@ -313,10 +313,19 @@ export interface ClawConfig {
   /**
    * The desk marketer's consent guard (src/marketing.ts). `register` moves the
    * consent register off the Desk (default ~/Documents/CunningClaw/Marketing
-   * consent.md); `bulkThreshold` is how many recipients make a Gmail send a
+   * consent.md); `bulkThreshold` is how many recipients make a mailbox send a
    * marketing send whatever it was called (default 5). There is no off switch.
    */
   marketing?: { register?: string; bulkThreshold?: number };
+  /**
+   * Which mailbox the email tools drive, in Cunning Claw's own Chrome
+   * (src/mail-provider.ts). `provider` defaults to "gmail", which is how every
+   * install before Outlook worked. `outlook` picks the address: "work" is
+   * Microsoft 365 (outlook.office.com), "personal" is Outlook.com / Hotmail
+   * (outlook.live.com). `outlookUrl` replaces it and must still be an Outlook
+   * host — the model never supplies one.
+   */
+  email?: { provider?: string; outlook?: string; outlookUrl?: string };
   /**
    * The injection scanner (src/injection.ts): the score, 0..1, at which a
    * fenced block is marked and committing actions in that turn ask afresh.

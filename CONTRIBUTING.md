@@ -13,8 +13,11 @@ src/first-run.ts   what boot needs; the setup page decides the rest (public/welc
 src/agent.ts       Streaming tool loop
 src/brain.ts       Named brains, failover, spend
 src/tools.ts       Tool schemas + dispatcher + HARD_DENY
-src/browser.ts     Chrome via CDP; fences page/email as <untrusted>
+src/browser.ts     Chrome via CDP; fences page/email as <untrusted>; finds the Gmail or Outlook tab
 src/gmail.ts       Gmail search language, list/thread scrapers, compose helpers
+src/outlook.ts     Outlook on the web: ARIA roles and button names, shortcut fallback, the driver over a MailPage
+src/mail-provider.ts which mailbox the email tools drive (email.provider), and each mailbox's action words
+src/outlook-fixture.ts a stand-in Outlook page for the driven tests; the server never imports it
 src/desktop.ts     Screen, keys, clipboard — per-platform paths via src/platform.ts
 src/windows.ts     The Windows half: PowerShell, SendKeys, System.Drawing
 src/paths.ts       expandHome + the sensitive-file denylist every file tool obeys

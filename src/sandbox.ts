@@ -169,7 +169,7 @@ export function sessionSockets(env: NodeJS.ProcessEnv, home: string, opts: { kee
 
 /**
  * The claw's own secrets: its keys, its connector sign-ins, and its Chrome
- * profile (the Gmail and WhatsApp sessions). Hidden whatever the config says —
+ * profile (the Gmail, Outlook and WhatsApp sessions). Hidden whatever the config says —
  * `reveal` cannot reach them.
  */
 export function ownSecrets(): string[] {

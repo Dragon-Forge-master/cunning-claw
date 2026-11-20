@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-957%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-987%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -402,9 +402,9 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **Sees** | Screenshots the desktop, and can *glance* at the room through a webcam or a Home Assistant camera — mood is a hypothesis, never a reason to act |
 | **Runs the house** | Home Assistant: lights, heating, blinds, scenes; hears the doorbell and the doors — security actions ask every time, and nobody is identified |
 | **Operates** | Shell, files, apps, volume, media, clipboard, notifications, window focus, keystrokes |
-| **Browses** | Owns a Chrome profile over CDP — accessibility refs, real mouse/keys, snapshot after every action, Gmail, WhatsApp Web |
+| **Browses** | Owns a Chrome profile over CDP — accessibility refs, real mouse/keys, snapshot after every action, Gmail, Outlook on the web, WhatsApp Web |
 | **Reads documents** | PDF, Word, Excel, PowerPoint, OpenDocument, HTML, CSV and images (OCR). Office files open with nothing installed; `markitdown`, `pdftotext` and `tesseract` add PDFs and scans — `npm run doctor` names the install line. What comes back is fenced as a stranger's words |
-| **Reads mail** | Gmail through that Chrome session — search operators, category tabs, whole threads, drafts. Send is always an approval. No credentials handled |
+| **Reads mail** | Gmail or Outlook on the web (Microsoft 365, Outlook.com, Hotmail) through that Chrome session — search, category tabs or Focused / Other, whole threads, drafts. Send is always an approval, through the same consent check for marketing. No credentials handled |
 | **WhatsApp** | WhatsApp Web / Business in the same Chrome — chat list, title unread count, draft, send. Send is always an approval. QR is scanned in that window |
 | **Markets** | The desk-marketer skill: follow-ups after a job, review requests, MOT and service reminders, newsletters in the business's own voice, prepared on a schedule, designed in Canva, sent through Resend, MailerLite or Klaviyo once you approve, with a report after. Who may be mailed is a consent register on the Desk, checked in code at every send — unknown, opted-out or basis-less recipients are removed or the send is refused, and a marketing email with no unsubscribe line does not go |
 | **Accounts** | Jurisdiction packs (UK first; IE, US, AU, DE as stubs) plus Xero via the official local MCP. It will not invent a foreign tax rate or file a return |
@@ -652,6 +652,38 @@ for everyone — is on the retail roadmap; Gmail's API scopes require a paid
 third-party security assessment, so the browser road stays the honest default
 until the subscription pays that bill.
 
+## Outlook, the same way
+
+Plenty of businesses run on Microsoft 365 rather than Google, and Outlook on the
+web works through the same road: the claw's own Chrome, signed in once, no keys and
+no app to register. Choose it once in `claw.config.json`:
+
+```json
+"email": { "provider": "outlook", "outlook": "work" }
+```
+
+`"work"` is a work or school account on Microsoft 365 (outlook.office.com);
+`"personal"` is Outlook.com or Hotmail (outlook.live.com). Without an `email`
+setting the tools open Gmail, as they always have, and a single job can name the
+other mailbox. Then ask the claw to check your email, and sign in with your
+Microsoft account in the window that opens — `connector_guide "outlook"` walks
+through it, and `npm run doctor` says which mailbox is set.
+
+The same five tools do the work: `check_email` (Gmail-style searches are turned into
+Outlook's, and anything with no Outlook equivalent is named rather than dropped
+quietly), `read_email`, `draft_email` (types, never sends), `send_email` (always a
+card, and the same consent check for marketing) and `email_action` (archive, read,
+unread and flag run freely; delete to Deleted Items asks). The claw presses Outlook's
+buttons by their accessible names and uses Outlook's keyboard shortcuts only when a
+button is not there; when Microsoft changes the page, it says which part it could
+not find instead of reporting an empty inbox.
+
+Honesty: this was built and tested against a local page that imitates Outlook's
+accessibility structure, driven in a real Chromium. **It has not yet been run against a
+real outlook.office.com or outlook.live.com mailbox.** Calendar and OneDrive need
+the Microsoft Graph connection planned in
+[docs/OUTLOOK-GRAPH-PLAN.md](docs/OUTLOOK-GRAPH-PLAN.md).
+
 ## MCP
 
 Cunning Claw speaks the same `mcpServers` files Claude Code and Cursor use, over the
@@ -895,8 +927,9 @@ src/agent.ts     Streaming agent loop, Ouroboros guard
 src/brain.ts     Brain catalogue, failover, /brain pinning
 src/routing.ts   Trusted-brain guard, sticky taint
 src/tools.ts     tool schemas, dispatcher, HARD_DENY
-src/browser.ts   persistent CDP, accessibility refs, Gmail, WhatsApp Web
+src/browser.ts   persistent CDP, accessibility refs, Gmail, Outlook, WhatsApp Web
 src/gmail.ts     search operators, list/thread scrapers, draft/send helpers
+src/outlook.ts   Outlook on the web by ARIA roles and names; src/mail-provider.ts picks the mailbox
 src/doctor.ts    `npm run doctor` — one line per check, every failure names the fix
 packaging/       systemd --user unit (session, not system)
 install.sh       clean-clone setup (Linux / macOS)
@@ -918,7 +951,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 957 tests
+npm test        # 987 tests
 npm run check   # tsc --noEmit
 ```
 

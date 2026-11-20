@@ -137,6 +137,7 @@ export function overview(catalogue: CatalogueEntry[], states: GuideStatus[]): st
     "",
     "Three ways they sign in: a browser sign-in (most), a token pasted on the KEYS page (GitHub and a few others), or a local program that needs no account.",
     "Ask connector_guide with a name (\"xero\"), a category (\"money\"), or what you want to do (\"invoices\").",
+    "Email (Gmail or Outlook) is not a connector: it is the built-in email tools in the claw's own Chrome — ask connector_guide \"outlook\" or \"gmail\".",
     "",
   ];
   for (const cat of MCP_CATEGORIES) {
@@ -147,13 +148,78 @@ export function overview(catalogue: CatalogueEntry[], states: GuideStatus[]): st
   return lines.join("\n");
 }
 
+// ---------------------------------------------------------------------------
+// Mail is not a connector
+// ---------------------------------------------------------------------------
+
+/**
+ * "How do I connect Outlook?" found nothing in the catalogue and was told it
+ * might work as a custom server — when the answer is the built-in email
+ * tools and one sign-in in the claw's own Chrome. Asked about a mailbox, the
+ * guide answers about the mailbox. The facts are passed in, so the text is
+ * the same for the same setup.
+ */
+export type MailFacts = {
+  /** describeMailChoice of the configured mailbox, or the config's own error. */
+  configured: string;
+  provider: "gmail" | "outlook" | null;
+  profileDir: string;
+};
+
+const MAIL_QUERY = /\b(outlook|hotmail|live\.com|office ?365|microsoft ?365|m365|o365|exchange|owa|gmail|google ?mail)\b/i;
+const OUTLOOK_QUERY = /\b(outlook|hotmail|live\.com|office ?365|microsoft ?365|m365|o365|exchange|owa)\b/i;
+
+export function mailGuide(query: string, facts: MailFacts): string | null {
+  if (!MAIL_QUERY.test(query)) return null;
+  const outlook = OUTLOOK_QUERY.test(query);
+  const chosen = facts.provider === (outlook ? "outlook" : "gmail");
+  const lines = [
+    `MAIL GUIDE — ${outlook ? "Outlook on the web (Microsoft 365, Outlook.com, Hotmail)" : "Gmail"}`,
+    "Not a connector: the built-in email tools (check_email, read_email, draft_email, send_email, email_action) drive it in Cunning Claw's own Chrome. " +
+      "There is no key to make and no app to register, and the claw never sees the password.",
+    `On this machine: email is ${facts.configured}.`,
+    "",
+    "Steps, one at a time — check each before the next:",
+  ];
+  let n = 1;
+  if (!chosen) {
+    lines.push(
+      outlook
+        ? `${n++}. Choose Outlook once: in claw.config.json, "email": { "provider": "outlook", "outlook": "work" } for a work or school account on Microsoft 365 (outlook.office.com), or "outlook": "personal" for Outlook.com or Hotmail (outlook.live.com). Restart the claw. Or name it per job: check_email with provider outlook.`
+        : `${n++}. Choose Gmail: in claw.config.json, "email": { "provider": "gmail" } (it is also the default when there is no email setting). Restart the claw. Or name it per job: check_email with provider gmail.`,
+    );
+  }
+  lines.push(
+    `${n++}. Sign in once: ask the claw to check your email. A tab opens in Cunning Claw's own Chrome (profile ${facts.profileDir}) — a separate window from your everyday browser, so being signed in there does not count. ` +
+      (outlook
+        ? "Sign in with your Microsoft account in that window, approve the prompt on your phone if your organisation uses one, and choose to stay signed in if it offers."
+        : "Sign in with your Google account in that window."),
+    `${n++}. Check: ask again — check_email lists your inbox. If it says it could not find the message list, the page was still loading or ${outlook ? "Microsoft" : "Google"} has changed it; the message names what was missing.`,
+    `${n++}. First job: something that only reads. Sending always stops for your approval, and so does ${outlook ? "delete" : "trash or spam"}.`,
+  );
+  if (outlook) {
+    lines.push(
+      "",
+      "Good to know: the claw presses Outlook's buttons by name, and uses keyboard shortcuts only when a button is not found — the \"Outlook\" set (Settings → General → Accessibility → Keyboard shortcuts) is the one it knows. " +
+        "A work account's IT admin can block sign-in from a new browser; if the sign-in page says so, that switch is theirs. " +
+        "Calendar and OneDrive are not part of this — they need \"Connect Outlook\" through Microsoft Graph, which is planned, not built.",
+    );
+  } else {
+    lines.push("", "Good to know: Gmail's keyboard shortcuts must be on (Settings → See all settings → General → Keyboard shortcuts → On).");
+  }
+  return lines.join("\n");
+}
+
 export function connectorGuide(
   query: string | undefined,
   states: GuideStatus[],
   catalogue: CatalogueEntry[] = MCP_CATALOGUE,
+  mail?: MailFacts,
 ): string {
   const q = String(query ?? "").trim();
   if (!q) return overview(catalogue, states);
+  const mailText = mail ? mailGuide(q, mail) : null;
+  if (mailText) return mailText;
   const hits = findConnectors(q, catalogue);
   if (hits.length === 1) return guideFor(hits[0], states.find((s) => s.id === hits[0].id));
   if (hits.length > 1) {

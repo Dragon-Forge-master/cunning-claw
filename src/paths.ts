@@ -104,7 +104,7 @@ const SENSITIVE_PREFIXES = [
   // unfenced — code_job_report is the fenced way to read them.
   path.join(DATA_DIR, "foreman", "jobs"),
   path.join(ROOT, ".env"),
-  // The cookie jar IS the logged-in Gmail and WhatsApp session.
+  // The cookie jar IS the logged-in Gmail, Outlook and WhatsApp session.
   PROFILE_DIR,
 ].map((p) => p.replace(/\\/g, "/").toLowerCase());
 

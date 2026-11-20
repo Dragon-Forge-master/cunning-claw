@@ -7,7 +7,7 @@ guarantees, because a security document that overclaims is worse than none.*
 Status as of 20 November 2026: version 0.4.0 on `main`, plus the work due as
 0.5.0 (`docs/releases/v0.5.0.md`) — the host gate, Pocket Claw, the foreman,
 Telegram voice notes and receipts, Learn mode and the site wall, all in
-section 5. 957 automated tests passing (`npm test`), 83 tools, two runtime
+section 5 — and Outlook on the web since (5.7). 987 automated tests passing (`npm test`), 83 tools, two runtime
 dependencies (`@anthropic-ai/sdk`, `express`). The project is new and has run
 on very few machines. Nothing here has been independently audited.
 
@@ -393,7 +393,8 @@ memory search tool dropped this stamp; that is fixed and tested.)
 
 ## 5. Surfaces added since 0.4
 
-Six pieces of work landed after 0.4.0. Each adds a way in or a way out, so each
+Six pieces of work landed after 0.4.0, and a seventh, Outlook (5.7), after
+them. Each adds a way in or a way out, so each
 is described here the same way as the rest: what it does, where, the test that
 holds it, and what it does not do.
 
@@ -677,6 +678,43 @@ connect it and asks nothing.
 "deleted within two days" holds only while submissions keep arriving; votes
 add rows without purging them.
 
+### 5.7 Outlook on the web: a second mailbox, the same five tools
+
+The email tools can drive Outlook on the web (Microsoft 365 or Outlook.com) as
+well as Gmail, in the same Chrome profile, chosen by `email.provider` in config
+or a call's `provider` (`src/mail-provider.ts`, `src/outlook.ts`). It is a new
+source of strangers' words and a new road out, so it was built as the same
+tools rather than a parallel set: `check_email` and `read_email` were already
+in `UNTRUSTED_TOOLS`, `send_email` in the work order's committing list, and
+every Outlook send goes through the one `sendEmailStep` and the consent guard,
+generalised as `guardMailboxSend`. Routing names "Outlook", "Hotmail" and
+"Office 365" up front (*Outlook is mail: naming it pins a trusted brain up
+front*). Lists and threads are fenced, and a body carrying `</untrusted>` does
+not close the fence (*a stranger's mail cannot close the fence*).
+
+Three things are new because Outlook's page is not Gmail's. A message body is
+a stranger's HTML, and Outlook's controls are found by accessible name — so no
+control inside an element named *Message body* is ever pressed (*a button in a
+stranger's mail is never pressed*, driven in real Chromium against a page with
+hostile buttons named Archive and Send). Outlook's ribbon toggles read/unread
+and flag, and a row's name repeats its subject — so the stranger-written
+sender, subject and preview are removed from the row's name before its state
+is read, and a toggle is pressed only when the row is not already in the
+wanted state (*a subject cannot fake a row's state*). A reply's body holds the
+whole earlier conversation — so the draft's result and the consent guard read
+only the operator's own words above it (*a quoted unsubscribe line passes
+nothing*). And an Outlook recipient can show only a name: the bulk threshold
+counts recipients, not visible addresses, and a marketing send to anyone the
+register cannot see is refused (*the bulk threshold counts Outlook's
+name-only recipients too*). Delete (to Deleted Items) asks, as Gmail's trash
+does, whichever mailbox's word is used.
+
+**Limit.** The selectors and shortcuts were checked against a local page that
+imitates Outlook's accessibility structure (`src/outlook-fixture.ts`), not
+against the real outlook.office.com: no account was available. When the real
+page differs, each step says which landmark it could not find and does
+nothing, rather than guessing.
+
 ---
 
 ## 6. Scenarios
@@ -779,7 +817,8 @@ deployed as such without an independent assessment.
 | Foreman: taint refusal, card, worktree, floor, environment, fence | `npx tsx --test src/foreman.test.ts src/jobs.test.ts` |
 | Voice notes never answer a card; receipts filed as data | `npx tsx --test src/telegram.test.ts src/voice-notes.test.ts src/receipts.test.ts` |
 | The wall: moderation, Turnstile, no IPs; the tool's cards and token | `npx tsx --test src/site-wall.test.ts src/wall.test.ts` |
-| Everything | `npm test` — 957 passing at the time of writing |
+| Outlook: fence, body controls never pressed, quote cut, send guard, routing | `npx tsx --test src/outlook.test.ts src/routing.test.ts` (the driven half needs a Chrome or Chromium) |
+| Everything | `npm test` — 987 passing at the time of writing |
 
 Every test in the suite is required to fail with its fix reverted
 (`CLAUDE.md`, "Tests"), and the commit that added it says so.
