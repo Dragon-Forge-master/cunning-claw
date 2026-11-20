@@ -797,16 +797,24 @@ Every test in the suite is required to fail with its fix reverted
    system, the worktree, the stripped environment and the card contain it, and
    `npm test` in a job runs a script the job could have edited (section 5.3).
    Next: run the job inside the same box as `run_command`.
-5. **macOS sandbox untested on hardware.**
-6. **Pocket Claw untried on a real phone and a real tailnet**, and Cloudflare
+5. **An install inside a writable folder is writable by its own commands.**
+   Boxed commands may build and test the install they run in, and the config,
+   `.env`, data dir and workspace are re-mounted read-only (`protectedPaths`
+   in `src/sandbox.ts`), but the source itself is not. Installed under
+   `~/sites`, `~/Documents/CunningClaw` or `/tmp`, a boxed command could edit
+   the claw's own code for its next start. Install it anywhere else (the
+   download unzips wherever you put it; the default writable folders are
+   listed by `npm run doctor`). Next: protect `src/` and `public/` the same way.
+6. **macOS sandbox untested on hardware.**
+7. **Pocket Claw untried on a real phone and a real tailnet**, and Cloudflare
    Access's signed header is not checked on the tunnel route (section 5.2).
-7. **Heuristic scanner.** Open source and evadable by design. An optional
+8. **Heuristic scanner.** Open source and evadable by design. An optional
    model-based second opinion is a follow-up.
-8. **The wall has no timer.** Rate-limit rows older than two days are swept on
+9. **The wall has no timer.** Rate-limit rows older than two days are swept on
    every submission, vote and admin call (`src/site-wall.test.ts`, "yesterday's
    visitor keys go within two days on a quiet wall"), so they can outlive two
    days only on a wall nobody visits and the operator never reads (section 5.6).
-9. **The approval card depends on a person reading it.** The same is true of a
+10. **The approval card depends on a person reading it.** The same is true of a
     fingerprint on a phone.
 
 *Yn lleol yn gyntaf · Caniatâd dynol pan fo canlyniadau* — local first, human

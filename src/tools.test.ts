@@ -389,7 +389,10 @@ test("where bubblewrap works, run_command really is boxed", async (t) => {
   const { executeTool } = await import("./tools.js");
   const ctx = { emit() {}, requestApproval: async () => true };
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "claw-run-"));
-  const probe = path.join(ROOT, `.sandbox-probe-${process.pid}`);
+  // Home itself is never a writable root (only folders under it are), wherever
+  // the checkout lives — a clone under /tmp sits inside a writable root, so a
+  // probe beside ROOT would be written and the test would blame the sandbox.
+  const probe = path.join(os.homedir(), `.sandbox-probe-${process.pid}`);
   try {
     const inside = String(await executeTool("run_command", { command: "echo hi > made.txt", cwd: work }, ctx));
     assert.match(inside, /^\[sandboxed by bubblewrap/);
