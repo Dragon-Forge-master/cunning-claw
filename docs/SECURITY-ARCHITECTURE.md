@@ -349,6 +349,43 @@ and the operator's own sign-in; and the wall's admin token to the one URL in
 provider keys, tokens — wherever text leaves the process: the HUD stream, the
 phone lines and the journal.
 
+**The update check** (`src/updates.ts`) is off until the owner answers its
+question, on the setup page or once on the HUD; until then it sends nothing.
+After a yes it makes one request a day (and one at start-up, if none was made
+in the last hour), plus one each time the owner presses *Check now*. This is
+the whole request, as captured on the wire (over TLS to cunningclaw.com):
+
+```
+GET /latest.json HTTP/1.1
+Host: cunningclaw.com
+Connection: keep-alive
+User-Agent: CunningClaw
+Accept: application/json
+Accept-Language: *
+Sec-Fetch-Mode: cors
+Accept-Encoding: gzip, deflate
+```
+
+The claw sets the two in the middle; the rest are what Node's own `fetch`
+sends for every program. No cookie, query string, referrer or install id — there is no id to send. The
+User-Agent leaves out the version on purpose: the comparison is made on the
+claw, and without it every claw's request is byte-for-byte the same, so the
+site (or anyone on the wire) learns only that a claw at that address looked,
+and not which claws are behind on a security fix. Redirects are refused, the
+answer is capped at 16 KB and 10 seconds, and it is validated strictly:
+semver versions, links only to `https://github.com/Dragon-Forge-master/cunning-claw`
+or `https://cunningclaw.com`, at most six summary lines of 160 characters with
+no control or bidirectional characters. The summary is display text for the
+HUD (`textContent`) and never reaches the model: it is in no prompt, tool
+result or `system_status`. Nothing is downloaded or installed; the panel links
+to the file for this kind of install and the owner does the rest. If phone
+lines are set up, each new version is told to them once, as a fixed sentence
+with the version number in it and nothing from the feed, redacted on the way
+out; the panel turns that off on its own. The URL is fixed; `updates.url` in
+the config may point at another (https, or http to this machine) for testing,
+and the model has no route or tool that can set it. Tests:
+`src/updates.test.ts`, `src/site-latest.test.ts`.
+
 ### 4.2 Document reading
 
 `read_document` turns PDF, Office files and images into text using external

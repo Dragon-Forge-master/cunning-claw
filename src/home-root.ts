@@ -79,6 +79,46 @@ export function resolveHomeRoot(o: {
   return { home: o.codeRoot, installed, source: "code" };
 }
 
+/**
+ * How this copy of the claw got onto the machine, which decides how it is
+ * updated: an installer is run again over itself, an unzipped download is
+ * replaced and its things imported, a clone is pulled.
+ *
+ * - The installers' marker names the installer (scripts/bundle.mjs,
+ *   installedMarker): "nsis", "dmg", "appimage" — and "deb", should one ship.
+ * - A `.git` in the code root is a clone (`npx cunningclaw` clones too).
+ * - An unzipped download is the code root `app/` beside the bundled
+ *   `runtime/` (scripts/bundle.mjs lays every archive out that way).
+ * - Anything else — a copy made by hand, a marker someone edited — is
+ *   "unknown", and the update panel points at the release notes rather than
+ *   guess which file to hand over.
+ *
+ * Read only; parameters as everywhere in this file, so every layout is tested
+ * on any OS.
+ */
+export type InstallKind = "nsis" | "dmg" | "appimage" | "deb" | "archive" | "git" | "unknown";
+
+const INSTALLER_KINDS = new Set<InstallKind>(["nsis", "dmg", "appimage", "deb"]);
+
+export function installKind(o: {
+  codeRoot: string;
+  exists: (p: string) => boolean;
+  readFile: (p: string) => string;
+}): InstallKind {
+  const marker = path.join(o.codeRoot, INSTALL_MARKER);
+  if (o.exists(marker)) {
+    try {
+      const kind = JSON.parse(o.readFile(marker))?.installer;
+      return INSTALLER_KINDS.has(kind) ? kind : "unknown";
+    } catch {
+      return "unknown";
+    }
+  }
+  if (o.exists(path.join(o.codeRoot, ".git"))) return "git";
+  if (o.exists(path.join(o.codeRoot, "..", "runtime"))) return "archive";
+  return "unknown";
+}
+
 // ---------------------------------------------------------------------------
 // Seeding: the shipped defaults, copied into the home root without ever
 // overwriting what the owner made.

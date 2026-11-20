@@ -357,12 +357,21 @@ export function readMe(os, version, kind = "archive") {
     "",
     ...where,
     "",
-    "Nothing here phones home. He binds to 127.0.0.1 only, behind a token.",
+    // Kept true by src/updates.ts: the update check is off until the owner
+    // says yes, and src/bundle.test.ts holds this sentence to it.
+    "Nothing here phones home, unless you turn on the daily update check,",
+    "which asks cunningclaw.com for one small file. He binds to 127.0.0.1",
+    "only, behind a token.",
     "There is no Cunning Claw crypto token, and there never will be.",
     "",
     "https://github.com/Dragon-Forge-master/cunning-claw",
     "",
   ].join(nl).split("\n").map((l) => l.replace(/\r$/, "")).join(nl);
+}
+
+/** The archive's release file name: a folder name plus .tar.gz (Linux, for the executable bit) or .zip. */
+export function archiveName(version, target) {
+  return `cunningclaw-${version}-${target}.${TARGETS[target].os === "linux" ? "tar.gz" : "zip"}`;
 }
 
 async function bundle(stage, target, nodeVersion, archive) {
@@ -379,7 +388,7 @@ async function bundle(stage, target, nodeVersion, archive) {
 
   if (!archive) return dir;
   // tar keeps the executable bit Linux needs; zip -y keeps Node's symlinks for macOS.
-  const out = os === "linux" ? `${name}.tar.gz` : `${name}.zip`;
+  const out = archiveName(pkg.version, target);
   fs.rmSync(path.join(OUT, out), { force: true });
   if (os === "linux") run("tar", ["-czf", out, name], { cwd: OUT });
   else run("zip", ["-qry", out, name], { cwd: OUT });

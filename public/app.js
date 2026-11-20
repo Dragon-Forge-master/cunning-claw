@@ -31,6 +31,10 @@ let serverVoiceAvailable = false;
  * version it says so ("updated from v…") until the next reload, so an
  * operator who just ran the update can tell it took. The last-seen version
  * lives in this browser only; without storage the label still shows.
+ *
+ * What it writes is the chip's resting face. public/updates.js lays the
+ * update light over it when a newer version is known, and puts this face
+ * back when it is not, so the two never fight over the same text.
  */
 function showVersion(version) {
   const el = document.getElementById("claw-version");
@@ -47,7 +51,10 @@ function showVersion(version) {
     el.title = `Updated from v${previous} to v${version}`;
     el.classList.add("updated");
   }
+  el.dataset.baseText = el.textContent;
+  el.dataset.baseTitle = el.title;
   el.hidden = false;
+  if (typeof window.renderUpdateChip === "function") window.renderUpdateChip();
 }
 
 (async () => {
@@ -1893,7 +1900,7 @@ async function pollStatus() {
       text, online, serverVoice: sv, serverVoiceAvailable: sva,
       skills, heartbeat, landscapeCount, landscapeUpdated,
       brain, brains, telegram, discord, ntfy, home, toolCount, preview, spend, toolDiet,
-      addressAs: as, ears: earsNow,
+      addressAs: as, ears: earsNow, updates: updatesNow,
     } = await res.json();
     learnAddress({ addressAs: as });
     renderBrainPicker(brains);
@@ -1916,6 +1923,9 @@ async function pollStatus() {
       `ntfy: ${ntfy?.enabled ? `on (${ntfy.topic} · ${ntfy.server}${ntfy.delivery === "failing" ? " · failing" : ""})` : "off"}`,
       // The house watcher: the link's state and the rule count, never a host.
       `Home watch: ${home?.enabled ? `${home.link} · ${home.rules} rule${home.rules === 1 ? "" : "s"}` : `off${home?.why ? ` (${home.why})` : ""}`}`,
+      // The glass only: the update line is never part of `text`, which the
+      // model reads through system_status.
+      updatesNow?.text ?? "",
       toolDiet?.text ?? "",
     ].filter((line, i) => i === 0 || line).join("\n");
     $("sys-status").textContent = text + extra;

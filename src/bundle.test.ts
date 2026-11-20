@@ -6,11 +6,11 @@ import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import {
-  APPIMAGE_TOOLS, INSTALL_MARKER, TARGETS, appRun, buildMacApp, icnsFromPngs, icoFromPngs, infoPlist, installedMarker,
+  APPIMAGE_TOOLS, INSTALL_MARKER, INSTALLERS, TARGETS, appRun, buildMacApp, icnsFromPngs, icoFromPngs, infoPlist, installedMarker,
   installerName, launcher, macLauncher, nsisScript, parseArgs, readMe, windowsSignCommand,
 // @ts-expect-error — a plain .mjs build script with no types; imported for its pure helpers.
 } from "../scripts/bundle.mjs";
-import { INSTALL_MARKER as CLAW_MARKER } from "./home-root.js";
+import { INSTALL_MARKER as CLAW_MARKER, installKind } from "./home-root.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -47,6 +47,13 @@ test("every target names a real Node download, and the read-me says how to get p
   assert.match(readMe("win", "0.0.0"), /More info.*Run anyway/s);
   assert.match(readMe("darwin", "0.0.0"), /Right-click.*Open/s);
   for (const os of ["win", "darwin", "linux"]) assert.match(readMe(os, "0.0.0"), /no Cunning Claw crypto token/);
+  // "Nothing here phones home" was true until the update check; it stays true
+  // only with its exception spelled out, on every read-me.
+  for (const os of ["win", "darwin", "linux"]) {
+    for (const kind of ["archive", "nsis", "dmg", "appimage"]) {
+      assert.match(readMe(os, "0.0.0", kind), /Nothing here phones home, unless you turn on the daily update check,\s+which asks cunningclaw\.com for one small file\./);
+    }
+  }
   // The no-terminal path must tell a first-timer that a free key exists.
   for (const os of ["win", "darwin", "linux"]) assert.match(readMe(os, "0.0.0"), /free Google\s+Gemini key/);
 });
@@ -84,6 +91,12 @@ test("a dropped download is retried; a missing file is not", async () => {
 test("the installers' marker is the one the claw looks for", () => {
   assert.equal(INSTALL_MARKER, CLAW_MARKER, "scripts/bundle.mjs and src/home-root.ts must agree, or an installed claw writes beside its read-only code");
   assert.equal(JSON.parse(installedMarker("nsis", "1.2.3")).installer, "nsis");
+  // The update panel reads the kind from the same file to say which download
+  // fits: every installer the build makes must be one the claw recognises.
+  for (const kind of Object.keys(INSTALLERS)) {
+    const marker = installedMarker(kind, "1.2.3");
+    assert.equal(installKind({ codeRoot: "/x/app", exists: (p) => p.endsWith(CLAW_MARKER), readFile: () => marker }), kind);
+  }
 });
 
 test("installer file names carry no spaces (GitHub turns them into dots) and say which system", () => {

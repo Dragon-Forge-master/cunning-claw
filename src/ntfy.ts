@@ -68,7 +68,7 @@ export const GUESSABLE_BELOW = 20;
 /** Long enough that the operator can answer at the HUD before the phone buzzes. */
 export const DEFAULT_APPROVAL_DELAY_S = 15;
 
-export type NtfyKind = "approval" | "schedule" | "heartbeat" | "job" | "tool" | "home";
+export type NtfyKind = "approval" | "schedule" | "heartbeat" | "job" | "tool" | "home" | "update";
 
 /** Tags that ntfy renders as an emoji, so the kind is legible at a glance. */
 const TAGS: Record<NtfyKind, string> = {
@@ -78,6 +78,7 @@ const TAGS: Record<NtfyKind, string> = {
   job: "gear",
   tool: "bell",
   home: "house",
+  update: "package",
 };
 
 export interface Armed {

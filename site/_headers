@@ -3,3 +3,10 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self'; frame-ancestors 'none'
+# The update feed (src/updates.ts). Claws that said yes ask once a day; an
+# hour's cache means a new release reaches every one of them within the day
+# and a mistake in the file can be undone just as fast. No CORS header: the
+# claw fetches it server-side, and no browser page has any need to read it.
+/latest.json
+  Cache-Control: public, max-age=3600
+  Content-Type: application/json; charset=utf-8

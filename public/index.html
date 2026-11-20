@@ -15,7 +15,21 @@
 
   <div id="hud">
     <header>
-      <div class="brand">CUNNING CLAW <span class="ver" id="claw-version" hidden></span> <span class="sub">dyn hysbys · Cardiff</span></div>
+      <div class="brand">CUNNING CLAW <button type="button" class="ver" id="claw-version" hidden aria-haspopup="dialog" aria-expanded="false" aria-controls="update-panel"></button> <span class="sub">dyn hysbys · Cardiff</span></div>
+      <div id="update-panel" class="update-panel" role="dialog" aria-labelledby="up-title" hidden>
+        <div class="up-head">
+          <div class="panel-title" id="up-title" tabindex="-1">UPDATES</div>
+          <button type="button" id="up-close" class="ctl" aria-label="Close the updates panel">CLOSE</button>
+        </div>
+        <div id="up-body"></div>
+        <div class="up-actions">
+          <button type="button" id="up-check" class="ctl">CHECK NOW</button>
+          <span id="up-msg" class="up-msg" role="status"></span>
+        </div>
+        <label class="up-set"><input type="checkbox" id="up-daily"> Check for updates once a day</label>
+        <label class="up-set" id="up-phone-row" hidden><input type="checkbox" id="up-phone"> Also tell my phone, once per new version (Telegram, Discord, ntfy or Pocket Claw — whichever is set up)</label>
+        <p class="up-fine">A check asks cunningclaw.com which version is newest. Nothing about you or your claw is sent, and nothing is downloaded or installed for you.</p>
+      </div>
       <div class="header-controls">
         <div id="brain-picker" class="brain-picker" title="Which model thinks. Same tools on every brain."></div>
         <button id="skills-toggle" class="ctl" title="Capabilities — click to arm a skill">SKILLS</button>
@@ -56,6 +70,15 @@
         <div id="practice-banner" hidden>
           <strong>PRACTICE · nothing real will happen</strong>
           <span>Cards here are practice cards. The message bar below is your real claw — sending from it ends practice.</span>
+        </div>
+        <div id="update-ask" class="update-ask" role="region" aria-labelledby="update-ask-q" hidden>
+          <p id="update-ask-q"><strong>Check for updates once a day?</strong> This asks cunningclaw.com which version is newest. Nothing about you or your claw is sent — only the ordinary web request any page visit makes.</p>
+          <div class="update-ask-btns">
+            <button type="button" id="update-ask-yes" class="ctl active">YES, ONCE A DAY</button>
+            <button type="button" id="update-ask-no" class="ctl">NO</button>
+            <span class="update-ask-note">Change it any time: click the version beside the logo.</span>
+          </div>
+          <button type="button" id="update-ask-dismiss" class="update-ask-x" aria-label="Dismiss — the same as No" title="Dismiss — the same as No">×</button>
         </div>
         <div id="chat-log"></div>
         <div id="approval-area"></div>
@@ -190,5 +213,6 @@
   <script src="connectors.js"></script>
   <script src="learn.js"></script>
   <script src="pocket-pair.js"></script>
+  <script src="updates.js"></script>
 </body>
 </html>

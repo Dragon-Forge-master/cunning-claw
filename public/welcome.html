@@ -37,6 +37,7 @@
     font:inherit;font-size:11px;letter-spacing:2px;cursor:pointer}
   button:hover:not(:disabled){background:rgba(53,214,237,.1)}
   button:disabled{opacity:.4;cursor:default}
+  button[aria-pressed="true"]{background:rgba(53,214,237,.16);box-shadow:0 0 10px var(--cyan-glow)}
   button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .msg{font-size:11.5px;margin-top:8px;min-height:15px;line-height:1.6}
   .msg.ok{color:var(--cyan)}
@@ -50,7 +51,7 @@
 <div class="page">
   <h1 id="title">CUNNING CLAW</h1>
   <div class="welsh">YN LLEOL YN GYNTAF · CANIATÂD DYNOL PAN FO CANLYNIADAU</div>
-  <p class="lede">Two minutes, two steps. Everything here stays on this machine: keys are
+  <p class="lede">Two minutes, two steps, and one question. Everything here stays on this machine: keys are
     saved to a file only you can read, and checked with the provider for free before they are kept.</p>
 
   <section class="step" id="step-brain">
@@ -113,6 +114,17 @@
     <input id="town" maxlength="60" autocomplete="address-level2" placeholder="e.g. Cardiff">
     <div class="row" style="margin-top:14px"><button id="you-save">SAVE</button></div>
     <div class="msg" id="you-msg" role="status"></div>
+  </section>
+
+  <section class="step" id="step-updates" aria-labelledby="updates-q">
+    <h2><span>3 · UPDATES</span><span class="tick" id="tick-updates"></span></h2>
+    <p id="updates-q"><b style="color:var(--text);font-weight:400">Check for updates once a day?</b> This asks cunningclaw.com which
+      version is newest. Nothing about you or your claw is sent — only the ordinary web request any page visit makes.</p>
+    <div class="row" role="group" aria-labelledby="updates-q">
+      <button id="updates-yes">YES, ONCE A DAY</button>
+      <button id="updates-no">NO THANKS</button>
+    </div>
+    <div class="msg" id="updates-msg" role="status"></div>
   </section>
 
   <div class="go"><button id="go" disabled>OPEN CUNNING CLAW</button></div>
@@ -203,6 +215,29 @@ $("you-save").onclick = async (e) => {
   }
 };
 
+// The update question. Optional, and asked here once so the HUD need not:
+// until it is answered the claw checks nothing.
+function paintUpdates(consent) {
+  $("step-updates").classList.toggle("done", consent === "yes" || consent === "no");
+  $("tick-updates").textContent = consent === "yes" || consent === "no" ? "✓" : "";
+  $("updates-yes").setAttribute("aria-pressed", String(consent === "yes"));
+  $("updates-no").setAttribute("aria-pressed", String(consent === "no"));
+}
+async function answerUpdates(yes) {
+  try {
+    const { ok, data } = await post("/api/updates/settings", { check: yes });
+    if (!ok) { say("updates-msg", "That did not save — try again.", false); return; }
+    paintUpdates(data.consent);
+    say("updates-msg", yes
+      ? "He will check once a day. If a new version is out, the version beside his name turns amber."
+      : "He will not check. You can change this any time: click the version beside his name.", true);
+  } catch {
+    say("updates-msg", "No answer from the claw — is it still running?", false);
+  }
+}
+$("updates-yes").onclick = () => answerUpdates(true);
+$("updates-no").onclick = () => answerUpdates(false);
+
 $("go").onclick = () => { location.href = "/"; };
 
 (async () => {
@@ -213,6 +248,7 @@ $("go").onclick = () => { location.href = "/"; };
     if (s.ollama) $("local-hint").textContent = "Ollama is running on this machine. Free, private, slower and less clever.";
     if (s.owner?.userName && s.owner.userName !== "Owner") $("name").value = s.owner.userName;
     if (s.owner?.weatherPlace) $("town").value = s.owner.weatherPlace;
+    paintUpdates(s.updates);
   } catch { /* the page still works; each button reports its own failure */ }
   paint();
 })();

@@ -426,6 +426,13 @@ export interface ClawConfig {
     vapidSubject?: string;
   };
   /**
+   * The daily update check (src/updates.ts). Whether it runs is the owner's
+   * answer, kept in the data dir, never a config default. `url` is for
+   * testing against another server: https, or http to this machine only;
+   * leave it out and the claw asks https://cunningclaw.com/latest.json.
+   */
+  updates?: { url?: string };
+  /**
    * USD per million tokens, keyed by model id (prefix match allowed).
    * Unknown models record tokens and mark the turn unpriced rather than guessing.
    */

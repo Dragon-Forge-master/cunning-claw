@@ -44,6 +44,33 @@ before the rebrand.
   styles and fonts, and `challenges.cloudflare.com` for scripts and frames —
   Turnstile, the wall's spam check, and nothing else.
 
+## The update feed
+
+`latest.json` is the file every claw that said yes to the update check
+(`src/updates.ts`) reads once a day. It names the newest released version,
+its date, whether it is a security update, up to six short summary lines
+(display text on the HUD; never shown to the model), the release notes and
+one download per installer and archive. `_headers` gives it an hour's cache,
+so a release reaches every claw within the day and a mistake can be undone as
+fast. The claw refuses the whole file if any of it is wrong, so a broken feed
+means no light, never a wrong one.
+
+### Release checklist
+
+1. Publish the GitHub release, with all its assets uploaded.
+2. **Then** update `latest.json`: `version` and `date` (the day it was
+   published), `security` (true only when the release fixes a security
+   problem — it turns the light red-amber and tells the phones so), the
+   summary, the `notes` link to the release, and every download link with the
+   new version in it.
+3. `npm test`. `src/site-latest.test.ts` checks the file passes the claw's own
+   validation, that each download is the asset `scripts/bundle.mjs` names, and
+   that its version is **never newer than package.json's**. It may lag (the
+   version is bumped while the next release is being prepared, and the feed
+   still names the last published one, whose files exist) but a feed ahead of
+   the code would announce a release whose downloads are links to nothing.
+4. Deploy (above). Until then no claw has heard.
+
 ## The forge wall
 
 The "ask the forge" section (`#ask`) is a small live wall: visitors ask a

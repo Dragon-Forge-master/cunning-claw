@@ -1,0 +1,23 @@
+{
+  "version": "0.5.1",
+  "date": "2026-11-20",
+  "security": false,
+  "summary": [
+    "Real installers for Windows, Mac and Linux. Your keys, settings and memory live in your own folder, apart from the app.",
+    "Outlook on the web, for Microsoft 365 work accounts and Outlook.com, through the same email tools as Gmail.",
+    "The HUD shows which version is running, and says \"updated\" the first time you open it after an update."
+  ],
+  "notes": "https://github.com/Dragon-Forge-master/cunning-claw/releases/tag/v0.5.1",
+  "downloads": {
+    "nsis-win-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-Setup-0.5.1.exe",
+    "dmg-darwin-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-0.5.1-mac-arm64.dmg",
+    "dmg-darwin-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-0.5.1-mac-x64.dmg",
+    "appimage-linux-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-0.5.1-linux-x86_64.AppImage",
+    "appimage-linux-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-0.5.1-linux-aarch64.AppImage",
+    "archive-win-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/cunningclaw-0.5.1-win-x64.zip",
+    "archive-darwin-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/cunningclaw-0.5.1-darwin-arm64.zip",
+    "archive-darwin-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/cunningclaw-0.5.1-darwin-x64.zip",
+    "archive-linux-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/cunningclaw-0.5.1-linux-x64.tar.gz",
+    "archive-linux-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/cunningclaw-0.5.1-linux-arm64.tar.gz"
+  }
+}

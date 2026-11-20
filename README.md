@@ -193,6 +193,19 @@ unit, or Ctrl+C and `npm run dev` again in a plain terminal. The claw tells you
 its version in the boot banner, and `npm run doctor` after an update names
 anything new it wants.
 
+**The update light.** He can check once a day whether a newer version is out, but only if
+you say yes: the setup page asks, and an install that never answered is asked once on the
+HUD. A check is one request for one small file, `https://cunningclaw.com/latest.json`,
+carrying nothing about you or your claw (not even his version); until you answer, and
+after a no, nothing is sent. When a newer version is out the version beside the logo turns
+amber — `v0.5.1 · update ready: v0.5.2`, or red-amber for a security update — and clicking
+it shows what is new, the release notes, and how to update this install: the matching
+installer or archive, or `npm run update` for a clone. It never downloads or installs
+anything itself. The same panel has **Check now**, the daily on/off, and, if a phone line
+is set up, a one-message-per-version note to your phone that you can turn off on its own.
+What the request carries, and why, is in
+[docs/SECURITY-ARCHITECTURE.md](docs/SECURITY-ARCHITECTURE.md) (section 4.1).
+
 If `git pull` refuses because you have edited tracked files, either keep your
 edits (`git stash`, update, `git stash pop`) or take the fresh-clone road: rename
 the old folder aside, clone anew, copy `.env` across from the old folder, and

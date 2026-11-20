@@ -691,3 +691,73 @@ form.pg-say input { flex: 1; background: rgba(4,8,15,0.6); color: var(--text); b
   margin-left: 8px; padding: 0 5px; font-size: 10px; letter-spacing: 1px;
   color: #1a1206; background: var(--amber); border-radius: 2px; cursor: help;
 }
+
+/* The update light (public/updates.js). The chip is a button now, so it can
+   open its panel from the keyboard; at rest it looks exactly as before.
+   Amber with a dot when a newer version is known — the same amber the HUD
+   uses for "worth your attention" — and red-amber for a security update,
+   the one case where waiting is a risk of its own. */
+header { position: relative; }
+button.ver { font-family: var(--mono); background: transparent; cursor: pointer; line-height: 1.4; }
+button.ver:hover, button.ver.open { color: var(--cyan); border-color: var(--cyan); }
+button.ver:focus-visible, .update-panel :focus-visible, .update-ask :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.brand .ver.update { color: var(--amber); border-color: var(--amber); box-shadow: 0 0 10px rgba(255, 180, 84, 0.35); }
+.brand .ver.update::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; margin-right: 6px; vertical-align: 1px; box-shadow: 0 0 6px currentColor;
+}
+.brand .ver.update.security { color: #ff7a4d; border-color: #ff7a4d; box-shadow: 0 0 12px rgba(255, 122, 77, 0.45); }
+
+.update-panel {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 60;
+  width: min(440px, calc(100vw - 24px)); max-height: min(70vh, 560px); overflow-y: auto;
+  background: rgba(6, 14, 24, 0.99); border: 1px solid var(--cyan); box-shadow: 0 0 24px var(--cyan-glow);
+  padding: 12px 14px 14px; font-size: 12px; line-height: 1.6; color: var(--text); letter-spacing: 0.3px;
+}
+.update-panel[hidden] { display: none; }
+.up-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.up-head .panel-title { flex: 1; margin-bottom: 0; border-bottom: 0; color: var(--cyan); outline: none; }
+.update-panel.security { border-color: #ff7a4d; box-shadow: 0 0 24px rgba(255, 122, 77, 0.35); }
+.update-panel.security .up-head .panel-title { color: #ff7a4d; }
+#up-body { margin: 8px 0 4px; }
+.up-lede { color: var(--text); margin-bottom: 6px; }
+.up-summary { margin: 4px 0 8px 18px; }
+.up-summary li { margin: 3px 0; }
+.up-notes { color: var(--cyan); display: inline-block; margin-bottom: 8px; }
+.up-sub { color: var(--cyan-dim); font-size: 10px; letter-spacing: 3px; margin: 8px 0 4px; }
+.up-step { color: var(--text); margin: 4px 0; }
+.up-download { display: inline-block; margin: 8px 0 4px; text-decoration: none; letter-spacing: 1px; line-height: 1.6; }
+.up-command { display: block; margin: 8px 0 4px; padding: 6px 9px; font-family: var(--code); background: rgba(0, 0, 0, 0.4); border: 1px solid var(--cyan-dim); color: var(--cyan); user-select: all; }
+.up-why { color: var(--amber); margin: 6px 0; }
+.up-when { color: var(--cyan-dim); font-size: 11px; margin-top: 6px; }
+.up-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+.up-msg { color: var(--cyan-dim); font-size: 11px; }
+.up-set { display: flex; gap: 8px; align-items: flex-start; color: var(--text); margin: 6px 0; cursor: pointer; }
+.up-set[hidden] { display: none; }
+.up-set input { margin-top: 3px; accent-color: var(--cyan); }
+.up-fine { color: var(--cyan-dim); font-size: 10.5px; margin-top: 8px; }
+
+/* The one-time question: a card at the top of the transcript, not a modal. */
+.update-ask {
+  position: relative; border: 1px solid var(--cyan-dim); border-left: 3px solid var(--cyan);
+  background: rgba(53, 214, 237, 0.06); padding: 10px 34px 10px 12px; margin-bottom: 8px;
+  font-size: 12px; line-height: 1.6; color: var(--text);
+}
+.update-ask[hidden] { display: none; }
+.update-ask strong { color: var(--cyan); font-weight: 400; }
+.update-ask-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.update-ask-note { color: var(--cyan-dim); font-size: 10.5px; }
+.update-ask-x {
+  position: absolute; top: 4px; right: 6px; background: none; border: 0; color: var(--cyan-dim);
+  font-size: 18px; line-height: 1; cursor: pointer; padding: 4px 6px; font-family: var(--mono);
+}
+.update-ask-x:hover { color: var(--cyan); }
+
+/* A phone: the subtitle is already gone; let the chip wrap under the name. */
+@media (max-width: 600px) {
+  .brand { font-size: 16px; letter-spacing: 3px; }
+  .brand .ver { margin-left: 4px; white-space: normal; text-align: left; }
+  /* A sheet pinned to the screen: under a wrapped header the panel's foot
+     fell below the fold, CHECK NOW and the settings with it. */
+  .update-panel { position: fixed; top: 8px; left: 8px; right: 8px; width: auto; max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); }
+}

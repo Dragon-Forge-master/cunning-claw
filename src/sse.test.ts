@@ -28,9 +28,10 @@ function serverEvents(): Set<string> {
 }
 
 function hudEvents(): Set<string> {
-  // learn.js shares app.js's EventSource (es): Learn mode's listeners live there.
+  // learn.js and updates.js share app.js's EventSource (es): Learn mode's
+  // listeners and the update light's live there.
   const names = new Set<string>();
-  for (const file of ["app.js", "learn.js"]) {
+  for (const file of ["app.js", "learn.js", "updates.js"]) {
     const src = fs.readFileSync(path.join(ROOT, "public", file), "utf-8");
     for (const m of src.matchAll(/es\.addEventListener\(\s*"([a-z_]+)"/g)) names.add(m[1]);
   }

@@ -442,25 +442,41 @@ export function createPocket(deps: PocketDeps) {
   }
 
   async function pushAll(count: number): Promise<void> {
-    const targets = store.devices.filter((d) => d.push);
-    if (!targets.length) return;
     // A count and a label. Never the card: this is read off a locked screen.
-    const msg = {
+    await pushToAll({
       title: deps.clawName?.() ?? "Pocket Claw",
       body: `${count} approval${count === 1 ? "" : "s"} waiting`,
       tag: "approvals",
       url: "/pocket/#approvals",
       count,
-    };
+    });
+  }
+
+  /**
+   * One line that is not an approval — today only "a new version is out"
+   * (src/updates.ts). The same lock-screen rule as the count: a fixed
+   * sentence and a version number, never anything the feed wrote. Its own
+   * tag, so it neither replaces nor is replaced by the approvals count.
+   */
+  async function pushNote(body: string): Promise<number> {
+    return pushToAll({ title: deps.clawName?.() ?? "Pocket Claw", body, tag: "update", url: "/pocket/" });
+  }
+
+  async function pushToAll(msg: { title: string; body: string; tag: string; url: string; count?: number }): Promise<number> {
+    const targets = store.devices.filter((d) => d.push);
+    if (!targets.length) return 0;
+    let sent = 0;
     let changed = false;
     await Promise.all(targets.map(async (d) => {
       const out = await sendPush(d.push!, msg, vapidKeys(), deps.vapidSubject ?? "https://github.com/Dragon-Forge-master/cunning-claw", deps.fetchImpl);
-      if (!out.ok && out.gone) {
+      if (out.ok) sent++;
+      else if (out.gone) {
         delete d.push;
         changed = true;
       }
     }));
     if (changed) save();
+    return sent;
   }
 
   // --- Events from broadcast() -------------------------------------------------------
@@ -870,6 +886,9 @@ export function createPocket(deps: PocketDeps) {
     phone,
     admin,
     onEvent,
+    pushNote,
+    /** Whether a paired phone accepts pushes: the update panel offers its phone note only then. */
+    canPush: () => store.devices.some((d) => d.push),
     hosts,
     status: () => ({ devices: store.devices.length, hosts: hosts(), pending: pending.size }),
     /** For tests: the claw's VAPID public key, so a test can check what was pushed. */

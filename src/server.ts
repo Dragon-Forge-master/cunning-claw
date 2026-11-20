@@ -53,6 +53,8 @@ import { jobs, TERMINAL_STATES } from "./jobs.js";
 import { foreman, reportText, startForeman } from "./foreman.js";
 import { hostGate } from "./pocket-host.js";
 import { createPocket, POCKET_LARGE_BODIES } from "./pocket.js";
+import { createUpdates, feedUrl } from "./updates.js";
+import { installKind } from "./home-root.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -98,6 +100,31 @@ const pocket = createPocket({
   vapidSubject: config.pocket?.vapidSubject,
   staticDir: path.join(ROOT, "public", "pocket"),
   jobs,
+});
+
+// The update check (src/updates.ts): off until the owner answers, one small
+// GET a day after a yes. Made here, before the routes, so /api/status can
+// read it; armed at boot, after the phone lines it may tell.
+const updates = createUpdates({
+  dataDir: DATA_DIR,
+  current: VERSION,
+  url: feedUrl(config.updates?.url),
+  fetch,
+  now: Date.now,
+  install: installKind({ codeRoot: ROOT, exists: fs.existsSync, readFile: (p) => fs.readFileSync(p, "utf-8") }),
+  platform: process.platform,
+  arch: process.arch,
+  emit: (status) => broadcast("updates", status),
+  // One fixed line with a version number in it, to each phone line that is
+  // set up — each of which redacts in its own send(). Never the summary.
+  notify: (text) => {
+    void telegramAlert(text).catch(() => 0);
+    void discordAlert(text).catch(() => 0);
+    void notifyPhone({ kind: "update", title: "Cunning Claw", body: text });
+    void pocket.pushNote(text).catch(() => 0);
+  },
+  phones: () => telegramStatus().enabled || discordStatus().enabled || ntfyStatus().enabled || pocket.canPush(),
+  log: (line) => console.log(`  ${line}`),
 });
 
 // Before every route: a request must name this claw. Loopback names get the
@@ -481,6 +508,7 @@ app.get("/api/welcome", async (_req, res) => {
     ollama: await localRuntimeReachable(),
     owner: { userName: config.persona.userName, addressUserAs: config.persona.addressUserAs, weatherPlace: config.board?.weatherPlace ?? "" },
     claw: config.persona.name,
+    updates: updates.status().consent,
   });
 });
 
@@ -520,6 +548,31 @@ app.post("/api/welcome/owner", (req, res) => {
   const saved = saveOwner(DATA_DIR, req.body ?? {});
   applyOwner(config, saved);
   res.json({ ok: true, owner: saved });
+});
+
+// --- The update check ---------------------------------------------------------
+// The HUD's chip and panel, and the setup page's question. The model has no
+// route here and no tool for it: what the feed says is display text only.
+app.get("/api/updates", (_req, res) => {
+  res.json(updates.status());
+});
+
+app.post("/api/updates/settings", async (req, res) => {
+  const b = req.body ?? {};
+  if (typeof b.check !== "boolean" && typeof b.phoneNote !== "boolean") {
+    return res.status(400).json({ error: "Send check and/or phoneNote, true or false." });
+  }
+  if (typeof b.phoneNote === "boolean") updates.setPhoneNote(b.phoneNote);
+  const now = typeof b.check === "boolean" ? updates.setConsent(b.check) : updates.status();
+  // A yes starts a check. Answer with its result, not the "checking" from
+  // before it: a reply that raced the event stream used to land last and
+  // leave the HUD saying CHECKING… for good. The check is bounded by its
+  // own timeout.
+  res.json(now.checking ? await updates.checkNow() : now);
+});
+
+app.post("/api/updates/check", async (_req, res) => {
+  res.json(await updates.checkNow());
 });
 
 app.get("/api/history", (_req, res) => {
@@ -700,6 +753,8 @@ app.get("/api/status", async (_req, res) => {
   res.json({
     // The HUD shows it beside the logo, so an operator can see an update took.
     version: VERSION,
+    // The chip's light. Not in `text`, which the model also reads.
+    updates: updates.status(),
     text: await systemStatusText(),
     online: brainReady(),
     brain: { provider: activeProvider(), model: brainLabel() },
@@ -946,6 +1001,8 @@ const httpServer = app.listen(port, host, async () => {
     push: (text) => notifyPhone({ kind: "home", title: "Home", body: text }),
     describe: describeVisitor,
   });
+  // After the phone lines, which a new version is told through.
+  updates.start();
   for (const line of bootBrainLines()) console.log(line);
   if (setupNeeded()) {
     const url = `http://${host}:${port}/welcome`;

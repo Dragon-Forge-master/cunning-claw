@@ -394,6 +394,32 @@ test("a push says how many, never what: the card's text does not leave in the no
   } finally { await r.close(); }
 });
 
+test("the new-version note is pushed under its own tag, a fixed line only, and redacted on the way out", async () => {
+  const r = await rig();
+  try {
+    assert.equal(await r.pocket.pushNote("Cunning Claw v0.5.2 is out — open the HUD to see what's new"), 0, "no phone subscribed, nothing sent");
+    assert.equal(r.pocket.canPush(), false);
+    const ph = await pair(r);
+    assert.equal(r.pocket.canPush(), false, "paired is not subscribed: a phone that never allowed pushes is no phone line");
+    const ua = crypto.createECDH("prime256v1");
+    ua.generateKeys();
+    const auth = crypto.randomBytes(16);
+    const subscription = { endpoint: "https://fcm.googleapis.com/fcm/send/test-token", keys: { p256dh: ua.getPublicKey().toString("base64url"), auth: auth.toString("base64url") } };
+    assert.equal((await phoneCall(r, ph, "POST", "/push", { subscription })).status, 200);
+    assert.equal(r.pocket.canPush(), true);
+    assert.equal(await r.pocket.pushNote("Cunning Claw v0.5.2 is out — open the HUD to see what's new"), 1);
+    const opened = JSON.parse(decryptPayload(r.pushes[0].body, ua.getPrivateKey(), auth).toString());
+    assert.equal(opened.body, "Cunning Claw v0.5.2 is out — open the HUD to see what's new");
+    // Not "approvals": an update note must not replace, or be replaced by, a card count.
+    assert.equal(opened.tag, "update");
+    assert.equal(opened.url, "/pocket/");
+    // The push chokepoint redacts, whatever a caller hands it.
+    await r.pocket.pushNote("key sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    const second = JSON.parse(decryptPayload(r.pushes[1].body, ua.getPrivateKey(), auth).toString());
+    assert.doesNotMatch(second.body, /AAAAAAAAAAAAAAAAAAAA/);
+  } finally { await r.close(); }
+});
+
 test("a Learn mode practice card never reaches the phone: no push, no pending card", async () => {
   const r = await rig();
   try {

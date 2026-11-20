@@ -6,7 +6,7 @@ import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import {
-  findOldInstall, importOldInstall, INSTALL_MARKER, mergeEnv, resolveHomeRoot, SEED_MANIFEST, seedHome, shippedFiles, userFolder,
+  findOldInstall, importOldInstall, INSTALL_MARKER, installKind, mergeEnv, resolveHomeRoot, SEED_MANIFEST, seedHome, shippedFiles, userFolder,
 } from "./home-root.js";
 
 const execFileAsync = promisify(execFile);
@@ -68,6 +68,28 @@ test("only the installers' marker moves the owner's things; CLAW_HOME overrides 
   assert.equal(pinned.home, "/srv/second-claw");
   assert.equal(pinned.installed, true, "the code is still read-only, whoever chose the home");
   assert.equal(resolveHomeRoot({ ...base, env: { CLAW_HOME: "  " }, exists: () => false }).home, "/opt/claw/app", "a blank CLAW_HOME is no CLAW_HOME");
+});
+
+test("the kind of install is read from what is on disk: the installer's marker, a clone's .git, a download's runtime", () => {
+  const kindOf = (files: Record<string, string>) => installKind({
+    codeRoot: "/opt/claw/app",
+    exists: (p) => Object.prototype.hasOwnProperty.call(files, p.split(path.sep).join("/")),
+    readFile: (p) => files[p.split(path.sep).join("/")] ?? "",
+  });
+  const marker = (installer: string) => JSON.stringify({ installer, version: "0.5.1" });
+  assert.equal(kindOf({ "/opt/claw/app/installed.json": marker("nsis") }), "nsis");
+  assert.equal(kindOf({ "/opt/claw/app/installed.json": marker("dmg") }), "dmg");
+  assert.equal(kindOf({ "/opt/claw/app/installed.json": marker("appimage") }), "appimage");
+  assert.equal(kindOf({ "/opt/claw/app/installed.json": marker("deb") }), "deb");
+  // The marker outranks the rest: an installer's copy is never told to git pull.
+  assert.equal(kindOf({ "/opt/claw/app/installed.json": marker("nsis"), "/opt/claw/app/.git": "", "/opt/claw/runtime": "" }), "nsis");
+  assert.equal(kindOf({ "/opt/claw/app/installed.json": marker("snap") }), "unknown", "an installer we never built is not guessed at");
+  assert.equal(kindOf({ "/opt/claw/app/installed.json": "{not json" }), "unknown");
+  assert.equal(kindOf({ "/opt/claw/app/.git": "" }), "git");
+  assert.equal(kindOf({ "/opt/claw/runtime": "" }), "archive");
+  assert.equal(kindOf({}), "unknown");
+  // And the real thing: this checkout is a clone (in a worktree .git is a file, which counts).
+  assert.equal(installKind({ codeRoot: HERE, exists: fs.existsSync, readFile: (p) => fs.readFileSync(p, "utf-8") }), "git");
 });
 
 test("a first run seeds the defaults; an existing file is never overwritten", () => {
