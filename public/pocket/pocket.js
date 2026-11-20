@@ -5,8 +5,8 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const VIEWS = ["pair", "gone", "talk", "approvals", "share", "phone"];
-const state = { me: null, unlocked: false, approvals: new Map(), events: null, claw: null, toolLine: null, shared: [] };
+const VIEWS = ["pair", "gone", "talk", "approvals", "share", "receipt", "jobs", "phone"];
+const state = { me: null, unlocked: false, approvals: new Map(), jobs: new Map(), events: null, claw: null, toolLine: null, shared: [], receipt: null };
 
 // --- small helpers -------------------------------------------------------------
 
@@ -131,6 +131,9 @@ function setLocked(locked) {
   $("log").hidden = locked;
   $("lock-state").hidden = false;
   $("lock-state").textContent = locked ? "LOCKED" : "OPEN";
+  // Filing a receipt needs the unlock; the button says which step comes next.
+  $("receipt-snap").textContent = locked ? "Unlock first" : "Photograph the receipt";
+  if (!$("screen-jobs").hidden) void loadJobs();
 }
 
 async function unlock() {
@@ -299,41 +302,118 @@ function openShare(files, suggested) {
     line.textContent = `${f.type || "file"} · ${Math.round(f.size / 1024)} KB`;
     box.appendChild(line);
   }
+  // The ledger files photos (JPEG, PNG). A PDF or a HEIC can still go to the chat.
+  const fileable = state.shared.length > 0 && /^image\/(jpeg|png)$/.test(state.shared[0].type);
+  $("share-receipt").disabled = !fileable;
   if (files.length > 1) say("share-msg", "One file at a time — the first is here.");
+  else if (!fileable) say("share-msg", "Receipts are filed from JPEG or PNG photos. This one can be attached to the chat.");
   else say("share-msg", "");
-  $("share-receipt").classList.toggle("primary", suggested === "receipt");
-  $("share-ask").classList.toggle("primary", suggested !== "receipt");
+  $("share-receipt").classList.toggle("primary", fileable && suggested === "receipt");
+  $("share-ask").classList.toggle("primary", !fileable || suggested !== "receipt");
   show("share");
 }
+
+const readAsBase64 = (f) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(String(r.result).split(",")[1] || "");
+  r.onerror = () => reject(r.error);
+  r.readAsDataURL(f);
+});
+
+// --- Receipts: filed in the ledger, the same path a captioned Telegram photo takes ----------
+
+function showReceipt(view) {
+  state.receipt = view;
+  $("receipt-capture").hidden = Boolean(view);
+  $("receipt-filed").hidden = !view;
+  if (view) {
+    // Our summary line, built from what the reader took off the slip. Shown
+    // as text; it never goes to the chat or the model from here.
+    $("receipt-line").textContent = view.line;
+    $("receipt-warning").textContent = view.warning || "";
+    $("receipt-fix").value = "";
+  }
+  show("receipt");
+}
+
+async function fileReceipt(f, note) {
+  if (f.size > 20 * 1024 * 1024) throw new Error("that photo is over 20MB");
+  const res = await api("/receipt", { method: "POST", body: { data: await readAsBase64(f), note: note || "" } });
+  if (!res.ok) throw new Error(res.json.error || `HTTP ${res.status}`);
+  return res.json.receipt;
+}
+
+// Locked, the first press unlocks and the second opens the camera: a fingerprint
+// prompt uses up the tap that a file chooser needs, so they cannot share one.
+$("receipt-snap").addEventListener("click", () => (state.unlocked ? $("receipt-camera").click() : unlock()));
+$("receipt-camera").addEventListener("change", async (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  say("receipt-msg", "Reading the receipt…");
+  $("receipt-snap").disabled = true;
+  try {
+    showReceipt(await fileReceipt(f, ""));
+    say("receipt-msg", "");
+  } catch (err) {
+    say("receipt-msg", `Not filed: ${err.message || err}`, true);
+  } finally {
+    $("receipt-snap").disabled = false;
+  }
+});
+
+async function fixReceipt(text) {
+  if (!state.receipt || !text.trim()) return;
+  for (const b of ["receipt-fix-go", "receipt-void"]) $(b).disabled = true;
+  try {
+    const res = await api(`/receipts/${encodeURIComponent(state.receipt.id)}/fix`, { method: "POST", body: { text } });
+    if (!res.ok) throw new Error(res.json.error || `HTTP ${res.status}`);
+    showReceipt(res.json.receipt);
+    say("receipt-msg", res.json.changed.length ? `Corrected: ${res.json.changed.join(", ").replace(/_pence/g, "").replace(/payment_method/g, "payment")}.` : "Nothing changed — it already said that.");
+  } catch (err) {
+    say("receipt-msg", String(err.message || err), true);
+  } finally {
+    for (const b of ["receipt-fix-go", "receipt-void"]) $(b).disabled = false;
+  }
+}
+$("receipt-fix-go").addEventListener("click", () => fixReceipt($("receipt-fix").value));
+$("receipt-fix").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); void fixReceipt($("receipt-fix").value); } });
+$("receipt-void").addEventListener("click", () => fixReceipt("void"));
+$("receipt-again").addEventListener("click", () => { showReceipt(null); say("receipt-msg", ""); });
 
 async function sendShare(intent) {
   const f = state.shared[0];
   if (!f) return;
   if (f.size > 20 * 1024 * 1024) return say("share-msg", "That file is over 20MB.", true);
   for (const b of ["share-receipt", "share-ask", "share-keep"]) $(b).disabled = true;
-  say("share-msg", "Sending to the claw…");
+  say("share-msg", intent === "receipt" ? "Reading the receipt…" : "Sending to the claw…");
+  const note = $("share-note").value;
   try {
-    const data = await new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result).split(",")[1] || "");
-      r.onerror = () => reject(r.error);
-      r.readAsDataURL(f);
-    });
-    const note = $("share-note").value;
-    const res = await api("/upload", { method: "POST", body: { data, intent, note } });
+    if (intent === "receipt") {
+      // The ledger, not the chat: the same filing path as a Telegram photo
+      // captioned "receipt". The slip's words never become a turn.
+      const filed = await fileReceipt(f, note);
+      $("share-note").value = "";
+      state.shared = [];
+      showReceipt(filed);
+      say("receipt-msg", "");
+      return;
+    }
+    const res = await api("/upload", { method: "POST", body: { data: await readAsBase64(f), intent, note } });
     if (!res.ok) throw new Error(res.json.error || `HTTP ${res.status}`);
     $("share-note").value = "";
     state.shared = [];
     if (intent === "keep") {
       say("share-msg", `Kept on the Desk: ${res.json.path}`);
     } else {
-      addLine("me", intent === "receipt" ? `Attached a receipt to file. ${note}`.trim() : `Attached: ${note || "what is this?"}`);
+      addLine("me", `Attached: ${note || "what is this?"}`);
       location.hash = "#talk";
     }
   } catch (err) {
     say("share-msg", `Not sent: ${err.message || err}`, true);
   } finally {
     for (const b of ["share-receipt", "share-ask", "share-keep"]) $(b).disabled = false;
+    if (state.shared[0]) $("share-receipt").disabled = !/^image\/(jpeg|png)$/.test(state.shared[0].type);
   }
 }
 $("share-receipt").addEventListener("click", () => sendShare("receipt"));
@@ -418,6 +498,80 @@ async function loadApprovals() {
   renderApprovals();
 }
 
+// --- Jobs: mission control, compact ------------------------------------------------------------
+
+const ACTIVE = new Set(["queued", "running", "needs-approval"]);
+
+function renderJobs() {
+  const box = $("jobs-list");
+  box.replaceChildren();
+  $("jobs-locked").hidden = state.unlocked;
+  if (!state.unlocked) { $("no-jobs").hidden = true; return; }
+  // Work in flight first, newest first within each half.
+  const list = [...state.jobs.values()].sort((a, b) => (ACTIVE.has(b.state) - ACTIVE.has(a.state)) || (b.rev - a.rev));
+  for (const j of list) box.appendChild(jobCard(j));
+  $("no-jobs").hidden = list.length > 0;
+}
+
+function jobCard(j) {
+  const el = document.createElement("article");
+  el.className = "job";
+  el.dataset.state = j.state;
+  const title = document.createElement("div");
+  title.className = "title";
+  title.textContent = j.title;
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.textContent = `${j.short} · ${j.kind} · ${j.state}`;
+  // The registry's own words about the work, never its output, and they do not tick.
+  const status = document.createElement("div");
+  status.className = "status";
+  status.textContent = j.status;
+  const note = document.createElement("div");
+  note.className = "note";
+  el.append(title, meta, status);
+  if (j.cancellable) {
+    const stop = document.createElement("button");
+    stop.type = "button";
+    stop.className = "big";
+    stop.textContent = "Cancel";
+    stop.addEventListener("click", async () => {
+      stop.disabled = true;
+      note.textContent = "Fingerprint or screen lock, for this job…";
+      try {
+        const c = await api("/challenge", { method: "POST", body: { purpose: "cancel", jobId: j.id } });
+        if (!c.ok) throw new Error(c.json.error || `HTTP ${c.status}`);
+        const assertion = await webauthnGet(c.json.publicKey);
+        const r = await api(`/jobs/${encodeURIComponent(j.id)}/cancel`, { method: "POST", body: { assertion } });
+        if (!r.ok) throw new Error(r.json.message || r.json.error || `HTTP ${r.status}`);
+        note.textContent = r.json.message || "Asked it to stop.";
+        if (r.json.job) upsertJob(r.json.job, false);
+      } catch (err) {
+        note.textContent = `Not cancelled: ${err.message || err}`;
+        stop.disabled = false;
+      }
+    });
+    el.append(stop);
+  }
+  el.append(note);
+  return el;
+}
+
+/** A late snapshot must not overwrite a newer one: the registry's rev orders them. */
+function upsertJob(j, render = true) {
+  const had = state.jobs.get(j.id);
+  if (had && had.rev > j.rev) return;
+  state.jobs.set(j.id, j);
+  if (render && !$("screen-jobs").hidden) renderJobs();
+}
+
+async function loadJobs() {
+  if (!state.unlocked) return renderJobs();
+  const r = await api("/jobs");
+  if (r.ok) state.jobs = new Map((r.json.jobs || []).map((j) => [j.id, j]));
+  renderJobs();
+}
+
 // --- The event stream -----------------------------------------------------------------------
 
 function connectEvents() {
@@ -452,6 +606,7 @@ function connectEvents() {
     state.claw = null;
     state.toolLine = null;
   });
+  es.addEventListener("job", (e) => { const j = data(e); if (j.id) upsertJob(j); });
   es.addEventListener("agent_error", (e) => addLine("sys", data(e).message || "The claw hit an error."));
   es.addEventListener("notice", (e) => addLine("sys", data(e).message || ""));
   // A revoked phone's stream is closed by the claw; stop retrying into a 401.
@@ -501,7 +656,8 @@ function route() {
   const h = location.hash.replace(/^#/, "");
   if (h === "approvals") return show("approvals");
   if (h === "phone") return show("phone");
-  if (h === "snap") { show("talk"); return addLine("sys", "Press the camera to photograph a receipt."); }
+  if (h === "snap" || h === "receipt") return showReceipt(null);
+  if (h === "jobs") { show("jobs"); return void loadJobs(); }
   if (h === "share-unavailable") { show("talk"); return addLine("sys", "That share arrived before Pocket Claw was ready. Share it again."); }
   if (h === "share") return; // handled by start()
   show("talk");

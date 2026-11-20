@@ -47,9 +47,24 @@ You need about ten minutes and a free Tailscale account.
 8. **Notifications (optional).** In Pocket, open **Phone** and press **Tell
    me when approvals wait**.
 
-To share a receipt, photograph it with **Snap receipt**, or open it in your
-gallery, WhatsApp or Files, press Share and choose **Pocket Claw**. Choose
-**File as a receipt**, **Ask about it** or **Just keep it on the Desk**.
+**Receipts.** Long-press the icon and choose **Snap receipt**, then
+photograph the slip. Or open a photo in your gallery, WhatsApp or Files,
+press Share and choose **Pocket Claw**. The share screen asks which you mean:
+
+- **File as receipt**: read and added to your receipts ledger, the same one a
+  Telegram photo captioned "receipt" goes to. The phone shows the line it
+  filed (`R-0007 · 2026-11-19 · Caffi Bach · £12.40 (VAT £2.07) · meals ·
+  contactless`). If it misread anything, type the fix while the slip is in
+  your hand, e.g. `total £14.60, payment card`. **Not a receipt — void it**
+  keeps the line but marks it void. JPEG and PNG photos only. A PDF or HEIC
+  can still go to the chat.
+- **Attach to chat**: the claw reads it as outside content and answers you.
+- **Just keep it on the Desk**: saved, nothing else.
+
+**Jobs.** The **Jobs** tab shows mission control's list when the phone is
+unlocked: what each job is, its state, and the claw's own status line. A job
+that can be stopped has **Cancel**, which asks for your fingerprint for that
+job.
 
 The microphone sends your recording to the claw's own ears (whisper.cpp, set
 up with `./setup-ears.sh`). If that is not installed, Pocket says so; it never
@@ -89,8 +104,9 @@ stored hashed, never as itself*.)
 | With… | the phone can |
 |---|---|
 | the device token alone | see the approval cards waiting, and how many |
-| a fingerprint in the last 10 idle minutes | read the conversation, send, share files, use the mic |
+| a fingerprint in the last 10 idle minutes | read the conversation, send, share files, file and correct receipts, use the mic, see jobs |
 | a fresh fingerprint for *that* card | approve or deny that one card |
+| a fresh fingerprint for *that* job | cancel that one job |
 
 The fingerprint for a card signs a challenge that names that card and that
 answer. It can be used once, within two minutes. A "deny" cannot be replayed
@@ -146,6 +162,27 @@ pinned to a trusted brain and `read_document` fences what the file says.
 paperclip's marker*, *a share that is not a photo or a PDF by its bytes is
 refused*.)
 
+**Receipts never become a turn.** **File as receipt** goes to the receipts
+ledger (`src/receipts.ts`) with no conversation in between, as Telegram's
+does. Nothing printed on the slip is ever put to the model as part of a chat.
+The phone shows the filed line as text. The HUD only hears that receipt
+`R-0007` was filed, never what the slip says. A phone can correct only the
+receipts it filed itself. Corrections are parsed from what you type, with no
+model involved. (*a receipt is filed in the ledger the Telegram flow uses,
+with no turn, and the phone sees the filed line*, *the filed line can be
+corrected from the phone, but only for receipts this phone filed*, *receipts
+need the unlock, and a receipt cannot be smuggled into the chat as a turn*,
+*the HUD hears that a receipt was filed, never what the slip says*.)
+
+**Jobs** are the claw's own status lines, never a job's output, and the
+result pointer stays at home. Cancel signs a challenge that names that job's
+full id, single-use and two minutes long. An approval's fingerprint cannot
+cancel a job, and a fingerprint for job A cannot stop job B. (*jobs: listed
+only when unlocked, as our own status lines*, *cancelling a job needs a fresh
+assertion bound to that job*, *a cancel challenge is not handed out while
+locked, or for a job that cannot be stopped*, *job events reach an unlocked
+phone only, cut to the phone's view*.)
+
 **On the phone,** the service worker caches the app's shell (page, style,
 script, icons) and nothing else. Conversation, cards and history are never
 written to a cache. A shared file sits in a cache of its own only for the
@@ -189,5 +226,5 @@ everything behind it. The claw does not yet check Access's own signed header
   quick way in. iOS has no Web Share Target, so sharing to Pocket from other
   iPhone apps is not possible.
 - **Checking Cloudflare Access's JWT** on the Cloudflare route.
-- **A jobs panel in Pocket.** It will show what the HUD's jobs view shows,
-  once that exists.
+- **Receipts from PDFs or HEIC photos.** The ledger takes JPEG and PNG. On
+  most Android phones the camera saves JPEG.

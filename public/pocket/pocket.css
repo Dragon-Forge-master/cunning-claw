@@ -124,19 +124,34 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .share-preview .file { font-family: var(--mono); font-size: 14px; color: var(--dim); }
 .share-actions { display: flex; flex-direction: column; gap: 10px; }
 
+/* Receipt: the filed line is the thing to check, so it is the biggest text. */
+.filed { display: flex; flex-direction: column; gap: 12px; }
+.filed-line { font-family: var(--mono); font-size: 16px; line-height: 1.5; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--deep); border-radius: 10px; padding: 12px; overflow-wrap: anywhere; }
+.share-actions .lede.small { margin-top: -4px; }
+
+/* Jobs: our own status lines, one card each. */
+.job { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.job + .job { margin-top: 10px; }
+.job .title { font-weight: 600; overflow-wrap: anywhere; }
+.job .meta { font-family: var(--mono); font-size: 13px; color: var(--dim); }
+.job .status { font-size: 15px; overflow-wrap: anywhere; }
+.job .note { color: var(--dim); font-size: 14px; min-height: 1.2em; }
+.job[data-state="running"] { border-left: 4px solid var(--deep); }
+.job[data-state="needs-approval"] { border-left: 4px solid var(--gold); }
+
 /* Phone */
 .facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; }
 .facts dt { color: var(--dim); }
 
 /* Tabs: where the thumb is. */
 .tabs {
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   border-top: 1px solid var(--line); background: var(--card);
   padding-bottom: env(safe-area-inset-bottom);
 }
 .tabs a {
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  min-height: 56px; color: var(--dim); text-decoration: none; font-weight: 600; font-size: 15px;
+  min-height: 56px; color: var(--dim); text-decoration: none; font-weight: 600; font-size: 14px;
 }
 .tabs a.on { color: var(--text); box-shadow: inset 0 3px 0 var(--deep); }
 .badge {

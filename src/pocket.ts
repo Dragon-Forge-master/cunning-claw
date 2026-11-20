@@ -13,6 +13,8 @@ import {
   type StoredKey,
 } from "./webauthn.js";
 import { loadVapidKeys, sendPush, validSubscription, type PushSubscription, type VapidKeys } from "./webpush.js";
+import { applyFix, fileReceipt, parseFixText, summaryLine, type Filed, type ReadReceipt } from "./receipts.js";
+import { shortId, type Job } from "./jobs.js";
 
 /**
  * Pocket Claw: the claw's own phone app, served on the operator's tailnet
@@ -77,6 +79,8 @@ export interface DeviceRecord {
   key: StoredKey;
   signCount: number;
   push?: PushSubscription;
+  /** Ids of the receipts this phone filed, newest last: the ones it may correct. */
+  receipts?: string[];
 }
 
 interface Stored { devices: DeviceRecord[]; host?: string }
@@ -125,13 +129,36 @@ export function shareFileName(ext: string, now: Date, rand = crypto.randomBytes(
  * paperclip's own, so the existing untrusted path applies unchanged: the
  * routing guard pins "[file attached:" turns to a trusted brain, and
  * read_document fences whatever the file says.
+ *
+ * Receipts do not come this way. A file the operator marks as a receipt goes
+ * to the ledger (POST /pocket/api/receipt, the same fileReceipt the Telegram
+ * flow uses) and never becomes a turn, so nothing printed on a stranger's
+ * slip is put to the model as conversation.
  */
-export function shareMessage(file: string, intent: string, note: string): string {
-  const said = note.trim();
-  if (intent === "receipt") {
-    return `[file attached: ${file}] A receipt, shared from my phone. File it: read it and note the supplier, the date and the total.${said ? ` ${said}` : ""}`;
-  }
-  return `[file attached: ${file}] ${said || "Shared from my phone — what is it?"}`;
+export function shareMessage(file: string, note: string): string {
+  return `[file attached: ${file}] ${note.trim() || "Shared from my phone — what is it?"}`;
+}
+
+/** What the phone shows after filing: our summary line, and why it may be wrong. */
+export function filedView(f: Filed): { id: string; line: string; status: string; warning: string } {
+  const r = f.receipt;
+  const warning = f.readError
+    ? `Saved, but it could not be read: ${f.readError}. Type the figures below.`
+    : f.doubt ? "The reader did not think this is a receipt. Check it, or void it." : "";
+  return { id: r.id, line: summaryLine(r), status: r.status, warning };
+}
+
+/** The slice of the job registry Pocket uses (src/jobs.ts); injected so tests build their own. */
+export interface PocketJobs {
+  list(): Job[];
+  get(id: string): Job | null;
+  canCancel(id: string): boolean;
+  cancel(id: string): Promise<{ ok: boolean; message: string }>;
+}
+
+/** A job as the phone sees it: our own status line, never the work's output. */
+export function jobView(j: Job, cancellable: boolean) {
+  return { id: j.id, short: shortId(j.id), kind: j.kind, title: j.title, state: j.state, status: j.status, rev: j.rev, cancellable };
 }
 
 // --- The module ----------------------------------------------------------------------
@@ -155,7 +182,22 @@ export interface PocketDeps {
   pairingMinutes?: number;
   /** Where the phone's static files live (public/pocket). */
   staticDir?: string;
+  /** Mission control's registry (src/jobs.ts). Without it the Jobs view says there is none. */
+  jobs?: PocketJobs;
+  /**
+   * Where receipts are filed, and who reads them. Left out, the claw's own
+   * ledger, Desk page and vision brain (src/receipts.ts); tests pass their own.
+   */
+  receipts?: { root?: string; desk?: string | null; read?: ReadReceipt };
 }
+
+/**
+ * Pocket routes whose bodies are photos, parsed by their own larger parser.
+ * server.ts's 1MB global parser must skip them: body-parser marks a request
+ * parsed after the first parse, so a later, larger limit never runs and a
+ * phone photo dies at 1MB. Exported so the server and the tests share one list.
+ */
+export const POCKET_LARGE_BODIES: ReadonlySet<string> = new Set(["/pocket/api/upload", "/pocket/api/receipt"]);
 
 const COOKIE = "cc_pocket";
 const CHALLENGE_MS = 2 * 60_000;
@@ -168,9 +210,12 @@ const LOCKED_EVENTS = new Set(["approval_request", "approval_resolved"]);
  * they are other people's words (pages, inboxes) and the phone does not need
  * them to follow a turn; a tool's name is enough.
  */
-const UNLOCKED_EVENTS = new Set(["turn_start", "text", "tool_start", "turn_done", "agent_error", "notice"]);
+const UNLOCKED_EVENTS = new Set(["turn_start", "text", "tool_start", "turn_done", "agent_error", "notice", "job"]);
 
-type Purpose = "unlock" | "approve" | "deny";
+/** How many receipts a phone remembers filing, so it can correct its own and only its own. */
+const RECEIPTS_REMEMBERED = 20;
+
+type Purpose = "unlock" | "approve" | "deny" | "cancel";
 interface Challenge { deviceId: string; purpose: Purpose; approvalId: string; expires: number }
 
 export function createPocket(deps: PocketDeps) {
@@ -439,6 +484,12 @@ export function createPocket(deps: PocketDeps) {
     if (!LOCKED_EVENTS.has(event) && !UNLOCKED_EVENTS.has(event)) return;
     let payload = data;
     if (event === "tool_start") payload = { name: data?.name };
+    // The registry's own view of a job, cut to what the phone shows; the
+    // result pointer and timestamps stay home.
+    if (event === "job") {
+      if (!data?.id) return;
+      payload = jobView(data as Job, deps.jobs?.canCancel(String(data.id)) ?? false);
+    }
     const line = `event: ${event}\ndata: ${JSON.stringify(payload ?? {})}\n\n`;
     for (const s of streams) {
       if (LOCKED_EVENTS.has(event) || isUnlocked(s.deviceId)) s.res.write(line);
@@ -557,10 +608,20 @@ export function createPocket(deps: PocketDeps) {
   api.post("/challenge", (req, res) => {
     const d = res.locals.device as DeviceRecord;
     const purpose = String(req.body?.purpose ?? "") as Purpose;
-    if (!["unlock", "approve", "deny"].includes(purpose)) return res.status(400).json({ error: "purpose must be unlock, approve or deny" });
-    const approvalId = purpose === "unlock" ? "" : String(req.body?.approvalId ?? "");
-    if (purpose !== "unlock" && !pending.has(approvalId)) return res.status(404).json({ error: "No such pending approval." });
-    res.json({ publicKey: requestOptions(d, pocketOf(res)!.host, mintChallenge(d.id, purpose, approvalId)) });
+    if (!["unlock", "approve", "deny", "cancel"].includes(purpose)) return res.status(400).json({ error: "purpose must be unlock, approve, deny or cancel" });
+    let subject = "";
+    if (purpose === "cancel") {
+      // Stopping work is a consequence too. The challenge names the job's
+      // full id, so a short id typed on the phone cannot later match another.
+      if (!isUnlocked(d.id)) return res.status(423).json({ error: "Locked. Unlock first.", locked: true });
+      const job = deps.jobs?.get(String(req.body?.jobId ?? ""));
+      if (!job || !deps.jobs?.canCancel(job.id)) return res.status(404).json({ error: "No such job that can be cancelled." });
+      subject = job.id;
+    } else if (purpose !== "unlock") {
+      subject = String(req.body?.approvalId ?? "");
+      if (!pending.has(subject)) return res.status(404).json({ error: "No such pending approval." });
+    }
+    res.json({ publicKey: requestOptions(d, pocketOf(res)!.host, mintChallenge(d.id, purpose, subject)) });
   });
 
   api.post("/unlock", (req, res) => {
@@ -613,6 +674,8 @@ export function createPocket(deps: PocketDeps) {
   });
 
   api.post("/upload", express.json({ limit: "30mb" }), requireUnlocked, (req, res) => {
+    // A receipt is filed, never chatted about: that is POST /receipt.
+    if (req.body?.intent === "receipt") return res.status(400).json({ error: "Receipts are filed with File as receipt, not attached to the chat." });
     const data = String(req.body?.data ?? "");
     if (!data) return res.status(400).json({ error: "No file." });
     if (data.length > Math.ceil(MAX_UPLOAD / 3) * 4) return res.status(413).json({ error: "That file is over 20MB." });
@@ -625,8 +688,75 @@ export function createPocket(deps: PocketDeps) {
     const intent = String(req.body?.intent ?? "keep");
     const shown = collapseHomeIn(file);
     if (intent === "keep") return res.json({ ok: true, path: shown });
-    const out = deps.chat(shareMessage(file, intent, String(req.body?.note ?? "").slice(0, 2000)));
+    const out = deps.chat(shareMessage(file, String(req.body?.note ?? "").slice(0, 2000)));
     res.status(out.status).json({ ...(out.body as object), path: shown });
+  });
+
+  // --- Receipts: the Telegram flow's filing path, no turn in between -----------------
+
+  api.post("/receipt", express.json({ limit: "30mb" }), requireUnlocked, async (req, res) => {
+    const d = res.locals.device as DeviceRecord;
+    const data = String(req.body?.data ?? "");
+    if (!data) return res.status(400).json({ error: "No photo." });
+    if (data.length > Math.ceil(MAX_UPLOAD / 3) * 4) return res.status(413).json({ error: "That photo is over 20MB." });
+    let filed: Filed;
+    try {
+      filed = await fileReceipt({
+        bytes: Buffer.from(data, "base64"),
+        note: String(req.body?.note ?? ""),
+        source: "pocket",
+        at: new Date(now()),
+        root: deps.receipts?.root,
+        desk: deps.receipts?.desk,
+        read: deps.receipts?.read,
+      });
+    } catch (err) {
+      // Not JPEG or PNG (a PDF, a HEIC), or too large: nothing was filed.
+      return res.status(415).json({ error: `Not filed: ${String((err as Error)?.message ?? err)}. Attach it to the chat instead.` });
+    }
+    d.receipts = [...(d.receipts ?? []), filed.receipt.id].slice(-RECEIPTS_REMEMBERED);
+    save();
+    // The HUD hears that one was filed, not what it says: the supplier was
+    // read off a stranger's slip and has no business in a notice.
+    deps.notice?.(`Receipt ${filed.receipt.id} filed from Pocket Claw (${d.name}).`);
+    res.json({ ok: true, receipt: filedView(filed) });
+  });
+
+  /**
+   * "total £12.40, supplier Tesco" — the operator's own words, parsed and
+   * applied with no model in between, as Telegram's "fix that:" is. Only a
+   * receipt this phone filed: a paired phone corrects its own slips, not the
+   * whole ledger.
+   */
+  api.post("/receipts/:id/fix", requireUnlocked, (req, res) => {
+    const d = res.locals.device as DeviceRecord;
+    const id = String(req.params.id ?? "");
+    if (!/^R-\d{1,6}$/.test(id) || !(d.receipts ?? []).includes(id)) {
+      return res.status(404).json({ error: "This phone did not file that receipt." });
+    }
+    const changes = parseFixText(String(req.body?.text ?? "").slice(0, 500));
+    if (typeof changes === "string") return res.status(400).json({ error: `Not changed: ${changes}.` });
+    const out = applyFix(id, changes, { root: deps.receipts?.root, desk: deps.receipts?.desk, at: new Date(now()) });
+    if ("error" in out) return res.status(404).json({ error: `Not changed: ${out.error}.` });
+    res.json({ ok: true, changed: out.changed, receipt: { id: out.receipt.id, line: summaryLine(out.receipt), status: out.receipt.status, warning: "" } });
+  });
+
+  // --- Jobs: mission control's list, and Cancel behind a fresh fingerprint -------------
+
+  api.get("/jobs", requireUnlocked, (_req, res) => {
+    const list = deps.jobs?.list() ?? [];
+    res.json(redactDeep({ jobs: list.slice(0, 30).map((j) => jobView(j, deps.jobs!.canCancel(j.id))) }));
+  });
+
+  api.post("/jobs/:id/cancel", requireUnlocked, async (req, res) => {
+    const job = deps.jobs?.get(String(req.params.id ?? ""));
+    if (!job) return res.status(404).json({ error: "No such job." });
+    if (!checkAssertion(req, res, "cancel", job.id)) return;
+    const out = await deps.jobs!.cancel(job.id);
+    const d = res.locals.device as DeviceRecord;
+    if (out.ok) deps.notice?.(`Job ${shortId(job.id)} cancelled from Pocket Claw (${d.name}).`);
+    const now2 = deps.jobs!.get(job.id);
+    res.status(out.ok ? 200 : 409).json(redactDeep({ ...out, job: now2 ? jobView(now2, deps.jobs!.canCancel(now2.id)) : null }));
   });
 
   api.post("/listen", requireUnlocked, async (req, res) => {

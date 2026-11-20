@@ -70,11 +70,44 @@
         <input id="share-note" type="text" maxlength="500" autocomplete="off" placeholder="e.g. this was the van's MOT">
       </label>
       <div class="share-actions">
-        <button id="share-receipt" class="primary big" type="button">File as a receipt</button>
-        <button id="share-ask" class="big" type="button">Ask about it</button>
+        <button id="share-receipt" class="primary big" type="button">File as receipt</button>
+        <p class="lede small">Read and added to your receipts ledger. Not sent to the chat.</p>
+        <button id="share-ask" class="big" type="button">Attach to chat</button>
+        <p class="lede small">The claw reads it as outside content and answers you.</p>
         <button id="share-keep" class="big quiet" type="button">Just keep it on the Desk</button>
       </div>
       <p id="share-msg" class="msg-line" role="status"></p>
+    </section>
+
+    <!-- Snap receipt: straight to the ledger, the same filing path Telegram uses. -->
+    <section id="screen-receipt" class="screen" hidden>
+      <h1>Receipt</h1>
+      <div id="receipt-capture" class="share-actions">
+        <p class="lede">Photograph the receipt flat, with the total in view. It is read and filed in your receipts ledger; nothing on it goes to the chat.</p>
+        <button id="receipt-snap" class="primary big" type="button">Photograph the receipt</button>
+        <input id="receipt-camera" type="file" accept="image/jpeg,image/png" capture="environment" hidden>
+      </div>
+      <div id="receipt-filed" class="filed" hidden>
+        <p class="lede small">Filed. Check it while the slip is in your hand.</p>
+        <p id="receipt-line" class="filed-line"></p>
+        <p id="receipt-warning" class="msg-line bad"></p>
+        <label class="field">Wrong? Say what it should be
+          <input id="receipt-fix" type="text" maxlength="300" autocomplete="off" placeholder="total £12.40, supplier Tesco, date 19/11/2026">
+        </label>
+        <div class="share-actions">
+          <button id="receipt-fix-go" class="primary big" type="button">Correct it</button>
+          <button id="receipt-void" class="big" type="button">Not a receipt — void it</button>
+          <button id="receipt-again" class="big quiet" type="button">Photograph another</button>
+        </div>
+      </div>
+      <p id="receipt-msg" class="msg-line" role="status"></p>
+    </section>
+
+    <section id="screen-jobs" class="screen" hidden>
+      <h1>Jobs</h1>
+      <p id="jobs-locked" class="lede" hidden>Locked. Open Talk and unlock to see the work in flight.</p>
+      <div id="jobs-list"></div>
+      <p id="no-jobs" class="empty" hidden>No jobs on the board.</p>
     </section>
 
     <section id="screen-phone" class="screen" hidden>
@@ -95,6 +128,7 @@
   <nav id="tabs" class="tabs" hidden>
     <a href="#talk" data-view="talk">Talk</a>
     <a href="#approvals" data-view="approvals">Approvals <span id="badge" class="badge" hidden></span></a>
+    <a href="#jobs" data-view="jobs">Jobs</a>
     <a href="#phone" data-view="phone">Phone</a>
   </nav>
 
