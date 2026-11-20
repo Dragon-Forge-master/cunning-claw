@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { config } from "./config.js";
 import { injectionAlarm } from "./injection.js";
+import { homeStepIsSecurity } from "./home-policy.js";
 
 /**
  * The work order — approve the plan once, not every step of it.
@@ -87,6 +88,13 @@ export function stepIsPermitted(
   }
   if (step.tool === "run_command" && /\b(?:xdotool\s+(?:[^|;&]*\b)?(?:type|key|click)\b|ydotool\s+(?:type|key|click)\b|wtype\b|import\s+pyautogui|pyautogui\.|keyboard\.(?:write|press|send)|osascript\b[^|;&]*keystroke)/i.test(step.match)) {
     return { ok: false, why: "keystroke/click injection is a send in disguise — it asks every time, and no plan may pre-authorise it" };
+  }
+  // Unlocking, disarming, a garage door or a gate (src/home-policy.ts). The run
+  // would ask anyway — home.ts never lets a plan cover one — but a plan card
+  // that lists "unlock the front door" beside "turn the lights on" reads as if
+  // approving it approves both. Refused here, so the card cannot say that.
+  if (step.tool === "home_assistant" && homeStepIsSecurity(step.match)) {
+    return { ok: false, why: `"${step.match}" opens the home or changes the alarm — it asks every time, and no plan may pre-authorise it` };
   }
   if (step.tool === "write_file" || step.tool === "edit_file" || step.tool === "remote_copy") {
     // Not anchored to the end: a remote_copy match is a compound string

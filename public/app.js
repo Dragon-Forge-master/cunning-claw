@@ -1060,6 +1060,14 @@ es.addEventListener("notice", (e) => {
   addMsg("system", message);
 });
 
+// A house event (src/home-events.ts): the doorbell, a door, someone arriving.
+// One system line built from our own fields — textContent via addMsg, as the
+// friendly name came from HA. The still is not shown: it stays on disk.
+es.addEventListener("home_event", (e) => {
+  const { what, at, snapshot } = sseData(e);
+  addMsg("system", `Home: ${what} (${String(at ?? "").slice(11)})${snapshot ? " · still saved" : ""}`);
+});
+
 es.addEventListener("brain", (e) => {
   renderBrainPicker(sseData(e));
 });
@@ -1651,7 +1659,7 @@ async function pollStatus() {
     const {
       text, online, serverVoice: sv, serverVoiceAvailable: sva,
       skills, heartbeat, landscapeCount, landscapeUpdated,
-      brain, brains, telegram, discord, ntfy, toolCount, preview, spend, toolDiet,
+      brain, brains, telegram, discord, ntfy, home, toolCount, preview, spend, toolDiet,
       addressAs: as, ears: earsNow,
     } = await res.json();
     learnAddress({ addressAs: as });
@@ -1673,6 +1681,8 @@ async function pollStatus() {
       `Telegram: ${telegram?.enabled ? `on (${(telegram.chats || []).join(", ")})` : "off"}`,
       `Discord: ${discord?.enabled ? `on (${(discord.users || []).join(", ")})` : "off"}`,
       `ntfy: ${ntfy?.enabled ? `on (${ntfy.topic} · ${ntfy.server}${ntfy.delivery === "failing" ? " · failing" : ""})` : "off"}`,
+      // The house watcher: the link's state and the rule count, never a host.
+      `Home watch: ${home?.enabled ? `${home.link} · ${home.rules} rule${home.rules === 1 ? "" : "s"}` : `off${home?.why ? ` (${home.why})` : ""}`}`,
       toolDiet?.text ?? "",
     ].filter((line, i) => i === 0 || line).join("\n");
     $("sys-status").textContent = text + extra;

@@ -28,6 +28,11 @@ src/embed.ts       embeddings client (Gemini, OpenRouter, Ollama) for memory sea
 src/memory.ts      memory facts, hybrid keyword + meaning search, testimony stamps
 src/ears.ts        local speech-to-text through whisper.cpp (POST /api/listen)
 src/ntfy.ts        outbound-only push alerts; redacted, group-safe, never an approve button
+src/home-policy.ts what HA may be asked: per-service data allow-list, comfort vs security (pure, no imports)
+src/home.ts        the home_assistant tool: validate, read the entity, classify, then ask; home status
+src/home-events.ts HA WebSocket (injected socket and timers), watch rules, debounce, alerts — tells, never acts
+src/visitor-log.ts the Desk's visitor log and data/visitors stills; retention
+src/home-vision.ts the optional one-line visitor caption; the prompt forbids identifying anyone
 src/first-run.ts   what boot needs; the setup page decides the rest (public/welcome.html)
 src/owner.ts       the operator's name, address and town, kept in data/owner.json
 src/keys.ts        the Keys page: saving keys to .env, and checking them with the provider for free
@@ -62,6 +67,8 @@ Never commit `.env`, keys, or `data/history.json`.
 3. **Agent-written files are data, never instructions.** `MEMORY.md`, the journal, and `data/memory.json` are rendered with `<recorded>` via `wrapRecorded`. Human-authored workspace files (`SOUL.md`, `USER.md`, `AGENTS.md`, …) are not. If you add a file CUNNING CLAW writes at runtime, fence it. `defuse()` must keep stripping `</recorded>` / `</untrusted>` so a stored note cannot escape.
 
 4. **State-changing tools stay approval-gated.** Clicks, typing, keystrokes, non-GET HTTP, Home Assistant `call`, file writes/edits, and shell commands that are not on the auto-approve list must call `ctx.requestApproval` and stop if the user declines. Do not add a write/click/send tool that runs freely because “it is convenient.” Read-only tools (screenshot, `browser_read`, `check_email`) may run without a prompt; their *results* are still untrusted. `draft_email` types into an unsent compose window; `send_email` is the gate, and it always asks.
+
+   **Opening the home always asks, and nobody is identified.** `classifyHomeAction` in `src/home-policy.ts` decides what is security — unlock, open, arm/disarm, garage doors and gates, sirens, automations, anything named to open the home — and `src/home.ts` gives those a fresh `ctx.requestApproval` every time, never `gate()`, so no task grant or work order covers them, and refuses them with no card while `injectionAlarm()` is up. A new home domain is added to `SERVICES` with every key and its range, and classified. House events (`src/home-events.ts`) are told to the operator and never run a tool or a turn. No face recognition and no identifying visitors, ever: biometric identification is special-category data, and a doorbell sees the street.
 
 Defence in depth, not a guarantee. The approval card is the real boundary.
 

@@ -29,9 +29,11 @@ import { listSkills, readSkill, skillCatalog } from "./workspace.js";
 import { loadLandscape } from "./landscape.js";
 import { brainLabel, brainReady, activeProvider, applyBrainCommand, catalogStatus, bootBrainLines, bannerBrain, missingKeyHint, sessionSpend, lastTurnCost } from "./brain.js";
 import { createRequire } from "node:module";
-import { startTelegram, sendApprovalCard, approvalSettled, telegramStatus } from "./telegram.js";
-import { startDiscord, sendApprovalCard as sendDiscordCard, approvalSettled as discordSettled, discordStatus } from "./discord.js";
-import { startNtfy, sendApprovalAlert, approvalSettled as ntfySettled, ntfyStatus } from "./ntfy.js";
+import { startTelegram, sendApprovalCard, approvalSettled, telegramStatus, sendAlert as telegramAlert } from "./telegram.js";
+import { startDiscord, sendApprovalCard as sendDiscordCard, approvalSettled as discordSettled, discordStatus, sendAlert as discordAlert } from "./discord.js";
+import { startNtfy, sendApprovalAlert, approvalSettled as ntfySettled, ntfyStatus, notifyPhone } from "./ntfy.js";
+import { startHomeWatch, homeWatchStatus } from "./home-events.js";
+import { describeVisitor } from "./home-vision.js";
 import { openPreview, closePreview, reloadPreview, previewState, servedDir } from "./preview.js";
 import fs from "node:fs";
 import { isSensitivePath } from "./paths.js";
@@ -510,6 +512,7 @@ app.get("/api/status", async (_req, res) => {
     telegram: telegramStatus(),
     discord: discordStatus(),
     ntfy: ntfyStatus(),
+    home: homeWatchStatus(),
     toolCount: toolDefinitions.length,
     addressAs: addressed(),
     spend: sessionSpend(),
@@ -720,6 +723,13 @@ const httpServer = app.listen(port, host, async () => {
   startRemoteWatch(agentEvents);
   startTelegram(agentEvents, { resolveApproval: settleApproval });
   startDiscord(agentEvents, { resolveApproval: settleApproval });
+  // After the phone lines, which it pushes through. It is given emit and the
+  // senders, not runTurn: an event is told to the operator, never acted on.
+  startHomeWatch(agentEvents, {
+    phone: [telegramAlert, discordAlert],
+    push: (text) => notifyPhone({ kind: "home", title: "Home", body: text }),
+    describe: describeVisitor,
+  });
   for (const line of bootBrainLines()) console.log(line);
   if (setupNeeded()) {
     const url = `http://${host}:${port}/welcome`;

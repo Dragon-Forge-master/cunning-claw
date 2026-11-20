@@ -5,7 +5,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config, DATA_DIR, ROOT } from "./config.js";
 import { allowedDeskDevice, eyesSettings } from "./eyes.js";
-import { brainHasKey, brainKeyEnv, catalog, envLooksSet, isLocalEndpoint } from "./brain.js";
+import { brainHasKey, brainKeyEnv, catalog, envLooksSet, isLocalEndpoint, openAiEndpoint } from "./brain.js";
+import { homeDoctorRows } from "./home-events.js";
+import { visionBrain } from "./home-vision.js";
 import { hasBin, host, missing } from "./platform.js";
 import { findChromeBinary } from "./browser.js";
 import { execFile } from "node:child_process";
@@ -464,6 +466,15 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
   out.push(channelRow("discord", "Discord", process.env.DISCORD_BOT_TOKEN, process.env.DISCORD_ALLOWED_USER_ID, "DISCORD_ALLOWED_USER_ID"));
   const push = ntfyDoctorLine();
   out.push(row("ntfy", push.status, false, push.text));
+
+  // The house: the connection and the watcher (src/home-events.ts).
+  const eyesBrain = visionBrain();
+  const captionBrain = eyesBrain
+    ? { id: eyesBrain.id, local: eyesBrain.provider === "openai" && isLocalEndpoint(openAiEndpoint(eyesBrain).baseUrl) }
+    : undefined;
+  for (const r of await homeDoctorRows(config.homeAssistant, process.env, undefined, captionBrain)) {
+    out.push(row(r.id, r.status, false, r.text));
+  }
 
   const historyFile = path.join(DATA_DIR, "history.json");
   let raw: string | null = null;

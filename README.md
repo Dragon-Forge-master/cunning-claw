@@ -258,6 +258,44 @@ redacted, has paths, the hostname, LAN and email addresses taken out, and is cut
 short. For a private line, run your own ntfy server (`ntfy.server` in
 `claw.config.json`) or use a protected topic with an access token in `NTFY_TOKEN`.
 
+### The house (Home Assistant)
+
+Lights, heating, blinds, music, scenes, locks and the doorbell all go through
+[Home Assistant](https://www.home-assistant.io) — Ring included, through HA's Ring
+integration; the claw has no device clients of its own.
+
+1. In HA: your profile → Security → Long-lived access tokens. Put the token in
+   `.env` as `HA_TOKEN=`.
+2. In `claw.config.json`: `homeAssistant.enabled: true` and `baseUrl` (e.g.
+   `http://homeassistant.local:8123`).
+3. `npm run doctor` says whether HA answers and accepts the token.
+
+`home_assistant` reads the house (`status`: who is home, heating, lights on,
+what is open, alarm, last doorbell) and calls one service on one entity, with
+service data checked per domain — brightness 0–100 %, heating 5–30 °C, and so
+on; a key that is not on the list is refused with the list. Comfort asks the
+usual way. **Unlocking, disarming or arming, garage doors, gates and sirens ask
+with a fresh card every time** — no work order or "allow for this task" covers
+them — and are refused outright in a turn that has read text trying to give
+instructions. HA administration, shell commands and alarm codes are never passed.
+
+**Live events.** `homeAssistant.watch` (empty by default) lists entities to hear
+over HA's WebSocket — a doorbell press, motion, a door opening, someone arriving
+or leaving — with `notify` (phone, hud or both), an optional `snapshot` camera,
+`quiet` hours and a per-entity `debounceMinutes`. Events go to the HUD and to
+Telegram/Discord DMs; ntfy gets text only, never a picture. An event is told,
+never acted on. Each one is a line in `Visitor log.md` on the Desk; stills stay
+in `data/visitors/` on this machine, and both are deleted after
+`visitorRetentionDays` (30).
+
+**No face recognition.** A visitor is a time, an optional local still and — only
+with `describeVisitors: true` — one generic caption ("one person holding a
+parcel"). Nobody is identified: a doorbell camera sees the street, the ICO's
+guidance puts that recording under UK GDPR, and recognising a face is biometric
+identification, special-category data. Who is home comes from HA's own `person.*`
+entities. The house skill (`workspace/skills/house-control`) has the details and
+example rules.
+
 Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screencapture`, `osascript`, `pbcopy`, `afplay`/`say`) and **Windows** (PowerShell — nothing to install). Missing tools return a message naming what to install, never a silent no-op. See the platform table below.
 
 ```
@@ -311,6 +349,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | | |
 |---|---|
 | **Sees** | Screenshots the desktop, and can *glance* at the room through a webcam or a Home Assistant camera — mood is a hypothesis, never a reason to act |
+| **Runs the house** | Home Assistant: lights, heating, blinds, scenes; hears the doorbell and the doors — security actions ask every time, and nobody is identified |
 | **Operates** | Shell, files, apps, volume, media, clipboard, notifications, window focus, keystrokes |
 | **Browses** | Owns a Chrome profile over CDP — accessibility refs, real mouse/keys, snapshot after every action, Gmail, WhatsApp Web |
 | **Reads documents** | PDF, Word, Excel, PowerPoint, OpenDocument, HTML, CSV and images (OCR). Office files open with nothing installed; `markitdown`, `pdftotext` and `tesseract` add PDFs and scans — `npm run doctor` names the install line. What comes back is fenced as a stranger's words |

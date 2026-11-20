@@ -369,6 +369,27 @@ export async function sendApprovalCard(id: string, summary: string, detail: stri
   }
 }
 
+/**
+ * A house alert (src/home-events.ts): the doorbell, a door, someone leaving.
+ * Private chats only, like a card — "everyone has left home" in a group chat
+ * tells a room that the house is empty. Text only; the still stays on the
+ * machine. Resolves to how many chats it reached and never rejects.
+ */
+export async function sendAlert(text: string): Promise<number> {
+  if (!botToken || !allowed.size) return 0;
+  let sent = 0;
+  for (const chatId of allowed) {
+    if (isGroupChat(chatId)) continue;
+    try {
+      await send(chatId, text);
+      sent++;
+    } catch (err) {
+      io.log(`Telegram: home alert to ${maskChatId(chatId)} not sent — ${reason(err)}`);
+    }
+  }
+  return sent;
+}
+
 /** Strip buttons once HUD or Telegram settles the request. */
 export function approvalSettled(id: string, approved: boolean): void {
   liveCards.delete(id);

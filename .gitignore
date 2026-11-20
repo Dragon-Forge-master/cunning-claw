@@ -24,6 +24,8 @@ data/turn-shapes.json
 data/schedule-state.json
 data/hud-prefs.json
 data/owner.json
+# Doorbell stills: people on the doorstep, never in git (src/visitor-log.ts).
+data/visitors/
 
 # Personal to each install — .example templates are tracked instead.
 senses/devices.json
