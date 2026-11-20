@@ -395,8 +395,10 @@ export function readMe(os, version, kind = "archive") {
     // Kept true by src/updates.ts: the update check is off until the owner
     // says yes, and src/bundle.test.ts holds this sentence to it.
     "Nothing here phones home, unless you turn on the daily update check,",
-    "which asks cunningclaw.com for one small file. He binds to 127.0.0.1",
-    "only, behind a token.",
+    "which asks cunningclaw.com for one small file, or pair a phone the easy",
+    "way, which keeps one connection to Dragon Forge's relay while that phone",
+    "is paired; the relay passes sealed messages it cannot read. He binds to",
+    "127.0.0.1 only, behind a token.",
     "There is no Cunning Claw crypto token, and there never will be.",
     "",
     "https://github.com/Dragon-Forge-master/cunning-claw",

@@ -1,5 +1,9 @@
 # Dragon Forge relay
 
+> `relay/pocket/` is a different Worker, the Pocket relay (phones reaching
+> their claw, end to end encrypted), with its own `wrangler.toml` and its own
+> [README](pocket/README.md). Deploy each from its own folder.
+
 The "Just works" retail tier for Cunning Claw. A customer's claw sends
 OpenAI-compatible chat requests here with their `DRAGONFORGE_TOKEN`; the relay
 validates the token, forwards the request to OpenRouter on the house provider

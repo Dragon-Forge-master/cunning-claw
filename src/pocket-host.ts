@@ -155,10 +155,12 @@ export function hostGate(opts: () => { bindHost: string; pocketHosts: readonly s
 }
 
 /** One doctor line. Informational: Pocket is optional and a missing Tailscale is not a fault. */
-export function pocketDoctorLine(hasTailscale: boolean, hosts: readonly string[]): { status: "ok" | "warn"; text: string } {
+export function pocketDoctorLine(hasTailscale: boolean, hosts: readonly string[], relayOn = false): { status: "ok" | "warn"; text: string } {
   if (hosts.length && hasTailscale) return { status: "ok", text: `Pocket Claw: answering on ${hosts.join(", ")}` };
   if (hosts.length) return { status: "ok", text: `Pocket Claw: answering on ${hosts.join(", ")} (no tailscale on this machine — another proxy is in front, see docs/POCKET-CLAW.md)` };
   if (hasTailscale) return { status: "ok", text: "Pocket Claw: off — Tailscale is here; press POCKET in the HUD to pair a phone" };
+  // With the relay on, a phone pairs the easy way and Tailscale is only the private alternative.
+  if (relayOn) return { status: "ok", text: "Pocket Claw: tailscale not found — not needed for the easy way through the relay; only for the private network (docs/POCKET-CLAW.md)" };
   return {
     status: "warn",
     text: "Pocket Claw: tailscale not found — only needed to reach the claw from your phone. Install it from https://tailscale.com/download (docs/POCKET-CLAW.md)",

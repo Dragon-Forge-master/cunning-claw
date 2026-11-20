@@ -55,7 +55,8 @@ test("every target names a real Node download, and the read-me says how to get p
   // only with its exception spelled out, on every read-me.
   for (const os of ["win", "darwin", "linux"]) {
     for (const kind of ["archive", "nsis", "dmg", "appimage"]) {
-      assert.match(readMe(os, "0.0.0", kind), /Nothing here phones home, unless you turn on the daily update check,\s+which asks cunningclaw\.com for one small file\./);
+      assert.match(readMe(os, "0.0.0", kind), /Nothing here phones home, unless you turn on the daily update check,\s+which asks cunningclaw\.com for one small file, or pair a phone the easy\s+way/);
+      assert.match(readMe(os, "0.0.0", kind), /the relay passes sealed messages it cannot read/, "the relay is named wherever the promise is");
     }
   }
   // The no-terminal path must tell a first-timer that a free key exists.

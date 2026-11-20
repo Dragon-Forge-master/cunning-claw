@@ -56,6 +56,13 @@
     "port": 3900,
     "host": "127.0.0.1"
   },
+  "pocket": {
+    "relay": {
+      "enabled": true,
+      "url": "wss://pocket-relay.cunningclaw.com",
+      "appOrigin": "https://cunningclaw.com"
+    }
+  },
   "voice": {
     "enabled": true,
     "engine": "auto",

@@ -15,6 +15,7 @@ import {
 import { loadVapidKeys, sendPush, validSubscription, type PushSubscription, type VapidKeys } from "./webpush.js";
 import { applyFix, fileReceipt, parseFixText, summaryLine, type Filed, type ReadReceipt } from "./receipts.js";
 import { shortId, type Job } from "./jobs.js";
+import { relayHash } from "./pocket-e2e.js";
 
 /**
  * Pocket Claw: the claw's own phone app, served on the operator's tailnet
@@ -81,6 +82,48 @@ export interface DeviceRecord {
   push?: PushSubscription;
   /** Ids of the receipts this phone filed, newest last: the ones it may correct. */
   receipts?: string[];
+  /**
+   * "relay": paired through Dragon Forge's relay (src/pocket-relay.ts). Such
+   * a phone has no device token at all: it is known by the static key its
+   * end-to-end channel was authenticated with, and it is reachable through
+   * that channel and nowhere else. Absent: the tailnet path, token and cookie.
+   */
+  via?: "relay";
+  /** A relay phone's static key, raw P-256, base64url: what its channel must prove. */
+  relayKey?: string;
+  /** What the relay is told to let this phone into the room by: a hash of the phone's relay token. */
+  relayTokenHash?: string;
+}
+
+/**
+ * What the relay transport puts on res.locals.pocket beside host and origin,
+ * in place of the host gate's verdict. Set only by src/pocket-bridge.ts for
+ * a request that arrived on an authenticated end-to-end channel; nothing a
+ * request carries can set it.
+ */
+export interface RelayLocals {
+  /** The device the channel was authenticated as, or null on a pairing channel. */
+  deviceId: string | null;
+  /** The phone static key the channel proved, base64url. */
+  peerKey: string;
+  /** A channel opened with the pairing code's psk: it may pair, and do nothing else. */
+  pairing: boolean;
+  /** Called once pairing has made a device of this channel's key. */
+  bind(deviceId: string): void;
+  /** For the limiter: which relay connection this is. */
+  client: string;
+}
+
+/** The relay transport, as Pocket sees it. Injected so Pocket does not import it. */
+export interface PocketRelayHooks {
+  /** A pairing QR's link for this code, or why there is none. */
+  pairingLink(code: string, expires: number): { url: string } | { error: string };
+  /** The live pairing was spent, cancelled or replaced. */
+  pairingEnded(): void;
+  /** A relay device was added or revoked. */
+  devicesChanged(): void;
+  /** For the HUD's panel. */
+  status(): { url: string; state: string; message: string };
 }
 
 interface Stored { devices: DeviceRecord[]; host?: string }
@@ -189,6 +232,12 @@ export interface PocketDeps {
    * ledger, Desk page and vision brain (src/receipts.ts); tests pass their own.
    */
   receipts?: { root?: string; desk?: string | null; read?: ReadReceipt };
+  /**
+   * The relay transport (src/pocket-relay.ts), or null when it is switched
+   * off. A function because the transport is built after Pocket: it needs
+   * Pocket's router to dispatch into.
+   */
+  relay?: () => PocketRelayHooks | null;
 }
 
 /**
@@ -237,8 +286,15 @@ export function createPocket(deps: PocketDeps) {
   } catch { /* nothing paired yet */ }
   const save = () => writeJson600(storeFile, store);
 
-  let pairing: { hash: string; expires: number } | null = null;
-  const enrolments = new Map<string, { challenge: string; host: string; expires: number }>();
+  // A code is minted for one path. A relay code cannot be spent on the
+  // tailnet name, nor a tailnet code through the relay: each path's origin,
+  // and what the device is bound to afterwards, follow from the code.
+  let pairing: { hash: string; expires: number; mode: "direct" | "relay" } | null = null;
+  const enrolments = new Map<string, { challenge: string; host: string; expires: number; relayKey?: string }>();
+  const endPairing = () => {
+    if (pairing?.mode === "relay") deps.relay?.()?.pairingEnded();
+    pairing = null;
+  };
   const challenges = new Map<string, Challenge>();
   const unlockedUntil = new Map<string, number>();
   const pending = new Map<string, { id: string; summary: string; detail: string }>();
@@ -255,7 +311,10 @@ export function createPocket(deps: PocketDeps) {
     return [...out];
   }
 
-  function clientKey(req: Request): string {
+  function clientKey(req: Request, res?: Response): string {
+    // A relay channel is its own client: the relay connection it came on.
+    const relayed = res && pocketOf(res)?.relay?.client;
+    if (relayed) return `relay:${relayed}`;
     // tailscale serve sets X-Forwarded-For to the tailnet address; without a
     // proxy (the .localhost test name) the socket's address is all there is.
     const fwd = req.headers["x-forwarded-for"];
@@ -263,15 +322,15 @@ export function createPocket(deps: PocketDeps) {
     return first || req.socket.remoteAddress || "unknown";
   }
 
-  function pocketOf(res: Response): { host: string; origin: string } | null {
-    return (res.locals.pocket as { host: string; origin: string } | undefined) ?? null;
+  function pocketOf(res: Response): { host: string; origin: string; relay?: RelayLocals } | null {
+    return (res.locals.pocket as { host: string; origin: string; relay?: RelayLocals } | undefined) ?? null;
   }
 
   function sweep(): void {
     const t = now();
     for (const [k, c] of challenges) if (c.expires < t) challenges.delete(k);
     for (const [k, e] of enrolments) if (e.expires < t) enrolments.delete(k);
-    if (pairing && pairing.expires < t) pairing = null;
+    if (pairing && pairing.expires < t) endPairing();
   }
 
   function isUnlocked(deviceId: string): boolean {
@@ -303,7 +362,8 @@ export function createPocket(deps: PocketDeps) {
     if (dot < 1) return null;
     const id = token.slice(0, dot);
     const d = store.devices.find((x) => x.id === id);
-    if (!d) return null;
+    // A relay phone has no token; nothing presented on the tailnet name can be one.
+    if (!d || d.via === "relay") return null;
     const a = Buffer.from(sha256(token.slice(dot + 1)), "hex");
     const b = Buffer.from(d.tokenHash, "hex");
     return a.length === b.length && crypto.timingSafeEqual(a, b) ? d : null;
@@ -340,13 +400,26 @@ export function createPocket(deps: PocketDeps) {
     next();
   };
 
+  /**
+   * A relay request's device is the one its channel proved it is: the
+   * transport authenticated the phone's static key in the handshake and names
+   * the device it belongs to. The record must still exist (revoke is
+   * immediate) and still be bound to that same key.
+   */
+  function relayDevice(r: RelayLocals): DeviceRecord | null {
+    if (!r.deviceId) return null;
+    const d = store.devices.find((x) => x.id === r.deviceId);
+    return d && d.via === "relay" && d.relayKey === r.peerKey ? d : null;
+  }
+
   const requireDevice = (req: Request, res: Response, next: NextFunction): void => {
-    const key = clientKey(req);
+    const key = clientKey(req, res);
     if (limiter.blocked(key)) {
       res.status(429).json({ error: "Too many failed attempts. Wait a few minutes." });
       return;
     }
-    const d = findDevice(presented(req));
+    const relay = pocketOf(res)?.relay;
+    const d = relay ? relayDevice(relay) : findDevice(presented(req));
     if (!d) {
       limiter.fail(key);
       res.status(401).json({ error: "This phone is not paired, or was revoked. Pair it again from the HUD." });
@@ -417,7 +490,7 @@ export function createPocket(deps: PocketDeps) {
       unlock(d.id);
       return true;
     } catch (err) {
-      limiter.fail(clientKey(req));
+      limiter.fail(clientKey(req, res));
       const msg = err instanceof WebAuthnError ? err.message : "assertion could not be checked";
       res.status(401).json({ error: `Not verified: ${msg}` });
       return false;
@@ -513,10 +586,13 @@ export function createPocket(deps: PocketDeps) {
   }
 
   function revoke(id: string): boolean {
-    const before = store.devices.length;
+    const gone = store.devices.find((d) => d.id === id);
+    if (!gone) return false;
     store.devices = store.devices.filter((d) => d.id !== id);
-    if (store.devices.length === before) return false;
     save();
+    // The transport drops the phone's token from the relay's list (the relay
+    // then closes it) and closes its end-to-end channels itself.
+    if (gone.via === "relay") deps.relay?.()?.devicesChanged();
     unlockedUntil.delete(id);
     for (const [k, c] of challenges) if (c.deviceId === id) challenges.delete(k);
     for (const s of streams) {
@@ -537,23 +613,27 @@ export function createPocket(deps: PocketDeps) {
 
   api.post("/pair/options", (req, res) => {
     sweep();
-    const key = clientKey(req);
+    const key = clientKey(req, res);
     if (limiter.blocked(key) || pairLimiter.blocked("*")) {
       return res.status(429).json({ error: "Too many failed attempts. Wait a few minutes." });
     }
     const code = String(req.body?.code ?? "");
-    const ok = pairing && code && sha256(code) === pairing.hash && pairing.expires >= now();
+    const p = pocketOf(res)!;
+    // Through the relay, only a channel the pairing handshake opened (one that
+    // proved it knows this code's psk) may spend it, and only a relay code.
+    const path = p.relay ? "relay" : "direct";
+    const ok = pairing && code && sha256(code) === pairing.hash && pairing.expires >= now() &&
+      pairing.mode === path && (!p.relay || p.relay.pairing);
     if (!ok) {
       limiter.fail(key);
       pairLimiter.fail("*");
       return res.status(401).json({ error: "That pairing code is wrong, used or expired. Press POCKET on the HUD for a fresh one." });
     }
     // Single use: the code is gone the moment it is spent, whatever happens next.
-    pairing = null;
-    const p = pocketOf(res)!;
+    endPairing();
     const enrolment = b64url(crypto.randomBytes(16));
     const challenge = b64url(crypto.randomBytes(32));
-    enrolments.set(enrolment, { challenge, host: p.host, expires: now() + pairingMs });
+    enrolments.set(enrolment, { challenge, host: p.host, expires: now() + pairingMs, relayKey: p.relay?.peerKey });
     res.json({
       enrolment,
       publicKey: {
@@ -570,11 +650,13 @@ export function createPocket(deps: PocketDeps) {
 
   api.post("/pair/finish", (req, res) => {
     sweep();
-    const key = clientKey(req);
+    const key = clientKey(req, res);
     const e = enrolments.get(String(req.body?.enrolment ?? ""));
     enrolments.delete(String(req.body?.enrolment ?? ""));
     const p = pocketOf(res)!;
-    if (!e || e.host !== p.host) {
+    // The enrolment is finished by the channel that started it, or not at all:
+    // a relay pairing's passkey and its static key belong to one phone.
+    if (!e || e.host !== p.host || e.relayKey !== p.relay?.peerKey) {
       limiter.fail(key);
       return res.status(401).json({ error: "That enrolment is unknown or expired. Pair again from the HUD." });
     }
@@ -591,19 +673,36 @@ export function createPocket(deps: PocketDeps) {
     const device: DeviceRecord = {
       id,
       name: cleanDeviceName(req.body?.name),
-      tokenHash: sha256(secret),
+      // A relay phone gets no token: it is its channel's key, and an empty
+      // hash matches nothing (findDevice refuses relay devices outright).
+      tokenHash: p.relay ? "" : sha256(secret),
       created: stamp,
       lastSeen: stamp,
       credentialId: reg.credentialId,
       key: reg.key,
       signCount: reg.signCount,
     };
+    let relayToken: string | undefined;
+    if (p.relay) {
+      // What the phone shows the relay to be let into the room. It opens the
+      // door to the room and nothing more: the channel inside still has to
+      // prove the phone's static key.
+      relayToken = b64url(crypto.randomBytes(32));
+      device.via = "relay";
+      device.relayKey = p.relay.peerKey;
+      device.relayTokenHash = relayHash(relayToken);
+    }
     store.devices.push(device);
     save();
     unlock(id); // the finger that enrolled is a fresh verification
-    setCookie(res, p.origin, `${id}.${secret}`, 365 * 24 * 3600);
-    deps.notice?.(`A phone was paired with Pocket Claw: ${device.name}. Revoke it from POCKET on the HUD if that was not you.`);
-    res.json({ ok: true, device: { id, name: device.name } });
+    if (p.relay) {
+      p.relay.bind(id);
+      deps.relay?.()?.devicesChanged();
+    } else {
+      setCookie(res, p.origin, `${id}.${secret}`, 365 * 24 * 3600);
+    }
+    deps.notice?.(`A phone was paired with Pocket Claw${p.relay ? " through the relay" : ""}: ${device.name}. Revoke it from POCKET on the HUD if that was not you.`);
+    res.json({ ok: true, device: { id, name: device.name }, ...(relayToken ? { relayToken } : {}) });
   });
 
   api.use(requireDevice);
@@ -841,11 +940,19 @@ export function createPocket(deps: PocketDeps) {
     lastSeen: d.lastSeen,
     push: Boolean(d.push),
     unlocked: isUnlocked(d.id),
+    via: d.via === "relay" ? "relay" : "tailnet",
   }));
 
   admin.get("/", (_req, res) => {
     sweep();
-    res.json({ hosts: hosts(), savedHost: store.host ?? "", devices: devicesView(), pairingExpires: pairing ? new Date(pairing.expires).toISOString() : null });
+    res.json({
+      hosts: hosts(),
+      savedHost: store.host ?? "",
+      devices: devicesView(),
+      pairingExpires: pairing ? new Date(pairing.expires).toISOString() : null,
+      // null: the relay is switched off in claw.config.json, or has no URL.
+      relay: deps.relay?.()?.status() ?? null,
+    });
   });
 
   admin.post("/host", (req, res) => {
@@ -862,18 +969,30 @@ export function createPocket(deps: PocketDeps) {
     res.json({ ok: true, hosts: hosts() });
   });
 
-  admin.post("/pair", (_req, res) => {
+  admin.post("/pair", (req, res) => {
+    // 144 random bits: the code, and through the relay the psk and the ticket derived from it.
+    const code = b64url(crypto.randomBytes(18));
+    const expires = now() + pairingMs;
+    if (req.body?.mode === "relay") {
+      const hooks = deps.relay?.();
+      if (!hooks) return res.status(409).json({ error: "The relay is switched off (pocket.relay in claw.config.json). Use the private network instead." });
+      // One live code at a time: a new one cancels the last, on either path.
+      endPairing();
+      const link = hooks.pairingLink(code, expires);
+      if ("error" in link) return res.status(503).json({ error: link.error });
+      pairing = { hash: sha256(code), expires, mode: "relay" };
+      return res.json({ mode: "relay", url: link.url, expiresAt: new Date(expires).toISOString(), qr: qrRows(encodeQr(link.url, { ecl: "M" })) });
+    }
     const h = hosts()[0];
     if (!h) return res.status(409).json({ error: "Tell the claw its tailnet address first." });
-    const code = b64url(crypto.randomBytes(18));
-    // One live code at a time: a new one cancels the last.
-    pairing = { hash: sha256(code), expires: now() + pairingMs };
+    endPairing();
+    pairing = { hash: sha256(code), expires, mode: "direct" };
     const url = `${pocketOrigin(h)}/pocket/#pair=${code}`;
-    res.json({ url, host: h, expiresAt: new Date(pairing.expires).toISOString(), qr: qrRows(encodeQr(url, { ecl: "M" })) });
+    res.json({ mode: "tailnet", url, host: h, expiresAt: new Date(pairing.expires).toISOString(), qr: qrRows(encodeQr(url, { ecl: "M" })) });
   });
 
   admin.delete("/pair", (_req, res) => {
-    pairing = null;
+    endPairing();
     res.json({ ok: true });
   });
 
@@ -891,6 +1010,14 @@ export function createPocket(deps: PocketDeps) {
     canPush: () => store.devices.some((d) => d.push),
     hosts,
     status: () => ({ devices: store.devices.length, hosts: hosts(), pending: pending.size }),
+    /** For the relay transport: the phones it may admit, and the keys their channels must prove. */
+    relayDevices: () => store.devices.filter((d) => d.via === "relay" && d.relayKey && d.relayTokenHash)
+      .map((d) => ({ id: d.id, relayKey: d.relayKey!, relayTokenHash: d.relayTokenHash! })),
+    /** For the relay transport: whether a relay pairing is live right now. */
+    relayPairingLive: () => {
+      sweep();
+      return pairing?.mode === "relay" && pairing.expires >= now();
+    },
     /** For tests: the claw's VAPID public key, so a test can check what was pushed. */
     vapidPublicKey: () => vapidKeys().publicKey,
   };

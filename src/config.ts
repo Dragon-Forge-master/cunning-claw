@@ -424,6 +424,14 @@ export interface ClawConfig {
     pairingMinutes?: number;
     /** VAPID contact for the push services; a URL or mailto:. Defaults to the project page. */
     vapidSubject?: string;
+    /**
+     * Pairing "the easy way", through Dragon Forge's relay (src/pocket-relay.ts,
+     * docs/POCKET-RELAY.md). Off with `enabled: false` or with no `url`. The
+     * claw dials out only once a phone is paired this way, or a pairing QR for
+     * one is on the HUD. `appOrigin` is where the phone app is served from,
+     * and so the WebAuthn origin relay phones' passkeys belong to.
+     */
+    relay?: { enabled?: boolean; url?: string; appOrigin?: string };
   };
   /**
    * The daily update check (src/updates.ts). Whether it runs is the owner's

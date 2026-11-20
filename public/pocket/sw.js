@@ -6,12 +6,14 @@
 // over and the page taking it (the page deletes it as it reads it).
 "use strict";
 
-const SHELL = "pocket-shell-v1";
+const SHELL = "pocket-shell-v2";
 const INBOX = "pocket-share-inbox";
 const FILES = [
   "/pocket/",
   "/pocket/pocket.css",
   "/pocket/pocket.js",
+  "/pocket/relay.js",
+  "/pocket/e2e.js",
   "/pocket/manifest.webmanifest",
   "/pocket/icons/mark.svg",
   "/pocket/icons/icon-192.png",
@@ -64,7 +66,7 @@ self.addEventListener("fetch", (event) => {
       return fresh;
     } catch {
       const cached = await caches.match(req.mode === "navigate" ? "/pocket/" : url.pathname);
-      return cached || new Response("Pocket Claw cannot reach home. Is Tailscale connected?", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+      return cached || new Response("Pocket Claw cannot load: this phone is offline, or cannot reach where the app lives.", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
     }
   })());
 });

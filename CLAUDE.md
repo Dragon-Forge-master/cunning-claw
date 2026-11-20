@@ -83,7 +83,10 @@ redacted *before* it is truncated or chunked. Approval cards go to private chats
 group or a server channel. `src/ntfy.ts` is outbound only — it says where to answer, never
 carries an approve button. Pocket Claw (`src/pocket.ts`) is not one of these siblings: it is
 served by this process, on the tailnet name only, and answers a card only with a fresh WebAuthn
-assertion bound to that card.
+assertion bound to that card. Its easy path, Dragon Forge's relay (`relay/pocket/`,
+`src/pocket-relay.ts`, spec in `docs/POCKET-RELAY.md`), is a second transport into the same
+router, never a second Pocket: end-to-end encrypted, and the claw dials it only while a phone is
+paired that way.
 
 ## Rules that are not obvious from the code
 

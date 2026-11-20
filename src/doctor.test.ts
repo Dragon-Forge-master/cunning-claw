@@ -12,12 +12,17 @@ import {
   nodeMajor,
   runDoctor,
   setChromeFinderForTests,
+  setRelayFetchForTests,
   voiceNotesCheck,
 } from "./doctor.js";
 import { envLooksSet } from "./brain.js";
 import { setHasBinForTests, setHostForTests } from "./platform.js";
 import { resetVoiceDetectForTests } from "./voice.js";
 import { resetEarsForTests } from "./ears.js";
+
+// The Pocket relay lines would ask cunningclaw.com; a test run stays offline,
+// which is also the state they must give good advice in.
+setRelayFetchForTests((async () => { throw new TypeError("offline in tests"); }) as unknown as typeof fetch);
 
 afterEach(() => {
   setHostForTests(null);

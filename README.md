@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-1064%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-1101%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -335,8 +335,16 @@ a private network of your own devices:
 1. Install Tailscale on this machine and on your phone, signed in to one account.
 2. In Tailscale's admin console, turn on MagicDNS and HTTPS Certificates.
 3. On this machine: `tailscale serve --bg 3900`.
-4. On the HUD, press **POCKET**, save the name `tailscale serve status` shows
-   (`your-pc.your-tailnet.ts.net`), press **PAIR A PHONE** and scan the code.
+4. On the HUD, press **POCKET**, choose **Private network (Tailscale)**, save
+   the name `tailscale serve status` shows (`your-pc.your-tailnet.ts.net`),
+   press **PAIR A PHONE** and scan the code.
+
+An easier way, with no Tailscale, is built but not live: the phone opens
+cunningclaw.com/pocket and reaches the claw through a relay Dragon Forge runs,
+end-to-end encrypted so the relay cannot read or change what it carries (it
+does see when and how much). The HUD offers it as **Easy**; until the relay is
+deployed it says it cannot be reached. What it can and cannot see, and what
+trusting the website costs, are in [docs/POCKET-RELAY.md](docs/POCKET-RELAY.md).
 
 On that name the claw serves Pocket and nothing else: no HUD, no Keys page, no
 `/api`. The token the phone gets opens the list of waiting cards; reading or sending
@@ -992,7 +1000,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 1064 tests
+npm test        # 1101 tests
 npm run check   # tsc --noEmit
 ```
 

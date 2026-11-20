@@ -71,6 +71,20 @@ means no light, never a wrong one.
    the code would announce a release whose downloads are links to nothing.
 4. Deploy (above). Until then no claw has heard.
 
+## Pocket Claw at /pocket/
+
+`site/pocket/` is the phone app for pairing through the Pocket relay
+(docs/POCKET-RELAY.md). It is generated: never edit it here. Change
+`public/pocket/`, then run `npm run site:pocket`, which copies it, marks the
+page as the site's copy, and writes `release.json` (the claw version and the
+SHA-256 of every file). `src/site-pocket.test.ts` fails if this folder drifts
+from that output. `_headers` gives `/pocket/*` its own strict policy, with the
+homepage's detached first: the app's own files only, and `connect-src` for
+the relay's host and nothing else. `functions/pocket/share.js` answers a
+shared file that arrives before the service worker is installed by sending
+the phone back to the app, unread. The homepage links here only as "coming
+soon" until the relay is deployed (`relay/pocket/README.md`).
+
 ## The forge wall
 
 The "ask the forge" section (`#ask`) is a small live wall: visitors ask a

@@ -7,11 +7,64 @@ first. Telegram and Discord still work as before; Pocket is the private,
 richer way in.
 
 Your claw keeps listening on `127.0.0.1` and nowhere else. Nothing here opens
-a port to the internet or to your Wi-Fi. Your phone reaches the claw through
-[Tailscale](https://tailscale.com), a private network that only your own
-devices can join.
+a port to the internet or to your Wi-Fi. Your phone reaches the claw one of
+two ways, and the HUD's **POCKET** panel offers both:
 
-## Setting it up on Android
+- **Easy — through Dragon Forge's relay (end-to-end encrypted).** Your phone
+  and your claw both connect out to a relay Dragon Forge runs; it carries the
+  encrypted connection between them and cannot read it, but it does see when
+  they connect and how much they send. Nothing to install. The app comes from
+  cunningclaw.com. (Below, and in full in [POCKET-RELAY.md](POCKET-RELAY.md).)
+- **Private network (Tailscale).** Your phone reaches the claw over your own
+  [Tailscale](https://tailscale.com) network and nothing passes through
+  Dragon Forge, but Tailscale must be set up on both, once. The app comes
+  from your own claw.
+
+## The easy way: through the relay
+
+**Not live yet.** The relay is built and tested but Dragon Forge has not
+deployed it; until then this way says plainly that the relay cannot be
+reached, and the private network is the way that works.
+`npm run doctor` has a `pocket-relay` line that says which.
+
+1. On the HUD, press **POCKET**. **Easy** is chosen already. Press **PAIR A
+   PHONE**.
+2. Scan the code with your phone's camera. It opens Pocket Claw on
+   cunningclaw.com. Give the phone a name and press **Pair with
+   fingerprint**. The code works once and expires after five minutes.
+3. In Chrome's menu, choose **Add to Home screen** (or **Install app**).
+4. Everything in *How it is kept safe* below applies as it is written, with
+   two differences: the phone has no token or cookie (it is known by a key
+   it made itself, which the page can use but never read out), and the
+   fingerprint prompt says cunningclaw.com, because that is where the app
+   comes from.
+
+**What the relay sees, and what it cannot.** It carries bytes between the
+phone and the claw and cannot read them: the conversation, the cards and the
+fingerprint answers are encrypted on the phone for the claw alone, with keys
+the relay never has. It cannot change, replay or reorder what it carries
+without the far end noticing and hanging up. It cannot pair a phone of its
+own, because the pairing code in the QR never passes through it. It does see
+that your claw and your phone are connected, when, and how much they send,
+and Cloudflare sees their IP addresses as for any website. It can stop
+working, and then so does this way.
+
+**What you are trusting.** The app on your phone is served by cunningclaw.com.
+If that site were ever made to serve a different app, that app could read
+what you read in it and ask your fingerprint for something other than what
+it shows you. The app is open source, the site's copy is checked against
+this repository by a test and by `npm run doctor`, and its security policy
+lets it load nothing from anywhere else. If you would rather not trust a
+website at all, pair with the private network instead: then the app comes
+from your own claw. The full analysis is in
+[POCKET-RELAY.md](POCKET-RELAY.md#threats-one-by-one).
+
+**The claw only connects when it has a reason.** A claw that never pairs a
+phone this way never contacts the relay. To switch the easy way off
+altogether, set `"pocket": { "relay": { "enabled": false } }` in
+`claw.config.json`.
+
+## The private network: setting it up on Android
 
 You need about ten minutes and a free Tailscale account.
 
@@ -34,7 +87,8 @@ You need about ten minutes and a free Tailscale account.
    `tailscale serve status`; it prints something like
    `https://your-pc.your-tailnet.ts.net`. To stop sharing, run
    `tailscale serve --https=443 off`, or `tailscale serve reset` to clear it.
-5. **Tell the claw its name.** On the HUD, press **POCKET**, paste the name
+5. **Tell the claw its name.** On the HUD, press **POCKET**, choose
+   **Private network (Tailscale)**, paste the name
    without `https://` (for example `your-pc.your-tailnet.ts.net`), and press
    **SAVE NAME**. You can put it in `claw.config.json` instead:
    `"pocket": { "hosts": ["your-pc.your-tailnet.ts.net"] }`.
