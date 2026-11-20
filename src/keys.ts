@@ -54,6 +54,8 @@ export const KEY_ROSTER: KeySpec[] = [
     hint: "A fine-grained PAT if you want the GitHub connector." },
   { name: "FORGENET_TOKEN", label: "Forgenet token", applies: "live",
     hint: "Unlocks the Forgenet design suite connector. Starts fgn_." },
+  { name: "RESEND_API_KEY", label: "Resend API key", applies: "live",
+    hint: "Optional — the Resend connector signs in through the browser. A key from resend.com/api-keys (starts re_) is for a claw with no browser to hand." },
 ];
 
 const rosterByName = new Map(KEY_ROSTER.map((k) => [k.name, k]));

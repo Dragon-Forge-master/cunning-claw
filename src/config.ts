@@ -248,6 +248,13 @@ export interface ClawConfig {
    */
   workOrder?: { enabled?: boolean; expiryMinutes?: number };
   /**
+   * The desk marketer's consent guard (src/marketing.ts). `register` moves the
+   * consent register off the Desk (default ~/Documents/CunningClaw/Marketing
+   * consent.md); `bulkThreshold` is how many recipients make a Gmail send a
+   * marketing send whatever it was called (default 5). There is no off switch.
+   */
+  marketing?: { register?: string; bulkThreshold?: number };
+  /**
    * The injection scanner (src/injection.ts): the score, 0..1, at which a
    * fenced block is marked and committing actions in that turn ask afresh.
    * Default 0.5. There is no off switch — invisible characters are always

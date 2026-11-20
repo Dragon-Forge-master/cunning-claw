@@ -22,6 +22,7 @@ src/workorder.ts   approve a plan once instead of every step of it
 src/injection.ts   scans fenced text for orders aimed at the model; warns, flags, alarms the turn
 src/sandbox.ts     the shell's box: bubblewrap / sandbox-exec argv, writable folders, hidden key stores, scrubbed env
 src/tool-diet.ts   which MCP schemas go to the model this call; the roster; fence-aware result trimming
+src/marketing.ts   the consent register and the guard on every marketing send (marketing_audience, send_email, vendor MCP sends)
 src/connector-guide.ts  connector_guide: how each catalogue connector signs in, and the steps, from the catalogue
 src/embed.ts       embeddings client (Gemini, OpenRouter, Ollama) for memory search by meaning
 src/memory.ts      memory facts, hybrid keyword + meaning search, testimony stamps
