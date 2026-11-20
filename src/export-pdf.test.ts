@@ -215,7 +215,7 @@ test("real Chrome: markdown prints to A4 with a page break honoured", { skip: !b
 });
 
 test("real Chrome: an HTML deck is one 16:9 page per slide, overflow named, scripts dead", { skip: !bin && "no Chrome here" }, async () => {
-  const secret = put("deck2/secret.txt", "SECRET-CANARY-7731");
+  const secret = put("deck2/secret.txt", "SECRET-CANARY-7731"); // gitleaks:allow (synthetic fixture)
   const deck = `<!doctype html><html><head><style>.slide{font:40px sans-serif;padding:60px}</style></head><body>
     <section class="slide"><h1>One</h1></section>
     <section class="slide"><h1>Two</h1>${"<p>a line too many</p>".repeat(30)}</section>

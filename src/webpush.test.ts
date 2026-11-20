@@ -18,7 +18,7 @@ import {
 // RFC 8291 §5 and Appendix A.
 const RFC = {
   plaintext: "When I grow up, I want to be a watermelon",
-  auth: "BTBZMqHH6r4Tts7J_aSIgg",
+  auth: "BTBZMqHH6r4Tts7J_aSIgg", // gitleaks:allow (RFC 8291 published test vector)
   uaPublic: "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4",
   uaPrivate: "q1dXpw3UpT5VOmu_cf_v6ih07Aems3njxI-JWgLcM94",
   asPrivate: "yfWPiYE-n46HLnH0KqZOF1fJJU3MYrct3AELtAQ-oRw",
