@@ -32,6 +32,7 @@ import { phoneNotifyTool } from "./ntfy.js";
 import * as sandbox from "./sandbox.js";
 import { readDocument } from "./documents.js";
 import { connectorGuide } from "./connector-guide.js";
+import * as marketing from "./marketing.js";
 
 export { isSensitivePath } from "./paths.js";
 
@@ -890,13 +891,35 @@ export const toolDefinitions: Anthropic.Tool[] = [
     name: "send_email",
     description:
       "Send the email currently in the Gmail compose window (Ctrl+Enter). Always asks the operator first. " +
-      "Call only after draft_email, and only when the operator has said to send this specific message.",
+      "Call only after draft_email, and only when the operator has said to send this specific message. " +
+      "Set marketing for a newsletter, offer, reminder or review request: every recipient is then checked " +
+      "against the consent register and the body needs an unsubscribe line. More than a handful of " +
+      "recipients is checked as marketing whatever you set. A reply to a customer is not marketing.",
     input_schema: {
       type: "object",
-      properties: {},
+      properties: {
+        marketing: { type: "boolean", description: "True when this is marketing rather than one-to-one correspondence." },
+      },
       additionalProperties: false,
     },
     strict: true,
+  },
+  {
+    name: "marketing_audience",
+    description:
+      "Who may be sent marketing email, from the operator's consent register on the Desk. Give a proposed " +
+      "list (from a spreadsheet, a job list, a vendor export) or omit it for everyone on the register. " +
+      "Returns only the addresses that may be sent marketing, with their basis, and counts for the refused. " +
+      "Use this list for every campaign, newsletter, reminder or review request — sends are checked against " +
+      "the same register and refused recipients are removed or the send is refused.",
+    input_schema: {
+      type: "object",
+      properties: {
+        recipients: { type: "array", items: { type: "string" }, description: "Proposed addresses; omit for the whole register." },
+        campaign: { type: "string", description: "A label for the result, e.g. \"March MOT reminders\"." },
+      },
+      additionalProperties: false,
+    },
   },
   {
     name: "email_action",
@@ -1688,6 +1711,8 @@ async function writeFileTool(
       input.content.slice(0, 2000) + (input.content.length > 2000 ? "\n…(truncated preview)" : ""),
     );
     if (!ok) return "The user declined the policy-file write.";
+  } else if (!(await registerWriteAllowed(p, input.append ? readIfAny(p) + input.content : input.content, ctx))) {
+    return "The operator declined widening the marketing consent register. Nothing was written.";
   } else if (!taskGrantActive() && !freeWriteZone(p, fs.existsSync(p))) {
     const ok = await gate(
       ctx,
@@ -1864,6 +1889,59 @@ export function skillCalledAsTool(name: string): string | null {
   );
 }
 
+/**
+ * The consent register is a Desk document, and the Desk is a free-write zone.
+ * A write that would let more people be sent marketing is the one exception:
+ * it asks, every time, outside any task grant or work order (the same
+ * reasoning as newly armed standing orders). Shrinking the list never asks.
+ * This covers write_file and edit_file, and remote_copy refuses to pull onto
+ * the register at all. A shell command that writes it asks under the shell's
+ * own rules, and that card shows the command rather than the addresses. The
+ * HUD's own Docs page, which is the operator's hand, writes freely.
+ */
+async function registerWriteAllowed(p: string, nextContent: string, ctx: ToolContext): Promise<boolean> {
+  if (path.resolve(p) !== path.resolve(marketing.registerPath())) return true;
+  const added = marketing.newlyPermitted(readIfAny(p), nextContent);
+  if (!added.length) return true;
+  const card = marketing.permitCard(nextContent, added);
+  return ctx.requestApproval(card.summary, outsideContentWarning(ctx) + card.detail);
+}
+
+type ComposeIo = {
+  peek: () => Promise<{ open: boolean; to: string; subject: string; body: string }>;
+  send: () => Promise<string>;
+};
+
+/**
+ * send_email, with the compose window passed in so the consent guard can be
+ * tested without a browser. The guard runs before the gate, so a work order
+ * that names this send cannot carry a refused recipient past it either.
+ */
+export async function sendEmailStep(
+  input: { marketing?: boolean } | undefined,
+  ctx: ToolContext,
+  io: ComposeIo = { peek: () => browser.peekCompose(), send: () => browser.sendEmail() },
+): Promise<string> {
+  const preview = await io.peek();
+  if (!preview.open) return "No compose window is open. draft_email first.";
+  const guard = marketing.guardGmailSend(preview, input?.marketing, marketing.loadRegister().rows, {
+    threshold: marketing.bulkThreshold(), where: marketing.registerWhere(),
+  });
+  if (guard.verdict === "refuse") return `${guard.message} The draft is still in the compose window.`;
+  const ok = await gate(
+    ctx,
+    // The recipient alone would let an approved "email the accountant"
+    // step carry ANY body — including whatever the model read this
+    // session. Pin the subject too, and show the body on the step event.
+    { tool: "send_email", match: `${preview.to || "(unknown)"} :: ${preview.subject || "(none)"}` },
+    guard.verdict === "card" ? guard.title : "Send this email",
+    `To: ${preview.to || "(unknown)"}\nSubject: ${preview.subject || "(none)"}\n\n${preview.body || "(empty body)"}` +
+      (guard.verdict === "card" ? `\n\n${guard.note}` : ""),
+  );
+  if (!ok) return "The user declined to send the email. The draft is still in the compose window.";
+  return await io.send();
+}
+
 export async function executeTool(name: string, input: any, ctx: ToolContext): Promise<ToolOutput> {
   try {
     switch (name) {
@@ -1909,6 +1987,12 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
             `Edit ${path.basename(plan.path)} — the claw's own policy and keys; this always asks`, plan.preview,
           );
           if (!ok) return "The user declined the policy-file edit.";
+        } else if (!(await registerWriteAllowed(plan.path, previewEditResult(plan.path, {
+          oldString: String(input.oldString ?? ""),
+          newString: String(input.newString ?? ""),
+          replaceAll: Boolean(input.replaceAll),
+        }), ctx))) {
+          return "The operator declined widening the marketing consent register. Nothing was changed.";
         } else if (!taskGrantActive() && !freeWriteZone(plan.path, true)) {
           const ok = await gate(
             ctx,
@@ -2127,6 +2211,11 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
           }
           if (path.resolve(localPath) === path.resolve(CONFIG_FILE)) {
             return "BLOCKED: claw.config.json is the policy itself. A box does not get to rewrite it.";
+          }
+          // A pull is gated by a card a work order can pre-approve, and that
+          // card shows two paths, not who the new file lets be mailed.
+          if (path.resolve(localPath) === path.resolve(marketing.registerPath())) {
+            return "BLOCKED: the marketing consent register is the operator's record of who agreed to be mailed. A box is never its source — edit it here.";
           }
         }
         const remoteAbs = remote.remoteResolve(box, remoteRaw);
@@ -2379,21 +2468,9 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
           reply: Boolean(input.reply),
           replyAll: Boolean(input.replyAll),
         });
-      case "send_email": {
-        const preview = await browser.peekCompose();
-        if (!preview.open) return "No compose window is open. draft_email first.";
-        const ok = await gate(
-          ctx,
-          // The recipient alone would let an approved "email the accountant"
-          // step carry ANY body — including whatever the model read this
-          // session. Pin the subject too, and show the body on the step event.
-          { tool: "send_email", match: `${preview.to || "(unknown)"} :: ${preview.subject || "(none)"}` },
-          "Send this email",
-          `To: ${preview.to || "(unknown)"}\nSubject: ${preview.subject || "(none)"}\n\n${preview.body || "(empty body)"}`,
-        );
-        if (!ok) return "The user declined to send the email. The draft is still in the compose window.";
-        return await browser.sendEmail();
-      }
+      case "send_email": return await sendEmailStep(input, ctx);
+      case "marketing_audience":
+        return marketing.audienceReport(marketing.loadRegister(), input ?? {}, marketing.registerWhere());
       case "email_action": {
         const action = String(input.action ?? "");
         if (action === "spam" || action === "trash") {
@@ -2572,6 +2649,25 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
           const unloaded = gateUnloadedCall(name, known, mcp.schemaArgHint(known?.inputSchema));
           if (unloaded) return unloaded;
           if (known) keepLoaded([known.localName]);
+          // The consent guard runs before the ordinary card, and its card is
+          // not optional: a marketing send asks even if the operator once
+          // listed the tool as safe, because the count and basis on the card
+          // are the point of it. Refused recipients are already gone from the
+          // arguments shown — what is approved is what is sent.
+          const reg = marketing.loadRegister();
+          const guard = marketing.guardMcpCall(known?.localName ?? name, input, reg.rows, {
+            threshold: marketing.bulkThreshold(), where: marketing.registerWhere(),
+          });
+          if (guard.verdict === "refuse") return guard.message;
+          if (guard.verdict === "card") {
+            const visibility = publishVisibilityNote(name, guard.input);
+            const ok = await ctx.requestApproval(
+              `MCP tool: ${name} — ${guard.title}${visibility ? ` — ${visibility}` : ""}`,
+              JSON.stringify(guard.input, null, 2).slice(0, 1500) + `\n\n${guard.note}`,
+            );
+            if (!ok) return "The user declined the MCP call.";
+            return await mcp.callTool(name, guard.input);
+          }
           if (mcp.needsApproval(name)) {
             // A creating tool's card names visibility in the title, where it
             // cannot be truncated away, even when the arguments are silent (#4).

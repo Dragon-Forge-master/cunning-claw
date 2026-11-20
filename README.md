@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-623%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-643%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -286,7 +286,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
   ▸ brain    flashlite · google/gemini-3.1-flash-lite
   ▸ llais    piper · en_GB-alan-medium   (the voice)
   ▸ curiad   every 30m   (the heartbeat)
-  ▸ offer    73 tools on the bench
+  ▸ offer    74 tools on the bench
 
   ▸ wards    y ffens   — outside words are fenced
              y llw     — consequences wait for you
@@ -316,6 +316,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **Reads documents** | PDF, Word, Excel, PowerPoint, OpenDocument, HTML, CSV and images (OCR). Office files open with nothing installed; `markitdown`, `pdftotext` and `tesseract` add PDFs and scans — `npm run doctor` names the install line. What comes back is fenced as a stranger's words |
 | **Reads mail** | Gmail through that Chrome session — search operators, category tabs, whole threads, drafts. Send is always an approval. No credentials handled |
 | **WhatsApp** | WhatsApp Web / Business in the same Chrome — chat list, title unread count, draft, send. Send is always an approval. QR is scanned in that window |
+| **Markets** | The desk-marketer skill: follow-ups after a job, review requests, MOT and service reminders, newsletters in the business's own voice, prepared on a schedule, designed in Canva, sent through Resend, MailerLite or Klaviyo once you approve, with a report after. Who may be mailed is a consent register on the Desk, checked in code at every send — unknown, opted-out or basis-less recipients are removed or the send is refused, and a marketing email with no unsubscribe line does not go |
 | **Accounts** | Jurisdiction packs (UK first; IE, US, AU, DE as stubs) plus Xero via the official local MCP. It will not invent a foreign tax rate or file a return |
 | **Speaks and listens** | Neural TTS (Piper), offline. Push-to-talk transcribed on this machine by whisper.cpp once `./setup-ears.sh` has run; until then the browser's recogniser hears, and the HUD says so. The "Claw" wake word works with the browser's ears only, for now |
 | **Reads kindly** | **Aa** on the HUD switches every page to OpenDyslexic, bundled so it works offline. Code and commands stay monospace. The choice is saved per install |
@@ -323,7 +324,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
 | **Reaches you** | Telegram or Discord, so it isn't trapped at your desk — approval cards arrive as buttons you press, in a private chat only. ntfy for a push alert with no account |
 | **Works elsewhere** | Any other machine you own over ssh — a spare PC or a cloud VM. Long jobs run **detached**: builds and servers survive the conversation ending and your laptop closing, which they cannot do here |
-| **Connects** | 94 MCP connectors from one sheet. **Guide me** on any card and he walks you through setting it up, one step at a time, from the same catalogue — then offers to save how you like it used as a skill |
+| **Connects** | 95 MCP connectors from one sheet. **Guide me** on any card and he walks you through setting it up, one step at a time, from the same catalogue — then offers to save how you like it used as a skill |
 | **Extends** | Skills as `SKILL.md` files ([agentskills.io](https://agentskills.io)). Click **SKILLS** on the HUD to arm them, the same idea as Claude’s capabilities list |
 
 <div align="center">
@@ -730,7 +731,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 623 tests
+npm test        # 643 tests
 npm run check   # tsc --noEmit
 ```
 

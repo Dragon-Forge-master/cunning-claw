@@ -362,7 +362,10 @@ export const GMAIL_DRAFT_JS = `(() => {
   const subject = (subjectEl && "value" in subjectEl ? String(subjectEl.value) : "") || "";
   const bodyEl = box.querySelector('div[aria-label="Message Body"]');
   const body = (bodyEl && bodyEl.innerText ? bodyEl.innerText : "") || "";
-  return { open: Boolean(body || subject || to), to, subject, body: body.slice(0, 4000) };
+  // Head and tail, not just head: the unsubscribe line of a newsletter sits at
+  // the bottom, and the consent guard (src/marketing.ts) reads it from here.
+  const shown = body.length > 4000 ? body.slice(0, 3000) + "\\n…\\n" + body.slice(-1000) : body;
+  return { open: Boolean(body || subject || to), to, subject, body: shown };
 })()`;
 
 export function gmailFocusScript(field: "to" | "subject" | "body"): string {

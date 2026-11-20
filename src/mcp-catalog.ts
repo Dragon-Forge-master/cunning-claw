@@ -226,6 +226,27 @@ export const MCP_CATALOGUE: CatalogueEntry[] = [
   http("attio", "Attio", "CRM records and lists", "Sales", "https://mcp.attio.com/mcp"),
   http("mailerlite", "MailerLite", "Email marketing", "Sales", "https://mcp.mailerlite.com/mcp"),
   http("klaviyo", "Klaviyo", "Email and SMS campaigns", "Sales", "https://mcp.klaviyo.com/mcp?include-mcp-app=true"),
+  // Resend's own server (github.com/resend/resend-mcp; the npm package
+  // resend-mcp is the same code). Browser sign-in, like Klaviyo: on 20 Nov
+  // the endpoint answered initialize with a 401 and api.resend.com published
+  // a registration_endpoint, so self-registered OAuth works — no tokenEnv,
+  // or the guide would call a working sign-in impossible. The header is the
+  // README's documented alternative for a claw with no browser to hand: it
+  // ships only when RESEND_API_KEY is set (stripEmptyAuth), and then wins over
+  // OAuth. Hosted rather than the local stdio build, which reads this disk for
+  // attachments and CSV imports. Sends pass the consent guard (src/marketing.ts).
+  {
+    id: "resend",
+    label: "Resend",
+    blurb: "Sending email properly — broadcasts, contacts, delivery stats",
+    category: "Sales",
+    popular: false,
+    entry: {
+      type: "http",
+      url: "https://mcp.resend.com/mcp",
+      headers: { Authorization: "Bearer ${RESEND_API_KEY}" },
+    },
+  },
   http("clay", "Clay", "Prospecting and enrichment", "Sales", "https://api.clay.com/v3/mcp"),
   http("zoominfo", "ZoomInfo", "Contacts and accounts", "Sales", "https://mcp.zoominfo.com/mcp"),
   http("outreach", "Outreach", "Sales sequences and pipeline", "Sales", "https://api.outreach.io/mcp/"),

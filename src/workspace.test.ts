@@ -33,6 +33,7 @@ test("ships agentskills.io skills", () => {
     "spend-aware",
     "auto-care",
     "welsh-copy",
+    "desk-marketer",
   ]) {
     assert.ok(names.includes(required), `missing skill: ${required}`);
   }

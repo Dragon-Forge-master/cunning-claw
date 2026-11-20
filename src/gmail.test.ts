@@ -138,6 +138,27 @@ test("page scripts are plain JS — TypeScript casts in a string would throw in 
   }
 });
 
+test("the compose preview keeps the end of a long body, where a newsletter's unsubscribe line is", () => {
+  // The consent guard reads send_email's body from this preview. Cut at the
+  // first 4000 characters, a long newsletter lost its footer and a lawful send
+  // was refused for having no way out.
+  const body = "Winter news. ".repeat(500) + "\nUnsubscribe: reply STOP";
+  const field = (value: string) => ({ value });
+  const box = {
+    querySelectorAll: () => [],
+    querySelector: (sel: string) =>
+      sel.includes('name="to"') ? field("ann@example.com")
+        : sel.includes("subjectbox") ? field("News")
+          : sel.includes("Message Body") ? { innerText: body } : null,
+  };
+  const document = { querySelector: () => box };
+  const out = new Function("document", `return ${GMAIL_DRAFT_JS}`)(document) as { body: string; to: string };
+  assert.equal(out.to, "ann@example.com");
+  assert.ok(out.body.length < 4100);
+  assert.match(out.body, /Unsubscribe: reply STOP$/);
+  assert.match(out.body, /^Winter news\./);
+});
+
 test("gmail tools are on the roster, including draft and send", () => {
   const names = toolDefinitions.map((t) => t.name);
   for (const n of ["check_email", "read_email", "draft_email", "send_email", "email_action", "list_repos"]) {
