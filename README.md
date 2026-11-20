@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-1043%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-1063%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -72,9 +72,14 @@ has an installer for your computer — Node is inside, there is nothing else to 
   programs* that keeps your keys and memory unless you tick the box.
 - **macOS:** `Cunning-Claw-<version>-mac-arm64.dmg` (Apple silicon) or `…-mac-x64.dmg` (Intel).
   Open it and drag **Cunning Claw** into Applications.
-- **Linux:** `Cunning-Claw-<version>-linux-x86_64.AppImage` (or `aarch64`). One file: allow it
-  to run (*Properties → Permissions → Allow executing file as program*, or `chmod +x`), then
-  double-click it. Without FUSE it unpacks itself to a temporary folder instead; if yours
+- **Ubuntu, Debian:** `cunningclaw_<version>_amd64.deb` (or `_arm64.deb` on Arm). In a terminal,
+  in the folder it downloaded to: `sudo apt install ./cunningclaw_<version>_amd64.deb`. On
+  Ubuntu, double-clicking it may open App Center with an **Install** button instead. Then open
+  **Cunning Claw** from your applications, or type `cunningclaw`. `sudo apt remove cunningclaw`
+  removes him and keeps your keys and memory.
+- **Any other Linux:** `Cunning-Claw-<version>-linux-x86_64.AppImage` (or `aarch64`). One file:
+  allow it to run (*Properties → Permissions → Allow executing file as program*, or `chmod +x`),
+  then double-click it. Without FUSE it unpacks itself to a temporary folder instead; if yours
   does not, run it with `--appimage-extract-and-run`.
 
 Your browser opens on the setup page, which walks you through a
@@ -90,10 +95,11 @@ it, double-click **Cunning Claw**, and everything stays inside that folder; `REA
 says what to click. To move an unzipped claw's keys and memory into the installed one, start
 the installed one once with `--import <the old folder>` (details, signing and the rest in
 [docs/INSTALLERS.md](docs/INSTALLERS.md)). Before a release is published, the Windows
-installer, the Apple-silicon `.dmg`, the x86_64 AppImage and the Windows, Apple-silicon and
-x64 Linux archives are each installed or unzipped and started on a real Windows, macOS and
-Linux machine (`.github/workflows/bundle.yml`). The Arm Linux and Intel Mac builds are not
-run before release yet.
+installer, the Apple-silicon `.dmg`, the x86_64 AppImage, the amd64 `.deb` (installed and
+removed with apt) and the Windows, Apple-silicon and x64 Linux archives are each installed or
+unzipped and started on a real Windows, macOS and Linux machine
+(`.github/workflows/bundle.yml`). The Arm Linux and Intel Mac builds are not run before
+release yet.
 
 ### A free brain: the Google key, step by step
 
@@ -986,7 +992,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 1043 tests
+npm test        # 1063 tests
 npm run check   # tsc --noEmit
 ```
 

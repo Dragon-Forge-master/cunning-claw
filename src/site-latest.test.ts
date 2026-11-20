@@ -56,7 +56,18 @@ test("every download in site/latest.json is that release's asset, named as scrip
     }
   }
   for (const target of Object.keys(TARGETS)) expected[`archive-${target}`] = base + archiveName(v, target);
-  assert.deepEqual(feed.downloads, expected, "one link per installer and archive the release builds, and no other");
+  if (compareSemver(v, pkg.version) === 0) {
+    // At release time the feed names exactly what this code builds.
+    assert.deepEqual(feed.downloads, expected, "one link per installer and archive the release builds, and no other");
+  } else {
+    // While the next version is being prepared the feed still names the last
+    // published release, which may lack kinds added since (0.5.1 had no .deb):
+    // every link it lists must still be that release's file, correctly named.
+    for (const [key, url] of Object.entries(feed.downloads as Record<string, string>)) {
+      assert.equal(url, expected[key], `${key} is named as scripts/bundle.mjs names it`);
+    }
+    assert.ok(Object.keys(feed.downloads).length > 0, "the feed offers at least one download");
+  }
 });
 
 test("site/_headers gives latest.json a cache short enough to spread a release within the day", () => {

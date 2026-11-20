@@ -53,8 +53,8 @@ the claw already drives its *own* Chrome for automation.
 3. Tauri shell + tray icon + updater.
 4. Signing certificates and release automation (GitHub Actions builds all
    three installers per tag). The installers and the automation are **built** —
-   a per-user Windows Setup `.exe`, a `.dmg` with the `.app`, and an AppImage, from
-   the same bundles, with the owner's things in a per-user folder
+   a per-user Windows Setup `.exe`, a `.dmg` with the `.app`, a `.deb` for Ubuntu and
+   Debian, and an AppImage for other Linux, from the same bundles, with the owner's things in a per-user folder
    ([INSTALLERS.md](INSTALLERS.md)). The certificates are not bought; the signing
    hooks wait for them.
 

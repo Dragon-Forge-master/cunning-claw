@@ -7,7 +7,7 @@ guarantees, because a security document that overclaims is worse than none.*
 Status as of 20 November 2026: version 0.4.0 on `main`, plus the work due as
 0.5.0 (`docs/releases/v0.5.0.md`) — the host gate, Pocket Claw, the foreman,
 Telegram voice notes and receipts, Learn mode and the site wall, all in
-section 5 — and Outlook on the web since (5.7). 1043 automated tests passing (`npm test`), 83 tools, two runtime
+section 5 — and Outlook on the web since (5.7). 1063 automated tests passing (`npm test`), 83 tools, two runtime
 dependencies (`@anthropic-ai/sdk`, `express`). The project is new and has run
 on very few machines. Nothing here has been independently audited.
 
@@ -857,7 +857,7 @@ deployed as such without an independent assessment.
 | Voice notes never answer a card; receipts filed as data | `npx tsx --test src/telegram.test.ts src/voice-notes.test.ts src/receipts.test.ts` |
 | The wall: moderation, Turnstile, no IPs; the tool's cards and token | `npx tsx --test src/site-wall.test.ts src/wall.test.ts` |
 | Outlook: fence, body controls never pressed, quote cut, send guard, routing | `npx tsx --test src/outlook.test.ts src/routing.test.ts` (the driven half needs a Chrome or Chromium) |
-| Everything | `npm test` — 1043 passing at the time of writing |
+| Everything | `npm test` — 1063 passing at the time of writing |
 
 Every test in the suite is required to fail with its fix reverted
 (`CLAUDE.md`, "Tests"), and the commit that added it says so.

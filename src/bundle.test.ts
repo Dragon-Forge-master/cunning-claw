@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import {
-  APPIMAGE_TOOLS, INSTALL_MARKER, INSTALLERS, TARGETS, appRun, buildMacApp, icnsFromPngs, icoFromPngs, infoPlist, installedMarker,
-  installerName, launcher, macLauncher, nsisScript, parseArgs, readMe, windowsSignCommand,
+  APPIMAGE_TOOLS, DEB_MAINTAINER, INSTALL_MARKER, INSTALLERS, QUICK_EXIT_SECONDS, TARGETS, TERMINALS, appRun, buildMacApp, debControl, debLauncher,
+  icnsFromPngs, icoFromPngs, infoPlist, installedSizeKiB, layOutDeb, installedMarker, installerName, launcher, macLauncher, nsisScript, parseArgs, readMe, windowsSignCommand,
 // @ts-expect-error — a plain .mjs build script with no types; imported for its pure helpers.
 } from "../scripts/bundle.mjs";
 import { INSTALL_MARKER as CLAW_MARKER, installKind } from "./home-root.js";
@@ -30,13 +30,17 @@ test("the Windows launcher is a real .cmd: CRLF, the bundled node.exe, its own f
   assert.match(cmd, /dist\\boot\.js %\*/, "arguments pass through, so --import works from it");
 });
 
-test("the Linux and macOS launcher runs the bundled node from its own folder", () => {
-  const sh: string = launcher("darwin");
-  assert.match(sh, /^#!\/bin\/sh\n/);
-  assert.doesNotMatch(sh, /\r/);
-  assert.match(sh, /PATH="\$here\/runtime\/bin:\$PATH"/);
-  assert.match(sh, /exec node dist\/boot\.js "\$@"/);
-  assert.equal(launcher("linux"), sh, "one script for both");
+test("the Linux and macOS launchers run the bundled node from their own folder", () => {
+  for (const os of ["darwin", "linux"]) {
+    const sh: string = launcher(os);
+    assert.match(sh, /^#!\/bin\/sh\n/, os);
+    assert.doesNotMatch(sh, /\r/, os);
+    assert.match(sh, /PATH="\$here\/runtime\/bin:\$PATH"/, os);
+    assert.match(sh, /dist\/boot\.js "\$@"/, os);
+  }
+  assert.match(launcher("darwin"), /exec node dist\/boot\.js "\$@"/, "Terminal keeps a .command's window open by itself");
+  // A file manager's "Run as a Program" has no window: the .sh opens one, as the AppImage does.
+  assert.match(launcher("linux"), /--in-terminal/);
 });
 
 test("every target names a real Node download, and the read-me says how to get past the unsigned-app warning", () => {
@@ -105,6 +109,72 @@ test("installer file names carry no spaces (GitHub turns them into dots) and say
   assert.equal(installerName("dmg", "1.2.3", "darwin-x64"), "Cunning-Claw-1.2.3-mac-x64.dmg");
   assert.equal(installerName("appimage", "1.2.3", "linux-x64"), "Cunning-Claw-1.2.3-linux-x86_64.AppImage");
   assert.equal(installerName("appimage", "1.2.3", "linux-arm64"), "Cunning-Claw-1.2.3-linux-aarch64.AppImage");
+  // Debian's own shape: what apt, App Center and the CI's `ls cunningclaw_*_amd64.deb` expect.
+  assert.equal(installerName("deb", "1.2.3", "linux-x64"), "cunningclaw_1.2.3_amd64.deb");
+  assert.equal(installerName("deb", "1.2.3", "linux-arm64"), "cunningclaw_1.2.3_arm64.deb");
+  assert.equal(installerName("deb", "1.2.3-rc.1", "linux-x64"), "cunningclaw_1.2.3~rc.1_amd64.deb", "a pre-release sorts before its release");
+});
+
+test("the .deb's control file: Debian's fields, a placeholder maintainer, and only the libraries Node links against", () => {
+  const c: string = debControl({ version: "1.2.3", arch: "amd64", installedSizeKiB: 4242 });
+  for (const f of ["Package: cunningclaw", "Version: 1.2.3", "Architecture: amd64", "Installed-Size: 4242", "Section: utils", "Priority: optional", "Homepage: https://github.com/Dragon-Forge-master/cunning-claw"]) {
+    assert.ok(c.split("\n").includes(f), f);
+  }
+  assert.equal(DEB_MAINTAINER, "Dragon Forge AI <placeholder@cunningclaw.com>", "no person's own address in a public package");
+  assert.match(c, /^Maintainer: Dragon Forge AI <placeholder@cunningclaw\.com>$/m);
+  assert.match(c, /^Depends: libc6 \(>= 2\.28\), libstdc\+\+6 \(>= 5\.2\), libgcc-s1 \| libgcc1$/m, "the runtime is bundled: nothing else");
+  assert.match(c, /^Recommends: bubblewrap$/m, "the shell's sandbox, installed by apt unless the owner says not to");
+  assert.doesNotMatch(c, /nodejs|npm/);
+  assert.match(c, /\nDescription: .+\n(?: \S.*\n| \.\n)+$/, "a synopsis, then a body of space-led lines, last");
+  assert.ok(c.endsWith("\n"), "dpkg wants the last line ended");
+  for (const l of c.split("\n").filter((l) => !l.startsWith(" "))) assert.ok(l === "" || /^[A-Z][A-Za-z-]+: \S/.test(l), `a field, not ${l}`);
+});
+
+test("the .deb lays out read-only code in /opt, a launcher in /usr/bin, a menu entry and icons, and nothing of the owner's", () => {
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), "claw-deb-"));
+  try {
+    const bundleDir = path.join(work, "bundle");
+    fakeApp(path.join(bundleDir, "app"), path.join(bundleDir, "runtime", "bin"));
+    fs.writeFileSync(path.join(bundleDir, "app", "dist", "boot.js"), "", { mode: 0o600 });
+    const root: string = layOutDeb(bundleDir, path.join(work, "pkg"), "1.2.3");
+    const at = (rel: string) => path.join(root, rel);
+    assert.ok(fs.existsSync(at(`opt/cunningclaw/app/${INSTALL_MARKER}`)), "marked installed, so the owner's things go to ~/.local/share/cunningclaw");
+    assert.equal(JSON.parse(fs.readFileSync(at(`opt/cunningclaw/app/${INSTALL_MARKER}`), "utf-8")).installer, "deb");
+    assert.equal(fs.readFileSync(at("usr/bin/cunningclaw"), "utf-8"), debLauncher());
+    assert.equal(fs.statSync(at("usr/bin/cunningclaw")).mode & 0o777, 0o755);
+    assert.equal(fs.statSync(at("opt/cunningclaw/runtime/bin/node")).mode & 0o777, 0o755);
+    assert.equal(fs.statSync(at("opt/cunningclaw/app/dist/boot.js")).mode & 0o777, 0o644, "readable by every user whatever the builder's umask");
+    const desktop = fs.readFileSync(at("usr/share/applications/cunningclaw.desktop"), "utf-8");
+    assert.match(desktop, /^Exec=cunningclaw$/m);
+    assert.match(desktop, /^Icon=cunningclaw$/m);
+    assert.match(desktop, /^Terminal=false$/m, "the launcher opens its own window, so it can keep it open");
+    assert.doesNotMatch(desktop, /X-AppImage/);
+    for (const s of [16, 32, 48, 128, 256, 512]) {
+      const png = fs.readFileSync(at(`usr/share/icons/hicolor/${s}x${s}/apps/cunningclaw.png`));
+      assert.equal(png.subarray(1, 4).toString(), "PNG", `${s}px`);
+    }
+    assert.match(fs.readFileSync(at("usr/share/doc/cunningclaw/copyright"), "utf-8"), /^License: MIT\n Permission is hereby granted/m);
+    assert.ok(!fs.existsSync(at("DEBIAN/postinst")) && !fs.existsSync(at("DEBIAN/prerm")), "no maintainer scripts: dpkg triggers refresh the menu and icons");
+    // dpkg removes what it installed; the owner's folder is never among it.
+    assert.deepEqual(fs.readdirSync(root).sort(), ["opt", "usr"]);
+    assert.ok(!fs.existsSync(at("opt/cunningclaw/app/.env")));
+    assert.ok(installedSizeKiB(root) > 0);
+  } finally {
+    fs.rmSync(work, { recursive: true, force: true });
+  }
+});
+
+test("the .deb's read-me says how to install with apt, how to remove, and that the owner's folder stays", () => {
+  const d: string = readMe("linux", "1.2.3", "deb");
+  assert.match(d, /sudo apt install \.\/cunningclaw_1\.2\.3_amd64\.deb/);
+  assert.match(d, /App Center/);
+  assert.match(d, /sudo apt remove cunningclaw\. Your folder is kept/);
+  assert.match(d, /\.local\/share\/cunningclaw/);
+  assert.match(d, /cunningclaw --import/);
+  assert.doesNotMatch(d, /AppImage|chmod/);
+  const archive: string = readMe("linux", "1.2.3");
+  assert.ok(archive.indexOf(".deb") < archive.indexOf(".AppImage"), "Ubuntu and Debian first, the AppImage for the rest");
+  assert.match(archive, /sudo apt install \.\/cunningclaw_1\.2\.3_amd64\.deb/);
 });
 
 test("arguments: several targets, a list of installers, and a typo refused", () => {
@@ -112,7 +182,7 @@ test("arguments: several targets, a list of installers, and a typo refused", () 
   assert.deepEqual(a.targets, ["darwin-arm64", "darwin-x64"]);
   assert.deepEqual(a.installers, ["dmg"]);
   assert.equal(a.archive, false);
-  assert.deepEqual(parseArgs(["--all", "--installer", "appimage,nsis"]).installers, ["appimage", "nsis"]);
+  assert.deepEqual(parseArgs(["--all", "--installer", "appimage,deb,nsis"]).installers, ["appimage", "deb", "nsis"]);
   assert.equal(parseArgs(["--all"]).targets.length, Object.keys(TARGETS).length);
   assert.throws(() => parseArgs(["--installer", "msi"]), /Unknown installer/);
 });
@@ -293,6 +363,191 @@ test("opened from Finder, the .app opens Terminal on a script it writes, which s
     assert.ok(fs.existsSync(path.join(owner, "Library", "Application Support", "cunningclaw", "Cunning Claw.command")));
     const direct = await execFileAsync(exe, ["--import", "/old"], { env: { ...env, CLAW_NO_TERMINAL: "1" } });
     assert.match(direct.stdout, /with dist\/boot\.js --import \/old open=1/, "CI, and a terminal user, run it where it stands");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// --- A double-click never flashes a window shut -----------------------------
+// The founder's v0.5.1 AppImage "didn't seem to do anything": it opened a
+// terminal on itself, the claw found his git install already on the port,
+// handed over, and the window closed with the explanation in it. These run
+// the generated launchers with stand-in terminals, node, date and
+// notify-send; `script` gives them the terminal a double-click would.
+
+function quiet(cmd: string, args: string[]): string {
+  return String(execFileSync(cmd, args, { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] })).trim();
+}
+const hasScript = (() => {
+  try { return !!quiet("sh", ["-c", "command -v script"]); } catch { return false; }
+})();
+const needsPty = unixOnly || (hasScript ? false : "needs script(1) for a terminal");
+
+/** A folder holding only the commands a launcher needs, so no real terminal on this machine is found. */
+function onlyTools(dir: string, extra: Record<string, string> = {}): string {
+  const bin = path.join(dir, "tools");
+  fs.mkdirSync(bin, { recursive: true });
+  for (const t of ["sh", "dirname", "basename", "readlink", "date", "cat", "printf", "sleep", "kill"]) {
+    if (extra[t]) continue;
+    let real = "";
+    try { real = quiet("sh", ["-c", `command -v ${t}`]); } catch { /* a builtin only */ }
+    if (real.startsWith("/")) fs.symlinkSync(real, path.join(bin, t));
+  }
+  for (const [name, body] of Object.entries(extra)) fs.writeFileSync(path.join(bin, name), body, { mode: 0o755 });
+  return bin;
+}
+
+/** An AppImage-shaped folder whose node does what FAKE_NODE says: exit N, or kill itself. */
+function launcherDir(prefix: string): { dir: string; run: string } {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  fs.mkdirSync(path.join(dir, "app", "dist"), { recursive: true });
+  fs.mkdirSync(path.join(dir, "runtime", "bin"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "runtime", "bin", "node"), [
+    "#!/bin/sh",
+    'echo "node ran with $*"',
+    'case "$FAKE_NODE" in signal) kill -TERM $$ ;; esac',
+    'exit "${FAKE_NODE:-0}"',
+    "",
+  ].join("\n"), { mode: 0o755 });
+  const run = path.join(dir, "AppRun");
+  fs.writeFileSync(run, appRun(), { mode: 0o755 });
+  return { dir, run };
+}
+
+/** Run a command on a pseudo-terminal, pressing Enter once, as a person in the window would. */
+async function inTerminal(cmd: string[], env: NodeJS.ProcessEnv): Promise<string> {
+  const line = cmd.map((a) => `'${a.replace(/'/g, "'\\''")}'`).join(" ");
+  const child = spawn("script", ["-qec", line, "/dev/null"], { env, stdio: ["pipe", "pipe", "pipe"] });
+  let out = "";
+  child.stdout.on("data", (d) => { out += d; });
+  child.stdin.end("\n");
+  const timer = setTimeout(() => child.kill("SIGKILL"), 15000);
+  await new Promise((r) => child.once("close", r));
+  clearTimeout(timer);
+  return out.replace(/\r/g, "");
+}
+
+test("the Linux launchers are POSIX sh, and wait only in their own window", () => {
+  for (const [name, sh] of [["AppRun", appRun()], ["deb", debLauncher()], ["sh", launcher("linux")]] as [string, string][]) {
+    const file = path.join(os.tmpdir(), `claw-lint-${process.pid}-${name}`);
+    fs.writeFileSync(file, sh);
+    try {
+      execFileSync("sh", ["-n", file]);
+    } finally {
+      fs.rmSync(file, { force: true });
+    }
+    assert.doesNotMatch(sh, /\[\[|\bfunction\b|\$'|\blocal\b|<<<|\bsource\b/, `${name}: no bashisms`);
+    assert.match(sh, /Press Enter to close this window\./, name);
+    assert.match(sh, /if \[ -n "\$pause" \] && \[ -t 0 \] && \[ -z "\$CLAW_NO_TERMINAL" \]; then/, `${name}: its own window, a terminal on stdin, never CI`);
+    assert.match(sh, new RegExp(`-lt ${QUICK_EXIT_SECONDS} \\]`), name);
+    for (const t of TERMINALS as string[]) assert.ok(sh.includes(t), `${name} looks for ${t}`);
+  }
+  assert.match(debLauncher(), /^here=\/opt\/cunningclaw$/m);
+  assert.match(debLauncher(), /^self=\/usr\/bin\/cunningclaw$/m);
+});
+
+test("in the window it opened itself, a claw that stops at once leaves its words up until Enter", { skip: needsPty }, async () => {
+  const { dir, run } = launcherDir("claw-pause-");
+  try {
+    const env = { ...process.env, CLAW_NO_TERMINAL: "", DISPLAY: "" };
+    // Handed over to a running claw: exit 0, two seconds in.
+    const handover = await inTerminal([run, "--in-terminal"], env);
+    assert.match(handover, /node ran with dist\/boot\.js/);
+    assert.match(handover, /Press Enter to close this window\./);
+    const failed = await inTerminal([run, "--in-terminal"], { ...env, FAKE_NODE: "1" });
+    assert.match(failed, /Press Enter to close this window\./, "a startup error is read, not flashed");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("it never waits in the owner's own terminal, in CI, without a terminal, or after the window closed", { skip: needsPty }, async () => {
+  const { dir, run } = launcherDir("claw-nopause-");
+  try {
+    const env = { ...process.env, CLAW_NO_TERMINAL: "", DISPLAY: "" };
+    const own = await inTerminal([run], env);
+    assert.match(own, /node ran/);
+    assert.doesNotMatch(own, /Press Enter/, "started from a terminal of their own: no --in-terminal");
+    const ci = await inTerminal([run, "--in-terminal"], { ...env, CLAW_NO_TERMINAL: "1" });
+    assert.doesNotMatch(ci, /Press Enter/, "CLAW_NO_TERMINAL");
+    const signalled = await inTerminal([run, "--in-terminal"], { ...env, FAKE_NODE: "signal" });
+    assert.match(signalled, /node ran/);
+    assert.doesNotMatch(signalled, /Press Enter/, "a signal is the window closing or Ctrl+C");
+    const piped = await execFileAsync(run, ["--in-terminal"], { env });
+    assert.doesNotMatch(piped.stdout, /Press Enter/, "stdin is not a terminal: nobody could press Enter");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a claw that ran for a while and stopped cleanly closes its window; one that failed late still waits", { skip: needsPty }, async () => {
+  const { dir, run } = launcherDir("claw-long-");
+  try {
+    // A stand-in clock: the first reading 1000, the next an hour on.
+    const tools = onlyTools(dir, {
+      date: `#!/bin/sh\nf='${dir}/clock'\nif [ -f "$f" ]; then echo 4600; else : > "$f"; echo 1000; fi\n`,
+    });
+    const env = { ...process.env, PATH: `${tools}:${process.env.PATH}`, CLAW_NO_TERMINAL: "", DISPLAY: "" };
+    const clean = await inTerminal([run, "--in-terminal"], env);
+    assert.match(clean, /node ran/);
+    assert.doesNotMatch(clean, /Press Enter/, "an hour in, a clean stop is the owner's own doing");
+    fs.rmSync(path.join(dir, "clock"));
+    const late = await inTerminal([run, "--in-terminal"], { ...env, FAKE_NODE: "1" });
+    assert.match(late, /Press Enter/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("Ubuntu 25.10's Ptyxis, installed as x-terminal-emulator, is handed the command after --", { skip: unixOnly }, async () => {
+  const { dir, run } = launcherDir("claw-ptyxis-");
+  try {
+    const tools = onlyTools(dir, { ptyxis: '#!/bin/sh\necho "ptyxis $*"\n' });
+    fs.symlinkSync(path.join(tools, "ptyxis"), path.join(tools, "x-terminal-emulator"));
+    const env = { PATH: tools, DISPLAY: ":0", APPIMAGE: "/home/owner/Cunning.AppImage", APPDIR: "/tmp/.mount_x" };
+    const { stdout } = await execFileAsync(run, ["--import", "/old"], { env });
+    assert.equal(stdout.trim(), "ptyxis -- /home/owner/Cunning.AppImage --in-terminal --import /old");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("no terminal to open: it runs without a window, and says so on the desktop if it cannot start", { skip: unixOnly }, async () => {
+  const { dir, run } = launcherDir("claw-nowin-");
+  try {
+    const tools = onlyTools(dir, { "notify-send": '#!/bin/sh\necho "notify $*"\n' });
+    const env = { PATH: tools, DISPLAY: ":0", APPIMAGE: "/home/owner/Cunning.AppImage", APPDIR: "/tmp/.mount_x" };
+    const ok = await execFileAsync(run, [], { env });
+    assert.match(ok.stdout, /^node ran with dist\/boot\.js$/m, "it still starts; the claw opens the browser itself (CLAW_OPEN_HUD)");
+    assert.doesNotMatch(ok.stdout, /notify/);
+    const bad = await execFileAsync(run, [], { env: { ...env, FAKE_NODE: "1" } }).catch((e) => e);
+    assert.equal(bad.code, 1, "the claw's own status is kept");
+    assert.match(bad.stdout, /^notify -i cunningclaw Cunning Claw could not start Run it from a terminal to see why: \/home\/owner\/Cunning\.AppImage$/m);
+    const unpacked = await execFileAsync(run, [], { env: { ...env, APPDIR: "/tmp/appimage_extracted_1", FAKE_NODE: "1" } }).catch((e) => e);
+    assert.match(unpacked.stdout, /notify/, "an unpacked AppImage runs without a window too");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("the download's Cunning Claw.sh and the .deb's cunningclaw open a terminal on themselves when double-clicked", { skip: unixOnly }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "claw-sh-"));
+  try {
+    const folder = path.join(dir, "cunningclaw-1.2.3-linux-x64");
+    fakeApp(path.join(folder, "app"), path.join(folder, "runtime", "bin"));
+    const sh = path.join(folder, "Cunning Claw.sh");
+    fs.writeFileSync(sh, launcher("linux"), { mode: 0o755 });
+    const tools = onlyTools(dir, { "x-terminal-emulator": '#!/bin/sh\nfor a in "$@"; do printf "[%s]" "$a"; done; echo\n' });
+    const env = { PATH: tools, DISPLAY: ":0" };
+    const { stdout } = await execFileAsync(sh, [], { env });
+    assert.equal(stdout.trim(), `[-e][${fs.realpathSync(folder)}/Cunning Claw.sh][--in-terminal]`, "its own path, space and all, as one argument");
+    const runs = await execFileAsync(sh, [], { env: { PATH: tools, DISPLAY: "" } });
+    assert.match(runs.stdout, /^node in .* with dist\/boot\.js open=1$/m, "no display (CI, ssh): runs where it stands");
+
+    const deb = path.join(dir, "cunningclaw");
+    fs.writeFileSync(deb, debLauncher(), { mode: 0o755 });
+    const d = await execFileAsync(deb, ["--import", "/old"], { env });
+    assert.equal(d.stdout.trim(), "[-e][/usr/bin/cunningclaw][--in-terminal][--import][/old]");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
