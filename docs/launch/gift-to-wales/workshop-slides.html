@@ -10,10 +10,13 @@
      idea per slide, high contrast. The ink ground is the brand's; the glow is
      kept faint so it washes out to plain dark rather than grey on a projector.
      The habits on slides 5 to 8 are about any AI assistant; the product only
-     appears in the demo, the start-free slide and the honest bit, so a host
-     that allows no selling can drop 13 and still have a whole talk.
-     Every product claim is in docs/releases/v0.4.0.md, README.md or
-     docs/SECURITY-ARCHITECTURE.md, and the demo slides describe what the code
+     appears in the demo, the start-free slide, Learn mode and the honest bit,
+     so a host that allows no selling can drop 13 and 14 and still have a
+     whole talk. Every product claim is in docs/releases/v0.5.0.md, README.md,
+     docs/LEARN-MODE.md or docs/SECURITY-ARCHITECTURE.md (the Learn mode slide
+     was checked against the HUD's own LEARN panel on 20 November 2026: twelve
+     lessons, "How a planted instruction works" among them), and the demo
+     slides describe what the code
      does with demo/scam-email.eml (checked against src/injection.ts and
      classifyCommand in src/tools.ts; see DEMO-CHECKLIST.md). */
   @page{size:1280px 720px;margin:0}
@@ -56,9 +59,7 @@
   .card .t{color:var(--gold);letter-spacing:.06em}
   .card .b{display:flex;gap:16px;margin-top:14px}
   .card .b span{border:1.5px solid var(--deep);padding:4px 12px;font-size:16px;white-space:nowrap;letter-spacing:.1em;color:var(--cyan)}
-  .two{display:grid;grid-template-columns:.85fr 1.15fr;gap:36px;align-items:center}
-  .soon{display:inline-block;align-self:flex-start;font-family:var(--mono);font-size:20px;letter-spacing:.2em;border:2px dashed var(--gold);color:var(--gold);padding:6px 16px}
-</style></head>
+  .two{display:grid;grid-template-columns:.85fr 1.15fr;gap:36px;align-items:center}</style></head>
 <body>
 
 <!-- 1 -->
@@ -82,7 +83,7 @@
       <li>The new trick: scams written for the AI</li>
       <li>Four habits that keep you safe</li>
       <li>Live demo: a scam email meets an assistant</li>
-      <li>Starting free, and the honest bit</li>
+      <li>Starting free, practising at home, and the honest bit</li>
       <li>Your questions</li>
     </ol>
   </div>
@@ -245,9 +246,25 @@
   <div class="foot"><span>Using AI safely in your small business</span><span>13 / 16</span></div>
 </section>
 
-<!-- 14 -->
-<section class="slide frame" data-name="14-honest">
+<!-- 14: Learn mode, released in 0.5.0; product, so a no-selling host drops it with 13 -->
+<section class="slide frame" data-name="14-learn">
   <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="n">14</div></div>
+  <div class="main">
+    <div class="eyebrow">Keep practising</div>
+    <h2>Learn mode: <em>practise inside the assistant</em></h2>
+    <ul class="ticks">
+      <li>Press LEARN: twelve short lessons in using it safely</li>
+      <li>Practice on fake emails and invoices; every practice card says <q>PRACTICE · nothing real will happen</q></li>
+      <li>Answers marked by the code, not by the AI</li>
+    </ul>
+    <p class="dim">New in 0.5.0. Nobody has measured what people learn from it yet.</p>
+  </div>
+  <div class="foot"><span>Using AI safely in your small business</span><span>14 / 16</span></div>
+</section>
+
+<!-- 15 -->
+<section class="slide frame" data-name="15-honest">
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="n">15</div></div>
   <div class="main">
     <h2>The honest bit</h2>
     <ul class="ticks">
@@ -257,12 +274,12 @@
       <li>Safety box for commands: Linux yes; Mac built, not yet tested on a real Mac; Windows none yet</li>
     </ul>
   </div>
-  <div class="foot"><span>Using AI safely in your small business</span><span>14 / 16</span></div>
+  <div class="foot"><span>Using AI safely in your small business</span><span>15 / 16</span></div>
 </section>
 
-<!-- 15 -->
-<section class="slide frame" data-name="15-take-home">
-  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="n">15</div></div>
+<!-- 16 -->
+<section class="slide frame" data-name="16-take-home">
+  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="n">16</div></div>
   <div class="main">
     <h2>Take home</h2>
     <div class="qrrow">
@@ -277,19 +294,7 @@
     </div>
     <p class="dim">Rhodd o Gymru · A gift from Wales. MIT licence: every released version stays free.</p>
   </div>
-  <div class="foot"><span>Questions?</span><span>15 / 16</span></div>
-</section>
-
-<!-- 16: optional, only if there is time; Learn mode is not released -->
-<section class="slide frame" data-name="16-coming-next">
-  <div class="top"><div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="n">16</div></div>
-  <div class="main">
-    <span class="soon">COMING NEXT · NOT IN 0.4.0</span>
-    <h2>Learn mode: <em>practise safely</em> inside the assistant</h2>
-    <p>Planned, not released. It will be announced when it ships.</p>
-    <p class="dim">Until then, practise the way we did today: with made-up emails and fake addresses.</p>
-  </div>
-  <div class="foot"><span>Optional extra</span><span>16 / 16</span></div>
+  <div class="foot"><span>Questions?</span><span>16 / 16</span></div>
 </section>
 
 </body></html>

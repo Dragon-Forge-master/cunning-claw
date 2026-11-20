@@ -9,7 +9,11 @@ the organisational route, or the page itself on the day, if a named contact
 is clearly the one the organisation asks you to use.
 
 Nothing here has been sent. Addresses change: open the page again before
-each send. "R" below is the day the v0.4.0 downloads are published.
+each send. "R" below is the day the press release goes out. The v0.5.0
+downloads it describes were published on 20 November 2026, so R is no
+longer tied to a release: it is the weekday Chris chooses once he has
+approved the release, a Welsh speaker has checked "Rhodd o Gymru", and
+cunningclaw.com offers 0.5.0 (on 20 November 2026 it still offered 0.3.0).
 
 **Rules for every approach** (from [`../v0.3/MARKETING-PLAN.md`](../v0.3/MARKETING-PLAN.md)):
 one message, written by hand, to the organisation's published route; one
@@ -111,8 +115,8 @@ as himself, with the costs and the honest bit in the post.
 
 ## Optional extra: a two-week Meta ads test, Wales only
 
-Run this only after the release is out, the flyer is approved, and the site
-works on a phone. It is a test of whether paid reach in Wales brings anyone to
+Run this only after the press release is out, the flyer is approved, and the
+site offers 0.5.0 and works on a phone. It is a test of whether paid reach in Wales brings anyone to
 the site at a sane cost, not a launch.
 
 **Budget.** £5 a day for 14 days: **£70 in all**. Set it as a lifetime budget
@@ -137,7 +141,7 @@ The Welsh line is to be checked by a Welsh speaker before the ad runs, like
 every other use of it.
 
 **What to measure.** Meta's own report: reach, link clicks, cost per link
-click, and the comments. Alongside: GitHub's download counts for the 0.4.0
+click, and the comments. Alongside: GitHub's download counts for the 0.5.0
 files at the start and end (a rise cannot be pinned on the ads, so do not
 claim it was). **Do not add the Meta pixel or any tracker to cunningclaw.com**:
 "no tracking" is a promise the product makes.

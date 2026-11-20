@@ -2,20 +2,21 @@
 
 For the workshop in [WORKSHOP-SCRIPT.md](WORKSHOP-SCRIPT.md). Rehearse all of
 it twice on the laptop you will use. The "expected" lines below were checked
-against the code at the v0.4.0 commit (56c993c) by running the real scanner
-and command classifier on [`demo/scam-email.eml`](demo/scam-email.eml); the
-AI's own replies cannot be checked that way, because they are its judgement,
-so they are marked **AI** and can differ on the day.
+against the code at the v0.5.0 release commit (d420d5e) by running the real
+scanner and command classifier on [`demo/scam-email.eml`](demo/scam-email.eml)
+(`demo/check-demo.mts`, which passed there on 20 November 2026); the AI's own
+replies cannot be checked that way, because they are its judgement, so they
+are marked **AI** and can differ on the day.
 
-**Waits for the v0.4.0 release.** On 20 November 2026 only v0.3.0 is
-published. Do not demo from a source checkout and call it the download.
+Demo from the v0.5.0 download, published on 20 November 2026. Do not demo
+from a source checkout and call it the download.
 
 ## A. Two weeks before
 
 - [ ] **Use Linux for the demo laptop**, with `bubblewrap` installed
       (`sudo apt install bubblewrap`). The safety box (Part E) runs only on
       Linux: on a Mac it is built but not yet tested on a real Mac, and
-      Windows has none. Parts B to D work on any of the three.
+      Windows has none. Parts B to D and F work on any of the three.
 - [ ] **A separate user account on the laptop, with nothing real in it.** No
       real email signed in, no real documents, no real keys. Everything on
       screen is seen, and possibly photographed, by the room.
@@ -30,15 +31,23 @@ published. Do not demo from a source checkout and call it the download.
 - [ ] **A recorded run** of Parts C to E from a good rehearsal, on the laptop,
       to play if the network or the allowance fails.
 
-## B. Install from the v0.4.0 download
+## B. Install from the v0.5.0 download
 
 Do this on the demo account the day before, and show only the last step
 live (or none of it, if time is short).
 
-1. [ ] From cunningclaw.com or the v0.4.0 release page, download the Linux
-       build (`cunningclaw-0.4.0-linux-x64.tar.gz`, assuming 0.4.0 keeps
-       0.3.0's naming; check the release page).
-2. [ ] Unpack it and double-click **Cunning Claw.sh**. If double-clicking
+1. [ ] From the v0.5.0 release page
+       (github.com/Dragon-Forge-master/cunning-claw/releases/tag/v0.5.0), or
+       from cunningclaw.com once it offers 0.5.0, download the Linux build:
+       `cunningclaw-0.5.0-linux-x64.tar.gz` (or `-linux-arm64.tar.gz` on an
+       ARM laptop). On 20 November 2026 the site still offered 0.3.0, so
+       check which version you are getting.
+2. [ ] Unpack it somewhere ordinary, such as your home folder or Downloads,
+       and **not** under `~/sites`, `~/Documents/CunningClaw` or `/tmp`: those
+       are writable from inside the box, so an install there is writable by
+       its own commands (known gap 5 in `docs/SECURITY-ARCHITECTURE.md`), and
+       Part E's note that the app's folder is read-only would not hold. Then
+       double-click **Cunning Claw.sh**. If double-clicking
        only shows the text, right-click it and choose "Run as a Program"
        (this is what its **READ ME FIRST.txt** says).
 3. [ ] The browser opens on the setup page. Paste the demo Google key into
@@ -127,19 +136,37 @@ Never do this part on an account with real keys.
 3. [ ] Type: `Run touch ~/box-test.txt`
    - **Expected (code):** fails as read-only, with a note that it was the
      box: the home folder is not writable from inside it. (Its working
-     folder is the app's own folder, which is read-only in the box too.)
+     folder is the app's own folder, which is read-only in the box too, as
+     long as it was unpacked outside the writable folders: Part B, step 2.)
 4. [ ] **Say the limit:** inside the box, commands can still read your other
        ordinary files, and the network is on by default. The box confines
        writes and hides key stores; it does not make everything private.
 
-## F. After
+## F. Learn mode (optional, one minute, with slide 14)
+
+Only if it has been rehearsed and there is time. Show the list; do not start
+a lesson live.
+
+1. [ ] Press **LEARN** in the HUD's top bar.
+   - **Expected (code):** a panel headed **LEARN · operating your claw
+     safely**, listing twelve lessons in seven modules and a capstone, each
+     with its minutes and a **START** button; four are marked
+     **SAFETY-CRITICAL**. (Checked by opening it on the 0.5.0 code, from a
+     fresh data folder with no key, on 20 November 2026.)
+2. [ ] Point at **5 Strangers' words → How a planted instruction works**:
+       the lesson that practises today's demo on a fake invoice.
+3. [ ] Press **CLOSE**. Say that every practice card is marked
+       "PRACTICE · nothing real will happen" and stays on this screen, not
+       a phone, and that nobody has measured yet what people learn from it.
+
+## G. After
 
 - [ ] Deny anything still waiting, and close the Cunning Claw window.
 - [ ] If the demo key was ever on screen, delete it in AI Studio and make a
       new one.
 - [ ] Delete `~/.ssh/demo_key` and `~/claw-demo/` from the demo account.
 
-## G. If it goes wrong
+## H. If it goes wrong
 
 | What | Do |
 |---|---|

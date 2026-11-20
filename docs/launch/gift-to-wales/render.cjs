@@ -3,7 +3,7 @@
 // at the page size its own @page sets (A5 flyers, A4 handout, 16:9 slides),
 // and pdftoppm makes a PNG preview of the first page. Re-run it whenever a
 // number or a line in the sources changes; the numbers are typed in by hand,
-// so check them against docs/releases/v0.4.0.md first.
+// so check them against docs/releases/v0.5.0.md first.
 //
 //   node docs/launch/gift-to-wales/render.cjs           # everything
 //   node docs/launch/gift-to-wales/render.cjs slides    # one job by name
