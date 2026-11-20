@@ -89,7 +89,7 @@ Drop `workspace/skills/<slug>/SKILL.md`:
 ---
 name: my-skill
 label: Short name on the HUD
-category: machine   # machine | forge | craft | general
+category: machine   # machine | forge | craft | projects | general
 description: One line for the skill index. When to use it.
 ---
 
