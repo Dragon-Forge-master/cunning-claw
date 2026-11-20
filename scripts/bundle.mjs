@@ -5,7 +5,7 @@
  *   node scripts/bundle.mjs                 # this machine's platform
  *   node scripts/bundle.mjs --target win-x64
  *   node scripts/bundle.mjs --all           # every target, from one machine
- *   node scripts/bundle.mjs --all --installer appimage,nsis
+ *   node scripts/bundle.mjs --all --installer appimage,deb,nsis
  *   node scripts/bundle.mjs --target darwin-arm64 --target darwin-x64 --installer dmg --no-archive
  *
  * The claw's two runtime dependencies are plain JavaScript, so everything in a
@@ -26,6 +26,9 @@
  *
  *   appimage  Linux, one file. appimagetool and the AppImage runtime, both
  *             pinned by version and SHA-256 (APPIMAGE_TOOLS). Needs Linux.
+ *   deb       Ubuntu and Debian: the code in /opt/cunningclaw, a menu entry,
+ *             installed with apt. dpkg-deb, which every Debian-family
+ *             builder has; any Linux with dpkg-deb installed builds it.
  *   nsis      Windows, a per-user setup .exe. makensis (apt install nsis);
  *             builds on Linux, so the one build machine makes it.
  *   dmg       macOS, Cunning Claw.app on a drag-to-Applications disk image.
@@ -55,7 +58,7 @@ export const TARGETS = {
 };
 
 /** Which system each installer is for. Mirrors INSTALL_MARKER in src/home-root.ts. */
-export const INSTALLERS = { appimage: "linux", nsis: "win", dmg: "darwin" };
+export const INSTALLERS = { appimage: "linux", deb: "linux", nsis: "win", dmg: "darwin" };
 export const INSTALL_MARKER = "installed.json";
 
 /**
@@ -253,6 +256,19 @@ export function launcher(os) {
       "",
     ].join("\r\n");
   }
+  // Linux: a file manager's "Run as a Program" gives no window at all, so a
+  // claw that could not start, or handed over to a running one, did so out
+  // of sight. It opens a terminal on itself, as the AppImage does.
+  if (os === "linux") {
+    return posixLauncher({
+      what: "Double-click (or run) to start Cunning Claw. Closing this window stops him.",
+      locate: 'here="$(cd "$(dirname "$0")" && pwd)"',
+      self: '"$here/$(basename "$0")"',
+    });
+  }
+  // macOS: Finder runs a .command in Terminal, whose default profile keeps the
+  // window open when the script ends ("When the shell exits: Don't close the
+  // window"), so the last words stay on screen without any help from here.
   return [
     "#!/bin/sh",
     "# Double-click (or run) to start Cunning Claw. Closing this window stops him.",
@@ -276,19 +292,25 @@ const USER_FOLDER = {
  * or the installer the text ships inside ("nsis" is installed beside the app;
  * "dmg" sits in the disk image's window; the AppImage is one file, so its
  * words live in the README and the release notes, from `readMe("linux", v,
- * "appimage")`).
+ * "appimage")`; "deb" is installed as /usr/share/doc/cunningclaw/README).
  */
 export function readMe(os, version, kind = "archive") {
   const nl = os === "win" ? "\r\n" : "\n";
   const installer = kind !== "archive";
-  const start = installer
+  const deb = kind === "deb";
+  const debFile = `cunningclaw_${debVersion(version)}_amd64.deb`;
+  const start = deb
+    ? "Applications  →  Cunning Claw  (or type  cunningclaw  in a terminal)"
+    : installer
     ? os === "win" ? "Start menu (or the desktop)  →  Cunning Claw"
       : os === "darwin" ? "Drag Cunning Claw into Applications, then open it from there"
         : "Make the file executable once, then double-click it (see below)"
     : os === "win" ? "Double-click  Cunning Claw.cmd"
       : os === "darwin" ? "Double-click  Cunning Claw.command"
         : "Double-click  Cunning Claw.sh  (or run it from a terminal)";
-  const firstTime = installer
+  const firstTime = deb
+    ? `Install it from the folder it downloaded to, in a terminal:\n  sudo apt install ./${debFile}\n(on an arm64 machine, the _arm64.deb). On Ubuntu, double-clicking the .deb may\nopen App Center with an Install button instead; the apt line always works.\nThere is no warning to get past: apt installs it like any other package.`
+    : installer
     ? os === "win"
       ? "The installer is not code-signed yet, so Windows may say it protected your PC.\r\nChoose 'More info', then 'Run anyway'. It installs for you alone and\r\nneeds no administrator password."
       : os === "darwin"
@@ -311,14 +333,18 @@ export function readMe(os, version, kind = "archive") {
       "touched. Settings and notes you never changed are refreshed to the new",
       "version's; anything you changed is kept as it is.",
       "",
-      os === "win"
+      deb
+        ? "To remove him: sudo apt remove cunningclaw. Your folder is kept; delete it\ntoo to remove everything."
+        : os === "win"
         ? "To remove him: Settings → Apps → Cunning Claw → Uninstall. Your folder is\r\nkept unless you tick the box to delete it."
         : os === "darwin"
           ? "To remove him: drag Cunning Claw from Applications to the Bin. Your folder\nis kept; delete it too to remove everything."
           : "To remove him: delete the .AppImage. Your folder is kept; delete it too\nto remove everything.",
       "",
       "Coming from an unzipped download? Bring its keys and memory across with",
-      os === "win"
+      deb
+        ? "  cunningclaw --import ~/Downloads/old-folder"
+        : os === "win"
         ? '  "%LOCALAPPDATA%\\Programs\\Cunning Claw\\Cunning Claw.cmd" --import "C:\\path\\to\\old\\folder"'
         : os === "darwin"
           ? '  "/Applications/Cunning Claw.app/Contents/MacOS/Cunning Claw" --import ~/Downloads/old-folder'
@@ -334,6 +360,15 @@ export function readMe(os, version, kind = "archive") {
       "Moving to a newer download, or to the installer? Start the new one once",
       "from a terminal with  --import  and the path of this folder, with this",
       "one closed; it copies your keys, memory and notes across.",
+      ...(os === "linux"
+        ? [
+          "",
+          "An installer is easier. On Ubuntu or Debian, take the .deb (_arm64 on Arm) and run",
+          `  sudo apt install ./${debFile}`,
+          "then open Cunning Claw from Applications. On any other Linux, take the",
+          ".AppImage, mark it executable (chmod +x) and double-click it.",
+        ]
+        : []),
     ];
   return [
     `CUNNING CLAW ${version}`,
@@ -409,6 +444,8 @@ export function installerName(kind, version, target) {
   const arch = TARGETS[target].node.split("-")[1];
   if (kind === "nsis") return `Cunning-Claw-Setup-${version}.exe`;
   if (kind === "dmg") return `Cunning-Claw-${version}-mac-${arch}.dmg`;
+  // Debian's own shape, name_version_arch.deb, so apt and App Center read it as people expect.
+  if (kind === "deb") return `cunningclaw_${debVersion(version)}_${debArch(target)}.deb`;
   return `Cunning-Claw-${version}-linux-${arch === "x64" ? "x86_64" : "aarch64"}.AppImage`;
 }
 
@@ -473,45 +510,140 @@ function iconPngs(sizes) {
  * copy would be unpacking into the same folder.
  */
 export function appRun() {
+  return posixLauncher({
+    what: "Cunning Claw's AppImage entry point.",
+    locate: 'here="$(dirname "$(readlink -f "$0")")"',
+    self: '"$APPIMAGE"',
+    // Only a real AppImage launch: $APPIMAGE is the file a terminal can run again.
+    when: '[ -n "$APPIMAGE" ]',
+    unpackedGuard: true,
+  });
+}
+
+/**
+ * Terminals to open on a double-click, the first found. x-terminal-emulator
+ * first, because on Debian and Ubuntu it is the one the system was told to
+ * prefer — but it is resolved to the program it points at before choosing
+ * how to hand it a command: Ptyxis, Ubuntu 25.10's terminal, is installed as
+ * x-terminal-emulator and documents `--`, not xterm's `-e`.
+ */
+export const TERMINALS = ["x-terminal-emulator", "xdg-terminal-exec", "ptyxis", "gnome-terminal", "kgx", "konsole", "xfce4-terminal", "mate-terminal", "xterm"];
+
+/** How long a run counts as "stopped at once", in seconds: long enough for a handover, a port clash or a missing piece. */
+export const QUICK_EXIT_SECONDS = 60;
+
+/**
+ * The Linux launchers — the download's Cunning Claw.sh, the AppImage's
+ * AppRun and the .deb's /usr/bin/cunningclaw — one POSIX sh script with three
+ * ways of finding itself.
+ *
+ * Double-clicked (no terminal on stdout, a display, CLAW_NO_TERMINAL unset)
+ * it opens a terminal on itself with --in-terminal, so there is a window to
+ * show he is running and to close to stop him. The founder's v0.5.1 AppImage
+ * "didn't seem to do anything": in that window the claw handed over to his
+ * running one within seconds and the window shut with it. So in a
+ * window it opened itself, a claw that stops within QUICK_EXIT_SECONDS, or
+ * with an error, leaves its last words up until Enter is pressed. Never in
+ * the owner's own terminal (no --in-terminal), never without a terminal on
+ * stdin, never with CLAW_NO_TERMINAL; and not after a signal, which is the
+ * window being closed or Ctrl+C.
+ *
+ * No terminal to open (or an unpacked AppImage, see appRun) and it runs
+ * without a window: the claw opens the browser — on itself, or on the copy
+ * already running — and if it cannot start at all, a desktop notification
+ * (notify-send, where there is one) says so, rather than nothing.
+ */
+export function posixLauncher({ what, locate, self, when = "", unpackedGuard = false }) {
+  const pick = [
+    `for t in ${TERMINALS.join(" ")}; do`,
+    '  p="$(command -v "$t" 2>/dev/null)" || continue',
+    '  k="$t"',
+    '  [ "$t" = x-terminal-emulator ] && k="$(basename "$(readlink -f "$p")")"',
+    '  case "$k" in',
+    '    xdg-terminal-exec) exec "$p" "$self" --in-terminal "$@" ;;',
+    '    ptyxis|gnome-terminal|kgx) exec "$p" -- "$self" --in-terminal "$@" ;;',
+    '    xfce4-terminal|mate-terminal) exec "$p" -x "$self" --in-terminal "$@" ;;',
+    '    *) exec "$p" -e "$self" --in-terminal "$@" ;;',
+    "  esac",
+    "done",
+  ];
+  const indent = (lines, n) => lines.map((l) => " ".repeat(n) + l);
   return [
     "#!/bin/sh",
-    "# Cunning Claw's AppImage entry point. Generated by scripts/bundle.mjs.",
-    'here="$(dirname "$(readlink -f "$0")")"',
+    `# ${what} Generated by scripts/bundle.mjs.`,
+    locate,
+    `self=${self}`,
+    "pause=; nowin=",
     'if [ "$1" = "--in-terminal" ]; then',
-    "  shift",
-    'elif [ ! -t 1 ] && [ -z "$CLAW_NO_TERMINAL" ] && [ -n "$APPIMAGE" ] && { [ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ]; }; then',
-    '  case "$APPDIR" in',
-    "    */appimage_extracted_*) ;;",
-    "    *)",
-    "      for t in x-terminal-emulator gnome-terminal konsole xfce4-terminal mate-terminal xterm; do",
-    '        command -v "$t" >/dev/null 2>&1 || continue',
-    '        case "$t" in',
-    '          gnome-terminal) exec "$t" -- "$APPIMAGE" --in-terminal "$@" ;;',
-    '          xfce4-terminal|mate-terminal) exec "$t" -x "$APPIMAGE" --in-terminal "$@" ;;',
-    '          *) exec "$t" -e "$APPIMAGE" --in-terminal "$@" ;;',
-    "        esac",
-    "      done",
-    "      ;;",
-    "  esac",
+    "  shift; pause=1",
+    `elif [ ! -t 1 ] && [ -z "$CLAW_NO_TERMINAL" ]${when ? ` && ${when}` : ""} && { [ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ]; }; then`,
+    "  nowin=1",
+    ...(unpackedGuard
+      ? ['  case "$APPDIR" in', "    */appimage_extracted_*) ;;", "    *)", ...indent(pick, 6), "      ;;", "  esac"]
+      : indent(pick, 2)),
     "fi",
     'cd "$here/app" || exit 1',
     'PATH="$here/runtime/bin:$PATH"; export PATH',
-    'CLAW_OPEN_HUD=1 exec "$here/runtime/bin/node" dist/boot.js "$@"',
+    "CLAW_OPEN_HUD=1; export CLAW_OPEN_HUD",
+    'node="$here/runtime/bin/node"',
+    'if [ -n "$pause" ] && [ -t 0 ] && [ -z "$CLAW_NO_TERMINAL" ]; then',
+    '  started="$(date +%s 2>/dev/null)"',
+    '  "$node" dist/boot.js "$@"',
+    "  status=$?",
+    '  ended="$(date +%s 2>/dev/null)"',
+    "  # A signal is the window closing or Ctrl+C: nobody is waiting to read.",
+    '  [ "$status" -gt 128 ] && exit "$status"',
+    "  case \"$started\" in ''|*[!0-9]*) started= ;; esac",
+    "  case \"$ended\" in ''|*[!0-9]*) ended= ;; esac",
+    `  if [ "$status" -ne 0 ] || [ -z "$started" ] || [ -z "$ended" ] || [ $((ended - started)) -lt ${QUICK_EXIT_SECONDS} ]; then`,
+    "    printf '\\nPress Enter to close this window.'",
+    "    read -r _ || true",
+    "  fi",
+    '  exit "$status"',
+    "fi",
+    'if [ -n "$nowin" ]; then',
+    '  "$node" dist/boot.js "$@"',
+    "  status=$?",
+    '  if [ "$status" -ne 0 ] && [ "$status" -le 128 ] && command -v notify-send >/dev/null 2>&1; then',
+    '    notify-send -i cunningclaw "Cunning Claw could not start" "Run it from a terminal to see why: $self"',
+    "  fi",
+    '  exit "$status"',
+    "fi",
+    'exec "$node" dist/boot.js "$@"',
     "",
   ].join("\n");
 }
 
-export function desktopEntry(version) {
+/** The .deb's /usr/bin/cunningclaw: the same script, with the code at DEB_PREFIX. */
+export const DEB_PREFIX = "/opt/cunningclaw";
+export function debLauncher() {
+  return posixLauncher({
+    what: "Cunning Claw, installed from the .deb (the code is in /opt/cunningclaw).",
+    locate: `here=${DEB_PREFIX}`,
+    self: "/usr/bin/cunningclaw",
+  });
+}
+
+/**
+ * The menu entry. Terminal=false on purpose, for the .deb as for the
+ * AppImage: the launcher opens its own terminal (posixLauncher), so it can
+ * keep that window up when the claw stops at once, and so that a desktop with
+ * no terminal it knows still gets the browser and a notification. With
+ * Terminal=true the desktop would choose the window, and close it the moment
+ * the claw handed over to a running one.
+ */
+export function desktopEntry(version, kind = "appimage") {
   return [
     "[Desktop Entry]",
     "Type=Application",
     "Name=Cunning Claw",
+    "GenericName=Personal assistant",
     "Comment=A local-first personal assistant",
     "Exec=cunningclaw",
     "Icon=cunningclaw",
     "Terminal=false",
     "Categories=Utility;",
-    `X-AppImage-Version=${version}`,
+    ...(kind === "appimage" ? [`X-AppImage-Version=${version}`] : []),
     "",
   ].join("\n");
 }
@@ -540,6 +672,165 @@ async function buildAppImage(bundleDir, target) {
     env: { ...process.env, ARCH: arch, APPIMAGE_EXTRACT_AND_RUN: "1" },
   });
   fs.chmodSync(out, 0o755);
+  console.log(`  → ${path.relative(ROOT, out)}  (${(fs.statSync(out).size / 1e6).toFixed(0)} MB)`);
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// The .deb, for Ubuntu and Debian
+// ---------------------------------------------------------------------------
+
+/**
+ * Who the package says made it. A placeholder the founder replaces with the
+ * project's real address: Debian wants a name and an email in Maintainer, and
+ * a person's own address does not belong in a public package.
+ */
+export const DEB_MAINTAINER = "Dragon Forge AI <placeholder@cunningclaw.com>";
+
+/** Debian sorts "~" before anything, so 1.0.0~rc1 comes before 1.0.0 as semver's 1.0.0-rc1 does. */
+export function debVersion(version) {
+  return version.replace(/-/g, "~");
+}
+
+export function debArch(target) {
+  return TARGETS[target].node.endsWith("arm64") ? "arm64" : "amd64";
+}
+
+/**
+ * DEBIAN/control. Depends names only what the bundled Node itself links
+ * against — read from its ELF header (readelf -d: libc, libstdc++, libgcc_s;
+ * the newest symbol versions it asks for are GLIBC_2.28 and GLIBCXX_3.4.21,
+ * which is Node 22's own floor) — because everything else, Node included,
+ * ships inside. libgcc1 is the older name of libgcc-s1 (Debian 10).
+ *
+ * Recommends bubblewrap: the shell's box on Linux (src/sandbox.ts). He runs
+ * without it — the doctor names it as missing — so it is not a Depends; but
+ * apt installs what a package recommends unless told not to, so an owner who
+ * installs the .deb gets the boxed shell without having to know to ask.
+ */
+export function debControl({ version, arch, installedSizeKiB }) {
+  return [
+    "Package: cunningclaw",
+    `Version: ${debVersion(version)}`,
+    `Architecture: ${arch}`,
+    `Maintainer: ${DEB_MAINTAINER}`,
+    `Installed-Size: ${installedSizeKiB}`,
+    "Depends: libc6 (>= 2.28), libstdc++6 (>= 5.2), libgcc-s1 | libgcc1",
+    "Recommends: bubblewrap",
+    "Section: utils",
+    "Priority: optional",
+    "Homepage: https://github.com/Dragon-Forge-master/cunning-claw",
+    "Description: local-first personal AI assistant",
+    " Cunning Claw is a personal assistant that runs on this computer: a HUD in",
+    " your browser on 127.0.0.1, a brain you choose (a free Gemini key, an",
+    " OpenRouter key, or an offline model), and hands on this machine that ask",
+    " before they act. Prompt injection is the threat model: he reads",
+    " strangers' text and never takes orders from it.",
+    " .",
+    " The app and its own Node runtime are installed in /opt/cunningclaw. Your",
+    " keys, settings, memory and notes live in ~/.local/share/cunningclaw, which",
+    " removing the package leaves alone.",
+    "",
+  ].join("\n");
+}
+
+/** Debian's copyright file: the licence, in the machine-readable format, from LICENSE itself. */
+export function debCopyright(license) {
+  const holder = license.match(/^Copyright \(c\) (.+)$/m)?.[1] ?? "Dragon Forge AI";
+  const terms = license.slice(Math.max(0, license.indexOf("Permission is hereby granted")));
+  const body = terms.trim().split("\n").map((l) => (l.trim() ? ` ${l.trim()}` : " .")).join("\n");
+  return [
+    "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/",
+    "Upstream-Name: cunningclaw",
+    "Source: https://github.com/Dragon-Forge-master/cunning-claw",
+    "",
+    "Files: *",
+    `Copyright: ${holder}`,
+    "License: MIT",
+    body,
+    "",
+  ].join("\n");
+}
+
+/** Every path under `root`, files and symlinks, relative and forward-slashed. */
+function walk(root, rel = "") {
+  const out = [];
+  for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+    const r = rel ? `${rel}/${e.name}` : e.name;
+    if (e.isDirectory()) out.push({ rel: r, dir: true }, ...walk(root, r));
+    else out.push({ rel: r, dir: false, link: e.isSymbolicLink() });
+  }
+  return out;
+}
+
+/**
+ * The package's tree, laid out under `root`, without DEBIAN/:
+ *
+ *   opt/cunningclaw/app, runtime        the bundle, marked installed (read-only to the owner)
+ *   usr/bin/cunningclaw                 debLauncher()
+ *   usr/share/applications/cunningclaw.desktop
+ *   usr/share/icons/hicolor/NxN/apps/cunningclaw.png
+ *   usr/share/doc/cunningclaw/README, copyright
+ *
+ * No postinst or prerm. Ubuntu's and Debian's desktop-file-utils and
+ * gtk-update-icon-cache already hold dpkg triggers on
+ * /usr/share/applications and /usr/share/icons/hicolor, so the menu entry
+ * and icon appear without a script of ours; and nothing of the owner's is
+ * under a path dpkg knows, so removal cannot touch it.
+ */
+export function layOutDeb(bundleDir, root, version) {
+  const prefix = path.join(root, DEB_PREFIX.slice(1));
+  fs.mkdirSync(prefix, { recursive: true });
+  layOut(bundleDir, prefix, "deb");
+  const put = (rel, text, mode = 0o644) => {
+    fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+    fs.writeFileSync(path.join(root, rel), text, { mode });
+  };
+  put("usr/bin/cunningclaw", debLauncher(), 0o755);
+  put("usr/share/applications/cunningclaw.desktop", desktopEntry(version, "deb"));
+  for (const size of [16, 32, 48, 128, 256, 512]) {
+    put(`usr/share/icons/hicolor/${size}x${size}/apps/cunningclaw.png`, fs.readFileSync(path.join(ICONS, `cunningclaw-${size}.png`)));
+  }
+  put("usr/share/doc/cunningclaw/README", readMe("linux", version, "deb"));
+  put("usr/share/doc/cunningclaw/copyright", debCopyright(fs.readFileSync(path.join(ROOT, "LICENSE"), "utf-8")));
+  // dpkg installs modes as they are: 755 for folders and anything executable,
+  // 644 for the rest, whatever the builder's umask made of the copies.
+  for (const e of walk(root)) {
+    if (e.link) continue;
+    const p = path.join(root, e.rel);
+    fs.chmodSync(p, e.dir || fs.statSync(p).mode & 0o111 ? 0o755 : 0o644);
+  }
+  return root;
+}
+
+/** Installed-Size, in KiB, as dpkg counts it: each file rounded up, and one for each folder and link. */
+export function installedSizeKiB(root) {
+  let kib = 0;
+  for (const e of walk(root)) {
+    if (e.rel === "DEBIAN" || e.rel.startsWith("DEBIAN/")) continue;
+    kib += e.dir || e.link ? 1 : Math.ceil(fs.statSync(path.join(root, e.rel)).size / 1024);
+  }
+  return kib;
+}
+
+function buildDeb(bundleDir, target) {
+  if (process.platform !== "linux") throw new Error("The .deb builds on Linux (dpkg-deb).");
+  const root = path.join(OUT, ".installers", `${target}.deb`);
+  fs.rmSync(root, { recursive: true, force: true });
+  layOutDeb(bundleDir, root, pkg.version);
+  const control = path.join(root, "DEBIAN");
+  fs.mkdirSync(control, { mode: 0o755 });
+  // md5sums lets `dpkg --verify cunningclaw` say whether the code was changed after install.
+  const sums = walk(root)
+    .filter((e) => !e.dir && !e.link && !e.rel.startsWith("DEBIAN/"))
+    .map((e) => `${crypto.createHash("md5").update(fs.readFileSync(path.join(root, e.rel))).digest("hex")}  ${e.rel}`);
+  fs.writeFileSync(path.join(control, "md5sums"), sums.join("\n") + "\n", { mode: 0o644 });
+  fs.writeFileSync(path.join(control, "control"),
+    debControl({ version: pkg.version, arch: debArch(target), installedSizeKiB: installedSizeKiB(root) }), { mode: 0o644 });
+  const out = path.join(OUT, installerName("deb", pkg.version, target));
+  fs.rmSync(out, { force: true });
+  // root:root owners whoever builds it; xz, which every dpkg reads (zstd needs Debian 12).
+  run("dpkg-deb", ["--root-owner-group", "-Zxz", "--build", root, out]);
   console.log(`  → ${path.relative(ROOT, out)}  (${(fs.statSync(out).size / 1e6).toFixed(0)} MB)`);
   return out;
 }
@@ -842,6 +1133,7 @@ function buildDmg(bundleDir, target) {
 async function buildInstaller(kind, bundleDir, target) {
   console.log(`▸ ${kind} for ${target}`);
   if (kind === "appimage") return buildAppImage(bundleDir, target);
+  if (kind === "deb") return buildDeb(bundleDir, target);
   if (kind === "nsis") return buildNsis(bundleDir);
   return buildDmg(bundleDir, target);
 }

@@ -2,13 +2,13 @@ name: Bundles
 
 # The download-and-double-click bundles and the installers made from them
 # (scripts/bundle.mjs). The bundles are built once on Linux — the app is plain
-# JavaScript, only the Node runtime differs — and so are the AppImages and the
-# Windows installer (makensis runs on Linux). The .dmg needs hdiutil, so it is
-# built on a Mac. Then each system's bundle is unpacked and started by its own
-# launcher on that system, and each installer is installed and started the
-# way an owner would, because "it should work on Windows" is not the same as
-# a Windows machine saying so. A tag publishes them to a GitHub Release, only
-# after every one of them passes.
+# JavaScript, only the Node runtime differs — and so are the AppImages, the
+# .debs and the Windows installer (makensis runs on Linux). The .dmg needs
+# hdiutil, so it is built on a Mac. Then each system's bundle is unpacked and
+# started by its own launcher on that system, and each installer is installed
+# and started the way an owner would, because "it should work on Windows" is
+# not the same as a Windows machine saying so. A tag publishes them to a
+# GitHub Release, only after every one of them passes.
 
 on:
   push:
@@ -67,8 +67,8 @@ jobs:
           printf '%s' "$WINDOWS_SIGN_PASSWORD" > "$RUNNER_TEMP/sign.pass"
           echo "WINDOWS_SIGN_PFX=$RUNNER_TEMP/sign.pfx" >> "$GITHUB_ENV"
           echo "WINDOWS_SIGN_PASSWORD_FILE=$RUNNER_TEMP/sign.pass" >> "$GITHUB_ENV"
-      - name: Build every bundle, the AppImages and the Windows installer
-        run: npm run bundle -- --all --installer appimage,nsis
+      - name: Build every bundle, the AppImages, the .debs and the Windows installer
+        run: npm run bundle -- --all --installer appimage,deb,nsis
       - uses: actions/upload-artifact@v4
         with:
           name: bundles
@@ -81,6 +81,7 @@ jobs:
           name: installers-linux-windows
           path: |
             release/Cunning-Claw-*.AppImage
+            release/cunningclaw_*.deb
             release/Cunning-Claw-Setup-*.exe
           if-no-files-found: error
 
@@ -232,6 +233,63 @@ jobs:
           if ls /tmp/appimage_extracted_*/app/.env 2>/dev/null; then echo ".env was written beside the code"; exit 1; fi
           echo "AppImage smoke passed: started, opened on setup, and its .env is in $owner"
 
+  # The .deb, installed with apt as an owner on Ubuntu would, started as the
+  # menu entry starts it (CLAW_NO_TERMINAL: run where it stands rather than
+  # open a terminal on itself), then removed with apt — keeping the owner's folder.
+  smoke-deb:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      CLAW_NO_BROWSER: "1"
+      CLAW_NO_TERMINAL: "1"
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: installers-linux-windows
+      - name: Install with apt, as an owner would
+        run: |
+          deb=$(ls cunningclaw_*_amd64.deb)
+          dpkg-deb --info "$deb"
+          sudo apt-get install -y "./$deb"
+          dpkg -s cunningclaw | grep -E '^(Status|Version|Architecture|Maintainer|Depends):'
+          test -f /opt/cunningclaw/app/installed.json || { echo "Not marked installed"; exit 1; }
+          test -x /usr/bin/cunningclaw || { echo "No /usr/bin/cunningclaw"; exit 1; }
+          test -f /usr/share/applications/cunningclaw.desktop || { echo "No menu entry"; exit 1; }
+          test -f /usr/share/icons/hicolor/256x256/apps/cunningclaw.png || { echo "No icon"; exit 1; }
+          # The code is root's: the owner cannot write beside it, which is why installed.json moves his things.
+          if [ -w /opt/cunningclaw/app ]; then echo "/opt/cunningclaw/app is writable by $(id -un)"; exit 1; fi
+      - name: Start it by its command
+        run: |
+          nohup cunningclaw > "$RUNNER_TEMP/boot.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/claw.pid"
+      - name: It opens on the setup page, and keeps the owner's things in ~/.local/share
+        run: |
+          ok=""
+          for i in $(seq 1 45); do
+            home=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/ || true)
+            welcome=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:3900/welcome || true)
+            if [ "$home" = "302" ] && [ "$welcome" = "200" ]; then ok=1; break; fi
+            sleep 2
+          done
+          echo "--- boot log ---"; cat "$RUNNER_TEMP/boot.log" || true
+          if [ -z "$ok" ]; then echo ".deb smoke failed: / -> $home, /welcome -> $welcome"; exit 1; fi
+          curl -s http://127.0.0.1:3900/cunningclaw.json; echo
+          owner="$HOME/.local/share/cunningclaw"
+          test -f "$owner/.env" || { echo "No .env in $owner"; exit 1; }
+          test -f "$owner/claw.config.json" || { echo "The config was not seeded into $owner"; exit 1; }
+          if sudo find /opt/cunningclaw -name .env | grep -q .; then echo ".env was written under /opt"; exit 1; fi
+          echo ".deb smoke passed: installed with apt, started, opened on setup, and its .env is in $owner"
+      - name: Remove it with apt, and the owner's folder stays
+        run: |
+          kill "$(cat "$RUNNER_TEMP/claw.pid")" || true
+          sudo apt-get remove -y cunningclaw
+          if dpkg -s cunningclaw 2>/dev/null | grep -q '^Status: install ok installed'; then echo "Still installed"; exit 1; fi
+          for p in /opt/cunningclaw /usr/bin/cunningclaw /usr/share/applications/cunningclaw.desktop; do
+            if [ -e "$p" ]; then echo "Left behind: $p"; exit 1; fi
+          done
+          test -f "$HOME/.local/share/cunningclaw/.env" || { echo "Removing the package deleted the owner's folder"; exit 1; }
+          echo ".deb removal passed: the app is gone and $HOME/.local/share/cunningclaw is kept"
+
   smoke-windows-installer:
     needs: build
     runs-on: windows-latest
@@ -324,7 +382,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release != '')
-    needs: [smoke, smoke-appimage, smoke-windows-installer, smoke-dmg]
+    needs: [smoke, smoke-appimage, smoke-deb, smoke-windows-installer, smoke-dmg]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -354,4 +412,4 @@ jobs:
             set -- --notes "Install the one for your computer: the Setup .exe on Windows, the .dmg on a Mac, the .AppImage on Linux. Or take the .zip / .tar.gz, unzip it and read READ ME FIRST.txt. Not code-signed yet: Windows and macOS will ask once before the first run."
           fi
           gh release create "$TAG" --repo "${GITHUB_REPOSITORY}" --target "${GITHUB_SHA}" --title "Cunning Claw $TAG" \
-            "$@" cunningclaw-*.zip cunningclaw-*.tar.gz Cunning-Claw-*.exe Cunning-Claw-*.dmg Cunning-Claw-*.AppImage
+            "$@" cunningclaw-*.zip cunningclaw-*.tar.gz Cunning-Claw-*.exe Cunning-Claw-*.dmg Cunning-Claw-*.AppImage cunningclaw_*.deb
