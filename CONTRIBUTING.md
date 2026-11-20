@@ -34,6 +34,11 @@ src/home-events.ts HA WebSocket (injected socket and timers), watch rules, debou
 src/visitor-log.ts the Desk's visitor log and data/visitors stills; retention
 src/home-vision.ts the optional one-line visitor caption; the prompt forbids identifying anyone
 src/first-run.ts   what boot needs; the setup page decides the rest (public/welcome.html)
+src/approvals.ts   the approval registry: real cards to the HUD and phones, practice cards to the HUD only
+src/learn.ts       Learn mode's lesson engine; only the HUD's /api/learn routes drive it (docs/LEARN-MODE.md)
+src/learn-sim.ts   the practice ground: a simulator at executeTool, fixture inboxes, nothing real runs
+src/learn-format.ts lesson files, grading, Leitner review, data/learn/progress.json (a leaf)
+learn/             the course: en/ lessons, cy/ the Welsh slot (needs a Welsh-speaking author), scenarios/
 src/owner.ts       the operator's name, address and town, kept in data/owner.json
 src/keys.ts        the Keys page: saving keys to .env, and checking them with the provider for free
 src/voice.ts       Piper / spd-say / say
@@ -98,6 +103,10 @@ description: One line for the skill index. When to use it.
 ```
 
 `listSkills()` picks up any folder with valid frontmatter. No registry file to edit. The HUD **SKILLS** button lists them; click to arm, and the next send tells CUNNING CLAW to `skill_read` them first. After a novel multi-step success in a live session, `skill_write` is the same path.
+
+## Adding a lesson
+
+Lessons live in `learn/en/<module>/`, practice scenarios in `learn/scenarios/`. Every fact a lesson states about the claw is listed under `claims:` and checked against the code by `src/learn.test.ts` — a claim with no checker, or one that has stopped being true, fails the run. The practice ground's simulator answers only the tools it has fixtures for; anything else is refused, never run. `docs/LEARN-MODE.md` has the format and the reasons.
 
 ## Pull requests
 
