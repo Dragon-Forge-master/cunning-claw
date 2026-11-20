@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8">
+<title>A week with Cunning Claw — carousel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../kit.css">
+<style>
+  /* 1080×1080, nine slides: a cover, one per moment, a close. The frame is
+     ../carousel.html's. Each moment names its hands as chips — solid for
+     built in, dashed for a connector, as on the connections map — and says
+     where he stops, on the same slide, because a slide travels alone. Every
+     moment is the "A week" section of site/index.html, word for word where
+     it fits. */
+  body{width:1080px}
+  .slide{width:1080px;height:1080px;display:flex;flex-direction:column;padding:76px 88px 70px;--glow-x:78%;--glow-y:22%;--glow-w:900px;--glow-h:760px}
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .top .brand{font-size:24px}
+  .top .brand img{width:62px;height:62px}
+  .top .count{font-family:var(--mono);font-size:26px;letter-spacing:.16em;color:var(--dim)}
+  .top .count b{color:var(--cyan);font-weight:500}
+  .main{flex:1;display:flex;flex-direction:column;justify-content:center;gap:28px;padding:20px 0}
+  .main .eyebrow{font-size:27px}
+  h2{font-size:68px;line-height:1.06;max-width:900px}
+  .main p{font-size:33px;line-height:1.42;color:var(--text);max-width:880px}
+  .hands{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .hands b{font-family:var(--mono);font-size:20px;letter-spacing:.2em;color:var(--dim);font-weight:500;margin-right:6px}
+  .chip{font-family:var(--mono);font-size:24px;padding:6px 14px;border:2px solid rgba(53,214,237,.6);color:var(--text)}
+  .chip.cx{border:2px dashed var(--deep)}
+  .honest{font-size:29px;line-height:1.42;max-width:900px;padding:6px 0 6px 28px}
+  .honest b{font-size:21px;margin-bottom:8px}
+  .numeral{position:absolute;right:56px;bottom:-40px;font-family:var(--display);font-style:italic;font-weight:700;font-size:440px;line-height:1;color:rgba(53,214,237,.06);pointer-events:none}
+  .foot{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:23px;letter-spacing:.16em;color:var(--dim)}
+  .dots{display:flex;gap:10px}
+  .dots i{width:12px;height:12px;border:1.5px solid var(--deep);display:block}
+  .dots i.on{background:var(--cyan);border-color:var(--cyan)}
+
+  .cover .tag{font-size:26px;padding:8px 16px;align-self:flex-start}
+  .cover h1{font-size:100px;line-height:1.0;max-width:900px}
+  .cover .main p{font-size:36px;color:var(--dim);max-width:860px}
+  .cover .legend{display:flex;gap:40px;font-size:27px;color:var(--dim)}
+  .cover .legend span{display:flex;align-items:center;gap:14px}
+  .cover .legend i{display:inline-block;width:56px;border-top:3px solid var(--cyan)}
+  .cover .legend i.dash{border-top:3px dashed var(--deep)}
+  .close h2{font-size:74px}
+  .close .main{gap:26px}
+  .spell{font-family:var(--mono);font-size:25px;line-height:1.7;background:#050a12;border:1px solid var(--line);padding:16px 22px;color:var(--text)}
+  .spell .k{color:var(--cyan)}
+  .spell .d{color:var(--dim)}
+  .close .url{font-family:var(--mono);font-size:40px;letter-spacing:.08em;color:var(--cyan)}
+  .close .welsh{font-family:var(--mono);font-size:21px;letter-spacing:.14em;color:var(--cyan);opacity:.85}
+  .close .welsh span{display:block;color:var(--dim);margin-top:6px;letter-spacing:.1em}
+</style></head>
+<body>
+
+<section class="slide frame cover" data-name="01-cover">
+  <div class="top"><div class="brand"><img src="../../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>7</b> MOMENTS</div></div>
+  <div class="main">
+    <div class="tag">A WEEK WITH CUNNING CLAW</div>
+    <h1>He does the legwork. <em>You say yes.</em></h1>
+    <p>Seven moments from a small business’s week: the hands he uses, and where he stops and waits for you.</p>
+    <div class="legend"><span><i></i>built in</span><span><i class="dash"></i>a connector you sign in to</span></div>
+  </div>
+  <div class="foot"><span>SWIPE FOR THE WEEK →</span><span>OPEN SOURCE · CARDIFF</span></div>
+</section>
+
+<section class="slide frame" data-name="02-monday-briefing">
+  <div class="numeral">1</div>
+  <div class="top"><div class="brand"><img src="../../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>01</b> / 07</div></div>
+  <div class="main">
+    <div class="eyebrow">Monday · 08:00</div>
+    <h2>The briefing is on the Desk before you are.</h2>
+    <p>He reads today’s calendar and your unread email in his own browser, counts the unread WhatsApps, checks the weather, and writes it up in three sentences.</p>
+    <div class="hands"><b>HANDS</b><span class="chip">Calendar</span><span class="chip">Gmail</span><span class="chip">WhatsApp</span><span class="chip">Weather</span><span class="chip">The Desk</span></div>
+    <div class="honest"><b>WHERE HE STOPS</b>Nothing to stop for: it is a note. With ntfy set up, a copy reaches your phone.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="03-tuesday-invoice">
+  <div class="numeral">2</div>
+  <div class="top"><div class="brand"><img src="../../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>02</b> / 07</div></div>
+  <div class="main">
+    <div class="eyebrow">Tuesday · 10:15</div>
+    <h2>A supplier’s invoice, read and drafted into Xero.</h2>
+    <p>Hand him the PDF. He reads the supplier, the lines and the amount due, and gets the bill ready in Xero.</p>
+    <div class="hands"><b>HANDS</b><span class="chip">Reads the PDF</span><span class="chip cx">Xero</span></div>
+    <div class="honest"><b>WHERE HE STOPS</b>Creating the bill waits for your yes. The PDF is a stranger’s words: if it tries to give him orders, he flags it.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="04-wednesday-replies">
+  <div class="numeral">3</div>
+  <div class="top"><div class="brand"><img src="../../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>03</b> / 07</div></div>
+  <div class="main">
+    <div class="eyebrow">Wednesday · 09:30</div>
+    <h2>Three customers answered, in your tone.</h2>
+    <p>Three emails have waited since yesterday. He reads each thread and drafts a reply the way you have told him you like to write.</p>
+    <div class="hands"><b>HANDS</b><span class="chip">Gmail</span><span class="chip">Memory</span></div>
+    <div class="honest"><b>WHERE HE STOPS</b>You read them. Each one goes only when you say send.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="05-wednesday-whatsapp">
+  <div class="numeral">4</div>
+  <div class="top"><div class="brand"><img src="../../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>04</b> / 07</div></div>
+  <div class="main">
+    <div class="eyebrow">Wednesday · 14:00</div>
+    <h2>“Can you fit me in on Saturday?”</h2>
+    <p>A customer asks on WhatsApp. He looks at Saturday on your calendar and types an answer into the chat.</p>
+    <div class="hands"><b>HANDS</b><span class="chip">WhatsApp</span><span class="chip">Calendar</span></div>
+    <div class="honest"><b>WHERE HE STOPS</b>The reply is typed, not sent. Sending waits for you.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="06-thursday-website">
+  <div class="numeral">5</div>
+  <div class="top"><div class="brand"><img src="../../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>05</b> / 07</div></div>
+  <div class="main">
+    <div class="eyebrow">Thursday · 11:40</div>
+    <h2>The website still works after the change.</h2>
+    <p>Out and about, you ask him on Telegram to check it. He opens the live pages in his browser, looks over your Cloudflare account, and answers you there.</p>
+    <div class="hands"><b>HANDS</b><span class="chip">Telegram</span><span class="chip">His browser</span><span class="chip cx">Cloudflare</span></div>
+    <div class="honest"><b>WHERE HE STOPS</b>Looking is free. Changing anything on Cloudflare asks first.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="07-friday-summary">
+  <div class="numeral">6</div>
+  <div class="top"><div class="brand"><img src="../../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>06</b> / 07</div></div>
+  <div class="main">
+    <div class="eyebrow">Friday · 17:00</div>
+    <h2>The week, summed up on the Desk.</h2>
+    <p>Money in, jobs done, who is owed a follow-up: from your inbox, his journal of the week, and Xero if it is connected.</p>
+    <div class="hands"><b>HANDS</b><span class="chip">Gmail</span><span class="chip">His journal</span><span class="chip cx">Xero</span><span class="chip">The Desk</span></div>
+    <div class="honest"><b>WHERE HE STOPS</b>A note, nothing sent. You set it up once, as a standing order.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame" data-name="08-friday-canva">
+  <div class="numeral">7</div>
+  <div class="top"><div class="brand"><img src="../../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>07</b> / 07</div></div>
+  <div class="main">
+    <div class="eyebrow">Friday · 17:30</div>
+    <h2>The weekend offer, drafted in Canva.</h2>
+    <p>Ask for a post about Saturday’s offer and he makes the design in your own Canva account, with your brand kit if you have one.</p>
+    <div class="hands"><b>HANDS</b><span class="chip cx">Canva</span></div>
+    <div class="honest"><b>WHERE HE STOPS</b>Making the design asks first, and nothing goes public without your yes.</div>
+  </div>
+  <div class="foot"><div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i></div><span>CUNNINGCLAW.COM</span></div>
+</section>
+
+<section class="slide frame close" data-name="09-close">
+  <div class="top"><div class="brand"><img src="../../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div><div class="count"><b>SET IT ONCE</b></div></div>
+  <div class="main">
+    <h2>Monday and Friday <em>run themselves.</em></h2>
+    <p>Tell him once and he writes the standing orders, in Welsh or English. Arming a new one asks you first.</p>
+    <div class="spell"><span class="k">08:00:llun-gwe</span> <span class="d">·</span> the briefing<br><span class="k">17:00:gwener</span>   <span class="d">·</span> the week on the Desk</div>
+    <div class="honest"><b>THE HONEST BIT</b>An illustration, not a customer’s story. Xero, Cloudflare and Canva need your own accounts, set up once. One Gmail account for now; no Outlook yet. He works while your computer is on.</div>
+    <div class="url">cunningclaw.com</div>
+  </div>
+  <div class="foot"><div class="welsh">YN LLEOL YN GYNTAF · CANIATÂD DYNOL PAN FO CANLYNIADAU<span>local first · human consent where there are consequences</span></div></div>
+</section>
+
+</body></html>

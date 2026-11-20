@@ -37,6 +37,8 @@ skills, 623 tests, 2 runtime dependencies); the plan's first table says how.
 | [COPY.md](COPY.md) · Cold email | Subject lines and body, with the business PDF attached | Email to limited companies, R+9 | R-day |
 | [COPY.md](COPY.md) · Press release | Announcement with notes to editors; **the quote is a draft for Chris to approve** | Local press, R-day or R+1 | R-day · Just Works · needs Chris's approval and contact details |
 | [COPY.md](COPY.md) · About Dragon Forge AI | 50-word and 100-word boilerplate | Press, directories, profiles | Ready now |
+| [COPY.md](COPY.md) · Connections map | Facebook and LinkedIn posts introducing the map, with alt text, and where every claim comes from | Facebook, LinkedIn | Ready now |
+| [COPY.md](COPY.md) · A week with Cunning Claw | Instagram and Facebook page captions and alt text for all nine slides; three short posts on one moment each (Friday at five, the supplier's invoice, the Saturday WhatsApp), each with a cut for X | Instagram, Facebook, LinkedIn, X | Ready now |
 | [POSTS.md](POSTS.md) | Facebook, X and LinkedIn release posts (corrected: Mac box, "no terminal", connector coach) | Facebook, X, LinkedIn, R-day | R-day |
 | [../X-THREAD.md](../X-THREAD.md) | The seven-post X thread, rewritten for 0.3, and a week of follow-ups | X (@Dragon_forge_ai), R-day | R-day |
 
@@ -55,6 +57,24 @@ the HTML beside them. To re-render after a change: `node docs/launch/v0.3/render
 | `site-social-0.3.png` (source `site-social.html`) | 1600×900 | The share image refreshed for all nine upgrades; the sandbox line now says Linux | og:image for cunningclaw.com (for whoever owns `site/` to install), link previews, Product Hunt gallery | Ready now |
 | `social-0.3.png` (source `social-card.html`) | 1600×900 | The earlier eight-item card | Superseded by `site-social-0.3.png`; its "Linux & Mac" line overstates the Mac box, so do not use it again | Retired |
 | `site-new.png`, `site-new-phone.png` | — | Earlier captures of the site, kept for reference | — | Not part of this kit; untouched |
+
+### Connections: what he connects to, and a week with him
+
+The founder's ask after release: show what he can be connected up to and
+what he can do. Sources and PNGs are in [connections/](connections/), with
+their own renderer: `node docs/launch/v0.3/connections/render.cjs` (or name
+one job: `square`, `wide`, `story`, `week`). The counts are typed in by hand
+from `MCP_CATALOGUE`'s categories; `connections/connections.css` says which
+category makes which group, so re-count from there if the catalogue changes.
+The same map and week are on cunningclaw.com as "What he connects to" and
+"A week with Cunning Claw".
+
+| File | Size | What it is | Where it goes | Status |
+|---|---|---|---|---|
+| `connections/connections-1080.png` (source `hub-square.html`) | 1080×1080 | The connections map: the claw in the middle, solid lines to five built-in groups, dashed lines to seven connector groups with real names and true "+N more" counts, 94 in all | Facebook, Instagram, LinkedIn | Ready now |
+| `connections/connections-1600x900.png` (source `hub-wide.html`) | 1600×900 | The same map with the words beside it | LinkedIn, X, link previews | Ready now |
+| `connections/connections-story.png` (source `hub-story.html`) | 1080×1920 | The same twelve groups hanging off a spine, with the app's top and bottom bands kept clear | Instagram and Facebook stories | Ready now |
+| `connections/week/01-cover.png` … `09-close.png` (source `week-carousel.html`) | 1080×1080 ×9 | A week with Cunning Claw: cover, seven moments (each with the hands it uses and where he stops), and a close with the two standing orders and the honest bit | Instagram and Facebook carousel; single slides with the short posts | Ready now |
 
 ## Print
 

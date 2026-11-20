@@ -539,3 +539,199 @@ until he has.
 > that sends, spends or publishes waits for a human yes. The name comes from
 > the Welsh cunning folk, *y dyn hysbys*, the knowing one. The motto is local
 > first, human consent where there are consequences. No crypto token, ever.
+
+---
+
+## Connections map and "A week with Cunning Claw" [ready now]
+
+The founder's ask: show people what he can be connected up to, and what he
+can do in a week. The pictures are in [connections/](connections/); the same
+two things are on cunningclaw.com as "What he connects to" and "A week with
+Cunning Claw".
+
+Where the claims come from, so each one survives "how do we know?":
+
+- **The groups and counts** are the Connect sheet's own categories in
+  `MCP_CATALOGUE` (`src/mcp-catalog.ts`): websites and hosting 8, money 7,
+  sales and email marketing 8, automation 3, work and docs 16 (work 7, docs 6,
+  chat 3), code 15, make and design 13, and 24 more in data, search, meetings
+  and AI. 94 in all. Re-count before posting if the catalogue has changed.
+- **Built in** means no connector: Gmail, Calendar and Drive through his own
+  Chrome (one Gmail account at present; no Outlook), WhatsApp Web, the
+  desktop and the shell, files and the Desk, documents, Telegram, Discord and
+  ntfy, and Home Assistant and a second computer once you switch them on.
+- **The week is an illustration**, not a customer's story; say so if anyone
+  asks. Each moment is something he can do today. Xero, Cloudflare and Canva
+  are connectors that need the reader's own account. Monday and Friday are
+  standing orders the reader sets up; he does not do them out of the box.
+- **Where he stops** is code, not a promise: sending an email or a WhatsApp
+  asks first (`send_email`, `send_chat`); a connector tool whose name says it
+  creates, changes or deletes raises a card, and so does one it cannot
+  classify (`decideMcpApproval` in `src/mcp.ts`); arming a new standing order
+  asks first. Desk notes are written without a card, because the Desk is his
+  own ground.
+
+### Facebook: the connections map
+
+Attach `connections/connections-1080.png`.
+
+> People keep asking me what Cunning Claw can actually do, so I drew a map.
+>
+> He sits in the middle, on your own computer. Some of his hands are built
+> in: your Gmail, calendar and Drive through his own browser, WhatsApp, your
+> screen and your files, and your phone through Telegram, Discord or ntfy.
+> The rest are connectors, 94 of them, from Xero and Stripe to Canva,
+> Cloudflare, HubSpot and Notion. Each one is your own account, signed in by
+> you, and a "Guide me" button walks you through setting it up.
+>
+> Whatever he's connected to, the rule is the same: anything that sends,
+> spends, publishes or deletes waits for you to say yes.
+>
+> Free with your own key, open source, built in Cardiff. It's still early
+> days, so if you try it, tell me what's missing from the map.
+>
+> cunningclaw.com
+
+**Alt text:** A map of what Cunning Claw connects to. Cunning Claw sits in a
+circle in the middle. Solid lines run to what is built in: Google (Gmail,
+Calendar, Drive), WhatsApp, screen and files, your phone (Telegram, Discord,
+ntfy), and home and machines (Home Assistant, a second computer). Dashed
+lines run to connectors you sign in to: websites (Cloudflare, Vercel,
+Netlify and 5 more), money (Xero, Stripe, PayPal and 4 more), sales and
+email (HubSpot, MailerLite, Klaviyo and 5 more), automation (Zapier, Make,
+IFTTT), work and docs (Notion, Slack, Asana and 13 more), code (GitHub,
+Lovable, v0 and 12 more), and make and design (Canva, Figma, Gamma and 10
+more). 24 more for data, search, meetings and AI; 94 connectors in all.
+
+### LinkedIn: the connections map
+
+Attach `connections/connections-1600x900.png`. The alt text above fits it too.
+
+> A question I get a lot about Cunning Claw: what does it actually connect to?
+>
+> So I drew it. The assistant runs on your own computer and sits in the
+> middle. Two kinds of line go out from it.
+>
+> Solid lines are built in. Gmail, Calendar and Drive through its own browser
+> (sign in once), WhatsApp Web, the screen and the shell, files and
+> documents, Telegram, Discord and ntfy to reach your phone, and, if you
+> switch them on, Home Assistant and a second computer over ssh.
+>
+> Dashed lines are connectors: 94 of them, in the same groups the app shows.
+> Websites and hosting (Cloudflare, Vercel, Netlify), money (Xero, Stripe,
+> PayPal), sales and email marketing (HubSpot, MailerLite, Klaviyo), work and
+> docs (Notion, Slack, Asana), code (GitHub, Lovable, v0), design (Canva,
+> Figma), automation (Zapier, Make, IFTTT), and more. A listing isn't a
+> connection: each one needs your own account and your own sign-in.
+>
+> Two things don't change, whichever line the work travels. Anything that
+> sends, spends, publishes or deletes waits for a human yes. And text that
+> comes back along any of them, an email, a web page, a connector's reply, is
+> treated as information, never as orders.
+>
+> It's alpha, with very few users so far, one Gmail account at a time and no
+> Outlook yet. Free and open source with your own key.
+>
+> cunningclaw.com
+
+### Carousel captions: A week with Cunning Claw
+
+The carousel is `connections/week/01-cover.png` to
+`connections/week/09-close.png`, in order. The story to go with it is
+`connections/connections-story.png` (add a link sticker to cunningclaw.com).
+
+**Instagram:**
+
+> A week with Cunning Claw, the AI assistant that runs on your own computer.
+>
+> Seven moments from a small business's week: the morning briefing, a
+> supplier's invoice, customer emails, a WhatsApp booking, a website check,
+> the Friday summary and a Canva post. Every slide says which of his hands he
+> uses, and where he stops and waits for your yes.
+>
+> Free with your own key. Open source. Built in Cardiff by Dragon Forge AI.
+> cunningclaw.com (link in bio)
+>
+> #smallbusiness #AI #opensource #localfirst #Cardiff #Wales
+
+**Facebook page:**
+
+> What does a week with Cunning Claw look like for a small business?
+>
+> Monday's briefing is waiting before you are. On Tuesday he reads the
+> supplier's PDF and gets the bill ready in Xero. On Wednesday he drafts the
+> customer replies, and answers a WhatsApp about Saturday. On Thursday he
+> checks the website after a change and tells you on Telegram. At five on
+> Friday the week is summed up on one page, and the weekend offer is drafted
+> in Canva.
+>
+> And every time something would be sent, published or changed, he stops and
+> waits for you. Each slide says where.
+>
+> Xero, Cloudflare and Canva are connectors, so they need your own accounts,
+> set up once. It's an illustration of what he can do, not a customer's
+> story, and he works while your computer is on.
+>
+> cunningclaw.com
+
+**Alt text, slide by slide:**
+
+1. Cover: "A week with Cunning Claw. He does the legwork. You say yes." Seven moments from a small business's week, the hands he uses and where he stops. A solid line means built in; a dashed line means a connector you sign in to.
+2. Monday, 08:00: the briefing is on the Desk before you are. He reads today's calendar and unread email in his own browser, counts unread WhatsApps and checks the weather. Where he stops: nothing to stop for, it is a note; with ntfy set up, a copy reaches your phone.
+3. Tuesday, 10:15: a supplier's invoice, read and drafted into Xero. Hands: reads the PDF; Xero connector. Where he stops: creating the bill waits for your yes, and if the PDF tries to give him orders, he flags it.
+4. Wednesday, 09:30: three customers answered, in your tone. Hands: Gmail, memory. Where he stops: each reply goes only when you say send.
+5. Wednesday, 14:00: "Can you fit me in on Saturday?" A customer asks on WhatsApp; he checks your calendar and types an answer. Where he stops: typed, not sent.
+6. Thursday, 11:40: the website still works after the change. You ask on Telegram; he opens the live pages and looks over your Cloudflare account (connector). Where he stops: looking is free; changing anything on Cloudflare asks first.
+7. Friday, 17:00: the week, summed up on the Desk: money in, jobs done, who is owed a follow-up, from your inbox, his journal and Xero if connected. Where he stops: a note, nothing sent; set up once as a standing order.
+8. Friday, 17:30: the weekend offer, drafted in Canva (connector), with your brand kit if you have one. Where he stops: making the design asks first, and nothing goes public without your yes.
+9. Close: Monday and Friday run themselves. Standing orders 08:00:llun-gwe for the briefing and 17:00:gwener for the week, in Welsh or English; arming one asks first. The honest bit: an illustration, not a customer's story; Xero, Cloudflare and Canva need your own accounts; one Gmail account for now, no Outlook yet; he works while your computer is on.
+
+### Three short posts, one moment each
+
+Each goes with its slide from the carousel and works alone on Facebook or
+LinkedIn. The italic line under each is the cut for X (character count in
+brackets, limit 280).
+
+**Friday at five** (attach `connections/week/07-friday-summary.png`):
+
+> Friday at five, Cunning Claw puts the week on one page: money in, jobs
+> done, and who's owed a follow-up. He reads your inbox, his own journal of
+> the week, and Xero if you've connected it.
+>
+> You set it up once. Tell him "every Friday at five, sum up the week", and
+> he writes it as a standing order (Welsh or English both work, so it can
+> read 17:00:gwener) and asks you before he arms it. After that it's a note
+> waiting for you on the Desk. Nothing sent.
+>
+> cunningclaw.com
+
+X: *Friday at five, Cunning Claw puts the week on one page: money in, jobs done, who's owed a follow-up. Set it up once; he asks before arming it. Nothing sent, just a note waiting for you. cunningclaw.com* (201 characters)
+
+**The supplier's invoice** (attach `connections/week/03-tuesday-invoice.png`):
+
+> A supplier's PDF invoice lands. Hand it to Cunning Claw and he reads the
+> supplier, the lines and the amount due, and gets the bill ready in Xero.
+>
+> Two places he stops. Creating the bill in Xero waits for your yes. And the
+> PDF is a stranger's words: if something in it tries to give him orders, he
+> flags it rather than follows it.
+>
+> Xero needs its connector set up once with your own account; a "Guide me"
+> button walks you through it.
+>
+> cunningclaw.com
+
+X: *Hand Cunning Claw a supplier's PDF and he gets the bill ready in Xero. Creating it waits for your yes, and if the PDF tries to give him orders, he flags it. cunningclaw.com* (172 characters)
+
+**"Can you fit me in on Saturday?"** (attach `connections/week/05-wednesday-whatsapp.png`):
+
+> A customer asks on WhatsApp whether you can fit them in on Saturday.
+> Cunning Claw looks at Saturday on your calendar and types an answer into
+> the chat.
+>
+> Then he stops. The reply is typed, not sent: sending waits for you, as
+> every email and WhatsApp he writes does.
+>
+> cunningclaw.com
+
+X: *A customer asks on WhatsApp if you're free Saturday. Cunning Claw checks your calendar and types the answer. Typed, not sent: sending waits for you. cunningclaw.com* (164 characters)

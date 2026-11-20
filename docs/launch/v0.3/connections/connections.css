@@ -1,0 +1,38 @@
+/* The connections map's shared look, on top of ../kit.css. The hub is the
+   site's (#connects in site/index.html) at social sizes: one list of groups on
+   a grid ring around the claw, with an SVG behind drawing the spokes, solid to
+   what is built in and dashed to a connector. The SVG's viewBox is the grid in
+   cell units ×100, stretched to fit, so each line ends inside its card, which
+   covers it.
+
+   Counts are MCP_CATALOGUE's own categories (src/mcp-catalog.ts), grouped:
+   websites & hosting = Ship (8), money = Money (7), sales & email = Sales (8),
+   automation = Automate (3), work & docs = Work 7 + Docs 6 + Chat 3 (16),
+   code = Code (15), make & design = Create (13); the other 24 are Data (15),
+   Search (4), Meetings (3) and AI (2). 70 + 24 = 94. */
+.hub{position:relative;flex:1;min-height:0}
+.hub svg.spokes{position:absolute;inset:0;width:100%;height:100%}
+.spokes line{stroke-width:2.5;vector-effect:non-scaling-stroke;fill:none}
+.spokes .bi line{stroke:var(--cyan);opacity:.8}
+.spokes .cx line{stroke:var(--deep);stroke-dasharray:10 8}
+.hub ul{list-style:none;position:relative;height:100%;display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));grid-template-rows:repeat(var(--rows),minmax(0,1fr));gap:var(--gap,20px)}
+.node{background:var(--ink2);padding:var(--pad,16px 18px);display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.node.bi{border:2px solid rgba(53,214,237,.7)}
+.node.cx{border:2px dashed var(--deep)}
+.node .nt{font-family:var(--mono);font-size:var(--nt,16px);letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+.node b{font-family:var(--mono);color:var(--cyan);font-size:var(--nb,20px);letter-spacing:.08em;font-weight:600;text-transform:uppercase;line-height:1.25}
+.node .nn{font-size:var(--nn,23px);line-height:1.3;color:var(--text)}
+.node .nx{font-size:var(--nx,19px);line-height:1.3;color:var(--dim);margin-top:auto}
+.core{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);width:var(--core,280px);height:var(--core,280px);border-radius:50%;border:2px solid var(--cyan);background:radial-gradient(circle at 50% 38%,#11283e,var(--ink) 72%);box-shadow:0 0 80px rgba(53,214,237,.22);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.core img{width:calc(var(--core,280px) * .46);height:auto}
+.core b{font-family:var(--mono);color:var(--cyan);font-weight:600;letter-spacing:.2em;text-indent:.2em;font-size:calc(var(--core,280px) * .075);margin-top:10px}
+.core span{font-family:var(--mono);color:var(--dim);letter-spacing:.1em;font-size:calc(var(--core,280px) * .06);margin-top:4px}
+.legend{display:flex;flex-wrap:wrap;gap:10px 40px;font-size:var(--lg,23px);color:var(--dim)}
+.legend>span{display:flex;align-items:center;gap:14px}
+.legend i{display:inline-block;width:56px;flex:none;border-top:3px solid var(--cyan)}
+.legend i.dash{border-top:3px dashed var(--deep)}
+.legend strong{color:var(--text);font-weight:600}
+/* on a social card the border says built in or connector, so a card is just
+   its name and a few real names; "+N more" trails the names in dim */
+.node.tight{justify-content:center;gap:10px}
+.nn i{font-style:normal;color:var(--dim);white-space:nowrap}
