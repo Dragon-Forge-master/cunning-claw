@@ -1,12 +1,23 @@
 // Pocket Claw — the phone's glass. Vanilla JS, no build, like the HUD.
 // Every word the model or a stranger wrote is set with textContent; there is
-// no innerHTML in this file. The device token lives in an HttpOnly cookie the
-// page never sees; the page holds no secret of its own.
-"use strict";
+// no innerHTML in this file.
+//
+// Two ways home, one app. On the claw's own tailnet name the page talks to
+// the claw with fetch and EventSource, and the device token lives in an
+// HttpOnly cookie the page never sees. Served from cunningclaw.com it talks
+// through Dragon Forge's relay instead (relay.js): the same requests and the
+// same event feed, inside an end-to-end encrypted channel, and the phone is
+// known by a key the page can use but never read. Everything above `api()`
+// and `connectEvents()` is the same code either way.
+import { createRelayLink, idbStore, parsePairLink } from "./relay.js";
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ["pair", "gone", "talk", "approvals", "share", "receipt", "jobs", "phone"];
 const state = { me: null, unlocked: false, approvals: new Map(), jobs: new Map(), events: null, claw: null, toolLine: null, shared: [], receipt: null };
+/** Served from cunningclaw.com (site/pocket/), not by a claw: the relay is the only way home. */
+const SITE = document.querySelector('meta[name="pocket-home"]')?.getAttribute("content") === "site";
+/** The relay link, when this phone reaches its claw through the relay. */
+let relay = null;
 
 // --- small helpers -------------------------------------------------------------
 
@@ -23,6 +34,7 @@ function say(id, text, bad = false) {
 }
 
 async function api(path, opts = {}) {
+  if (relay) return relayApi(path, opts);
   const init = { method: opts.method || "GET", credentials: "same-origin", headers: {} };
   if (opts.body !== undefined) {
     init.headers["Content-Type"] = opts.type || "application/json";
@@ -33,6 +45,52 @@ async function api(path, opts = {}) {
   try { json = await res.json(); } catch { /* empty body */ }
   if (res.status === 423) setLocked(true);
   return { status: res.status, ok: res.ok, json: json || {} };
+}
+
+/** The same request through the relay's end-to-end channel; the same answer shape as fetch's. */
+async function relayApi(path, opts) {
+  let res;
+  try {
+    res = await relay.request(opts.method || "GET", `/pocket/api${path}`, opts.body === undefined ? {} : { body: opts.body, type: opts.type });
+  } catch (err) {
+    return { status: 0, ok: false, json: { error: String(err.message || err) } };
+  }
+  let json = null;
+  try { json = JSON.parse(res.body); } catch { /* empty body */ }
+  if (res.status === 423) setLocked(true);
+  return { status: res.status, ok: res.status >= 200 && res.status < 300, json: json || {} };
+}
+
+/** Set while the glass says the claw cannot be reached: the link coming back should bring it back. */
+let awaitingLink = false;
+
+/** What the link says about itself: a line under the bar, or the end of this pairing. */
+function onLinkState({ state: s, text }) {
+  const line = $("link-state");
+  if (s === "gone") {
+    void relay?.forget();
+    return gone("Not paired", text);
+  }
+  if (awaitingLink && s !== "open") {
+    // The "cannot reach" screen is already the message: keep it current
+    // rather than say it twice, once under the bar and once below it.
+    line.hidden = true;
+    if (text) $("gone-text").textContent = text;
+    return;
+  }
+  line.hidden = s === "open" || !text;
+  line.textContent = text || "";
+  // The link retries by itself; once it is through, the page should not sit
+  // on "cannot reach" until someone thinks to reload it.
+  if (s === "open" && awaitingLink) {
+    awaitingLink = false;
+    void start();
+  }
+}
+
+function makeRelayLink() {
+  if (!globalThis.crypto?.subtle) throw new Error("This browser cannot do the encryption Pocket needs. Open it in Chrome.");
+  return createRelayLink({ store: idbStore(), onState: onLinkState });
 }
 
 const b64uToBytes = (s) => {
@@ -100,19 +158,28 @@ function defaultName() {
   return /Android/.test(ua) ? "Android phone" : /iPhone/.test(ua) ? "iPhone" : "Phone";
 }
 
-function startPairing(code) {
+function startPairing(code, viaRelay) {
   show("pair");
   $("pair-name").value = defaultName();
+  $("pair-how").textContent = viaRelay
+    ? "Through Dragon Forge's relay, end-to-end encrypted: the relay carries the connection between this phone and your claw, and cannot read or change it."
+    : "Over your private network: straight from this phone to your claw.";
   $("pair-go").onclick = async () => {
     $("pair-go").disabled = true;
-    say("pair-msg", "Asking the claw…");
+    say("pair-msg", viaRelay ? "Reaching your claw through the relay…" : "Asking the claw…");
     try {
+      if (viaRelay) {
+        relay = makeRelayLink();
+        await relay.beginPairing(viaRelay);
+        say("pair-msg", "Asking the claw…");
+      }
       const opts = await api("/pair/options", { method: "POST", body: { code } });
       if (!opts.ok) throw new Error(opts.json.error || `HTTP ${opts.status}`);
       say("pair-msg", "Touch the sensor, or use your screen lock.");
       const credential = await webauthnCreate(opts.json.publicKey);
       const done = await api("/pair/finish", { method: "POST", body: { enrolment: opts.json.enrolment, name: $("pair-name").value, credential } });
       if (!done.ok) throw new Error(done.json.error || `HTTP ${done.status}`);
+      if (viaRelay) await relay.finishPairing(done.json.relayToken);
       say("pair-msg", "Paired.");
       await start("talk");
     } catch (err) {
@@ -574,46 +641,82 @@ async function loadJobs() {
 
 // --- The event stream -----------------------------------------------------------------------
 
-function connectEvents() {
-  if (state.events) state.events.close();
-  const es = new EventSource("/pocket/api/events");
-  state.events = es;
-  const data = (e) => { try { return JSON.parse(e.data); } catch { return {}; } };
-  es.addEventListener("approval_request", (e) => {
-    const a = data(e);
+/** What each event does to the glass, whichever way it arrived. */
+const ON_EVENT = {
+  approval_request: (a) => {
     state.approvals.set(a.id, a);
     renderApprovals();
-  });
-  es.addEventListener("approval_resolved", (e) => {
-    state.approvals.delete(data(e).id);
+  },
+  approval_resolved: (d) => {
+    state.approvals.delete(d.id);
     renderApprovals();
-  });
-  es.addEventListener("turn_start", () => { state.claw = null; state.toolLine = null; });
-  es.addEventListener("text", (e) => {
+  },
+  turn_start: () => { state.claw = null; state.toolLine = null; },
+  text: (d) => {
     if (!state.claw) state.claw = addLine("claw", "");
-    state.claw.textContent += data(e).delta || "";
+    state.claw.textContent += d.delta || "";
     scrollLog();
-  });
-  es.addEventListener("tool_start", (e) => {
-    const name = String(data(e).name || "a tool");
+  },
+  tool_start: (d) => {
+    const name = String(d.name || "a tool");
     if (state.toolLine) state.toolLine.textContent = `· ${name}`;
     else state.toolLine = addLine("tool", `· ${name}`);
     state.claw = null; // words after a tool start a new bubble, as they do on the HUD
-  });
-  es.addEventListener("turn_done", (e) => {
-    const t = data(e).text;
-    if (t && !state.claw && !data(e).stopped) addLine("claw", t);
+  },
+  turn_done: (d) => {
+    if (d.text && !state.claw && !d.stopped) addLine("claw", d.text);
     state.claw = null;
     state.toolLine = null;
-  });
-  es.addEventListener("job", (e) => { const j = data(e); if (j.id) upsertJob(j); });
-  es.addEventListener("agent_error", (e) => addLine("sys", data(e).message || "The claw hit an error."));
-  es.addEventListener("notice", (e) => addLine("sys", data(e).message || ""));
+  },
+  job: (j) => { if (j.id) upsertJob(j); },
+  agent_error: (d) => addLine("sys", d.message || "The claw hit an error."),
+  notice: (d) => addLine("sys", d.message || ""),
+};
+const parseData = (s) => { try { return JSON.parse(s) || {}; } catch { return {}; } };
+
+function connectEvents() {
+  if (state.events) state.events.close();
+  if (relay) return connectRelayEvents();
+  const es = new EventSource("/pocket/api/events");
+  state.events = es;
+  for (const [name, fn] of Object.entries(ON_EVENT)) es.addEventListener(name, (e) => fn(parseData(e.data)));
   // A revoked phone's stream is closed by the claw; stop retrying into a 401.
   es.onerror = async () => {
     const me = await api("/me");
     if (me.status === 401) { es.close(); gone("Not paired", "This phone was unpaired. Press POCKET on the HUD to pair it again."); }
   };
+}
+
+/**
+ * The same feed through the relay: the claw's own text/event-stream bytes,
+ * carried in the channel, cut into events here as EventSource would.
+ */
+function connectRelayEvents() {
+  const handle = { closed: false, inner: null, close() { this.closed = true; this.inner?.close(); } };
+  state.events = handle;
+  let buf = "";
+  const block = (text) => {
+    let name = "message";
+    const data = [];
+    for (const line of text.split("\n")) {
+      if (line.startsWith("event:")) name = line.slice(6).trim();
+      else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /, ""));
+    }
+    if (Object.hasOwn(ON_EVENT, name)) ON_EVENT[name](parseData(data.join("\n")));
+  };
+  const again = () => setTimeout(() => { if (!handle.closed && state.events === handle) connectEvents(); }, 3000);
+  relay.stream("/pocket/api/events", (chunk) => {
+    buf += chunk;
+    for (let i = buf.indexOf("\n\n"); i >= 0; i = buf.indexOf("\n\n")) {
+      block(buf.slice(0, i));
+      buf = buf.slice(i + 2);
+    }
+  }, async () => {
+    if (handle.closed) return;
+    const me = await api("/me");
+    if (me.status === 401) return gone("Not paired", "This phone was unpaired. Press POCKET on the HUD to pair it again.");
+    again();
+  }).then((st) => { handle.inner = st; if (handle.closed) st.close(); }, again);
 }
 
 // --- Push ------------------------------------------------------------------------------------
@@ -665,6 +768,14 @@ function route() {
 
 async function start(firstView) {
   const me = await api("/me");
+  if (me.status === 0 && relay) {
+    // The relay or the claw cannot be reached. The link keeps trying, this
+    // screen says why (onLinkState keeps it current), and the page comes back
+    // by itself when the link gets through.
+    awaitingLink = true;
+    $("link-state").hidden = true;
+    return gone("Cannot reach your claw", me.json.error || "Trying again shortly.");
+  }
   if (me.status === 404) {
     return gone("Open this on your phone", "Pocket Claw answers on your tailnet address, not on this machine's own. See docs/POCKET-CLAW.md.");
   }
@@ -676,6 +787,7 @@ async function start(firstView) {
   $("fact-name").textContent = me.json.name;
   $("fact-claw").textContent = me.json.claw;
   $("fact-push").textContent = me.json.push ? "on" : "off";
+  $("fact-via").textContent = relay ? "Dragon Forge's relay, end-to-end encrypted" : "your private network";
   setLocked(!me.json.unlocked);
   connectEvents();
   await loadApprovals();
@@ -688,18 +800,38 @@ async function start(firstView) {
   route();
 }
 
-window.addEventListener("hashchange", () => { if (state.me) route(); });
+window.addEventListener("hashchange", () => {
+  // A pairing link opened while the app is already showing (the camera hands
+  // the QR's URL to this tab) changes only the fragment: boot again for it,
+  // rather than read the code as a view name.
+  if (parsePairLink(location.hash) || /^#pair=/.test(location.hash)) return location.reload();
+  if (state.me) route();
+});
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/pocket/sw.js", { scope: "/pocket/" }).catch(() => { /* the page works without it */ });
 }
 
-(function boot() {
+(async function boot() {
+  // A relay QR's link carries the code, the room, the claw's fingerprint and the relay.
+  const link = parsePairLink(location.hash);
   const m = /^#pair=([A-Za-z0-9_-]{16,64})$/.exec(location.hash);
-  if (m) {
+  if (link || m) {
     // The code is a secret: off the address bar and out of history at once.
     history.replaceState(null, "", "/pocket/");
-    return startPairing(m[1]);
+    if (link) return startPairing(link.code, link);
+    if (!SITE) return startPairing(m[1], null);
+    return gone("That code is for your private network", "It opens on your claw's own tailnet address, not here. On the HUD, press PAIR A PHONE and choose Easy for a code this page can use.");
+  }
+  if (SITE) {
+    try {
+      relay = makeRelayLink();
+      if (await relay.load()) return void start();
+    } catch (err) {
+      return gone("This browser cannot run Pocket Claw", String(err.message || err));
+    }
+    relay = null;
+    return gone("Pair from your claw", "On the computer that runs your claw, open the HUD, press POCKET, then PAIR A PHONE. Scan the code with this phone's camera.");
   }
   void start();
 })();

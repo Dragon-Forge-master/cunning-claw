@@ -53,6 +53,8 @@ import { jobs, TERMINAL_STATES } from "./jobs.js";
 import { foreman, reportText, startForeman } from "./foreman.js";
 import { hostGate } from "./pocket-host.js";
 import { createPocket, POCKET_LARGE_BODIES } from "./pocket.js";
+import { createBridge } from "./pocket-bridge.js";
+import { createRelayTransport, loadRelayIdentity, relayConfig } from "./pocket-relay.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -98,7 +100,23 @@ const pocket = createPocket({
   vapidSubject: config.pocket?.vapidSubject,
   staticDir: path.join(ROOT, "public", "pocket"),
   jobs,
+  relay: () => pocketRelay,
 });
+
+// Pocket through Dragon Forge's relay (src/pocket-relay.ts): a second way in
+// to the same router, never a second Pocket. The bridge dispatches what
+// arrives on an end-to-end channel into pocket.phone in-process, so no port
+// is opened for it. Null when pocket.relay is switched off or has no URL.
+const relaySettings = relayConfig(config.pocket?.relay);
+const pocketRelay = relaySettings
+  ? createRelayTransport({
+    config: relaySettings,
+    identity: loadRelayIdentity(DATA_DIR),
+    pocket,
+    dispatch: createBridge(pocket.phone, { largeBodies: POCKET_LARGE_BODIES, host: new URL(relaySettings.appOrigin).host, origin: relaySettings.appOrigin }).dispatch,
+    notice: (message) => broadcast("notice", { message }),
+  })
+  : null;
 
 // Before every route: a request must name this claw. Loopback names get the
 // HUD; the operator's tailnet name gets /pocket/ and nothing else; any other
@@ -924,6 +942,8 @@ const httpServer = app.listen(port, host, async () => {
 
   // Armed before anything that can push: the late briefing fires at boot.
   startNtfy();
+  // Back on the relay if a phone was paired through it; otherwise this does nothing.
+  pocketRelay?.ensure();
   // Learn mode's review offer rides the heartbeat: silent unless the operator
   // turned reminders on and something is due, and once a day at most.
   startHeartbeat(agentEvents, { onBeat: () => { learn.nudgeTick(); } });

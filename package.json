@@ -11,7 +11,8 @@
     "test": "tsx --import ./scripts/test-env.mjs --test src/*.test.ts",
     "doctor": "tsx src/doctor.ts",
     "update": "git pull && npm install",
-    "bundle": "node scripts/bundle.mjs"
+    "bundle": "node scripts/bundle.mjs",
+    "site:pocket": "node scripts/site-pocket.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

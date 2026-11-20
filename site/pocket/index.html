@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a111c" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f2ede3" media="(prefers-color-scheme: light)">
+  <meta name="color-scheme" content="dark light">
+  <meta name="pocket-home" content="site">
+  <title>Pocket Claw</title>
+  <link rel="manifest" href="/pocket/manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="/pocket/icons/mark.svg">
+  <link rel="apple-touch-icon" href="/pocket/icons/icon-192.png">
+  <link rel="stylesheet" href="/pocket/pocket.css">
+</head>
+<body>
+  <header class="bar">
+    <img class="mark" src="/pocket/icons/mark.svg" alt="" width="28" height="28">
+    <div class="wordmark">POCKET CLAW</div>
+    <div id="lock-state" class="lock-state" hidden></div>
+  </header>
+  <p id="link-state" class="link-state" role="status" hidden></p>
+
+  <main id="screens">
+    <!-- Before anything else: pairing, or the reason there is nothing to show. -->
+    <section id="screen-pair" class="screen" hidden>
+      <h1>Pair this phone</h1>
+      <p class="lede">Your fingerprint, face or screen lock becomes the key to this claw's approval cards. Nothing about it leaves the phone; the claw keeps only a public key.</p>
+      <p id="pair-how" class="lede small"></p>
+      <label class="field">Name this phone
+        <input id="pair-name" type="text" maxlength="40" autocomplete="off" placeholder="My phone">
+      </label>
+      <button id="pair-go" class="primary big" type="button">Pair with fingerprint</button>
+      <p id="pair-msg" class="msg-line" role="status"></p>
+    </section>
+
+    <section id="screen-gone" class="screen" hidden>
+      <h1 id="gone-title">Not paired</h1>
+      <p id="gone-text" class="lede"></p>
+    </section>
+
+    <section id="screen-talk" class="screen" hidden>
+      <div id="log" class="log" aria-live="polite"></div>
+      <div id="locked-panel" class="locked" hidden>
+        <p>Locked. The conversation opens with your fingerprint or screen lock.</p>
+        <button id="unlock-go" class="primary big" type="button">Unlock</button>
+      </div>
+      <form id="composer" class="composer">
+        <button id="mic" class="round" type="button" aria-label="Talk" title="Talk">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-2.1A7 7 0 0 0 19 12Z"/></svg>
+        </button>
+        <button id="snap" class="round" type="button" aria-label="Camera" title="Photograph something for the claw">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 7.2 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.2L15 4H9Zm3 4.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/></svg>
+        </button>
+        <input id="camera" type="file" accept="image/*" capture="environment" hidden>
+        <input id="say" type="text" autocomplete="off" enterkeyhint="send" placeholder="Say something to the claw">
+        <button id="send" class="primary" type="submit">Send</button>
+      </form>
+    </section>
+
+    <section id="screen-approvals" class="screen" hidden>
+      <h1>Approvals <span class="welsh">y llw</span></h1>
+      <p class="lede small">Each answer asks for your fingerprint again, for that card only.</p>
+      <div id="cards"></div>
+      <p id="no-cards" class="empty">Nothing is waiting for you.</p>
+    </section>
+
+    <section id="screen-share" class="screen" hidden>
+      <h1>Shared with the claw</h1>
+      <p class="lede small">Files from other apps are other people's words. The claw reads them as outside content and will not take orders from them.</p>
+      <div id="share-preview" class="share-preview"></div>
+      <label class="field">Anything to add? (optional)
+        <input id="share-note" type="text" maxlength="500" autocomplete="off" placeholder="e.g. this was the van's MOT">
+      </label>
+      <div class="share-actions">
+        <button id="share-receipt" class="primary big" type="button">File as receipt</button>
+        <p class="lede small">Read and added to your receipts ledger. Not sent to the chat.</p>
+        <button id="share-ask" class="big" type="button">Attach to chat</button>
+        <p class="lede small">The claw reads it as outside content and answers you.</p>
+        <button id="share-keep" class="big quiet" type="button">Just keep it on the Desk</button>
+      </div>
+      <p id="share-msg" class="msg-line" role="status"></p>
+    </section>
+
+    <!-- Snap receipt: straight to the ledger, the same filing path Telegram uses. -->
+    <section id="screen-receipt" class="screen" hidden>
+      <h1>Receipt</h1>
+      <div id="receipt-capture" class="share-actions">
+        <p class="lede">Photograph the receipt flat, with the total in view. It is read and filed in your receipts ledger; nothing on it goes to the chat.</p>
+        <button id="receipt-snap" class="primary big" type="button">Photograph the receipt</button>
+        <input id="receipt-camera" type="file" accept="image/jpeg,image/png" capture="environment" hidden>
+      </div>
+      <div id="receipt-filed" class="filed" hidden>
+        <p class="lede small">Filed. Check it while the slip is in your hand.</p>
+        <p id="receipt-line" class="filed-line"></p>
+        <p id="receipt-warning" class="msg-line bad"></p>
+        <label class="field">Wrong? Say what it should be
+          <input id="receipt-fix" type="text" maxlength="300" autocomplete="off" placeholder="total £12.40, supplier Tesco, date 19/11/2026">
+        </label>
+        <div class="share-actions">
+          <button id="receipt-fix-go" class="primary big" type="button">Correct it</button>
+          <button id="receipt-void" class="big" type="button">Not a receipt — void it</button>
+          <button id="receipt-again" class="big quiet" type="button">Photograph another</button>
+        </div>
+      </div>
+      <p id="receipt-msg" class="msg-line" role="status"></p>
+    </section>
+
+    <section id="screen-jobs" class="screen" hidden>
+      <h1>Jobs</h1>
+      <p id="jobs-locked" class="lede" hidden>Locked. Open Talk and unlock to see the work in flight.</p>
+      <div id="jobs-list"></div>
+      <p id="no-jobs" class="empty" hidden>No jobs on the board.</p>
+    </section>
+
+    <section id="screen-phone" class="screen" hidden>
+      <h1>This phone</h1>
+      <dl class="facts">
+        <dt>Name</dt><dd id="fact-name"></dd>
+        <dt>Claw</dt><dd id="fact-claw"></dd>
+        <dt>Waiting</dt><dd id="fact-pending"></dd>
+        <dt>Notifications</dt><dd id="fact-push"></dd>
+        <dt>Connection</dt><dd id="fact-via"></dd>
+      </dl>
+      <button id="push-go" class="primary big" type="button">Tell me when approvals wait</button>
+      <p class="lede small">A notification says how many cards are waiting and nothing else — never what they are — because it shows on a locked screen.</p>
+      <button id="lock-go" class="big" type="button">Lock now</button>
+      <p id="phone-msg" class="msg-line" role="status"></p>
+    </section>
+  </main>
+
+  <nav id="tabs" class="tabs" hidden>
+    <a href="#talk" data-view="talk">Talk</a>
+    <a href="#approvals" data-view="approvals">Approvals <span id="badge" class="badge" hidden></span></a>
+    <a href="#jobs" data-view="jobs">Jobs</a>
+    <a href="#phone" data-view="phone">Phone</a>
+  </nav>
+
+  <script type="module" src="/pocket/pocket.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "app": "pocket",
+  "version": "0.5.1",
+  "sha256": {
+    "e2e.js": "c1e423040e59428fe08cbbb9859faeee3caabd11bd11e547afc21777ed8eb701",
+    "icons/approvals-96.png": "710b4032c1af37655b1f890d6870df180a1f39e5ea0f81c529630475ca0a401d",
+    "icons/badge-96.png": "fcac492e001d16ebc722065d947279ebadf2f1a7427b70f8f113ee9a28e56de6",
+    "icons/icon-192.png": "20f41246ec0a2c6053b4c47f887b50672ea4537e6f31b383303414e8a74033a7",
+    "icons/icon-512.png": "f12c97dcec24ea119df247e06b1c204bac82cf985570fb41c102d38a92470bbc",
+    "icons/mark.svg": "e5585c4c94e6aaa93867b09547838559765a929ea332ac6fa26386e9d4a80001",
+    "icons/maskable-512.png": "eaaa27bae4c7de7cc27f2daea22ed5be519b96ac9fbf186fb8154580ad1bb465",
+    "icons/snap-96.png": "f7f00c5a5f635b095b411784d3b2a9b2ce9bd0a0577e17bdbc739a10cac5fc58",
+    "icons/talk-96.png": "b5a8b4434c48c3cb428fccdbd86bc5f90567d74d69d212273e7e7707a987153b",
+    "index.html": "6b406de8be46634cb15c9ea2b6de9fb51abac508d0d98b326bd97113d83e3f49",
+    "manifest.webmanifest": "46c0b0f37af7cfc9673e2e5bc4ea7c61d7c101f9c329ddeb2f6963dd450d59e3",
+    "pocket.css": "f67f4f89c687cf4cfeb2ff96290b4d20d3745ae1750fce13570a2d791157af35",
+    "pocket.js": "f4c9328a3f5b2aaf9acf575ce122456269f81509dddd2e8acadb2ad02771faf2",
+    "relay.js": "a4a948bf180b58e9cedc9097a76d28dc4be1c01d566c067114045198a80b4c29",
+    "sw.js": "0ba0716ce59fefab4cd2f50b32c2bd51e87a9715ffaca9d11b19f682778fef8f"
+  }
+}

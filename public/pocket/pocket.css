@@ -58,6 +58,9 @@ body {
 .wordmark { font-family: var(--mono); letter-spacing: 3px; font-size: 14px; color: var(--deep); font-weight: 600; }
 @media (prefers-color-scheme: dark) { .wordmark { color: var(--accent); } }
 .lock-state { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--dim); letter-spacing: 1px; }
+/* The relay link's own word on itself: offline, reconnecting, something altered the line. */
+.link-state { padding: 8px var(--gutter); font-size: 14px; color: var(--gold); border-bottom: 1px solid var(--line); }
+.link-state[hidden] { display: none; }
 
 main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .screen { padding: 18px var(--gutter) 24px; display: flex; flex-direction: column; gap: 14px; min-height: 100%; }

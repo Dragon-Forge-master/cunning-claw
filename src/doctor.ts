@@ -16,6 +16,7 @@ import { boxes as remoteBoxes, sshArgs, shQuote, type Box as RemoteBox } from ".
 import { expandHome } from "./paths.js";
 import { ntfyDoctorLine } from "./ntfy.js";
 import { pocketDoctorLine } from "./pocket-host.js";
+import { relayConfig, relayDoctorLine, siteAppDoctorLine } from "./pocket-relay.js";
 import { sandboxDoctor } from "./sandbox.js";
 import { foremanDoctor } from "./foreman.js";
 import { DOCUMENT_TOOLS } from "./documents.js";
@@ -173,6 +174,12 @@ async function probeBox(box: RemoteBox): Promise<{ ok: boolean; line: string }> 
 let chromeFinderOverride: (() => Promise<string | null>) | null = null;
 export function setChromeFinderForTests(fn: (() => Promise<string | null>) | null): void {
   chromeFinderOverride = fn;
+}
+// The Pocket relay lines ask cunningclaw.com over the network; a test run
+// must not, so the tests hand in a fetch that is offline.
+let relayFetchOverride: typeof fetch | null = null;
+export function setRelayFetchForTests(fn: typeof fetch | null): void {
+  relayFetchOverride = fn;
 }
 async function findChrome(): Promise<string | null> {
   return chromeFinderOverride ? chromeFinderOverride() : findChromeBinary();
@@ -487,8 +494,14 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
     const saved = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "pocket", "devices.json"), "utf8")).host;
     if (typeof saved === "string" && saved) pocketHosts.push(saved);
   } catch { /* nothing paired */ }
-  const pocketLine = pocketDoctorLine(await hasBin("tailscale"), pocketHosts);
+  const relaySettings = relayConfig(config.pocket?.relay);
+  const pocketLine = pocketDoctorLine(await hasBin("tailscale"), pocketHosts, Boolean(relaySettings));
   out.push(row("pocket", pocketLine.status, false, pocketLine.text));
+  // The easy way: is the relay up, and is the website serving this claw's own app?
+  const relayLine = await relayDoctorLine(relaySettings, relayFetchOverride ?? fetch);
+  out.push(row("pocket-relay", relayLine.status, false, relayLine.text));
+  const appLine = await siteAppDoctorLine(relaySettings, path.join(ROOT, "public", "pocket"), relayFetchOverride ?? fetch);
+  if (appLine) out.push(row("pocket-app", appLine.status, false, appLine.text));
 
   // The house: the connection and the watcher (src/home-events.ts).
   const eyesBrain = visionBrain();

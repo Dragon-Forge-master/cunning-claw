@@ -1,0 +1,64 @@
+# The Pocket relay — Cloudflare Worker + Durable Object config.
+# Deploy with `npx wrangler deploy` from this folder, relay/pocket/ (README.md,
+# "Deploy"). Not from relay/: that folder's own wrangler.toml is the managed
+# model relay, a different Worker.
+# Plain JS, no npm install, no build step. Nothing in this file is secret, and
+# the relay needs no secret of its own: a claw proves it owns its room by a
+# secret only the claw holds (README.md, "What the relay knows").
+
+name = "cunningclaw-pocket-relay"
+main = "src/worker.js"
+compatibility_date = "2026-11-01"
+
+# The address claws and phones use. Cloudflare creates the DNS record and the
+# certificate on deploy; cunningclaw.com must be an active zone on the account
+# that deploys this. The claw's default (claw.config.json, pocket.relay.url)
+# and the site's CSP (site/_headers) both name this host.
+# https://developers.cloudflare.com/workers/configuration/routing/custom-domains/
+[[routes]]
+pattern = "pocket-relay.cunningclaw.com"
+custom_domain = true
+
+# The relay logs nothing about anyone. New Workers have Workers Logs on by
+# default, recording every invocation's method and URL; `enabled = false`
+# stops logs being kept, and invocation logs are switched off by name as well
+# so a later default cannot turn them back on. Traces are off unless enabled.
+# https://developers.cloudflare.com/workers/wrangler/configuration/#observability
+# https://developers.cloudflare.com/workers/observability/logs/workers-logs/
+[observability]
+enabled = false
+
+  [observability.logs]
+  enabled = false
+  invocation_logs = false
+
+# One Durable Object per room (per claw). A room holds WebSockets and nothing
+# else: no storage is ever written. New Workers declare their Durable Object
+# classes in `exports` (the older `migrations` array still works but cannot
+# be mixed with it); new namespaces are always SQLite-backed, the only kind
+# on the Free plan. The first `wrangler deploy` provisions the namespace.
+# https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "PocketRoom"
+
+[exports.PocketRoom]
+type = "durable-object"
+storage = "sqlite"
+
+# A per-address ceiling on new connections, in front of the rooms. The
+# namespace_id is any positive integer unique within the account — nothing to
+# create first. Counts are local to a Cloudflare location and approximate.
+# https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
+[[ratelimits]]
+name = "CONNECT_LIMIT"
+namespace_id = "7301"
+
+  [ratelimits.simple]
+  limit = 60
+  period = 60
+
+[vars]
+# Pages a browser may connect from. Browsers always send Origin on a WebSocket;
+# the claw sends none. Comma-separated.
+ALLOWED_ORIGINS = "https://cunningclaw.com"

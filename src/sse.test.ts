@@ -14,12 +14,19 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(here, "..");
 
+const NODE_STREAM_EVENTS = new Set(["finish", "close"]);
+
 function serverEvents(): Set<string> {
   const names = new Set<string>();
   for (const file of fs.readdirSync(path.join(ROOT, "src"))) {
     if (!file.endsWith(".ts") || file.endsWith(".test.ts")) continue;
     const src = fs.readFileSync(path.join(ROOT, "src", file), "utf-8");
-    for (const m of src.matchAll(/(?:emit|broadcast)\(\s*"([a-z_]+)"/g)) names.add(m[1]);
+    for (const m of src.matchAll(/(?:emit|broadcast)\(\s*"([a-z_]+)"/g)) {
+      // Node's own stream lifecycle, not SSE: the Pocket relay bridge
+      // (src/pocket-bridge.ts) emits these on a synthetic request/response.
+      if (NODE_STREAM_EVENTS.has(m[1])) continue;
+      names.add(m[1]);
+    }
     // The handshake frame is written straight to the response rather than
     // going through broadcast, so match the raw SSE form too.
     for (const m of src.matchAll(/event:\s*([a-z_]+)\\n/g)) names.add(m[1]);

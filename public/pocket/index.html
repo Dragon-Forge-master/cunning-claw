@@ -18,12 +18,14 @@
     <div class="wordmark">POCKET CLAW</div>
     <div id="lock-state" class="lock-state" hidden></div>
   </header>
+  <p id="link-state" class="link-state" role="status" hidden></p>
 
   <main id="screens">
     <!-- Before anything else: pairing, or the reason there is nothing to show. -->
     <section id="screen-pair" class="screen" hidden>
       <h1>Pair this phone</h1>
       <p class="lede">Your fingerprint, face or screen lock becomes the key to this claw's approval cards. Nothing about it leaves the phone; the claw keeps only a public key.</p>
+      <p id="pair-how" class="lede small"></p>
       <label class="field">Name this phone
         <input id="pair-name" type="text" maxlength="40" autocomplete="off" placeholder="My phone">
       </label>
@@ -117,6 +119,7 @@
         <dt>Claw</dt><dd id="fact-claw"></dd>
         <dt>Waiting</dt><dd id="fact-pending"></dd>
         <dt>Notifications</dt><dd id="fact-push"></dd>
+        <dt>Connection</dt><dd id="fact-via"></dd>
       </dl>
       <button id="push-go" class="primary big" type="button">Tell me when approvals wait</button>
       <p class="lede small">A notification says how many cards are waiting and nothing else — never what they are — because it shows on a locked screen.</p>
@@ -132,6 +135,6 @@
     <a href="#phone" data-view="phone">Phone</a>
   </nav>
 
-  <script src="/pocket/pocket.js"></script>
+  <script type="module" src="/pocket/pocket.js"></script>
 </body>
 </html>
