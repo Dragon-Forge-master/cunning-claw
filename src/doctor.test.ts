@@ -11,6 +11,7 @@ import {
   nodeMajor,
   runDoctor,
   setChromeFinderForTests,
+  voiceNotesCheck,
 } from "./doctor.js";
 import { envLooksSet } from "./brain.js";
 import { setHasBinForTests, setHostForTests } from "./platform.js";
@@ -23,6 +24,24 @@ afterEach(() => {
   setChromeFinderForTests(null);
   resetVoiceDetectForTests();
   resetEarsForTests();
+});
+
+test("doctor names ffmpeg, whisper.cpp and Piper for Telegram voice notes — ffmpeg was only ever named under the webcam", async () => {
+  setHostForTests("linux");
+  setHasBinForTests(() => false);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "cunningclaw-doctor-notes-"));
+  resetEarsForTests();
+  const row = await voiceNotesCheck(root);
+  assert.equal(row.id, "voice-notes");
+  assert.equal(row.status, "warn");
+  assert.equal(row.essential, false, "a phone line without voice still works by text");
+  assert.match(row.line, /ffmpeg is not installed\. sudo apt install ffmpeg/);
+  assert.match(row.line, /whisper\.cpp/);
+  assert.match(row.line, /setup-ears\.sh/);
+  // In this checkout Piper's venv is absent, so the reply half names it too.
+  if (!fs.existsSync(path.join(process.cwd(), ".venv", "bin", "piper"))) assert.match(row.line, /setup-voice\.sh/);
+  const ids = (await runDoctor()).map((c) => c.id);
+  assert.ok(ids.includes("voice-notes"), "and runDoctor carries the row");
 });
 
 test("doctor says the mic's audio leaves the machine, and names the fix for local ears", async () => {

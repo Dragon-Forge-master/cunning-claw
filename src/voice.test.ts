@@ -17,7 +17,10 @@ import {
   sample,
   setEnabled,
   setSpawnForTests,
+  isSpeaking,
+  piperMissing,
   speak,
+  synthesise,
   wrapPcmToWav,
   type SpeakingState,
 } from "./voice.js";
@@ -318,4 +321,44 @@ test("the HUD keeps what the operator actually said, even when it echoes a phras
   assert.equal(isOwnEcho("stop", REPLY), false);
   assert.equal(isOwnEcho("yes do that now", REPLY), false);
   assert.equal(isOwnEcho("anything at all said here today", ""), false);
+});
+
+// ── A voice note, not the speakers ──────────────────────────────────────────
+//
+// synthesise() makes Telegram's voice reply with the same Piper and voice as
+// the room hears, into a buffer. It must say exactly what is missing when
+// Piper is not there, and must not touch the speaking state: the HUD's mic
+// pausing for audio nobody in the room can hear would be a new echo bug.
+
+test("synthesise names what is missing and spawns nothing when Piper is not installed", async () => {
+  useEngine({ engine: "none", detail: "none" });
+  const nowhere = path.join(os.tmpdir(), "no-such-piper-here");
+  assert.match(String(piperMissing({ bin: nowhere })), /Piper is not installed — run \.\/setup-voice\.sh/);
+  await assert.rejects(synthesise("Hello, sir.", 1200, { bin: nowhere }), /Piper is not installed/);
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), "claw-piper-"));
+  assert.match(String(piperMissing({ bin, model: null })), /voice .* is missing — run \.\/setup-voice\.sh/);
+  assert.equal(spawned.length, 0);
+});
+
+test("synthesise returns Piper's PCM, reads the cleaned text, caps it, and leaves the speakers' state alone", async () => {
+  useEngine({ engine: "piper", detail: "alan", player: "paplay" });
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), "claw-piper-"));
+  let stdinText = "";
+  const pending = synthesise("**Done**, sir — see https://example.com/a/b. " + "word ".repeat(400), 200, { bin, model: "/voices/x.onnx" });
+  await tick();
+  const piper = spawned[0];
+  assert.equal(piper.cmd, bin);
+  assert.ok(piper.args.includes("--output-raw") && piper.args.includes("/voices/x.onnx"));
+  piper.stdin.on("data", (c: Buffer) => { stdinText += c.toString(); });
+  await tick();
+  piper.stdout.write(Buffer.from([1, 2, 3, 4]));
+  piper.emit("close", 0);
+  const out = await pending;
+  assert.deepEqual([...out.pcm], [1, 2, 3, 4]);
+  assert.equal(out.rate, config.voice.piper.sampleRate);
+  assert.match(stdinText, /^Done, sir/);
+  assert.ok(stdinText.length <= 200, "capped at maxChars");
+  assert.doesNotMatch(stdinText, /\*\*|https/, "the same cleaning as the speakers");
+  assert.equal(isSpeaking(), false, "a voice note is not the room hearing speech");
+  assert.equal(heard.length, 0, "the HUD was told nothing");
 });

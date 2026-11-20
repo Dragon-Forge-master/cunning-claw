@@ -70,7 +70,7 @@ export function setHasBinForTests(fn: ((bin: string) => boolean | Promise<boolea
  */
 const INSTALL: Record<string, Partial<Record<Host, string>>> = {
   "gnome-screenshot": { linux: "sudo apt install gnome-screenshot" },
-  ffmpeg: { linux: "sudo apt install ffmpeg", darwin: "brew install ffmpeg" },
+  ffmpeg: { linux: "sudo apt install ffmpeg", darwin: "brew install ffmpeg", win32: "winget install Gyan.FFmpeg" },
   sips: { darwin: "sips is part of macOS." },
   wmctrl: { linux: "sudo apt install wmctrl" },
   xdotool: { linux: "sudo apt install xdotool" },

@@ -28,6 +28,9 @@ export const UNTRUSTED_TOOLS = new Set([
   "look",
   // Documents are what strangers send: the invoice, the CV, the attachment.
   "read_document",
+  // A receipt is printed by the shop. Its supplier line is anyone's words,
+  // and every receipt tool hands it back — the listing and the fix included.
+  "receipt_file", "receipts", "receipt_fix",
 ]);
 
 /**
@@ -70,6 +73,9 @@ const REACHES_OUT = [
   // A document someone sent: the paperclip's marker, an office file by name,
   // or the words for one. The read happens mid-turn, after the brain is chosen.
   /\[file attached:|\.(pdf|docx?|xlsx?|pptx?|od[tsp])\b|\b(pdf|attachment)s?\b/i,
+  // "File this receipt", "export my receipts": the receipt tools read
+  // what shops printed, mid-turn, after the brain is chosen.
+  /\breceipts?\b/i,
 ];
 
 function hasRecordedContent(text: string): boolean {

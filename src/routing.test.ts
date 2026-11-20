@@ -30,6 +30,19 @@ test("requests that reach outside require a trusted brain up front", () => {
   }
 });
 
+test("a receipt is printed by a stranger: asking about one, or a receipt tool in history, pins a trusted brain", () => {
+  // The receipt tools read the shop's words mid-turn, after the brain is chosen.
+  for (const q of ["file this receipt", "what receipts did I get in October?", "export my receipts for the tax year"]) {
+    assert.equal(requiresTrustedBrain(q, []).required, true, q);
+  }
+  for (const name of ["receipt_file", "receipts", "receipt_fix"]) {
+    const history: Anthropic.MessageParam[] = [
+      { role: "assistant", content: [{ type: "tool_use", id: "t1", name, input: {} }] },
+    ];
+    assert.equal(historyIsTainted(history), true, `${name} taints the turn`);
+  }
+});
+
 test("a webcam glance is vision, so it needs a trusted brain", () => {
   for (const q of ["how do I look", "how's the room", "look at me", "glance at the desk"]) {
     assert.equal(requiresTrustedBrain(q, []).required, true, q);

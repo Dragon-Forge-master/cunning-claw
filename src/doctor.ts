@@ -19,8 +19,9 @@ import { sandboxDoctor } from "./sandbox.js";
 import { DOCUMENT_TOOLS } from "./documents.js";
 
 const execFileAsync = promisify(execFile);
-import { detect } from "./voice.js";
+import { detect, piperMissing } from "./voice.js";
 import { detectEars, earsSettings } from "./ears.js";
+import { hearingGap, speakingGap, voiceNoteDoctorLine } from "./voice-notes.js";
 
 export type CheckStatus = "ok" | "fail" | "warn";
 
@@ -334,6 +335,7 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
   }
 
   out.push(await earsCheck());
+  out.push(await voiceNotesCheck());
 
   if (await ollamaUp()) {
     out.push(row("ollama", "ok", false, "Ollama reachable on 11434"));
@@ -491,6 +493,18 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
  * the operator's voice to Google, and the doctor is where that gets said with
  * the fix beside it rather than discovered later.
  */
+/**
+ * Telegram voice notes, both ways. ffmpeg was only ever named under the
+ * webcam, which is off by default — so a phone line that could not hear a
+ * voice note had nothing in the doctor saying why.
+ */
+export async function voiceNotesCheck(root = ROOT): Promise<DoctorCheck> {
+  const ffmpeg = await hasBin("ffmpeg");
+  const ears = await detectEars(earsSettings(), root);
+  const r = voiceNoteDoctorLine({ hear: hearingGap(ffmpeg, ears), speak: speakingGap(ffmpeg, piperMissing()) });
+  return row("voice-notes", r.ok ? "ok" : "warn", false, r.line);
+}
+
 export async function earsCheck(root = ROOT): Promise<DoctorCheck> {
   const found = await detectEars(earsSettings(), root, true);
   if (found.engine === "whisper") return row("ears", "ok", false, `Ears: local — ${found.detail}`);

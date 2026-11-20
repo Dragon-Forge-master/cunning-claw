@@ -27,6 +27,8 @@ src/connector-guide.ts  connector_guide: how each catalogue connector signs in, 
 src/embed.ts       embeddings client (Gemini, OpenRouter, Ollama) for memory search by meaning
 src/memory.ts      memory facts, hybrid keyword + meaning search, testimony stamps
 src/ears.ts        local speech-to-text through whisper.cpp (POST /api/listen)
+src/voice-notes.ts Telegram voice notes: ffmpeg between OGG/Opus and WAV/PCM, the reply-in-voice setting, what is missing
+src/receipts.ts    receipt photos read into a ledger under data/receipts (integer pence), the Desk's Receipts page, CSV/JSON export, corrections
 src/ntfy.ts        outbound-only push alerts; redacted, group-safe, never an approve button
 src/home-policy.ts what HA may be asked: per-service data allow-list, comfort vs security (pure, no imports)
 src/home.ts        the home_assistant tool: validate, read the entity, classify, then ask; home status

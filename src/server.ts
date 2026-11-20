@@ -34,6 +34,7 @@ import { startDiscord, sendApprovalCard as sendDiscordCard, approvalSettled as d
 import { startNtfy, sendApprovalAlert, approvalSettled as ntfySettled, ntfyStatus, notifyPhone } from "./ntfy.js";
 import { startHomeWatch, homeWatchStatus } from "./home-events.js";
 import { describeVisitor } from "./home-vision.js";
+import { inRange as receiptsInRange, loadLedger as loadReceipts, toCsv as receiptsCsv } from "./receipts.js";
 import { openPreview, closePreview, reloadPreview, previewState, servedDir } from "./preview.js";
 import fs from "node:fs";
 import { isSensitivePath } from "./paths.js";
@@ -435,6 +436,29 @@ app.delete("/api/docs/:name", (req, res) => {
   fs.mkdirSync(trash, { recursive: true });
   fs.renameSync(p, path.join(trash, `${Date.now()}-${path.basename(p)}`));
   res.json({ ok: true, note: "moved to .trash, not destroyed" });
+});
+
+/**
+ * The receipts ledger as a download, for the operator or their accountant.
+ * The same rows the receipts tool exports; dates are the receipts' own.
+ * Read-only, and behind requireAuth like the rest of /api.
+ */
+app.get("/api/receipts", (req, res) => {
+  const day = (v: unknown) => {
+    const s = String(v ?? "").trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
+  };
+  const from = day(req.query.from);
+  const to = day(req.query.to);
+  const rows = receiptsInRange(loadReceipts(), from, to, req.query.void === "1");
+  const name = `receipts_${from || "start"}_${to || "end"}`;
+  if (req.query.format === "json") {
+    res.setHeader("Content-Disposition", `attachment; filename="${name}.json"`);
+    return res.json(rows);
+  }
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${name}.csv"`);
+  res.send(receiptsCsv(rows));
 });
 
 app.get("/api/board", async (_req, res) => {
