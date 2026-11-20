@@ -130,6 +130,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: bundles
+      # Only the release notes: docs/releases/<tag>.md, when there is one.
+      - uses: actions/checkout@v4
+        with:
+          path: src-notes
+          sparse-checkout: docs/releases
       - name: Publish to the GitHub Release for this tag
         env:
           GH_TOKEN: ${{ github.token }}
@@ -141,6 +146,9 @@ jobs:
           built="v$(ls cunningclaw-*-linux-x64.tar.gz | sed -E 's/^cunningclaw-(.*)-linux-x64\.tar\.gz$/\1/')"
           if [ "$built" != "$TAG" ]; then echo "Tag $TAG does not match the built version $built (package.json)"; exit 1; fi
           # --target makes the tag at the tested commit when it does not exist yet.
+          notes="src-notes/docs/releases/$TAG.md"
+          if [ -f "$notes" ]; then set -- --notes-file "$notes"; else
+            set -- --notes "Download the one for your computer, unzip it, and read READ ME FIRST.txt. Not code-signed yet: Windows and macOS will ask once before the first run."
+          fi
           gh release create "$TAG" --repo "${GITHUB_REPOSITORY}" --target "${GITHUB_SHA}" --title "Cunning Claw $TAG" \
-            --notes "Download the one for your computer, unzip it, and read READ ME FIRST.txt. Not code-signed yet: Windows and macOS will ask once before the first run." \
-            cunningclaw-*.zip cunningclaw-*.tar.gz
+            "$@" cunningclaw-*.zip cunningclaw-*.tar.gz
