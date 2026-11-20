@@ -1,0 +1,19 @@
+# Cloudflare Pages config for cunningclaw.com, deployed from this folder with
+#   npx wrangler pages deploy . --project-name=cunningclaw
+# Once a Pages project deploys with this file, the file is the source of truth
+# for these settings and the dashboard shows them read-only.
+#
+# This file is uploaded with the site and can be read at /wrangler.toml, so it
+# holds no secret. The three secrets (TURNSTILE_SECRET, WALL_ADMIN_TOKEN,
+# WALL_IP_SALT) are set with `npx wrangler pages secret put` — never here.
+# One-off setup: README.md, "The forge wall".
+
+name = "cunningclaw"
+pages_build_output_dir = "."
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "WALL_DB"
+database_name = "cunningclaw-wall"
+# Placeholder. Replace with the id that `npx wrangler d1 create` prints (README.md, step 1).
+database_id = "00000000-0000-0000-0000-000000000000"

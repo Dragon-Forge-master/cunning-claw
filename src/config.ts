@@ -279,6 +279,13 @@ export interface ClawConfig {
     approvalDelaySeconds?: number;
   };
   /**
+   * The "ask the forge" wall on the project's site (site/functions/_wall/,
+   * src/wall.ts). `url` is the one address the site_wall tool talks to — the
+   * model never supplies it. The admin token is a secret and lives in .env
+   * under `tokenEnv` (default WALL_ADMIN_TOKEN); without it the tool says so.
+   */
+  siteWall?: { enabled?: boolean; url?: string; tokenEnv?: string };
+  /**
    * Approve the plan once instead of every step of it. Off means every action
    * keeps asking individually, which is the old behaviour.
    */

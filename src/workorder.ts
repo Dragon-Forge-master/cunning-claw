@@ -157,7 +157,9 @@ export function prepare(
  */
 export function stepIsCommitting(step: PlanStep): boolean {
   if (step.committing) return true;
-  if (["send_email", "send_chat", "home_assistant", "skill_write", "mcp_add"].includes(step.tool)) return true;
+  // site_wall publishes on the project's site; it asks for itself every time,
+  // and a plan that lists it must not read as harmless either.
+  if (["send_email", "send_chat", "home_assistant", "skill_write", "mcp_add", "site_wall"].includes(step.tool)) return true;
   if (step.tool === "remote_copy" && /^push\b/.test(step.match)) return true;
   if (step.tool === "http_request" && !/^GET\b/i.test(step.match)) return true;
   if (step.tool.startsWith("mcp__")) return true;

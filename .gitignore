@@ -56,3 +56,7 @@ gods-eye-view/
 
 # Built bundles (npm run bundle)
 release/
+
+# wrangler pages dev, run in site/: its local D1 and any local secrets file.
+.wrangler/
+.dev.vars*

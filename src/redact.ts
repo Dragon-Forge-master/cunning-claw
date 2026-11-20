@@ -37,6 +37,9 @@ const RULES: Rule[] = [
   // file, the history, and a day's journal. Never again.
   { name: "replicate", re: /\br8_[A-Za-z0-9]{16,}/g, replace: (m) => stub("replicate-token", m, 3) },
   { name: "huggingface", re: /\bhf_[A-Za-z0-9]{16,}/g, replace: (m) => stub("huggingface-token", m, 3) },
+  // The forge wall's admin token (site/README.md has it made as ccw_ + 64 hex).
+  // Bare, it is just hex — this prefix is what lets a pasted one be caught.
+  { name: "wall-admin", re: /\bccw_[A-Za-z0-9_-]{24,}/g, replace: (m) => stub("wall-admin-token", m, 4) },
   { name: "github-fine", re: /\bgithub_pat_[A-Za-z0-9_]{20,}/g, replace: (m) => stub("github-pat", m, 11) },
   { name: "google-oauth", re: /\bAQ\.[A-Za-z0-9_-]{20,}/g, replace: (m) => stub("google-token", m, 6) },
   { name: "google-refresh", re: /\b1\/\/[A-Za-z0-9_-]{20,}/g, replace: (m) => stub("google-refresh", m, 4) },

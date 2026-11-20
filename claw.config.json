@@ -161,6 +161,11 @@
     "priority": 3,
     "approvalDelaySeconds": 15
   },
+  "siteWall": {
+    "enabled": true,
+    "url": "https://cunningclaw.com",
+    "tokenEnv": "WALL_ADMIN_TOKEN"
+  },
   "brains": {
     "default": "flashlite",
     "heartbeat": "lite",

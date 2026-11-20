@@ -28,6 +28,9 @@ export const UNTRUSTED_TOOLS = new Set([
   "look",
   // Documents are what strangers send: the invoice, the CV, the attachment.
   "read_document",
+  // The site's "ask the forge" wall is a public form: anyone on the internet
+  // writes the cards it lists, and a card can be written to the claw.
+  "site_wall",
 ]);
 
 /**
@@ -70,6 +73,8 @@ const REACHES_OUT = [
   // A document someone sent: the paperclip's marker, an office file by name,
   // or the words for one. The read happens mid-turn, after the brain is chosen.
   /\[file attached:|\.(pdf|docx?|xlsx?|pptx?|od[tsp])\b|\b(pdf|attachment)s?\b/i,
+  // The site's wall: "what's on the wall?", "any new cards?", "ask the forge".
+  /\b(?:the|site|forge|website)(?:'s)? wall\b|\bask the forge\b|\b(?:wall|pending|new) cards?\b/i,
 ];
 
 function hasRecordedContent(text: string): boolean {

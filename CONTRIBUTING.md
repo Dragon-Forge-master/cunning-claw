@@ -23,6 +23,7 @@ src/injection.ts   scans fenced text for orders aimed at the model; warns, flags
 src/sandbox.ts     the shell's box: bubblewrap / sandbox-exec argv, writable folders, hidden key stores, scrubbed env
 src/tool-diet.ts   which MCP schemas go to the model this call; the roster; fence-aware result trimming
 src/marketing.ts   the consent register and the guard on every marketing send (marketing_audience, send_email, vendor MCP sends)
+src/wall.ts        site_wall: the site's "ask the forge" wall — fenced reads, every publish behind a card
 src/connector-guide.ts  connector_guide: how each catalogue connector signs in, and the steps, from the catalogue
 src/embed.ts       embeddings client (Gemini, OpenRouter, Ollama) for memory search by meaning
 src/memory.ts      memory facts, hybrid keyword + meaning search, testimony stamps
@@ -40,6 +41,7 @@ src/voice.ts       Piper / spd-say / say
 src/doctor.ts      npm run doctor
 src/workspace.ts   SOUL.md / MEMORY.md / skills
 workspace/skills/  agentskills.io SKILL.md files
+site/              cunningclaw.com; site/functions/ is the wall's Pages Function (site/README.md)
 packaging/         systemd --user unit; npm/ is the `npx cunningclaw` installer
 scripts/bundle.mjs the download-and-double-click bundles (npm run bundle; .github/workflows/bundle.yml)
 ```
