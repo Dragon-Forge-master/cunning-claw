@@ -1,6 +1,6 @@
 import path from "node:path";
 import express from "express";
-import { addressed, config, DATA_DIR, ROOT } from "./config.js";
+import { addressed, config, CONFIG_FILE, DATA_DIR, ROOT } from "./config.js";
 import { getHistory, resetHistory, runTurn, cancelTurn, turnInFlight, CONTEXT_END, setAsideHistory, restoreHistory, onOperatorTurn, setLearnContext, type AgentEvents } from "./agent.js";
 import { freeWriteZone, setPracticeSimulator, systemStatusText, toolDefinitions } from "./tools.js";
 import { createApprovals } from "./approvals.js";
@@ -53,6 +53,7 @@ import { jobs, TERMINAL_STATES } from "./jobs.js";
 import { foreman, reportText, startForeman } from "./foreman.js";
 import { hostGate } from "./pocket-host.js";
 import { createPocket, POCKET_LARGE_BODIES } from "./pocket.js";
+import { IDENTITY_PATH, identityRoute, portClashMessage, probePort } from "./port-clash.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -117,6 +118,11 @@ const smallJson = express.json({ limit: "1mb" });
 app.use((req, res, next) =>
   req.path === "/api/upload" || POCKET_LARGE_BODIES.has(req.path) ? next() : smallJson(req, res, next),
 );
+
+// Who is on this port: a second copy, started while this one runs, asks it
+// before saying anything (src/port-clash.ts). Behind the host gate, needs no
+// session, and says only that it is Cunning Claw and which version.
+app.get(IDENTITY_PATH, identityRoute(VERSION));
 
 // Loading the HUD hands the browser its session, so EventSource — which cannot
 // set headers — can authenticate on the stream that follows.
@@ -962,17 +968,35 @@ const httpServer = app.listen(port, host, async () => {
 // A port clash is the boot failure a first run is most likely to hit — a claw
 // from an earlier terminal still running, or a second install on the same
 // machine — and the raw EADDRINUSE stack the uncaughtException handler prints
-// says nothing about what to do. Same words as the doctor, which already knows.
+// says nothing about what to do.
 httpServer.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code !== "EADDRINUSE") throw err;
-  // A second double-click on the launcher is the commonest way to hit this,
-  // and the claw is already running: show them it rather than an error.
-  if (process.env.CLAW_OPEN_HUD) {
-    console.log(`\n  Something is already running on port ${port} — opening it. If that is not Cunning Claw, change server.port in claw.config.json.\n`);
-    openInBrowser(`http://${host}:${port}/`);
+  void explainPortClash();
+});
+
+/**
+ * A second double-click is the commonest way here, and so is a git install
+ * already running as a service when a download is opened — the founder's
+ * case, 20 Nov, where "Something is already running on port 3900 — opening
+ * it. If that is not Cunning Claw…" left him guessing about his own claw. So
+ * the port is asked what it is first (src/port-clash.ts): another Cunning
+ * Claw is named, with its version, and opened when a double-click launcher
+ * started us; anything else gets how to pick another port.
+ */
+async function explainPortClash(): Promise<void> {
+  const probeHost = ["0.0.0.0", "::", ""].includes(host) ? "127.0.0.1" : host.includes(":") ? `[${host}]` : host;
+  const base = `http://${probeHost}:${port}`;
+  const occupant = await probePort(base);
+  const opened = occupant.kind === "claw" && !!process.env.CLAW_OPEN_HUD;
+  const lines = portClashMessage({
+    occupant, port, url: `${base}/`, ourVersion: VERSION, platform: process.platform, configFile: collapseHome(CONFIG_FILE), opened,
+  });
+  (occupant.kind === "claw" ? console.log : console.error)(`\n${lines.map((l) => `  ${l}`).join("\n")}\n`);
+  if (opened) {
+    openInBrowser(`${base}/`);
+    // Long enough for the browser to be handed the address before we go.
     setTimeout(() => process.exit(0), 1500);
     return;
   }
-  console.error(`\n  ✗ Port ${port} on ${host} is in use — stop the other process or change server.port in claw.config.json\n`);
   process.exit(1);
-});
+}

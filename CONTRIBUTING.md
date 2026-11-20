@@ -11,6 +11,7 @@ src/approvals.ts   the approval registry: real cards to the HUD and phones, prac
 src/boot.ts        First-run gate, then loads the server
 src/first-run.ts   what boot needs; the setup page decides the rest (public/welcome.html)
 src/home-root.ts   code root vs the owner's folder: which folder per OS, first-run seeding, --import
+src/port-clash.ts  the port is taken: is it another Cunning Claw (/cunningclaw.json), and what to say
 src/agent.ts       Streaming tool loop
 src/brain.ts       Named brains, failover, spend
 src/tools.ts       Tool schemas + dispatcher + HARD_DENY
