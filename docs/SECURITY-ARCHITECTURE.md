@@ -7,7 +7,7 @@ guarantees, because a security document that overclaims is worse than none.*
 Status as of 20 November 2026: version 0.4.0 on `main`, plus the work due as
 0.5.0 (`docs/releases/v0.5.0.md`) — the host gate, Pocket Claw, the foreman,
 Telegram voice notes and receipts, Learn mode and the site wall, all in
-section 5. 955 automated tests passing (`npm test`), 83 tools, two runtime
+section 5. 957 automated tests passing (`npm test`), 83 tools, two runtime
 dependencies (`@anthropic-ai/sdk`, `express`). The project is new and has run
 on very few machines. Nothing here has been independently audited.
 
@@ -596,10 +596,13 @@ turn*, *the HUD hears that a receipt was filed, never what the slip says*.)
 **Limits.** A slip that addresses the vision model can still bend the values
 it reads — a total, a date — within those fixed shapes; that is why every
 filing is read back to the operator. The photo leaves the machine for the
-vision brain's provider. A voice note or a text the operator *forwards* from
-someone else is run as the operator's own words: Telegram marks a forward, and
-the claw does not yet read the mark (section 8). whisper.cpp and Piper were
-stood in for in the tests; ffmpeg ran for real.
+vision brain's provider. A text the operator *forwards* from someone else is
+someone else's words: `isForwarded` in `src/telegram.ts` reads Telegram's
+forward marks, the text is fenced as untrusted data, never parsed as a
+command, and the turn is pinned to a trusted brain; a forwarded voice note is
+not downloaded or heard at all (`src/telegram.test.ts`, "a forwarded message
+is someone else's words"). Discord's forwards are not yet read the same way.
+whisper.cpp and Piper were stood in for in the tests; ffmpeg ran for real.
 
 ### 5.5 Learn mode: a practice ground that cannot touch the world
 
@@ -776,7 +779,7 @@ deployed as such without an independent assessment.
 | Foreman: taint refusal, card, worktree, floor, environment, fence | `npx tsx --test src/foreman.test.ts src/jobs.test.ts` |
 | Voice notes never answer a card; receipts filed as data | `npx tsx --test src/telegram.test.ts src/voice-notes.test.ts src/receipts.test.ts` |
 | The wall: moderation, Turnstile, no IPs; the tool's cards and token | `npx tsx --test src/site-wall.test.ts src/wall.test.ts` |
-| Everything | `npm test` — 955 passing at the time of writing |
+| Everything | `npm test` — 957 passing at the time of writing |
 
 Every test in the suite is required to fail with its fix reverted
 (`CLAUDE.md`, "Tests"), and the commit that added it says so.
@@ -794,18 +797,16 @@ Every test in the suite is required to fail with its fix reverted
    system, the worktree, the stripped environment and the card contain it, and
    `npm test` in a job runs a script the job could have edited (section 5.3).
    Next: run the job inside the same box as `run_command`.
-5. **Forwarded messages read as the operator's own.** A voice note or text the
-   operator forwards to the Telegram bot from someone else is run as if they
-   had said it; Telegram marks a forward (`forward_origin`) and the claw does
-   not yet read the mark. Next: fence a forward as a stranger's words.
-6. **macOS sandbox untested on hardware.**
-7. **Pocket Claw untried on a real phone and a real tailnet**, and Cloudflare
+5. **macOS sandbox untested on hardware.**
+6. **Pocket Claw untried on a real phone and a real tailnet**, and Cloudflare
    Access's signed header is not checked on the tunnel route (section 5.2).
-8. **Heuristic scanner.** Open source and evadable by design. An optional
+7. **Heuristic scanner.** Open source and evadable by design. An optional
    model-based second opinion is a follow-up.
-9. **The wall's rate-limit rows are purged only on a new submission**, so the
-   two-day retention depends on traffic (section 5.6).
-10. **The approval card depends on a person reading it.** The same is true of a
+8. **The wall has no timer.** Rate-limit rows older than two days are swept on
+   every submission, vote and admin call (`src/site-wall.test.ts`, "yesterday's
+   visitor keys go within two days on a quiet wall"), so they can outlive two
+   days only on a wall nobody visits and the operator never reads (section 5.6).
+9. **The approval card depends on a person reading it.** The same is true of a
     fingerprint on a phone.
 
 *Yn lleol yn gyntaf · Caniatâd dynol pan fo canlyniadau* — local first, human

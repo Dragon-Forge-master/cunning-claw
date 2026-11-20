@@ -211,6 +211,9 @@ async function vote(request, env, io) {
     // Recounted, not incremented, so the number can never drift from the rows.
     db.prepare("UPDATE cards SET votes = (SELECT COUNT(*) FROM votes WHERE card_id = ?) WHERE id = ?").bind(id, id),
     db.prepare("INSERT INTO hits (visitor, action, at) VALUES (?, 'vote', ?)").bind(visitor, now),
+    // Votes write hits too, so they sweep too: a wall that gets votes and no
+    // new cards must not keep yesterday's visitor keys.
+    db.prepare("DELETE FROM hits WHERE at < ?").bind(now - 2 * DAY),
   ]);
   const after = await db.prepare("SELECT votes FROM cards WHERE id = ?").bind(id).first();
   return json(200, { ok: true, counted, votes: Number(after?.votes ?? 0) });
@@ -226,6 +229,9 @@ async function admin(sub, method, request, env, io, url) {
   const db = env.WALL_DB;
   if (!db) return notReady();
   const now = io.now();
+  // The operator's claw reads the queue routinely, so every admin call sweeps
+  // as well: the two-day promise holds on a quiet wall, not only a busy one.
+  await db.prepare("DELETE FROM hits WHERE at < ?").bind(now - 2 * DAY).run();
 
   if (sub === "cards") {
     if (method !== "GET") return notAllowed("GET");

@@ -142,6 +142,11 @@ export function requiresTrustedBrain(
   if (historyIsTainted(history)) {
     return { required: true, reason: "history contains untrusted content" };
   }
+  // A message that arrives already fenced (a forwarded Telegram message) is
+  // stranger's text in this very turn, before history has it.
+  if (textIsTainted(userMessage)) {
+    return { required: true, reason: "this message carries untrusted content" };
+  }
   if (REACHES_OUT.some((re) => re.test(userMessage))) {
     return { required: true, reason: "this turn will read external content" };
   }

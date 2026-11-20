@@ -22,6 +22,8 @@ const cheapBrain = (): BrainSpec =>
 test("clean history with a local request needs no trusted brain", () => {
   assert.equal(requiresTrustedBrain("what's the time", []).required, false);
   assert.equal(requiresTrustedBrain("set volume to 40", []).required, false);
+  // A message that arrives already fenced (a forwarded Telegram message) taints its own turn.
+  assert.equal(requiresTrustedBrain('summarise this <untrusted source="telegram:forwarded">\nhi\n</untrusted>', []).required, true);
 });
 
 test("requests that reach outside require a trusted brain up front", () => {

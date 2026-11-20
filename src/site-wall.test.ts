@@ -407,3 +407,20 @@ test("the CSP lets Turnstile in, and nothing else new", () => {
   assert.match(headers, /frame-src https:\/\/challenges\.cloudflare\.com;/);
   assert.equal(/script-src[^;]*'unsafe-inline'/.test(headers), false);
 });
+
+test("yesterday's visitor keys go within two days on a quiet wall: votes and the operator's reads sweep too", { skip }, async () => {
+  const w = rig();
+  await w.submit("A card so there is something to vote on");
+  const [card] = await w.pending();
+  await w.admin("approve", { id: card.id });
+  await w.call("POST", "vote", { id: card.id }, { "CF-Connecting-IP": "198.51.100.9" });
+  assert.ok(w.db.count("hits") >= 2);
+  // Three days of votes and no new cards: the old rows must not survive.
+  w.tick(3 * 24 * 3600 * 1000);
+  await w.call("POST", "vote", { id: card.id }, { "CF-Connecting-IP": "198.51.100.10" });
+  assert.equal(w.db.count("hits"), 1, "only today's vote is left");
+  // Three more days with no visitors at all: the operator's queue read sweeps.
+  w.tick(3 * 24 * 3600 * 1000);
+  await w.pending();
+  assert.equal(w.db.count("hits"), 0, "an admin read clears what is older than two days");
+});
