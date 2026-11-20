@@ -4,10 +4,12 @@
 points at the file that implements it, and the limits are stated next to the
 guarantees, because a security document that overclaims is worse than none.*
 
-Status as of 20 November 2026: version 0.3 on `main`, 717 automated tests
-passing (`npm test`), two runtime dependencies (`@anthropic-ai/sdk`, `express`).
-The project is new and has run on very few machines. Nothing here has been
-independently audited.
+Status as of 20 November 2026: version 0.4.0 on `main`, plus the work due as
+0.5.0 (`docs/releases/v0.5.0.md`) — the host gate, Pocket Claw, the foreman,
+Telegram voice notes and receipts, Learn mode and the site wall, all in
+section 5. 955 automated tests passing (`npm test`), 83 tools, two runtime
+dependencies (`@anthropic-ai/sdk`, `express`). The project is new and has run
+on very few machines. Nothing here has been independently audited.
 
 ---
 
@@ -15,8 +17,9 @@ independently audited.
 
 Cunning Claw is a local agent with real authority on the operator's machine: a
 shell, the file system, a browser profile that is signed in to their accounts,
-email, WhatsApp, third-party MCP connectors, and ssh to other machines it is
-given. It also reads text written by strangers — web pages, emails, documents,
+email, WhatsApp, third-party MCP connectors, ssh to other machines it is
+given, a phone that can answer its approval cards, and Claude Code to run
+coding jobs. It also reads text written by strangers — web pages, emails, documents,
 connector output — and passes that text to a language model that decides what
 to do next.
 
@@ -42,13 +45,15 @@ the outside in:
 | Fencing | Marks every piece of outside text as data, and stops it closing its own fence | `src/browser-ax.ts` `fenceUntrusted`, `src/workspace.ts` `defuse` |
 | Injection scanner | Flags text that addresses the model, strips invisible characters, raises a per-turn alarm | `src/injection.ts` |
 | Trusted-brain routing | A turn that has read outside text is pinned to a model the operator has cleared for hostile input | `src/routing.ts` |
-| Approval cards | Consequential actions wait for a human yes, shown with what they will do | `src/server.ts`, `src/consequence.ts`, `src/workorder.ts` |
+| Host gate | Every request must name this claw; a DNS-rebinding page is refused before any route | `src/pocket-host.ts` |
+| Approval cards | Consequential actions wait for a human yes, shown with what they will do | `src/approvals.ts`, `src/consequence.ts`, `src/workorder.ts` |
 | The floor | A list of commands refused regardless of config, plan or approval | `src/tools.ts` `HARD_DENY` |
 | The sandbox | Shell commands run in a namespace that can write only to allowed folders | `src/sandbox.ts` |
 | Redaction | Secrets are masked wherever text leaves the machine | `src/redact.ts` |
 
-The first three are behavioural and probabilistic. The last four are
-deterministic code, and they are the boundary.
+Fencing, the scanner and routing are behavioural and probabilistic. The host
+gate, the cards, the floor, the sandbox and redaction are deterministic code,
+and they are the boundary.
 
 ---
 
@@ -177,10 +182,14 @@ nothing can remove these, and an approved plan cannot clear them.
 
 A command that is not on the auto-approve list, an email or chat send, a
 browser action classified as irreversible, and any third-party MCP tool whose
-name is not a recognised read verb all raise a card (`requestApproval` in
-`src/server.ts`). The card can be answered in the HUD or, if configured, from a
-private Telegram or Discord chat with an allow-listed operator; Discord cards
-are only ever sent to a direct message, never a server channel. A card that is
+name is not a recognised read verb all raise a card (`request` in
+`src/approvals.ts`, the registry `src/server.ts` wires up with its outlets
+injected, so where a card goes is unit-tested in `src/approvals.test.ts`). The
+card can be answered in the HUD or, if configured, from a private Telegram or
+Discord chat with an allow-listed operator, or from Pocket Claw with a fresh
+fingerprint (section 5.2); Discord cards are only ever sent to a direct
+message, never a server channel. Learn mode's practice cards share the
+registry but never leave the HUD (section 5.5). A card that is
 not answered within three minutes (`approvalTimeoutMs`) is a **no**. A new
 message from the operator cancels every pending card. Cards for MCP tools that
 create or publish state the resulting visibility, or say plainly that the
@@ -320,7 +329,7 @@ damage if a person says yes to the wrong thing.
 
 | Function | Where it runs |
 |---|---|
-| The agent process and the HUD | Locally, bound to `127.0.0.1`, behind a token it mints for itself |
+| The agent process and the HUD | Locally, bound to `127.0.0.1`, behind a token it mints for itself and the host gate (section 5.1) |
 | Text-to-speech | Locally (Piper; or the OS voice) |
 | Speech-to-text | Locally with whisper.cpp when installed (`src/ears.ts`); otherwise the browser's recogniser, which sends audio to the browser vendor — and the HUD says so in amber |
 | Memory search | Keyword search locally; meaning search through an embeddings provider the operator has keyed, or locally through Ollama |
@@ -329,8 +338,13 @@ damage if a person says yes to the wrong thing.
 
 There is no telemetry and no account. What does leave the machine is the
 conversation sent to the chosen model provider, embeddings requests if a cloud
-embeddings provider is configured, and messages sent to the phone lines the
-operator has enabled. Redaction (`src/redact.ts`) masks recognised secrets —
+embeddings provider is configured, messages sent to the phone lines the
+operator has enabled, and, for the parts that are switched on: receipt photos
+to the vision brain's provider; Pocket Claw's encrypted push messages, which
+carry a count and nothing else, through the phone vendor's push service; a
+coding job's brief and the project's files to Anthropic, through Claude Code
+and the operator's own sign-in; and the wall's admin token to the one URL in
+`siteWall.url`. Redaction (`src/redact.ts`) masks recognised secrets —
 provider keys, tokens — wherever text leaves the process: the HUD stream, the
 phone lines and the journal.
 
@@ -377,7 +391,292 @@ memory search tool dropped this stamp; that is fixed and tested.)
 
 ---
 
-## 5. Scenarios
+## 5. Surfaces added since 0.4
+
+Six pieces of work landed after 0.4.0. Each adds a way in or a way out, so each
+is described here the same way as the rest: what it does, where, the test that
+holds it, and what it does not do.
+
+### 5.1 The host gate: every request names this claw
+
+Binding to `127.0.0.1` was the only thing between the HUD and a DNS-rebinding
+page. Such a page reaches `127.0.0.1` under its own name; `GET /` handed out
+the session cookie, the browser kept it for the attacker's name, and the
+Origin check passed because Origin and Host agreed. (Found while working out
+how a phone could reach the claw through `tailscale serve`, which passes the
+client's Host header on unchanged and adds `X-Forwarded-For`.)
+
+The first middleware on the app is now `hostGate` (`src/pocket-host.ts`), and
+it decides before any route runs:
+
+```ts
+// src/pocket-host.ts — classifyRequest
+const proxied = PROXY_HEADERS.some((h) => header(headers, h) !== undefined);
+const bind = opts.bindHost.toLowerCase().replace(/^\[|\]$/g, "");
+const bindIsName = bind !== "" && bind !== "0.0.0.0" && bind !== "::";
+if (!proxied && (LOOPBACK_NAMES.has(parts.name) || (bindIsName && parts.name === bind))) return { kind: "local" };
+```
+
+A loopback name with no proxy header gets the HUD. A name the operator listed
+for Pocket Claw gets `/pocket/` and nothing else. Everything else, including a
+loopback Host that arrived through a proxy, gets `421`. Tests in
+`src/pocket-host.test.ts`: *a DNS-rebinding page's name is refused, so GET /
+cannot hand it the session*, *an unlisted name is refused even when it arrives
+through tailscale serve*, *a tailnet device that sends Host: 127.0.0.1 through
+the proxy is not local*, *a proxy whose X-Forwarded-Host disagrees with Host is
+refused*, *the gate: an unlisted Host gets 421 and never reaches a route*.
+
+**A behaviour change.** An install with `server.host` set to `0.0.0.0` and
+reached by its LAN address is now refused. There is no option to reopen it;
+the release notes give `ssh -L` and Pocket Claw as the ways round.
+
+**Limit.** The gate decides by the Host header and the proxy headers. A
+process on the same machine can send any headers it likes; it was never kept
+out by the bind either, and the token (README, "Authentication") is what
+stops it.
+
+### 5.2 Pocket Claw: a phone that answers cards
+
+Pocket (`src/pocket.ts`, `public/pocket/`, design in `docs/POCKET-CLAW.md`) is
+a web app the phone reaches through a tailnet. It is served by this process,
+on the tailnet name only, and the HUD's master session is never issued there
+(*the HUD's admin routes cannot be reached from the tailnet name*, *the gate:
+the tailnet name sees /pocket/ and nothing of the HUD*).
+
+- **Pairing.** A single-use code, five minutes, in the QR link's `#fragment`
+  so no proxy logs it. Enrolment is a WebAuthn platform credential with user
+  verification required, checked by `src/webauthn.ts` on `node:crypto` alone:
+  strict CBOR, authenticatorData, clientDataJSON, ES256 and RS256, challenge,
+  origin, relying-party hash, UP, UV and the signature counter. Only then is a
+  256-bit device token issued, kept as a SHA-256 hash in
+  `data/pocket/devices.json` (mode 600) and held in an HttpOnly, SameSite=Strict,
+  Secure cookie. (*pairing: a code is single-use*, *pairing: an enrolment from
+  the wrong origin or without UV is refused and issues no token*, *the device
+  token is stored hashed, never as itself*; in `src/webauthn.test.ts`,
+  *registration without user verification is refused — a tap is not a
+  fingerprint*, *an assertion over a replayed challenge is refused*.)
+- **Three levels.** The token alone lists the waiting cards. Reading the
+  conversation, sending, sharing, receipts, the mic and jobs need a biometric
+  unlock in the last ten idle minutes. Approving or denying needs a fresh
+  assertion over a challenge whose bytes name the purpose and the card's id,
+  single-use, two minutes, settled through the same `settle` as the HUD and
+  the phone lines. (*locked: the token opens the cards, not the conversation*,
+  *approving needs a fresh assertion bound to that approval, and settles
+  through settleApproval*, *an assertion minted to deny cannot approve, and one
+  for card A cannot answer card B*, *a replayed approval assertion is refused*.)
+  Cancelling a job is the same, bound to that job's full id (*cancelling a job
+  needs a fresh assertion bound to that job*).
+- **What reaches the phone.** Events from `broadcast()` after `redactDeep`,
+  with tool inputs and results left off, because results are other people's
+  words; history is redacted on the way out (*events: a locked phone hears the
+  cards only; an unlocked one follows the turn, tool names without results*,
+  *history leaving for the phone is redacted: the home folder is ~*).
+- **Push.** Web Push on `node:crypto` (`src/webpush.ts`: RFC 8291 encryption,
+  RFC 8292 VAPID). The payload is a count — "2 approvals waiting" — because it
+  shows on a locked screen and passes through the phone vendor's push service.
+  Endpoints must be a known push service, so a paired phone cannot aim the
+  claw at the LAN. (*a push says how many, never what: the card's text does not
+  leave in the notification*, *encryption reproduces the RFC 8291 §5 message
+  byte for byte*, *only real push services are accepted as endpoints — a paired
+  phone cannot aim the claw at the LAN*.)
+- **Shared files are strangers' words.** A shared file is checked by its bytes
+  (JPEG, PNG, WebP, HEIC, PDF), saved under a name the claw chooses, and
+  attached with the HUD paperclip's `[file attached: …]` marker, so routing pins
+  the turn to a trusted brain and `read_document` fences it. The manifest's
+  share target takes files only: shared *text* would have become the
+  operator's own words, unfenced. (*a share that is not a photo or a PDF by its
+  bytes is refused*, *a shared photo attached to the chat is saved under the
+  claw's own name with the paperclip's marker*.)
+- **Revoke and rate limits.** Revoke deletes the record and closes its
+  streams; an unknown or revoked token is 401 everywhere; failures are
+  rate-limited per client; state-changing calls must carry the Pocket origin.
+  (*an unknown or revoked token gets 401 everywhere*, *failed attempts are
+  rate-limited per client*, *a state-changing call without the Pocket origin is
+  refused*.)
+
+**Limits.** Whoever holds an unlocked phone and knows its screen lock holds
+Pocket: the phone's own authenticator is the factor, and it accepts the
+screen lock. Pocket has been driven in Chromium emulating a Pixel 7 with a
+virtual authenticator, against a private claw; it has not been run on a real
+phone or through a real tailnet, and iPhone is untested. On the Cloudflare
+Tunnel route, Access's signed header (`Cf-Access-Jwt-Assertion`) is not yet
+checked; Access is the outer gate and the token and fingerprint are the inner
+ones.
+
+### 5.3 The foreman: coding jobs for Claude Code
+
+`delegate_code` (`src/foreman.ts`) hands a coding job to Claude Code, headless,
+and watches it. It is the claw's largest new authority, so it carries the most
+rules, each in code and tested in `src/foreman.test.ts`:
+
+- **The model never supplies a path or a flag.** Projects are chosen by id from
+  `foreman.projects`; the argv is built from config; the brief goes on stdin.
+  (*projects are chosen by id; a path is not a project*, *the argv is headless
+  stream-json with a conservative mode, no connectors and hooks off*.)
+- **Refused in a tainted conversation**, before any card, saying why; a tool
+  context with no taint oracle counts as tainted. A brief that may carry a
+  stranger's words must not become code that runs here. (*refused in a tainted
+  conversation, before any card, and says why*.)
+- **Every start is a card** with the exact brief, project, branch and
+  permissions, through `ctx.requestApproval` and never `gate()`, so no task
+  grant covers it, and `src/workorder.ts` refuses a plan step that names it.
+  A brief too long for the card is refused rather than cut. (*every start
+  raises a card with the exact brief, project, branch and permissions; no card,
+  no job*, *a brief too long for the card is refused rather than truncated*.)
+- **A fresh worktree** beside the project — never inside it, the claw or its
+  data, because Claude Code reads parent `CLAUDE.md` files — on a new branch.
+  Nothing pushes or merges. (*the worktree goes beside the project, never
+  inside it, the claw or its data*.)
+- **A floor under the child's permissions.** `acceptEdits` (bypassPermissions
+  and auto refused); `--tools` limited to Read, Edit, Write, Glob, Grep, Bash
+  and NotebookEdit, because the real CLI's init event listed tools that
+  schedule work or reach other sessions; Bash only through scoped allow rules
+  (a bare Bash, a shell or `npx *` is dropped); a deny list config can only
+  grow; `--strict-mcp-config`; hooks off unless the operator turns them on.
+  (*config cannot loosen the floor: unsafe modes, unscoped shells and a shrunk
+  deny list are refused*.)
+- **A stripped environment:** `sandboxEnv`, then an allowlist, then only the
+  credential the operator chose. Claude Code's `-p` uses `ANTHROPIC_API_KEY`
+  whenever it is present, so inheriting `.env` would have billed every job to
+  the claw's key. (*the child's environment keeps what Claude Code needs and
+  none of the claw's keys*.)
+- **The report is fenced** and `code_job_report` is in `UNTRUSTED_TOOLS`:
+  Claude Code read third-party files. (*the report fences everything Claude
+  Code wrote, and the reading tool taints the turn*.)
+- **It stops.** Turn and wall-clock limits from config; cancel and the timeout
+  signal the whole process group and escalate to SIGKILL. (*cancel stops the
+  whole process group, escalates, and lands as cancelled*.)
+
+Mission control (`src/jobs.ts`) holds each job's state and one status line
+that moves with the work and never with the clock, so the loop guard still
+works (*the model's view does not tick: the same jobs read the same at any
+later moment*).
+
+**Limits.** The child is not inside the claw's bubblewrap box. Its containment
+is Claude Code's own permission system (in a `-p` run an unlisted command is
+denied, because nobody is there to answer), the worktree, the stripped
+environment and the card. `npm test` is code execution by another name: the
+child can edit the test script before running it, and that script runs with
+the operator's file permissions. Every rule above was tested against a
+stand-in CLI, and the argv once against the real one; no real coding job has
+yet been run end to end.
+
+### 5.4 Voice notes and receipts: two more ways in
+
+Both arrive through Telegram's allowlisted operator chat, and receipts through
+Pocket too.
+
+**Voice notes** (`src/voice-notes.ts`, `src/telegram.ts`) are the operator's
+own words, so they are run as if typed — after ffmpeg (told the input format,
+never handed a path, URL or filter) and the local ears have turned them into
+text, and after that text has been echoed back. A stranger's voice note is
+ignored like their text and never downloaded. A voice note never answers a
+card: while one is open it is not even fetched, so a misheard "yes" cannot
+become EXECUTE. Spoken replies are Piper reading the text exactly as sent, so
+they carry the same redaction. (In `src/telegram.test.ts`: *a voice note never
+settles an approval: while a card is open it is not even heard*, *a stranger's
+voice note or photo is ignored exactly like their text — nothing is even
+downloaded*; in `src/voice-notes.test.ts`, *ffmpeg is told the input format and
+is never handed a path, a URL or a filter*.)
+
+**Receipts** (`src/receipts.ts`) are a stranger's print. The photo goes to a
+vision brain; only the documented keys of its reply are read, money and dates
+are parsed to fixed shapes or dropped, the supplier is cut to one fence-free
+line, and the result is fenced wherever the model reads it back. Filing never
+runs a turn — from Telegram or Pocket — and the three receipt tools are in
+`UNTRUSTED_TOOLS`. A supplier of `=HYPERLINK(…)` is defused in the CSV.
+Corrections are parsed from what the operator types, with no model between.
+(*a receipt that tries to give orders is filed as data, and only the documented
+fields survive*, *the export is plain CSV with documented columns, and a
+supplier cannot become a spreadsheet formula*, *receipt_fix asks before it
+rewrites the books, and a refusal changes nothing*; in `src/pocket.test.ts`,
+*receipts need the unlock, and a receipt cannot be smuggled into the chat as a
+turn*, *the HUD hears that a receipt was filed, never what the slip says*.)
+
+**Limits.** A slip that addresses the vision model can still bend the values
+it reads — a total, a date — within those fixed shapes; that is why every
+filing is read back to the operator. The photo leaves the machine for the
+vision brain's provider. A voice note or a text the operator *forwards* from
+someone else is run as the operator's own words: Telegram marks a forward, and
+the claw does not yet read the mark (section 8). whisper.cpp and Piper were
+stood in for in the tests; ffmpeg ran for real.
+
+### 5.5 Learn mode: a practice ground that cannot touch the world
+
+Learn mode (`src/learn.ts`, `src/learn-sim.ts`, `src/approvals.ts`; design in
+`docs/LEARN-MODE.md`) teaches the operator to read cards by raising cards. The
+risk runs both ways: practice must never have a real effect, and a real card
+must never be mistaken for practice.
+
+- **Nothing real runs.** While a scenario runs, a simulator sits at the top of
+  `executeTool`; tools with fixtures answer from `learn/scenarios/`, every
+  other tool gets one fixed refusal and is never run. Fixture text goes through
+  the real `fenceUntrusted` and scanner, and `run_command` through the real
+  `classifyCommand`. (*while practice runs, a tool with no fixture is refused
+  with one fixed sentence and never run*, *the floor refuses in practice exactly
+  as outside it — same check, same words*, *once the practice ground is closed,
+  a beat refuses to run rather than reach a real tool*.)
+- **Practice cards stay on the HUD.** `requestPractice` broadcasts with
+  `practice: true` and the PRACTICE label, never calls a phone line or ntfy,
+  arms no timeout, cannot be settled from a phone, and grants nothing on
+  "allow for this task"; Pocket drops practice events. (*a practice card is
+  labelled, goes to the HUD only, and never reaches Telegram, Discord or
+  ntfy*, *a phone line cannot answer a practice card, even if it somehow had the
+  id*, *ALLOW FOR THIS TASK on a practice card grants nothing real*; in
+  `src/pocket.test.ts`, *a Learn mode practice card never reaches the phone: no
+  push, no pending card*.)
+- **Real cards cannot pose as practice.** Every real card has the label's
+  words taken out, after format characters are stripped, so an email cannot
+  make a real send look like a drill. (*text cannot make a real card look like
+  practice: the label's words are taken out*.)
+- **Only the operator starts it.** The engine is built only in `server.ts` and
+  driven only by the HUD's `/api/learn` routes; the model's one Learn tool,
+  `learn_progress`, only reads. (*only server.ts builds the lesson engine — no
+  tool, phone line or heartbeat can reach it*, *no tool can change Learn state*.)
+- **The real conversation is set aside and restored**, its taint with it,
+  because the taint is read from the messages; nothing from practice is
+  written to `data/history.json`, the real journal or real memory. (*practice
+  sets the real conversation aside and restores it exactly — the taint with
+  it*, *memory_save in practice goes to practice memory, never real memory*.)
+
+**Limits.** No learning effect has been measured, and keyword grading can be
+gamed by someone who wants to. The drills show the scanner catching planted
+text; the lessons say it can be evaded.
+
+### 5.6 The site wall: strangers' words, published only by a person
+
+cunningclaw.com's "ask the forge" wall (`site/functions/_wall/wall.js`, a
+Cloudflare Pages Function over D1) is the project's, not the operator's own
+install's. The Function holds pre-moderation (the public list selects
+`moderation = 'public'` and nothing else), server-side Turnstile that fails
+closed, rate limits keyed by an HMAC of the IP and the UTC day, refusal of
+email addresses and phone numbers, and a constant-time admin token check.
+Tests in `src/site-wall.test.ts` run it against a real in-memory SQLite built
+from `schema.sql`: *a visitor's card is invisible to the public until a person
+approves it*, *Turnstile is verified on the server, with the secret, and fails
+closed*, *no raw IP address is stored anywhere, and vote keys differ per card*,
+*HTML in a card stays text: stored as written, served as inert JSON*.
+
+The claw's side is `site_wall` (`src/wall.ts`). Cards are fenced as strangers'
+words and the tool is in `UNTRUSTED_TOOLS`; approve, hide, answer and stage
+each raise `ctx.requestApproval` showing exactly what will be public, never
+`gate()`, and `stepIsCommitting` marks them. The URL comes from `siteWall.url`
+in config, never the model; the token from `.env`, sent only there, over
+https, with redirects refused, and hidden from sandboxed commands and the
+transcript. (*the wall's address comes from config, never the model, and the
+token only over https*, *list fences every card as a stranger's words, and a
+card cannot close the fence*, *approve shows the operator the stranger's exact
+words, and a no changes nothing*, *the admin token never reaches a result, a
+sandboxed command or the transcript*.) Without the token the tool says how to
+connect it and asks nothing.
+
+**Limit.** The rate-limit rows are purged as part of a new submission, so
+"deleted within two days" holds only while submissions keep arriving; votes
+add rows without purging them.
+
+---
+
+## 6. Scenarios
 
 ### A — A poisoned supplier invoice
 
@@ -439,8 +738,9 @@ has already approved this."*
    warning.
 
 The agent's own control surface is not exposed to the network: the HUD and API
-bind to `127.0.0.1` behind a token, so a phishing page cannot drive the agent
-through its API.
+bind to `127.0.0.1` behind a token, and the host gate refuses any request that
+does not name the claw, so a phishing page cannot drive the agent through its
+API, not even by rebinding its own name to `127.0.0.1` (section 5.1).
 
 ### D — Working through a cloud outage
 
@@ -458,7 +758,7 @@ deployed as such without an independent assessment.
 
 ---
 
-## 6. Verifying these claims
+## 7. Verifying these claims
 
 | Claim | How to check |
 |---|---|
@@ -470,12 +770,18 @@ deployed as such without an independent assessment.
 | Converter environment, zip refusals | `npx tsx --test src/documents.test.ts` |
 | Testimony stamp in search results | `npx tsx --test src/memory.test.ts` |
 | Discord cards only in direct messages | `npx tsx --test src/discord.test.ts` |
-| Everything | `npm test` — 717 passing at the time of writing |
+| Host gate, DNS rebinding | `npx tsx --test src/pocket-host.test.ts` |
+| Pocket pairing, levels, bound assertions, push, shared files | `npx tsx --test src/pocket.test.ts src/webauthn.test.ts src/webpush.test.ts` |
+| Practice cards never leave the HUD; real cards cannot pose as practice | `npx tsx --test src/approvals.test.ts src/learn-sim.test.ts src/learn.test.ts src/learn-agent.test.ts` |
+| Foreman: taint refusal, card, worktree, floor, environment, fence | `npx tsx --test src/foreman.test.ts src/jobs.test.ts` |
+| Voice notes never answer a card; receipts filed as data | `npx tsx --test src/telegram.test.ts src/voice-notes.test.ts src/receipts.test.ts` |
+| The wall: moderation, Turnstile, no IPs; the tool's cards and token | `npx tsx --test src/site-wall.test.ts src/wall.test.ts` |
+| Everything | `npm test` — 955 passing at the time of writing |
 
 Every test in the suite is required to fail with its fix reverted
 (`CLAUDE.md`, "Tests"), and the commit that added it says so.
 
-## 7. Known gaps, in priority order
+## 8. Known gaps, in priority order
 
 1. **Sandboxed commands can read the operator's other files and, with network
    on, send them.** Key stores and sign-ins are hidden (section 3.3); ordinary
@@ -484,10 +790,23 @@ Every test in the suite is required to fail with its fix reverted
 2. **Document converters run outside the sandbox.** Next: run them inside it,
    read-only, with no network.
 3. **No sandbox on Windows.** The result text says so; nothing more yet.
-4. **macOS sandbox untested on hardware.**
-5. **Heuristic scanner.** Open source and evadable by design. An optional
+4. **The foreman's child is not in the sandbox.** Claude Code's own permission
+   system, the worktree, the stripped environment and the card contain it, and
+   `npm test` in a job runs a script the job could have edited (section 5.3).
+   Next: run the job inside the same box as `run_command`.
+5. **Forwarded messages read as the operator's own.** A voice note or text the
+   operator forwards to the Telegram bot from someone else is run as if they
+   had said it; Telegram marks a forward (`forward_origin`) and the claw does
+   not yet read the mark. Next: fence a forward as a stranger's words.
+6. **macOS sandbox untested on hardware.**
+7. **Pocket Claw untried on a real phone and a real tailnet**, and Cloudflare
+   Access's signed header is not checked on the tunnel route (section 5.2).
+8. **Heuristic scanner.** Open source and evadable by design. An optional
    model-based second opinion is a follow-up.
-6. **The approval card depends on a person reading it.**
+9. **The wall's rate-limit rows are purged only on a new submission**, so the
+   two-day retention depends on traffic (section 5.6).
+10. **The approval card depends on a person reading it.** The same is true of a
+    fingerprint on a phone.
 
 *Yn lleol yn gyntaf · Caniatâd dynol pan fo canlyniadau* — local first, human
 consent where there are consequences.

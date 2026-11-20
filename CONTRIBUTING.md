@@ -6,8 +6,10 @@ This is a local assistant that can run a shell, see the screen, and drive a brow
 
 ```
 public/            HUD (vanilla JS)
-src/server.ts      HTTP + SSE, the approval registry, the Desk document API
+src/server.ts      HTTP + SSE, the Desk document API; wires the approval registry, the host gate, Pocket, Learn
+src/approvals.ts   the approval registry: real cards to the HUD and phones, practice cards to the HUD only
 src/boot.ts        First-run gate, then loads the server
+src/first-run.ts   what boot needs; the setup page decides the rest (public/welcome.html)
 src/agent.ts       Streaming tool loop
 src/brain.ts       Named brains, failover, spend
 src/tools.ts       Tool schemas + dispatcher + HARD_DENY
@@ -17,25 +19,27 @@ src/desktop.ts     Screen, keys, clipboard — per-platform paths via src/platfo
 src/windows.ts     The Windows half: PowerShell, SendKeys, System.Drawing
 src/paths.ts       expandHome + the sensitive-file denylist every file tool obeys
 src/documents.ts   read_document: PDF/Office/OpenDocument/HTML/images to fenced text; a bounded zip reader
+src/sandbox.ts     the shell's box: bubblewrap / sandbox-exec argv, writable folders, hidden key stores, scrubbed env
+src/workorder.ts   approve a plan once instead of every step of it
+src/injection.ts   scans fenced text for orders aimed at the model; warns, flags, alarms the turn
+src/tool-diet.ts   which MCP schemas go to the model this call; the roster; fence-aware result trimming
 src/remote.ts      ssh to another machine: boxes, detached jobs, file transfer
 src/foreman.ts     delegate_code: a coding job for Claude Code, headless, in a fresh worktree; card, taint refusal, stripped env
 src/jobs.ts        mission control: the registry of long work the HUD's JOBS sheet and the jobs tool show
-src/workorder.ts   approve a plan once instead of every step of it
-src/injection.ts   scans fenced text for orders aimed at the model; warns, flags, alarms the turn
-src/sandbox.ts     the shell's box: bubblewrap / sandbox-exec argv, writable folders, hidden key stores, scrubbed env
-src/tool-diet.ts   which MCP schemas go to the model this call; the roster; fence-aware result trimming
 src/marketing.ts   the consent register and the guard on every marketing send (marketing_audience, send_email, vendor MCP sends)
 src/wall.ts        site_wall: the site's "ask the forge" wall — fenced reads, every publish behind a card
-src/connector-guide.ts  connector_guide: how each catalogue connector signs in, and the steps, from the catalogue
+src/connector-guide.ts connector_guide: how each catalogue connector signs in, and the steps, from the catalogue
 src/embed.ts       embeddings client (Gemini, OpenRouter, Ollama) for memory search by meaning
 src/memory.ts      memory facts, hybrid keyword + meaning search, testimony stamps
 src/ears.ts        local speech-to-text through whisper.cpp (POST /api/listen)
+src/voice.ts       Piper / spd-say / say
 src/voice-notes.ts Telegram voice notes: ffmpeg between OGG/Opus and WAV/PCM, the reply-in-voice setting, what is missing
-src/receipts.ts    receipt photos read into a ledger under data/receipts (integer pence), the Desk's Receipts page, CSV/JSON export, corrections
+src/receipts.ts    receipt photos (Telegram or Pocket) read into a ledger under data/receipts (integer pence), the Desk's Receipts page, CSV/JSON export, corrections
 src/ntfy.ts        outbound-only push alerts; redacted, group-safe, never an approve button
 src/pocket-host.ts which host a request named: loopback gets the HUD, the tailnet name gets /pocket/ only, anything else 421
 src/pocket.ts      Pocket Claw, the phone app: pairing, device tokens, biometric unlock and approvals, its event feed (docs/POCKET-CLAW.md)
 src/webauthn.ts    WebAuthn registration and assertion checks on node:crypto (CBOR, authData, ES256/RS256)
+src/webauthn-soft.ts a software authenticator for the tests; the server never imports it
 src/webpush.ts     Web Push on node:crypto: RFC 8291 encryption, RFC 8292 VAPID; counts only, never a card's text
 src/qr.ts          the pairing QR, byte mode, drawn on the HUD's own glass
 public/pocket/     the phone's front end, manifest and service worker (shell cache only)
@@ -44,15 +48,12 @@ src/home.ts        the home_assistant tool: validate, read the entity, classify,
 src/home-events.ts HA WebSocket (injected socket and timers), watch rules, debounce, alerts — tells, never acts
 src/visitor-log.ts the Desk's visitor log and data/visitors stills; retention
 src/home-vision.ts the optional one-line visitor caption; the prompt forbids identifying anyone
-src/first-run.ts   what boot needs; the setup page decides the rest (public/welcome.html)
-src/approvals.ts   the approval registry: real cards to the HUD and phones, practice cards to the HUD only
 src/learn.ts       Learn mode's lesson engine; only the HUD's /api/learn routes drive it (docs/LEARN-MODE.md)
 src/learn-sim.ts   the practice ground: a simulator at executeTool, fixture inboxes, nothing real runs
 src/learn-format.ts lesson files, grading, Leitner review, data/learn/progress.json (a leaf)
 learn/             the course: en/ lessons, cy/ the Welsh slot (needs a Welsh-speaking author), scenarios/
 src/owner.ts       the operator's name, address and town, kept in data/owner.json
 src/keys.ts        the Keys page: saving keys to .env, and checking them with the provider for free
-src/voice.ts       Piper / spd-say / say
 src/doctor.ts      npm run doctor
 src/workspace.ts   SOUL.md / MEMORY.md / skills
 workspace/skills/  agentskills.io SKILL.md files

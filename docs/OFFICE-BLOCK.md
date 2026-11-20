@@ -211,8 +211,10 @@ derived from the module's own location and `claw.config.json` is read from `ROOT
 escape hatches. Then: voice off on workers (or several boxes talk at once through one
 set of speakers), and the foreman stores each worker's bearer token.
 
-`src/foreman.ts` holds the roster, starts and stops workers, assigns a job by POSTing to
-the worker's `/api/chat`, and subscribes to its `/api/events`.
+A worker-roster module holds the roster, starts and stops workers, assigns a job by POSTing to
+the worker's `/api/chat`, and subscribes to its `/api/events`. (Not `src/foreman.ts`: since
+this was written that name went to the foreman over Claude Code, `delegate_code`, which hands
+one coding job to a headless Claude Code on this machine. It is not a worker and has no box.)
 
 ## Phase 3 — The office view
 

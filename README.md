@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-717%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-955%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -237,6 +237,31 @@ sent out is redacted first, and the bot cannot @-mention anyone, so a hostile pa
 summarised into a reply cannot make it ping your server. `npm run doctor` reports
 both lines.
 
+**Voice notes (Telegram).** Send a voice note and he hears it on this machine —
+ffmpeg turns Telegram's OGG/Opus into audio for the same private ears the HUD's mic
+uses (whisper.cpp) — shows you `🎙 heard: …` and runs it as if you had typed it.
+The reply always comes as text; a voice note follows when `/voice` says so: `off`,
+`when I speak` (the default) or `always`. The voice reads exactly the text that was
+sent, redacted, so it cannot say what the text was cleaned of. **A voice note never
+answers an approval card** — while one is open a voice note is not even fetched, so a
+misheard "yes" cannot become EXECUTE. A stranger's voice note is ignored like their
+text, and never downloaded. Needs `ffmpeg` with libopus and the ears
+(`./setup-ears.sh`); spoken replies need Piper (`./setup-voice.sh`). `npm run doctor`
+names whichever is missing, and so does the bot. Tested here with stand-ins for
+Telegram, whisper and Piper, and a real ffmpeg round trip; not yet with a live bot.
+
+**Receipts.** Send a photo captioned "receipt" and it is filed, with no conversation
+in between: kept under `data/receipts/`, read by a vision brain (`receipts.visionBrain`,
+else your first trusted brain — so the photo goes to that provider) into date,
+supplier, total and VAT in whole pence, category and payment, and added to
+`ledger.json` and `ledger.csv`. The Desk's Receipts page is rebuilt from the ledger.
+He tells you exactly what he filed; `fix that: total £12.40` corrects it as typed,
+with no model in between, and the old value stays in that receipt's history. The
+`receipts` tool lists or exports a date range as CSV or JSON. A receipt was printed by
+a stranger, so only the documented fields are kept, a supplier cannot become a
+spreadsheet formula, and the receipt tools pin the turn to a trusted brain. A
+bookkeeping aid, not an accountant.
+
 ### ntfy
 
 A third way to reach your phone, with no account at all: [ntfy](https://ntfy.sh)
@@ -257,6 +282,32 @@ is the only lock, so treat it like a password, and know that everything sent is
 redacted, has paths, the hostname, LAN and email addresses taken out, and is cut
 short. For a private line, run your own ntfy server (`ntfy.server` in
 `claw.config.json`) or use a protected topic with an access token in `NTFY_TOKEN`.
+
+### Pocket Claw (your phone, through Tailscale)
+
+The claw's own phone app, added to your home screen from Chrome: talk to him,
+answer approval cards with your fingerprint, snap a receipt, see mission control's
+jobs, or share a photo or PDF to him from any app. The claw still listens on
+`127.0.0.1` only. Your phone reaches it through [Tailscale](https://tailscale.com),
+a private network of your own devices:
+
+1. Install Tailscale on this machine and on your phone, signed in to one account.
+2. In Tailscale's admin console, turn on MagicDNS and HTTPS Certificates.
+3. On this machine: `tailscale serve --bg 3900`.
+4. On the HUD, press **POCKET**, save the name `tailscale serve status` shows
+   (`your-pc.your-tailnet.ts.net`), press **PAIR A PHONE** and scan the code.
+
+On that name the claw serves Pocket and nothing else: no HUD, no Keys page, no
+`/api`. The token the phone gets opens the list of waiting cards; reading or sending
+needs a fingerprint in the last ten idle minutes; approving needs a fresh fingerprint
+for *that* card. Notifications say how many cards wait, never what is on them.
+**REVOKE** on the POCKET panel ends a phone at once. The full setup, the security
+model with the test behind each claim, and a Cloudflare Tunnel alternative are in
+[docs/POCKET-CLAW.md](docs/POCKET-CLAW.md).
+
+Honesty: Pocket has been driven in Chromium emulating a Pixel 7, with a virtual
+passkey, against a private claw. It has **not yet been run on a real phone or
+through a real tailnet**. iPhone is untested, and iOS cannot share files to a web app.
 
 ### The house (Home Assistant)
 
@@ -324,7 +375,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
   ▸ brain    flashlite · google/gemini-3.1-flash-lite
   ▸ llais    piper · en_GB-alan-medium   (the voice)
   ▸ curiad   every 30m   (the heartbeat)
-  ▸ offer    75 tools on the bench
+  ▸ offer    83 tools on the bench
 
   ▸ wards    y ffens   — outside words are fenced
              y llw     — consequences wait for you
@@ -357,14 +408,17 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **WhatsApp** | WhatsApp Web / Business in the same Chrome — chat list, title unread count, draft, send. Send is always an approval. QR is scanned in that window |
 | **Markets** | The desk-marketer skill: follow-ups after a job, review requests, MOT and service reminders, newsletters in the business's own voice, prepared on a schedule, designed in Canva, sent through Resend, MailerLite or Klaviyo once you approve, with a report after. Who may be mailed is a consent register on the Desk, checked in code at every send — unknown, opted-out or basis-less recipients are removed or the send is refused, and a marketing email with no unsubscribe line does not go |
 | **Accounts** | Jurisdiction packs (UK first; IE, US, AU, DE as stubs) plus Xero via the official local MCP. It will not invent a foreign tax rate or file a return |
-| **Speaks and listens** | Neural TTS (Piper), offline. Push-to-talk transcribed on this machine by whisper.cpp once `./setup-ears.sh` has run; until then the browser's recogniser hears, and the HUD says so. The "Claw" wake word works with the browser's ears only, for now |
+| **Speaks and listens** | Neural TTS (Piper), offline. Push-to-talk transcribed on this machine by whisper.cpp once `./setup-ears.sh` has run; until then the browser's recogniser hears, and the HUD says so. The "Claw" wake word works with the browser's ears only, for now. Telegram voice notes are heard by the same local ears, and can be answered in voice |
+| **Keeps receipts** | A photo captioned "receipt" (Telegram) or snapped in Pocket Claw is read into a ledger in whole pence — date, supplier, total, VAT — with a CSV/JSON export and corrections typed in plain words. Filing never starts a conversation with what the slip says |
 | **Reads kindly** | **Aa** on the HUD switches every page to OpenDyslexic, bundled so it works offline. Code and commands stay monospace. The choice is saved per install |
 | **Finishes projects** | Research reports with a dated source log, grant and tender bids mapped to the scoring, decks, project plans — drafted on the Desk from your real facts, gaps marked `[NEEDED: …]`, then printed to PDF by Chrome (`export_pdf`: A4, or one 16:9 page per slide). It never invents evidence and never submits; you do |
 | **Remembers** | Markdown memory and a dated journal that survive restarts, searched by meaning as well as by words |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
-| **Reaches you** | Telegram or Discord, so it isn't trapped at your desk — approval cards arrive as buttons you press, in a private chat only. ntfy for a push alert with no account |
+| **Reaches you** | Telegram or Discord, so it isn't trapped at your desk — approval cards arrive as buttons you press, in a private chat only. **Pocket Claw**, its own phone app over Tailscale, answers cards with your fingerprint. ntfy for a push alert with no account |
+| **Codes** | `delegate_code` hands a coding job to Claude Code, headless, in a fresh git worktree and branch of a project you named in config — after a card showing the exact brief. It never pushes or merges; you review the branch. A **JOBS** sheet on the HUD is mission control for it |
 | **Works elsewhere** | Any other machine you own over ssh — a spare PC or a cloud VM. Long jobs run **detached**: builds and servers survive the conversation ending and your laptop closing, which they cannot do here |
 | **Connects** | 95 MCP connectors from one sheet. **Guide me** on any card and he walks you through setting it up, one step at a time, from the same catalogue — then offers to save how you like it used as a skill |
+| **Teaches** | **Learn mode**: a course inside the claw in operating it safely — twelve lessons, and practice on fake email where every card is marked PRACTICE and nothing real happens |
 | **Extends** | Skills as `SKILL.md` files ([agentskills.io](https://agentskills.io)). Click **SKILLS** on the HUD to arm them, the same idea as Claude’s capabilities list |
 
 <div align="center">
@@ -526,6 +580,51 @@ for each failure.
 
 ---
 
+## Coding jobs: the foreman
+
+The claw is a good dispatcher and an indifferent programmer; Claude Code is the
+reverse. So a real coding job — read a codebase, change it, run its tests — is handed
+over: `delegate_code` briefs Claude Code, runs it headless (`claude -p`), watches it,
+and tells you when it is done.
+
+```jsonc
+// claw.config.json
+"foreman": {
+  "projects": [{ "id": "site", "label": "The shop's website", "path": "~/code/shop-site" }]
+}
+```
+
+Install Claude Code (`curl -fsSL https://claude.ai/install.sh | bash`), run `claude`
+once to sign in, add a project, and `npm run doctor` says whether it is ready. Jobs
+are billed to that Claude Code sign-in, not to the claw's own key.
+
+- **Projects are chosen by id.** The model never supplies a path or a flag, and the
+  brief reaches Claude Code on stdin, so a brief that begins with a flag is prose.
+- **Every start is a card** with the exact brief, the project, the branch and the
+  permissions. No plan or "allow for this task" covers it.
+- **Refused after outside text.** Once the conversation has read a web page, an email
+  or a document, `delegate_code` refuses, before any card, and says why: a stranger's
+  words must not become code that runs here.
+- **A fresh worktree and branch each time**, beside the project, never in your
+  checkout. Nothing is pushed or merged; you review the branch and merge it yourself.
+- **A short leash.** Edits only inside the worktree (and any folder the project adds in
+  config); by default a shell limited to the test, type-check and read-only git
+  commands; no web and no connectors; hooks off unless you turn them on; none of the
+  claw's keys in its environment; a turn limit and a wall-clock limit from config.
+  `npm test` is still code execution — the job can edit the test script — and the
+  job is not inside the shell's sandbox, so the card is the boundary.
+- **What comes back is fenced.** Claude Code read the project's files, so its summary
+  is treated as a stranger's words.
+
+The HUD's **JOBS** sheet (and the `jobs` tool) is mission control: each job's state,
+one status line, Cancel. Today the foreman's jobs are what it lists.
+
+Honesty: every rule above is tested against a stand-in Claude Code, and the argv was
+checked once against the real CLI. **A real coding job has not yet been run end to
+end.**
+
+---
+
 ## Google, the easy way
 
 There is no Google card on the connectors sheet, and that is not an oversight.
@@ -648,6 +747,16 @@ curl -H "Authorization: Bearer $CLAW_TOKEN" http://127.0.0.1:3900/api/status
 
 Opening `http://127.0.0.1:3900` in a browser needs nothing — the cookie is issued on load.
 
+**And every request must name this claw.** A DNS-rebinding page reaches `127.0.0.1`
+under its own name, and once got the session cookie that way. Now the first thing
+that runs is a host gate (`src/pocket-host.ts`): `localhost`, `127.0.0.1` and `::1`
+with no proxy in between get the HUD; your Pocket Claw name gets the phone app and
+nothing else; any other name is refused with `421` before a route runs.
+
+> **If you set `server.host` to `0.0.0.0`** to reach the HUD from another computer, that
+> stops working: a request to the machine's LAN address is refused. That is the point.
+> Use Pocket Claw for your phone, or `ssh -L 3900:127.0.0.1:3900` from another computer.
+
 ## Safety
 
 The full write-up — threat model, each layer with its code, worked attack scenarios, and the known gaps — is
@@ -663,7 +772,7 @@ assumption that the model will eventually be lied to.
 - **Approval gates** on everything that changes the world — shell, file writes, clicks,
   keystrokes, purchases, device control.
 - A **sandbox around the shell**, where one exists: bubblewrap on Linux (`sudo apt install
-  bubblewrap`), `sandbox-exec` on macOS. A command may write only to its own folder under
+  bubblewrap`), `sandbox-exec` on macOS (written and unit-tested, not yet run on a real Mac). A command may write only to its own folder under
   home, the temp dir and the folders in `sandbox.writable`; ssh keys, git and cloud credentials,
   keyrings and browser profiles are hidden from it, and so are the ssh/gpg agents, the keyring,
   the desktop bus and the display; your keys are kept out of its environment (an empty stand-in; `sandbox.reveal` shows
@@ -677,6 +786,11 @@ assumption that the model will eventually be lied to.
 - **Credential redaction** on every disk write and every event, so a pasted key never lands
   in the transcript.
 - An **Ouroboros guard** that blocks a tool call repeated identically within a turn.
+- A **host gate** in front of every route, so a DNS-rebinding page is refused (above).
+- **No coding job after outside text.** `delegate_code` is refused in a conversation that
+  has read a page, an email or a document.
+- **Practice is never real, and real is never practice.** Learn mode's practice cards go
+  to the HUD only, and text that claims a real card is practice is taken out of it.
 
 **Enforced by design:**
 
@@ -713,6 +827,34 @@ forbidden tools, and reported the attempt.
 
 > **This is defence in depth, not a guarantee.** It runs shell commands on your machine.
 > Treat the approval prompts as the boundary they are.
+
+---
+
+## Learn mode
+
+Press **LEARN** on the HUD. It is a course, inside the claw, in operating an AI agent
+safely: bringing it a job, reading a turn, reading an approval card, what the floor and
+the box can and cannot stop, spotting a planted instruction, choosing a brain, knowing
+what leaves the machine, and arming one standing order safely. Twelve lessons in seven
+modules and a capstone, in `learn/en/`.
+
+Each lesson has you do a real job on your own claw, then practise on the **practice
+ground**: a fake inbox, fake invoices and a fake spellbook, with the real fence, the real
+scanner, the real floor and the real card code in front of them, and a simulator in front
+of every tool, so nothing real can run. Practice cards carry a stripe —
+**PRACTICE · nothing real will happen** — appear on the HUD only, never on your phone,
+and never time out. Your real conversation is set aside while you practise and put back
+exactly as it was.
+
+Answers are marked by code against a teacher-written key, not by the model, and the hint
+ladder always ends in the answer. Every fact a lesson states about the claw (66 of them)
+is checked against the code by the test suite, so a lesson fails the build the day it
+stops being true. Progress stays on this machine (`data/learn/`), with spaced review and
+a Record of Learning on the Desk that says plainly it is not a certificate.
+
+Nobody has measured what people learn from it yet, so this says what it does and no more.
+Welsh lessons wait for a Welsh-speaking author ([learn/cy/README.md](learn/cy/README.md));
+nothing is machine-translated. The design and its reasons: [docs/LEARN-MODE.md](docs/LEARN-MODE.md).
 
 ---
 
@@ -763,15 +905,20 @@ src/desktop.ts   Screen capture, windows, input, clipboard, volume
 src/voice.ts     Piper neural TTS, espeak / macOS `say` fallback
 src/redact.ts    Credential redaction
 src/workspace.ts SOUL.md / USER.md / MEMORY.md / skills
+src/approvals.ts the approval registry: real cards, and Learn mode's practice cards
+src/foreman.ts   coding jobs for Claude Code; src/jobs.ts is mission control
+src/pocket.ts    Pocket Claw; src/pocket-host.ts is the host gate in front of everything
+src/learn.ts     Learn mode; src/learn-sim.ts is the practice ground
+site/            cunningclaw.com, and the "ask the forge" wall's Pages Function
 ```
 
-**~17,600 lines of TypeScript (plus ~5,600 of tests), two runtime dependencies.** Most of what it does comes from composing things
+**~35,000 lines of TypeScript (plus ~16,000 of tests), two runtime dependencies.** Most of what it does comes from composing things
 your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, `pactl` /
 `afplay`, Chrome's debug protocol — rather
 than dragging in frameworks.
 
 ```bash
-npm test        # 717 tests
+npm test        # 955 tests
 npm run check   # tsc --noEmit
 ```
 
@@ -782,8 +929,15 @@ reviewed, corrected, and merged by Claude Code. Several commits in the log are c
 by the software they change. The workshop reviews everything, including its own apprentice.
 
 Where it is going: [`docs/OFFICE-BLOCK.md`](docs/OFFICE-BLOCK.md) — the design for a
-floor of workers, each on its own machine, with the foreman out front. Phase 1 (a
-second machine) is built; the rest is written down and not yet started.
+floor of workers, each on its own machine, with the claw out front as their foreman. Phase 1 (a
+second machine) is built; the rest is written down and not yet started. (The coding foreman
+above is a different, smaller thing: one job for Claude Code, on this machine.)
+
+**The wall on the website is ours, not yours.** cunningclaw.com has a wall where visitors
+ask a question or suggest a feature and watch it get built (*gofyn i'r efail*, ask the
+forge). The `site_wall` tool is how the project's own claw moderates it — every change
+it makes to a visitor's card raises an approval card first. On your claw it has no
+admin token, says so, and does nothing.
 
 Want to change it? [CONTRIBUTING.md](CONTRIBUTING.md) is the contract: denylist floor, fences, approval, and how to add a tool or a skill.
 
