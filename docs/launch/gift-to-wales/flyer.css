@@ -1,0 +1,25 @@
+/* The two A5 flyers. Sized for a noticeboard read at arm's length: the big
+   line at 30pt+, body at 10pt+, only the cost and honesty notes smaller, and
+   even those above 7pt so they survive a home printer. */
+@page{size:A5;margin:0}
+.page{width:148mm;height:210mm;padding:9mm 10mm 6.5mm}
+.head .wm{font-size:8.4pt}
+.head .stamp{width:10mm;height:9.4mm}
+.head .by{font-size:6.6pt}
+.gift{font-size:8.6pt;margin-top:6mm}
+h1{font-size:31pt;margin-top:2.4mm}
+.lede{font-size:11pt;line-height:1.42;margin-top:3.2mm}
+ol.three{list-style:none;counter-reset:n;margin-top:4.6mm;display:flex;flex-direction:column;gap:3mm}
+ol.three li{counter-increment:n;position:relative;padding-left:10mm;font-size:9.8pt;line-height:1.38}
+ol.three li::before{content:counter(n);position:absolute;left:0;top:.2mm;width:6.6mm;height:6.6mm;border:1.4px solid var(--deep);color:var(--deep);font-family:var(--mono);font-weight:600;font-size:9.5pt;display:flex;align-items:center;justify-content:center}
+ol.three b{display:block;font-family:var(--display);font-size:13pt;font-weight:700;margin-bottom:.4mm;line-height:1.15}
+.free{display:flex;gap:5mm;align-items:center;margin-top:5mm;border:1.4px solid var(--ink);padding:3.6mm 4mm}
+.free-text{flex:1;font-size:9.6pt;line-height:1.4}
+.free-text i{display:block;font-style:normal;font-family:var(--mono);font-size:7pt;letter-spacing:.18em;font-weight:600;color:var(--deep);margin-bottom:1mm}
+.free-text b{display:block;font-family:var(--display);font-size:14.5pt;line-height:1.12;margin-bottom:1.4mm}
+.qr{display:flex;flex-direction:column;align-items:center;gap:1.2mm}
+.qr img{width:27mm;height:27mm;display:block}
+.qr span{font-family:var(--mono);font-size:8pt;font-weight:600;letter-spacing:.03em}
+.small{font-size:7.5pt;line-height:1.42;color:var(--soft);margin-top:2.6mm}
+.small b{color:var(--ink)}
+.doctrine{font-size:5pt;margin-top:auto;padding-top:2.4mm;border-top:1px solid var(--rule)}
