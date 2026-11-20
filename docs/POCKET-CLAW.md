@@ -31,7 +31,7 @@ reached, and the private network is the way that works.
    PHONE**.
 2. Scan the code with your phone's camera. It opens Pocket Claw on
    cunningclaw.com. Give the phone a name and press **Pair with
-   fingerprint**. The code works once and expires after five minutes.
+   screen lock**. The code works once and expires after five minutes.
 3. In Chrome's menu, choose **Add to Home screen** (or **Install app**).
 4. Everything in *How it is kept safe* below applies as it is written, with
    two differences: the phone has no token or cookie (it is known by a key
@@ -94,7 +94,7 @@ You need about ten minutes and a free Tailscale account.
    `"pocket": { "hosts": ["your-pc.your-tailnet.ts.net"] }`.
 6. **Pair.** Press **PAIR A PHONE**. Scan the code with your phone's camera
    and open the link in Chrome. Give the phone a name and press **Pair with
-   fingerprint**. The code works once and expires after five minutes.
+   screen lock**. The code works once and expires after five minutes.
 7. **Add to Home screen.** In Chrome's menu, choose **Add to Home screen**
    (or **Install app**). Pocket Claw now opens like any other app. Long-press
    its icon for **Talk**, **Snap receipt** and **Approvals**.

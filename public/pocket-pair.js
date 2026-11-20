@@ -87,7 +87,7 @@
     el("div", { class: "pocket-head" },
       el("div", {},
         el("div", { class: "panel-title", text: "POCKET CLAW" }),
-        el("p", { text: "The claw's own phone app: talk to it, and answer its cards with your fingerprint. The claw still listens only on this machine either way. Details: docs/POCKET-CLAW.md." })),
+        el("p", { text: "The claw's own phone app: talk to it, and answer its cards with your fingerprint, face, PIN or pattern. The claw still listens only on this machine either way. Details: docs/POCKET-CLAW.md." })),
       el("button", { type: "button", class: "ctl", text: "CLOSE", onclick: () => close() })),
     el("div", { class: "pocket-ways" }, easy.box, tail.box),
     relayLine,
@@ -211,7 +211,7 @@
     reveal.addEventListener("click", () => { link.hidden = !link.hidden; reveal.textContent = link.hidden ? "SHOW LINK" : "HIDE LINK"; });
     const until = new Date(r.json.expiresAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
     const how = r.json.mode === "relay"
-      ? `Scan with your phone's camera. It opens Pocket Claw on cunningclaw.com: press Pair with fingerprint, then add it to your home screen. One use, good until ${until}.`
+      ? `Scan with your phone's camera. It opens Pocket Claw on cunningclaw.com: press Pair with screen lock, then add it to your home screen. One use, good until ${until}.`
       : `Scan with your phone's camera and open it in Chrome. One use, good until ${until}. Your phone must be on your tailnet.`;
     qrBox.append(drawQr(r.json.qr), el("p", { text: how }), reveal, link);
     // While the code is up, keep the relay's state and the phone list current:
