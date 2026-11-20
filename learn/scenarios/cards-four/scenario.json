@@ -1,0 +1,90 @@
+{
+  "id": "cards-four",
+  "levels": [1, 2, 3],
+  "title": "Four cards",
+  "brief": "Four jobs you asked for this morning. For each one the practice claw raises the card it would raise for real. Read what it does and who or what it touches, compare it with what you asked, then choose. Nothing real will happen, whatever you press.",
+  "tools": ["check_email", "read_email", "draft_email", "send_email", "run_command"],
+  "rotate": ["clean", "wrong", "wide", "alarming"],
+  "pass": 1,
+  "variants": [
+    {
+      "first": "Siân", "mail": "sian", "contact": "Siân Morgan", "supplier": "hafodtimber.example",
+      "bad": "accounts@hafod-timber.example", "goods": "oak boards", "day": "Tuesday",
+      "acct_name": "Elin Pryce", "acct": "elin@morganpryce.example",
+      "folder": "Invoices", "month": "2026-10", "monthname": "October", "count": "214"
+    },
+    {
+      "first": "Rhys", "mail": "rhys", "contact": "Rhys Owen", "supplier": "brynfencing.example",
+      "bad": "rhys.owen@brynfencing-payments.example", "goods": "fence posts", "day": "Thursday",
+      "acct_name": "Dafydd Hale", "acct": "dafydd@halebooks.example",
+      "folder": "Receipts", "month": "2026-09", "monthname": "September", "count": "187"
+    },
+    {
+      "first": "Gwen", "mail": "gwen", "contact": "Gwen Davies", "supplier": "teifiprint.example",
+      "bad": "gwen@teifi-print.example", "goods": "printed menus", "day": "Friday",
+      "acct_name": "Mari Lloyd", "acct": "mari@lloydaccounts.example",
+      "folder": "Bills", "month": "2026-11", "monthname": "November", "count": "96"
+    }
+  ],
+  "inbox": [
+    {
+      "from": "{{contact}} <{{mail}}@{{supplier}}>",
+      "subject": "Your order — {{goods}}",
+      "date": "20/11/2026",
+      "body": "Hi,\nCan you confirm {{day}} for the {{goods}}? We will deliver between 8 and 10.\nThanks,\n{{first}}"
+    },
+    {
+      "from": "{{acct_name}} <{{acct}}>",
+      "subject": "Year-end figures",
+      "date": "19/11/2026",
+      "body": "Hello,\nPlease send the final figures by the end of today so I can file in time.\n{{acct_name}}"
+    }
+  ],
+  "beats": [
+    {
+      "id": "inbox",
+      "say": "Here is your inbox, as the practice claw sees it.",
+      "steps": [{ "tool": "check_email", "input": {} }]
+    },
+    {
+      "id": "clean",
+      "say": "You asked: reply to {{first}} and confirm {{day}}. I have drafted it and am asking to send.",
+      "steps": [
+        { "tool": "draft_email", "input": { "to": "{{mail}}@{{supplier}}", "subject": "Re: Your order — {{goods}}", "body": "Hi {{first}},\n{{day}} is fine, thank you. Someone will be in from 8.\nBest wishes" } },
+        { "tool": "send_email", "input": {} }
+      ],
+      "expect": "approve",
+      "debrief": "The card sent your reply to {{mail}}@{{supplier}}, the address {{first}}'s own email came from, and said what you asked it to say."
+    },
+    {
+      "id": "wrong",
+      "say": "You asked: send {{first}} a note that the invoice is paid. I have drafted it and am asking to send.",
+      "steps": [
+        { "tool": "draft_email", "input": { "to": "{{bad}}", "subject": "Payment for the {{goods}}", "body": "Hello,\nThe invoice for the {{goods}} is paid. Please confirm the account it went to.\nBest wishes" } },
+        { "tool": "send_email", "input": {} }
+      ],
+      "expect": "deny",
+      "critical": true,
+      "debrief": "The card said To: {{bad}}. {{first}}'s emails come from @{{supplier}}. A lookalike address is one of the commonest ways a payment goes astray — the To line is the line to read."
+    },
+    {
+      "id": "wide",
+      "say": "You asked: move {{monthname}}'s files into Archive. I am asking to run this.",
+      "steps": [
+        { "tool": "run_command", "input": { "command": "mv ~/Documents/{{folder}}/* ~/Documents/Archive/" } }
+      ],
+      "expect": "deny",
+      "debrief": "You asked for {{monthname}} only. The command moves everything in {{folder}} — all {{count}} files. A narrower command names the month: ~/Documents/{{folder}}/{{month}}-*."
+    },
+    {
+      "id": "alarming",
+      "say": "You asked: send {{acct_name}} the final figures today, marked urgent. I am asking to send.",
+      "steps": [
+        { "tool": "draft_email", "input": { "to": "{{acct}}", "subject": "URGENT — final figures before the deadline", "body": "Hello {{acct_name}},\nFinal figures attached, as promised, before today's deadline.\nBest wishes" } },
+        { "tool": "send_email", "input": {} }
+      ],
+      "expect": "approve",
+      "debrief": "It looked alarming, but it went to {{acct}}, the address {{acct_name}} wrote from, and it is what you asked for. The words URGENT and deadline were yours."
+    }
+  ]
+}

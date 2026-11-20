@@ -570,3 +570,120 @@ header { flex-wrap: wrap; row-gap: 6px; }
   font-family: var(--mono); font-size: 11px; line-height: 1; padding: 3px 6px; cursor: pointer;
 }
 .msg-tools button:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* Learn mode (public/learn.js). A drawer on the LEFT, not a modal: the
+   practice cards appear in the transcript's own approval area, on the right,
+   where real cards appear — so the lesson must not cover them. */
+#learn-panel {
+  position: fixed; top: 58px; left: 18px; bottom: 12px; z-index: 70;
+  width: min(460px, calc(100vw - 36px));
+  background: #06101c; border: 1px solid var(--cyan);
+  box-shadow: 12px 0 40px rgba(0,0,0,0.5);
+  padding: 14px 16px 18px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px;
+}
+#learn-panel[hidden] { display: none; }
+.learn-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.learn-head-actions { display: flex; gap: 6px; align-items: center; }
+#learn-lang {
+  background: transparent; color: var(--cyan); border: 1px solid var(--cyan-dim);
+  font-family: var(--mono); font-size: 11px; padding: 3px 4px;
+}
+#learn-body { display: flex; flex-direction: column; gap: 10px; }
+.lv-dim { font-size: 11px; color: var(--cyan-dim); line-height: 1.5; }
+.lv-notice { font-size: 11px; color: var(--amber); line-height: 1.5; border-left: 2px solid var(--amber); padding-left: 8px; }
+.lv-done { font-size: 12px; color: var(--cyan); line-height: 1.5; }
+.lv-welsh { font-size: 11px; color: var(--amber); line-height: 1.5; }
+.lv-top { display: flex; flex-direction: column; gap: 8px; }
+.lv-due { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--amber); border: 1px dashed rgba(255,180,84,0.5); padding: 6px 8px; }
+.lv-prefs { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lv-check { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--text); cursor: pointer; }
+.lv-module { border: 1px solid var(--cyan-dim); background: rgba(53,214,237,0.03); padding: 8px 10px; }
+.lv-module.passed { border-color: var(--cyan); }
+.lv-module-head { display: flex; align-items: baseline; gap: 8px; }
+.lv-module-n { color: var(--amber); font-size: 11px; min-width: 14px; }
+.lv-module-title { color: var(--cyan); font-size: 13px; letter-spacing: 1px; }
+.lv-ward { color: var(--cyan-dim); font-size: 11px; font-style: italic; }
+.lv-pass { margin-left: auto; color: var(--cyan); font-size: 10px; letter-spacing: 1px; }
+.lv-lesson { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 0 0; border-top: 1px dashed rgba(26,108,122,0.5); margin-top: 6px; }
+.lv-lesson-title { flex: 1 1 160px; font-size: 12px; color: var(--text); }
+.lv-lesson-meta { font-size: 10px; color: var(--cyan-dim); }
+.lv-lesson .ctl { padding: 2px 8px; font-size: 10px; letter-spacing: 1px; }
+.lv-status { font-size: 9px; letter-spacing: 1px; padding: 1px 5px; border: 1px solid var(--cyan-dim); color: var(--cyan-dim); }
+.lv-status.s-mastered { border-color: var(--cyan); color: var(--cyan); }
+.lv-status.s-practised, .lv-status.s-started { color: var(--amber); border-color: rgba(255,180,84,0.5); }
+.lv-critical { font-size: 9px; letter-spacing: 1px; color: var(--amber); }
+.lv-reopen { font-size: 9px; letter-spacing: 1px; color: #04080f; background: var(--amber); padding: 1px 5px; }
+.lv-lesson-head { display: flex; flex-direction: column; gap: 4px; }
+.lv-crumbs { display: flex; gap: 8px; font-size: 10px; letter-spacing: 1px; color: var(--cyan-dim); text-transform: uppercase; }
+.lv-title { color: var(--cyan); font-size: 16px; letter-spacing: 1px; font-weight: 600; }
+.lv-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.lv-meta .ctl { margin-left: auto; padding: 2px 8px; font-size: 10px; letter-spacing: 1px; }
+.lv-stepcount { font-size: 11px; color: var(--cyan-dim); }
+.lv-progress { height: 3px; background: rgba(26,108,122,0.4); }
+.lv-progress-fill { height: 100%; background: var(--cyan); }
+.lv-step { border-left: 2px solid var(--cyan); padding: 4px 0 4px 12px; display: flex; flex-direction: column; gap: 10px; }
+.lv-step.t-check { border-left-color: var(--amber); }
+.lv-steptype { font-size: 10px; letter-spacing: 2px; color: var(--amber); }
+.lv-text { font-size: 13px; line-height: 1.65; color: var(--text); white-space: pre-wrap; max-width: 62ch; }
+.lv-options { display: flex; flex-direction: column; gap: 6px; }
+.lv-option {
+  text-align: left; cursor: pointer; background: rgba(53,214,237,0.04);
+  border: 1px solid var(--cyan-dim); color: var(--text); font-family: var(--mono);
+  font-size: 12px; line-height: 1.45; padding: 8px 10px; min-height: 36px;
+}
+.lv-option:hover { border-color: var(--cyan); }
+.lv-option.on { border-color: var(--cyan); background: rgba(53,214,237,0.14); color: var(--cyan); }
+.lv-answer {
+  width: 100%; background: rgba(4,8,15,0.6); color: var(--text); border: 1px solid var(--cyan-dim);
+  font-family: var(--mono); font-size: 12px; padding: 8px; resize: vertical;
+}
+.lv-confidence { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.lv-conf { background: transparent; border: 1px solid var(--cyan-dim); color: var(--cyan-dim); font-family: var(--mono); font-size: 10px; letter-spacing: 1px; padding: 4px 8px; cursor: pointer; min-height: 28px; }
+.lv-conf.on { border-color: var(--amber); color: var(--amber); }
+.lv-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.lv-feedback, .lv-result { border: 1px solid rgba(255,180,84,0.5); padding: 8px 10px; font-size: 12px; line-height: 1.55; display: flex; flex-direction: column; gap: 6px; }
+.lv-feedback.ok, .lv-result.ok { border-color: var(--cyan); }
+.lv-help { color: var(--amber); }
+.lv-reveal { color: var(--cyan); }
+
+/* The practice ground: a cyan stripe, never amber or red — a practice card
+   must look different from a real one at a glance, and dragon red is spent
+   elsewhere (docs/BRAND.md: red strikes once). */
+#learn-practice { border: 1px dashed var(--cyan); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+#learn-practice[hidden] { display: none; }
+.pg-stripe, .practice-stripe {
+  background: repeating-linear-gradient(135deg, rgba(53,214,237,0.95) 0 14px, rgba(53,214,237,0.75) 14px 28px);
+  color: #04080f; font-size: 11px; font-weight: 700; letter-spacing: 2px; padding: 4px 8px;
+}
+.pg-title { color: var(--cyan); font-size: 13px; letter-spacing: 1px; }
+.pg-brief { font-size: 12px; line-height: 1.55; color: var(--text); }
+.pg-log { display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; }
+.pg-row { font-size: 11px; line-height: 1.5; }
+.pg-say { color: var(--text); font-style: italic; }
+.pg-tool { color: var(--amber); }
+.pg-you { color: var(--cyan); }
+.pg-debrief { color: var(--amber); border-left: 2px solid var(--amber); padding-left: 8px; }
+.pg-debrief-ok { color: var(--cyan); border-left: 2px solid var(--cyan); padding-left: 8px; }
+.pg-pre { font-size: 11px; white-space: pre-wrap; max-height: 160px; overflow-y: auto; background: rgba(4,8,15,0.6); border: 1px solid rgba(26,108,122,0.5); padding: 6px; color: var(--text); }
+.pg-q { font-size: 12px; color: var(--cyan); }
+form.pg-say { display: flex; gap: 6px; font-style: normal; }
+form.pg-say input { flex: 1; background: rgba(4,8,15,0.6); color: var(--text); border: 1px solid var(--cyan-dim); font-family: var(--mono); font-size: 12px; padding: 6px; }
+#practice-banner {
+  display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px;
+  border: 1px solid var(--cyan); background: rgba(53,214,237,0.1); padding: 6px 8px; font-size: 11px; line-height: 1.45;
+}
+#practice-banner[hidden] { display: none; }
+#practice-banner strong { color: var(--cyan); letter-spacing: 2px; }
+.approval-card.practice { border: 1px dashed var(--cyan); background: rgba(53,214,237,0.06); animation: none; }
+.approval-card.practice .practice-stripe { margin: -10px -12px 8px; }
+.approval-card.practice .ttl { color: var(--cyan); }
+.msg.practice { border-style: dashed; opacity: 0.85; }
+.msg.practice::before { content: "PRACTICE · "; color: var(--cyan-dim); font-size: 10px; letter-spacing: 1px; }
+@media (max-width: 900px) {
+  #learn-panel { left: 8px; right: 8px; width: auto; top: 96px; }
+}
+#learn-practice .inj-flag {
+  margin-left: 8px; padding: 0 5px; font-size: 10px; letter-spacing: 1px;
+  color: #1a1206; background: var(--amber); border-radius: 2px; cursor: help;
+}

@@ -203,6 +203,15 @@ export function ensureVectors(entries: MemoryEntry[], embedder: Embedder, file =
 
 // ── Live wiring ─────────────────────────────────────────────────────────────
 
+/**
+ * Which embeddings service memory search would use right now, or null. Learn
+ * mode's "what leaves the machine" check reads it, because memory text sent
+ * for embedding is one of the places words go that a learner may not expect.
+ */
+export function embeddingProvider(): EmbedSpec["provider"] | null {
+  return liveSpec()?.provider ?? null;
+}
+
 function liveSpec(): EmbedSpec | null {
   const m = config.memory ?? {};
   const ollamaBrain = catalog().find((b) => b.provider === "openai" && isLocalEndpoint(b.baseUrl) && /:11434(\/|$)/.test(b.baseUrl ?? ""));

@@ -189,6 +189,12 @@ function setState(s) {
 function addMsg(role, text) {
   const div = document.createElement("div");
   div.className = `msg ${role}`;
+  // The practice claw's words, said while the practice ground was open:
+  // marked, so a transcript read later never mistakes them for real work.
+  // Only the claw's: anything typed in the main bar is real by definition —
+  // sending it is what ends practice — and its bubble is drawn a moment
+  // before the server says so, which once labelled a real question PRACTICE.
+  if (role === "cunningclaw" && document.body.dataset.practice === "on") div.classList.add("practice");
   // Text lives in its own span so streaming appends and the hover-tools can
   // coexist — and so "copy" grabs the words, never the button glyphs.
   const span = document.createElement("span");
@@ -1208,7 +1214,7 @@ es.addEventListener("timer_fired", (e) => {
 });
 
 es.addEventListener("approval_request", (e) => {
-  const { id, summary, detail } = sseData(e);
+  const { id, summary, detail, practice, label } = sseData(e);
   const card = document.createElement("div");
   card.className = "approval-card";
   card.id = `approval-${id}`;
@@ -1227,8 +1233,20 @@ es.addEventListener("approval_request", (e) => {
   // send, a payment or a delete — those ask every time.
   card.querySelector(".task").onclick = () => resolveApproval(id, true, "task");
   card.querySelector(".no").onclick = () => resolveApproval(id, false);
+  // Learn mode's practice card: the same card, the same three buttons, so the
+  // decision skill transfers — plus a stripe. The stripe comes only from the
+  // server's practice flag, never from the card's text (src/approvals.ts takes
+  // the label's words out of every real card).
+  if (practice === true) {
+    card.classList.add("practice");
+    const stripe = document.createElement("div");
+    stripe.className = "practice-stripe";
+    stripe.textContent = String(label || "PRACTICE · nothing real will happen");
+    card.prepend(stripe);
+    card.querySelector(".ttl").firstChild.textContent = "PRACTICE CARD — ";
+  }
   $("approval-area").appendChild(card);
-  speak(`Requesting authorisation, ${sir()}.`);
+  if (practice !== true) speak(`Requesting authorisation, ${sir()}.`);
 });
 
 es.addEventListener("approval_resolved", (e) => {

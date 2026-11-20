@@ -1,12 +1,18 @@
-import crypto from "node:crypto";
 import path from "node:path";
 import express from "express";
 import { addressed, config, DATA_DIR, ROOT } from "./config.js";
-import { getHistory, resetHistory, runTurn, cancelTurn, turnInFlight, CONTEXT_END, type AgentEvents } from "./agent.js";
-import { systemStatusText, toolDefinitions } from "./tools.js";
+import { getHistory, resetHistory, runTurn, cancelTurn, turnInFlight, CONTEXT_END, setAsideHistory, restoreHistory, onOperatorTurn, setLearnContext, type AgentEvents } from "./agent.js";
+import { freeWriteZone, setPracticeSimulator, systemStatusText, toolDefinitions } from "./tools.js";
+import { createApprovals } from "./approvals.js";
+import { createLearn } from "./learn.js";
+import { clearInjectionAlarm } from "./injection.js";
+import { DESK_DIR, exportPdf } from "./export-pdf.js";
+import { embeddingProvider } from "./memory.js";
+import { entryKey, parseSchedule, SCHEDULE_FILE } from "./schedule-format.js";
+import { isLocalEndpoint, pickBrain } from "./brain.js";
 import * as voice from "./voice.js";
 import * as ears from "./ears.js";
-import { redactDeep } from "./redact.js";
+import { redact, redactDeep } from "./redact.js";
 import { banner } from "./banner.js";
 import { board } from "./board.js";
 import { grantForTask } from "./consequence.js";
@@ -37,7 +43,7 @@ import { describeVisitor } from "./home-vision.js";
 import { inRange as receiptsInRange, loadLedger as loadReceipts, toCsv as receiptsCsv } from "./receipts.js";
 import { openPreview, closePreview, reloadPreview, previewState, servedDir } from "./preview.js";
 import fs from "node:fs";
-import { isSensitivePath } from "./paths.js";
+import { collapseHome, isSensitivePath } from "./paths.js";
 import { listKeys, setKey, deleteKey, checkKey } from "./keys.js";
 import { setupNeeded, markLocalReady, localRuntimeReachable, openInBrowser, hasUsableCloudKey } from "./first-run.js";
 import { saveOwner, applyOwner } from "./owner.js";
@@ -164,14 +170,28 @@ app.get("/api/events", (req, res) => {
 });
 
 // --- Approval flow ----------------------------------------------------------
-const pendingApprovals = new Map<string, (approved: boolean, timedOut?: boolean) => void>();
+// The registry lives in src/approvals.ts, where it is tested: which card goes
+// to which phone, the timeout, and the practice cards Learn mode raises.
+const approvals = createApprovals({
+  broadcast,
+  phones: [
+    { sendCard: sendApprovalCard, settled: approvalSettled },
+    { sendCard: sendDiscordCard, settled: discordSettled },
+  ],
+  alert: {
+    // ntfy cannot carry the verdict back, so it says where to give it.
+    send: (id, summary) => sendApprovalAlert(id, summary, [
+      ...(telegramStatus().enabled ? ["Telegram"] : []),
+      ...(discordStatus().enabled ? ["Discord"] : []),
+    ]),
+    settled: ntfySettled,
+  },
+  timeoutMs: () => config.commandPolicy.approvalTimeoutMs,
+  grantForTask,
+});
 
-function settleApproval(id: string, approved: boolean, timedOut = false): boolean {
-  const resolver = pendingApprovals.get(id);
-  if (!resolver) return false;
-  resolver(approved, timedOut);
-  return true;
-}
+/** A phone line may answer only real cards; practice ones never left the HUD. */
+const settleFromPhone = (id: string, approved: boolean) => approvals.settle(id, approved, { by: "phone" });
 
 /**
  * Deny everything currently awaiting a click.
@@ -182,52 +202,128 @@ function settleApproval(id: string, approved: boolean, timedOut = false): boolea
  * not run, and its turn unwinds.
  */
 function cancelPendingApprovals(reason: string): number {
-  const ids = [...pendingApprovals.keys()];
-  for (const id of ids) settleApproval(id, false);
-  if (ids.length) broadcast("notice", { message: `${ids.length} pending approval(s) cancelled — ${reason}` });
-  return ids.length;
-}
-
-function requestApproval(summary: string, detail: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const id = crypto.randomUUID();
-    let timer: NodeJS.Timeout;
-    const finish = (approved: boolean, timedOut = false) => {
-      if (!pendingApprovals.has(id)) return;
-      pendingApprovals.delete(id);
-      clearTimeout(timer);
-      broadcast("approval_resolved", { id, approved, timedOut });
-      approvalSettled(id, approved);
-      discordSettled(id, approved);
-      ntfySettled(id);
-      resolve(approved);
-    };
-    timer = setTimeout(() => finish(false, true), config.commandPolicy.approvalTimeoutMs);
-    pendingApprovals.set(id, finish);
-    broadcast("approval_request", { id, summary, detail });
-    void sendApprovalCard(id, summary, detail);
-    void sendDiscordCard(id, summary, detail);
-    // ntfy cannot carry the verdict back, so it says where to give it.
-    sendApprovalAlert(id, summary, [
-      ...(telegramStatus().enabled ? ["Telegram"] : []),
-      ...(discordStatus().enabled ? ["Discord"] : []),
-    ]);
-  });
+  const n = approvals.cancelAll();
+  if (n) broadcast("notice", { message: `${n} pending approval(s) cancelled — ${reason}` });
+  return n;
 }
 
 app.post("/api/approve", (req, res) => {
-  // "approve for this task" is an approval that also widens scope until the
-  // turn ends. It never covers an irreversible action.
-  if (req.body?.scope === "task") grantForTask();
+  // "approve for this task" widens scope until the turn ends, on a real card
+  // only, and never covers an irreversible action (approvals.ts, consequence.ts).
   const { id, approved } = req.body ?? {};
-  if (!settleApproval(id, Boolean(approved))) {
+  if (!approvals.settle(String(id ?? ""), Boolean(approved), { by: "hud", scope: req.body?.scope === "task" ? "task" : undefined })) {
     return res.status(404).json({ error: "No such pending approval" });
   }
   res.json({ ok: true });
 });
 
 // --- Chat -------------------------------------------------------------------
-const agentEvents: AgentEvents = { emit: broadcast, requestApproval };
+const agentEvents: AgentEvents = { emit: broadcast, requestApproval: (summary, detail) => approvals.request(summary, detail) };
+
+// --- Learn mode (src/learn.ts) ------------------------------------------------
+// Every route below is the operator's own HUD, behind requireAuth. Nothing else
+// can start a lesson or open the practice ground: no tool, no tool result, no
+// phone line. That is T15 in docs/LEARN-MODE.md, and it is why a page cannot
+// make a real card look like practice.
+const learn = createLearn({
+  root: path.join(ROOT, "learn"),
+  dataDir: DATA_DIR,
+  now: () => new Date(),
+  emit: broadcast,
+  agent: {
+    busy: () => turnInFlight().busy,
+    setAside: setAsideHistory,
+    restore: restoreHistory,
+    runPracticeTurn: (message) => runTurn(message, agentEvents, { kind: "user", practice: true }),
+  },
+  setSimulator: setPracticeSimulator,
+  requestPractice: approvals.requestPractice,
+  cancelPracticeCards: approvals.cancelPractice,
+  clearAlarm: clearInjectionAlarm,
+  redact: (text) => redact(text),
+  facts: () => {
+    const brain = pickBrain("user");
+    const embed = embeddingProvider();
+    return {
+      cloudBrain: brain.provider === "anthropic" || !isLocalEndpoint(brain.baseUrl),
+      cloudEmbeddings: embed === "gemini" || embed === "openrouter",
+      telegram: telegramStatus().enabled,
+      discord: discordStatus().enabled,
+      ntfy: ntfyStatus().enabled,
+      mcp: connectorSnapshot().connected > 0,
+    };
+  },
+  armedOrders: () => {
+    try {
+      return parseSchedule(fs.readFileSync(SCHEDULE_FILE, "utf-8")).entries.filter((e) => e.enabled).map(entryKey);
+    } catch {
+      return [];
+    }
+  },
+  // The operator pressed the button, so the click is the consent; a Desk PDF
+  // is a new file in the claw's own ground, which write_file's rule frees anyway.
+  exportPdf: (file) => exportPdf({ source: file }, { approve: async () => true, freeWriteZone, taskGrant: () => false }),
+  deskDir: DESK_DIR,
+});
+onOperatorTurn(() => learn.operatorTurn());
+setLearnContext(() => learn.contextLine());
+
+const learnBody = (req: express.Request) => (req.body ?? {}) as Record<string, any>;
+const learnReply = (res: express.Response, out: { ok: boolean; error?: string }) =>
+  res.status(out.ok ? 200 : 400).json(out);
+
+app.get("/api/learn", (_req, res) => res.json(learn.catalogue()));
+app.post("/api/learn/start", (req, res) => learnReply(res, learn.start(String(learnBody(req).lesson ?? ""))));
+app.post("/api/learn/next", (_req, res) => learnReply(res, learn.advance()));
+app.post("/api/learn/stop", (_req, res) => learnReply(res, learn.stop()));
+app.post("/api/learn/answer", (req, res) => {
+  const b = learnBody(req);
+  learnReply(res, learn.answer({
+    text: typeof b.text === "string" ? b.text : undefined,
+    choice: Array.isArray(b.choice) ? b.choice.map(Number) : undefined,
+    confidence: typeof b.confidence === "string" ? b.confidence : undefined,
+  }));
+});
+app.post("/api/learn/real", (req, res) => learnReply(res, learn.setRealTask(String(learnBody(req).task ?? ""))));
+app.post("/api/learn/done", (_req, res) => learnReply(res, learn.verifyReal()));
+app.post("/api/learn/again", (_req, res) => learnReply(res, learn.practiseAgain()));
+app.post("/api/learn/practice/start", (_req, res) => learnReply(res, learn.startPractice()));
+app.post("/api/learn/practice/end", (_req, res) => learnReply(res, learn.endPractice("the operator left the practice ground")));
+app.post("/api/learn/practice/predict", (req, res) => learnReply(res, learn.predict(String(learnBody(req).choice ?? ""))));
+app.post("/api/learn/practice/report", (req, res) => {
+  const i = learnBody(req).index;
+  learnReply(res, learn.report(i === null || i === undefined ? null : Number(i)));
+});
+app.post("/api/learn/practice/say", (req, res) => learnReply(res, learn.practiceSay(String(learnBody(req).message ?? ""))));
+app.get("/api/learn/review", (_req, res) => res.json(learn.review()));
+app.post("/api/learn/review", (req, res) => {
+  const b = learnBody(req);
+  learnReply(res, learn.reviewAnswer(String(b.key ?? ""), {
+    text: typeof b.text === "string" ? b.text : undefined,
+    choice: Array.isArray(b.choice) ? b.choice.map(Number) : undefined,
+    confidence: typeof b.confidence === "string" ? b.confidence : undefined,
+  }));
+});
+app.post("/api/learn/prefs", (req, res) => {
+  const b = learnBody(req);
+  if (typeof b.nudges === "boolean") learn.setNudges(b.nudges);
+  if (typeof b.lang === "string") learn.setLang(b.lang);
+  res.json(learn.catalogue());
+});
+app.post("/api/learn/record", async (_req, res) => {
+  try {
+    const out = await learn.recordOfLearning();
+    // The glass is screenshotted and filmed: home collapses to ~ (CLAUDE.md).
+    // export_pdf's last line is advice for the model, not for the operator.
+    res.json({
+      ...out,
+      markdown: collapseHome(out.markdown),
+      message: out.message.split("\n").filter((l) => !l.startsWith("Check it with read_document")).join(" "),
+    });
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: String(err?.message ?? err) });
+  }
+});
 
 app.post("/api/cancel", (_req, res) => {
   const { forMs } = turnInFlight();
@@ -247,8 +343,11 @@ app.post("/api/cancel", (_req, res) => {
 const STOP_WORDS = /^\s*(stop|cancel|abort|halt|never ?mind|forget it|leave it)\b[\s.!]*$/i;
 
 app.post("/api/chat", (req, res) => {
+  // A real message from the operator ends practice first — stop words and
+  // brain commands included — so nothing typed here runs on the practice ground.
+  learn.operatorTurn();
   // A new instruction outranks a turn parked on an unanswered approval.
-  if (pendingApprovals.size > 0) cancelPendingApprovals("superseded by a new instruction");
+  if (approvals.pendingCount() > 0) cancelPendingApprovals("superseded by a new instruction");
   const message = String(req.body?.message ?? "").trim();
   if (!message) return res.status(400).json({ error: "Empty message" });
 
@@ -382,6 +481,8 @@ app.get("/api/history", (_req, res) => {
 });
 
 app.post("/api/reset", (_req, res) => {
+  // Reset clears the real conversation, so practice must hand it back first.
+  learn.operatorTurn();
   resetHistory();
   res.json({ ok: true });
 });
@@ -775,7 +876,9 @@ const httpServer = app.listen(port, host, async () => {
 
   // Armed before anything that can push: the late briefing fires at boot.
   startNtfy();
-  startHeartbeat(agentEvents);
+  // Learn mode's review offer rides the heartbeat: silent unless the operator
+  // turned reminders on and something is due, and once a day at most.
+  startHeartbeat(agentEvents, { onBeat: () => { learn.nudgeTick(); } });
   startSchedule(agentEvents);
   startRemoteWatch(agentEvents);
   // A coding job that lands is told like a remote job is: a notice, the phone,
@@ -786,8 +889,8 @@ const httpServer = app.listen(port, host, async () => {
     busy: () => turnInFlight().busy,
     push: (text) => void notifyPhone({ kind: "job", title: "Coding job", body: text }),
   });
-  startTelegram(agentEvents, { resolveApproval: settleApproval });
-  startDiscord(agentEvents, { resolveApproval: settleApproval });
+  startTelegram(agentEvents, { resolveApproval: settleFromPhone });
+  startDiscord(agentEvents, { resolveApproval: settleFromPhone });
   // After the phone lines, which it pushes through. It is given emit and the
   // senders, not runTurn: an event is told to the operator, never acted on.
   startHomeWatch(agentEvents, {

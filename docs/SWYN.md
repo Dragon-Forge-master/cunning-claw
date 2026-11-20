@@ -33,6 +33,7 @@ curious, which is exactly the intended ratio.
 | **llais** | voice | the TTS engine (Piper) |
 | **offer** | tools | the tool roster on the bench |
 | **arysgrif y dydd** | the day's inscription | the boot banner's rotating proverb — real Welsh, glossed, one per day |
+| **Cymraeg** | Welsh, the language | the language choice in the Learn panel; Welsh lessons wait for a Welsh-speaking author (learn/cy/README.md) |
 
 ## Welsh that executes
 

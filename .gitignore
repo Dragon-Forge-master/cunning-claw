@@ -23,6 +23,8 @@ data/remote-jobs-state.json
 data/turn-shapes.json
 data/schedule-state.json
 data/hud-prefs.json
+# Learn mode: the learner's progress, practice memory and practice journal.
+data/learn/
 data/owner.json
 # Doorbell stills: people on the doorstep, never in git (src/visitor-log.ts).
 data/visitors/
