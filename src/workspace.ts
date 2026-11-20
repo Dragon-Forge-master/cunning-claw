@@ -39,12 +39,16 @@ export type SkillMeta = {
   category: string;
 };
 
-const CATEGORY_ORDER = ["machine", "forge", "craft", "general"] as const;
+const CATEGORY_ORDER = ["machine", "forge", "craft", "projects", "general"] as const;
 
+// "projects" holds the work that ends in a finished document someone else
+// reads — research, grant and tender bids, decks, plans — so the sheet shows
+// it as one shelf rather than scattering it through Craft and General.
 export const SKILL_CATEGORY_LABELS: Record<string, string> = {
   machine: "This machine",
   forge: "Dragon Forge",
   craft: "Craft",
+  projects: "Projects",
   general: "General",
 };
 

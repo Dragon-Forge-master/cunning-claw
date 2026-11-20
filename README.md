@@ -13,7 +13,7 @@ And refuses when a web page tells it to do something you didn't ask for.
 ![status](https://img.shields.io/badge/status-alpha-f5a623?style=for-the-badge)
 ![node](https://img.shields.io/badge/node-22%2B-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![typescript](https://img.shields.io/badge/typescript-strict-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
-![tests](https://img.shields.io/badge/tests-623%20passing-35d6ed?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-655%20passing-35d6ed?style=for-the-badge)
 ![offline](https://img.shields.io/badge/runs-offline%20capable-8b5cf6?style=for-the-badge)
 ![platforms](https://img.shields.io/badge/linux%20·%20macOS-supported-35d6ed?style=for-the-badge)
 ![windows](https://img.shields.io/badge/windows-beta-ffb454?style=for-the-badge)
@@ -286,7 +286,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
   ▸ brain    flashlite · google/gemini-3.1-flash-lite
   ▸ llais    piper · en_GB-alan-medium   (the voice)
   ▸ curiad   every 30m   (the heartbeat)
-  ▸ offer    73 tools on the bench
+  ▸ offer    74 tools on the bench
 
   ▸ wards    y ffens   — outside words are fenced
              y llw     — consequences wait for you
@@ -319,6 +319,7 @@ Runs on **Linux** (`xdotool`, `wmctrl`, `pactl`, `paplay`), **macOS** (`screenca
 | **Accounts** | Jurisdiction packs (UK first; IE, US, AU, DE as stubs) plus Xero via the official local MCP. It will not invent a foreign tax rate or file a return |
 | **Speaks and listens** | Neural TTS (Piper), offline. Push-to-talk transcribed on this machine by whisper.cpp once `./setup-ears.sh` has run; until then the browser's recogniser hears, and the HUD says so. The "Claw" wake word works with the browser's ears only, for now |
 | **Reads kindly** | **Aa** on the HUD switches every page to OpenDyslexic, bundled so it works offline. Code and commands stay monospace. The choice is saved per install |
+| **Finishes projects** | Research reports with a dated source log, grant and tender bids mapped to the scoring, decks, project plans — drafted on the Desk from your real facts, gaps marked `[NEEDED: …]`, then printed to PDF by Chrome (`export_pdf`: A4, or one 16:9 page per slide). It never invents evidence and never submits; you do |
 | **Remembers** | Markdown memory and a dated journal that survive restarts, searched by meaning as well as by words |
 | **Watches** | A 30-minute heartbeat that stays silent when there's nothing worth saying |
 | **Reaches you** | Telegram or Discord, so it isn't trapped at your desk — approval cards arrive as buttons you press, in a private chat only. ntfy for a push alert with no account |
@@ -730,7 +731,7 @@ your machine already has — `xdotool` / `osascript`, `wmctrl` / System Events, 
 than dragging in frameworks.
 
 ```bash
-npm test        # 623 tests
+npm test        # 655 tests
 npm run check   # tsc --noEmit
 ```
 

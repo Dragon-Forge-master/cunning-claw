@@ -91,3 +91,41 @@ test("a skill learns lessons without its file ever changing, and they load with 
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("the Projects shelf: its skills ship, sort before General, and name only tools that exist", async () => {
+  // Skills that end in a finished document (research, grants, decks, plans,
+  // tenders) sit on their own shelf in the HUD sheet. A skill that names a
+  // tool the claw does not have sends the model hunting for it, so every
+  // snake_case name in backticks must be a real tool, the brain's own
+  // web_search, or one of export_pdf's arguments the skills teach.
+  const { skillCatalog } = await import("./workspace.js");
+  const { toolDefinitions } = await import("./tools.js");
+  const projects = ["deep-research", "grant-writer", "presentation-maker", "project-planner", "tenders"];
+  const all = listSkills();
+  const names = all.map((s) => s.name);
+  for (const name of projects) {
+    const skill = all.find((s) => s.name === name);
+    assert.ok(skill, `missing skill: ${name}`);
+    assert.equal(skill.category, "projects", `${name} is not on the Projects shelf`);
+  }
+  const shelf = skillCatalog().filter((s) => s.category === "projects");
+  assert.ok(shelf.length >= projects.length);
+  assert.ok(shelf.every((s) => s.categoryLabel === "Projects"));
+  const lastProject = names.findLastIndex((n) => all.find((s) => s.name === n)?.category === "projects");
+  const firstGeneral = names.findIndex((n) => all.find((s) => s.name === n)?.category === "general");
+  assert.ok(firstGeneral === -1 || lastProject < firstGeneral, "Projects should sort before General");
+
+  const tools = new Set(toolDefinitions.map((t) => t.name));
+  const allowed = new Set([...tools, "web_search", "page_break_h1", "page_numbers"]);
+  for (const name of projects) {
+    const body = readSkill(name);
+    for (const m of body.matchAll(/`([a-z]+(?:_[a-z0-9]+)+)`/g)) {
+      assert.ok(allowed.has(m[1]), `${name} names a tool that does not exist: ${m[1]}`);
+    }
+    // Skills they lean on by name must exist too.
+    for (const m of body.matchAll(/`([a-z]+(?:-[a-z]+)+)` skill/g)) {
+      assert.ok(names.includes(m[1]), `${name} points at a missing skill: ${m[1]}`);
+    }
+  }
+  assert.ok(tools.has("export_pdf"));
+});

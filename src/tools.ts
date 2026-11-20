@@ -32,6 +32,7 @@ import { phoneNotifyTool } from "./ntfy.js";
 import * as sandbox from "./sandbox.js";
 import { readDocument } from "./documents.js";
 import { connectorGuide } from "./connector-guide.js";
+import { exportPdf } from "./export-pdf.js";
 
 export { isSensitivePath } from "./paths.js";
 
@@ -827,6 +828,35 @@ export const toolDefinitions: Anthropic.Tool[] = [
     input_schema: {
       type: "object",
       properties: { tab: { type: "number" } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "export_pdf",
+    description:
+      "Print a Desk document (markdown) or an HTML page you wrote to a finished PDF, using Chrome. " +
+      "A4 with page numbers by default; landscape: true turns an HTML deck of <section class=\"slide\"> " +
+      "elements (1280×720 px each) into one 16:9 slide per page and reports any slide whose text runs " +
+      "off the edge. HTML in markdown prints as text; page scripts never run; local images are embedded " +
+      "only from the document's own folder, the Desk or workspace/images. Writes to the Desk unless output names a path; " +
+      "a new PDF is free, replacing an existing one asks.",
+    input_schema: {
+      type: "object",
+      properties: {
+        source: {
+          type: "string",
+          description: "A Desk document's name (\"Grant draft\") or a path to a .md or .html file",
+        },
+        output: {
+          type: "string",
+          description: "PDF file name (lands on the Desk) or path; default: the source's name, on the Desk",
+        },
+        landscape: { type: "boolean", description: "16:9 slides for an HTML deck; A4 landscape for markdown" },
+        page_break_h1: { type: "boolean", description: "Markdown: start each top-level heading on a new page" },
+        page_numbers: { type: "boolean", description: "Page numbers in the footer (default true; never on slides)" },
+        title: { type: "string", description: "PDF title; default: the first heading" },
+      },
+      required: ["source"],
       additionalProperties: false,
     },
   },
@@ -2369,6 +2399,12 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
         return await browser.dismissOverlays(input.tab);
       case "browser_back": return await browser.goHistory(-1, input.tab);
       case "browser_forward": return await browser.goHistory(1, input.tab);
+      case "export_pdf":
+        return await exportPdf(input, {
+          approve: (summary, detail, match) => gate(ctx, { tool: "export_pdf", match }, summary, detail),
+          freeWriteZone,
+          taskGrant: taskGrantActive,
+        });
       case "check_email": return await browser.checkEmail(input.query, input.view);
       case "read_email": return await browser.readEmail(input.index);
       case "draft_email":

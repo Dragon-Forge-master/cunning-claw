@@ -96,8 +96,11 @@ type Pending = {
  * made waiting for load events, buffering console errors, and clicking with
  * DOM.getBoxModel all impossible — which is why clicks used element.click()
  * and sleeps, and why React apps often ignored them.
+ *
+ * Exported because export-pdf.ts drives a second, throwaway headless Chrome
+ * with the same client rather than growing a second one.
  */
-class CdpSession {
+export class CdpSession {
   private ws: WebSocket;
   private ready: Promise<void>;
   private id = 0;
