@@ -51,6 +51,8 @@ import { pinBrain, catalog as brainCatalog } from "./brain.js";
 import { dietStatus } from "./tool-diet.js";
 import { jobs, TERMINAL_STATES } from "./jobs.js";
 import { foreman, reportText, startForeman } from "./foreman.js";
+import { hostGate } from "./pocket-host.js";
+import { createPocket } from "./pocket.js";
 
 // An assistant that is meant to be always-on must survive a stray stream or
 // socket error. Log loudly, keep serving.
@@ -75,6 +77,34 @@ const app = express();
 // both read it, and a request can arrive the instant listen() resolves.
 const { generated: tokenGenerated } = ensureToken();
 
+// Pocket Claw, the phone app (src/pocket.ts). Made before the gate, which
+// asks it for the operator's tailnet name. What it is handed are hoisted
+// declarations further down; none of them runs until a request arrives.
+const pocket = createPocket({
+  dataDir: DATA_DIR,
+  uploadsDir: path.join(os.homedir(), "Documents", "CunningClaw", "uploads"),
+  configuredHosts: () => config.pocket?.hosts ?? [],
+  // A phone is a phone: Pocket settles as one, so a Learn mode practice card
+  // can never be answered from it (approvals.ts refuses "phone" on those).
+  settleApproval: (id, approved) => settleFromPhone(id, approved),
+  chat: (message) => acceptChat(message),
+  history: () => displayHistory(getHistory(), CONTEXT_END),
+  listen: (wav) => ears.listen(wav, { settings: ears.earsSettings() }),
+  readBody: (req, max) => ears.readCapped(req, Math.min(max, ears.earsSettings().maxBytes), Number(req.headers["content-length"])),
+  notice: (message) => broadcast("notice", { message }),
+  clawName: () => config.persona.name,
+  unlockMinutes: config.pocket?.unlockMinutes,
+  pairingMinutes: config.pocket?.pairingMinutes,
+  vapidSubject: config.pocket?.vapidSubject,
+  staticDir: path.join(ROOT, "public", "pocket"),
+});
+
+// Before every route: a request must name this claw. Loopback names get the
+// HUD; the operator's tailnet name gets /pocket/ and nothing else; any other
+// name — a DNS-rebinding page, a stray proxy — is refused before GET / can
+// hand it the session cookie (src/pocket-host.ts).
+app.use(hostGate(() => ({ bindHost: config.server.host, pocketHosts: pocket.hosts() })));
+
 // 1MB is right for chat and control traffic. The paperclip route is not:
 // it carries a base64 file. body-parser sets req._body after the FIRST parse,
 // so the route-level express.json({limit:"30mb"}) on /api/upload was a silent
@@ -84,7 +114,7 @@ const { generated: tokenGenerated } = ensureToken();
 // the route's larger one actually run.
 const smallJson = express.json({ limit: "1mb" });
 app.use((req, res, next) =>
-  req.path === "/api/upload" ? next() : smallJson(req, res, next),
+  req.path === "/api/upload" || req.path === "/pocket/api/upload" ? next() : smallJson(req, res, next),
 );
 
 // Loading the HUD hands the browser its session, so EventSource — which cannot
@@ -119,8 +149,11 @@ app.get(["/", "/index.html"], (req, res) => {
 
 // The static assets are the same files any visitor to the page would fetch;
 // nothing behind them is sensitive. Everything under /api is.
+// The phone's routes come first: they authenticate by device token, not the HUD session.
+app.use(pocket.phone);
 app.use(express.static(path.join(ROOT, "public")));
 app.use("/api", requireAuth);
+app.use("/api/pocket", pocket.admin);
 
 // --- SSE event bus (single-user app: broadcast to all connected clients) ---
 const sseClients = new Set<express.Response>();
@@ -128,8 +161,11 @@ const sseClients = new Set<express.Response>();
 function broadcast(event: string, data: unknown): void {
   // Single choke point for everything the HUD, Telegram and the voice see.
   // Redacting here covers every event without each emitter having to remember.
-  const payload = `event: ${event}\ndata: ${JSON.stringify(redactDeep(data))}\n\n`;
+  const clean = redactDeep(data);
+  const payload = `event: ${event}\ndata: ${JSON.stringify(clean)}\n\n`;
   for (const res of sseClients) res.write(payload);
+  // The phone gets the redacted copy, filtered further by its own rules.
+  pocket.onEvent(event, clean);
 
   // Server-side voice: which events speak, which stop it, and why a heartbeat
   // waits its turn, live in voice.react() where they are tested.
@@ -343,13 +379,23 @@ app.post("/api/cancel", (_req, res) => {
 const STOP_WORDS = /^\s*(stop|cancel|abort|halt|never ?mind|forget it|leave it)\b[\s.!]*$/i;
 
 app.post("/api/chat", (req, res) => {
+  const out = acceptChat(String(req.body?.message ?? ""));
+  res.status(out.status).json(out.body);
+});
+
+/**
+ * An operator instruction, from the HUD or from Pocket Claw: the same stop
+ * words, brain commands and approval-cancelling rule whichever glass it came
+ * from. Answers at once; the turn itself streams over the event bus.
+ */
+function acceptChat(raw: string): { status: number; body: unknown } {
   // A real message from the operator ends practice first — stop words and
   // brain commands included — so nothing typed here runs on the practice ground.
   learn.operatorTurn();
   // A new instruction outranks a turn parked on an unanswered approval.
   if (approvals.pendingCount() > 0) cancelPendingApprovals("superseded by a new instruction");
-  const message = String(req.body?.message ?? "").trim();
-  if (!message) return res.status(400).json({ error: "Empty message" });
+  const message = raw.trim();
+  if (!message) return { status: 400, body: { error: "Empty message" } };
 
   if (STOP_WORDS.test(message)) {
     const { forMs } = turnInFlight();
@@ -362,18 +408,17 @@ app.post("/api/chat", (req, res) => {
     // Also when nothing was running: "stop" while he is reading a reply out
     // means stop reading. stopped: true is what voice.react() cancels on.
     broadcast("turn_done", { text: "", stopped: true });
-    return res.json({ ok: true, stopped });
+    return { status: 200, body: { ok: true, stopped } };
   }
   const brainReply = applyBrainCommand(message);
   if (brainReply !== null) {
-    res.json({ ok: true, command: true });
     broadcast("notice", { message: brainReply });
     broadcast("brain", catalogStatus());
-    return;
+    return { status: 200, body: { ok: true, command: true } };
   }
-  res.json({ ok: true });
   void runTurn(message, agentEvents);
-});
+  return { status: 200, body: { ok: true } };
+}
 
 // --- Mission control ----------------------------------------------------------
 // The list, a cancel, and a foreman job's report. Behind requireAuth like the

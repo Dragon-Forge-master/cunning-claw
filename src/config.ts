@@ -370,6 +370,21 @@ export interface ClawConfig {
   board?: { githubOwner?: string; weatherPlace?: string; staleAfterDays?: number };
   server: { port: number; host: string };
   /**
+   * Pocket Claw, the phone app (docs/POCKET-CLAW.md). `hosts` are the names
+   * it answers to — the tailnet name `tailscale serve` gives this machine;
+   * the HUD's POCKET panel can also save one to the data dir. The server
+   * still binds to `server.host`; these are names, not addresses to listen on.
+   */
+  pocket?: {
+    hosts?: string[];
+    /** Idle minutes before the phone needs a fingerprint again to read or send (default 10). */
+    unlockMinutes?: number;
+    /** How long a pairing QR stays good (default 5, at most 15). */
+    pairingMinutes?: number;
+    /** VAPID contact for the push services; a URL or mailto:. Defaults to the project page. */
+    vapidSubject?: string;
+  };
+  /**
    * USD per million tokens, keyed by model id (prefix match allowed).
    * Unknown models record tokens and mark the turn unpriced rather than guessing.
    */

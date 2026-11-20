@@ -15,6 +15,7 @@ import { promisify } from "node:util";
 import { boxes as remoteBoxes, sshArgs, shQuote, type Box as RemoteBox } from "./remote.js";
 import { expandHome } from "./paths.js";
 import { ntfyDoctorLine } from "./ntfy.js";
+import { pocketDoctorLine } from "./pocket-host.js";
 import { sandboxDoctor } from "./sandbox.js";
 import { foremanDoctor } from "./foreman.js";
 import { DOCUMENT_TOOLS } from "./documents.js";
@@ -475,6 +476,15 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
   out.push(channelRow("discord", "Discord", process.env.DISCORD_BOT_TOKEN, process.env.DISCORD_ALLOWED_USER_ID, "DISCORD_ALLOWED_USER_ID"));
   const push = ntfyDoctorLine();
   out.push(row("ntfy", push.status, false, push.text));
+
+  // Pocket Claw is optional; a missing tailscale is information, never a failure.
+  const pocketHosts = [...(config.pocket?.hosts ?? [])];
+  try {
+    const saved = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "pocket", "devices.json"), "utf8")).host;
+    if (typeof saved === "string" && saved) pocketHosts.push(saved);
+  } catch { /* nothing paired */ }
+  const pocketLine = pocketDoctorLine(await hasBin("tailscale"), pocketHosts);
+  out.push(row("pocket", pocketLine.status, false, pocketLine.text));
 
   // The house: the connection and the watcher (src/home-events.ts).
   const eyesBrain = visionBrain();

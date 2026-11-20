@@ -33,6 +33,12 @@ src/ears.ts        local speech-to-text through whisper.cpp (POST /api/listen)
 src/voice-notes.ts Telegram voice notes: ffmpeg between OGG/Opus and WAV/PCM, the reply-in-voice setting, what is missing
 src/receipts.ts    receipt photos read into a ledger under data/receipts (integer pence), the Desk's Receipts page, CSV/JSON export, corrections
 src/ntfy.ts        outbound-only push alerts; redacted, group-safe, never an approve button
+src/pocket-host.ts which host a request named: loopback gets the HUD, the tailnet name gets /pocket/ only, anything else 421
+src/pocket.ts      Pocket Claw, the phone app: pairing, device tokens, biometric unlock and approvals, its event feed (docs/POCKET-CLAW.md)
+src/webauthn.ts    WebAuthn registration and assertion checks on node:crypto (CBOR, authData, ES256/RS256)
+src/webpush.ts     Web Push on node:crypto: RFC 8291 encryption, RFC 8292 VAPID; counts only, never a card's text
+src/qr.ts          the pairing QR, byte mode, drawn on the HUD's own glass
+public/pocket/     the phone's front end, manifest and service worker (shell cache only)
 src/home-policy.ts what HA may be asked: per-service data allow-list, comfort vs security (pure, no imports)
 src/home.ts        the home_assistant tool: validate, read the entity, classify, then ask; home status
 src/home-events.ts HA WebSocket (injected socket and timers), watch rules, debounce, alerts — tells, never acts
