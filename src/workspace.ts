@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT } from "./config.js";
+import { HOME_ROOT } from "./config.js";
 import { redact } from "./redact.js";
 import { localDate } from "./when.js";
 
-export const WORKSPACE = path.join(ROOT, "workspace");
+export const WORKSPACE = path.join(HOME_ROOT, "workspace");
 
 /**
  * The pristine MEMORY.md. Routing compares against this to tell "nothing has

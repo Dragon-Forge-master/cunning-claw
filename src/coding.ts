@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { config, DATA_DIR, ROOT } from "./config.js";
+import { config, DATA_DIR, HOME_ROOT, ROOT } from "./config.js";
 import { expandHome, isSensitivePath } from "./paths.js";
 
 const TODO_FILE = path.join(DATA_DIR, "todos.json");
@@ -36,18 +36,18 @@ export function resolveWorkPath(p: string): string {
     const normal = path.normalize(expanded);
     if (fs.existsSync(normal)) return normal;
     const relative = normal.replace(/^[/\\]+/, "");
-    for (const base of [codingRoot(), ROOT, os.homedir()]) {
+    for (const base of [codingRoot(), HOME_ROOT, os.homedir()]) {
       const candidate = path.join(base, relative);
       if (fs.existsSync(candidate)) return candidate;
     }
     return normal;
   }
-  // Relative paths: the shell starts in ROOT, so file tools must not silently
+  // Relative paths: the shell starts in HOME_ROOT, so file tools must not silently
   // disagree — a split brain once had `mkdir` build a tree in the repo while
   // `write_file` filled an identically-named tree in $HOME, and the agent
   // concluded its own writes were failing. Prefer wherever the path (or its
   // parent directory) already exists; fall back to the coding root.
-  const bases = [codingRoot(), ROOT];
+  const bases = [codingRoot(), HOME_ROOT];
   for (const base of bases) {
     if (fs.existsSync(path.join(base, expanded))) return path.normalize(path.join(base, expanded));
   }
@@ -331,7 +331,9 @@ export function listLocalRepos(): string {
     return [
       `No git repositories found next to this install or under ${home}.`,
       `This Cunning Claw process is running from: ${ROOT}`,
-      "That directory is the Cunning Claw repo. Shell cwd defaults to it. Pass cwd ~ for the home folder.",
+      ROOT === HOME_ROOT
+        ? "That directory is the Cunning Claw repo. Shell cwd defaults to it. Pass cwd ~ for the home folder."
+        : `That is an installed app, not a repo. Shell cwd defaults to the owner's folder, ${HOME_ROOT}. Pass cwd ~ for the home folder.`,
     ].join("\n");
   }
   const lines = acc.map((dir) => {
@@ -341,7 +343,9 @@ export function listLocalRepos(): string {
   });
   return [
     `This Cunning Claw process is running from: ${ROOT}`,
-    "Shell commands start in this install. Pass cwd ~ for the home folder.",
+    ROOT === HOME_ROOT
+      ? "Shell commands start in this install. Pass cwd ~ for the home folder."
+      : `Shell commands start in the owner's folder, ${HOME_ROOT}. Pass cwd ~ for the home folder.`,
     "",
     ...lines,
   ].join("\n");

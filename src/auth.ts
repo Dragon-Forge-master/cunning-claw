@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { NextFunction, Request, Response } from "express";
-import { ROOT } from "./config.js";
+import { HOME_ROOT } from "./config.js";
 
 /**
  * Local API authentication.
@@ -21,7 +21,7 @@ import { ROOT } from "./config.js";
  *      be visiting cannot ride that cookie (CSRF).
  */
 
-const ENV_FILE = path.join(ROOT, ".env");
+const ENV_FILE = path.join(HOME_ROOT, ".env");
 export const COOKIE = "cunningclaw_session";
 
 let token = "";

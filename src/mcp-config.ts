@@ -15,7 +15,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ROOT } from "./config.js";
+import { HOME_ROOT } from "./config.js";
 
 export type McpTransport = "stdio" | "http" | "sse";
 
@@ -146,7 +146,7 @@ export function cunningclawMcpPath(): string {
 export function extraMcpConfigFiles(): string[] {
   return [
     cunningclawMcpPath(),
-    path.join(ROOT, ".mcp.json"),
+    path.join(HOME_ROOT, ".mcp.json"),
     path.join(os.homedir(), ".claude.json"),
     path.join(os.homedir(), ".cursor", "mcp.json"),
   ];
@@ -184,7 +184,7 @@ export function serversFromClaudeJson(json: unknown, projectRoot: string): McpSe
 
 function serversFromFile(file: string, json: unknown): McpServerConfig[] {
   if (file.endsWith(`${path.sep}.claude.json`) || file.endsWith("/.claude.json")) {
-    return serversFromClaudeJson(json, ROOT);
+    return serversFromClaudeJson(json, HOME_ROOT);
   }
   return parseMcpServersBlock(json);
 }

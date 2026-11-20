@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT } from "./config.js";
+import { HOME_ROOT } from "./config.js";
 
 /**
  * The Keys page's engine — the easy-secrets place.
@@ -61,7 +61,7 @@ export const KEY_ROSTER: KeySpec[] = [
 const rosterByName = new Map(KEY_ROSTER.map((k) => [k.name, k]));
 
 export function envPath(): string {
-  return path.join(ROOT, ".env");
+  return path.join(HOME_ROOT, ".env");
 }
 
 /** One value, one line: trims, strips wrapping quotes, refuses anything sneaky. */

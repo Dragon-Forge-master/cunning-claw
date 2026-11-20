@@ -7,9 +7,9 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { DATA_DIR, ROOT } from "./config.js";
+import { DATA_DIR, HOME_ROOT } from "./config.js";
 
-export const TAX_DIR = path.join(ROOT, "workspace", "tax");
+export const TAX_DIR = path.join(HOME_ROOT, "workspace", "tax");
 const STATE_FILE = path.join(DATA_DIR, "tax.json");
 
 export type TaxFact = { key: string; value: string; note?: string };

@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Readable } from "node:stream";
-import { config, DATA_DIR, ROOT } from "./config.js";
+import { config, DATA_DIR, HOME_ROOT } from "./config.js";
 import { hasBin, host, type Host } from "./platform.js";
 import { collapseHomeIn } from "./redact.js";
 
@@ -88,7 +88,7 @@ export const MODELS_DIR = "models";
  * `main` is the pre-2025 name; it is only trusted at a path we built, never as
  * a bare word on PATH, where "main" could be anything at all.
  */
-export function whisperCandidates(bin: string, root = ROOT, h: Host = host()): string[] {
+export function whisperCandidates(bin: string, root = HOME_ROOT, h: Host = host()): string[] {
   if (bin) return [bin.includes("/") || bin.includes("\\") ? path.resolve(root, bin) : bin];
   const exe = h === "win32" ? ".exe" : "";
   const local = path.join(root, LOCAL_WHISPER_DIR);
@@ -150,7 +150,7 @@ async function findBin(candidates: string[]): Promise<string | null> {
   return null;
 }
 
-function findModel(configured: string, root = ROOT): string | null {
+function findModel(configured: string, root = HOME_ROOT): string | null {
   if (configured) {
     const p = path.isAbsolute(configured) ? configured : path.join(root, configured);
     return fs.existsSync(p) ? p : null;
@@ -177,7 +177,7 @@ export function resetEarsForTests(state: EarsState | null = null): void {
  * after a while, because "I ran setup-ears.sh, why is it still Google?"
  * should not need a restart to answer.
  */
-export async function detectEars(settings = earsSettings(), root = ROOT, fresh = false): Promise<EarsState> {
+export async function detectEars(settings = earsSettings(), root = HOME_ROOT, fresh = false): Promise<EarsState> {
   if (!fresh && cached && (cached.engine === "whisper" || Date.now() - lookedAt < RELOOK_MS)) return cached;
   cached = await lookFor(settings, root);
   lookedAt = Date.now();

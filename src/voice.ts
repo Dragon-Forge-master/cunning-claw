@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { addressed, config, ROOT } from "./config.js";
+import { addressed, config, HOME_ROOT } from "./config.js";
 import { hasBin, host, missing, POWERSHELL, psArgs } from "./platform.js";
 import * as win from "./windows.js";
 
@@ -81,11 +81,11 @@ export function setSpawnForTests(fn: typeof spawn | null): void {
 export type VoiceEngine = "piper" | "spd-say" | "say" | "sapi" | "none";
 let availability: { engine: VoiceEngine; detail: string; player?: string } | null = null;
 
-const PIPER_BIN = path.join(ROOT, ".venv", "bin", "piper");
+const PIPER_BIN = path.join(HOME_ROOT, ".venv", "bin", "piper");
 
 function resolveModel(): string | null {
   const m = config.voice.piper.model;
-  const p = path.isAbsolute(m) ? m : path.join(ROOT, m);
+  const p = path.isAbsolute(m) ? m : path.join(HOME_ROOT, m);
   return fs.existsSync(p) ? p : null;
 }
 
@@ -544,7 +544,7 @@ export async function sample(opts: { model?: string; voiceName?: string; text: s
   begin(clean);
   try {
     if (opts.model) {
-      const p = path.isAbsolute(opts.model) ? opts.model : path.join(ROOT, opts.model);
+      const p = path.isAbsolute(opts.model) ? opts.model : path.join(HOME_ROOT, opts.model);
       if (fs.existsSync(p)) return void speakWithPiper(clean, p, player ?? config.voice.piper.player);
     }
     if (opts.voiceName && engine === "spd-say") {
@@ -646,7 +646,7 @@ export function synthesise(text: string, maxChars = 1200, where: PiperAt = {}): 
 
 /** Piper voice models present on disk. */
 export function listPiperVoices(): string[] {
-  const dir = path.join(ROOT, "voices");
+  const dir = path.join(HOME_ROOT, "voices");
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir).filter((f) => f.endsWith(".onnx")).map((f) => `voices/${f}`);
 }

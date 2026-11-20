@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { CdpSession, findChromeBinary } from "./browser.js";
 import { resolveWorkPath } from "./coding.js";
-import { ROOT } from "./config.js";
+import { HOME_ROOT } from "./config.js";
 import { escapeHtml, firstHeading, renderMarkdown } from "./markdown.js";
 import { collapseHome, isSensitivePath } from "./paths.js";
 
@@ -38,7 +38,7 @@ import { collapseHome, isSensitivePath } from "./paths.js";
 export const DESK_DIR = path.join(os.homedir(), "Documents", "CunningClaw");
 
 /** Where generate_image saves — a deck's pictures are usually painted there. */
-export const IMAGES_DIR = path.join(ROOT, "workspace", "images");
+export const IMAGES_DIR = path.join(HOME_ROOT, "workspace", "images");
 
 /** The Desk's name jail — the same rule the Docs page's API uses (server.ts). */
 export const DESK_NAME = /^[A-Za-z0-9][A-Za-z0-9 _'()&-]{0,80}$/;

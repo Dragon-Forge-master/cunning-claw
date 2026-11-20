@@ -3,7 +3,22 @@
 # Safe to re-run. Everything lands inside this project (.whisper/ and models/),
 # where src/ears.ts looks with no config. Usage: ./setup-ears.sh [base.en]
 set -euo pipefail
-cd "$(dirname "$0")"
+# An installed app's own folder is read-only (an AppImage, a .app): what this
+# installs goes in the owner's folder instead, where the claw looks for it
+# (src/home-root.ts). A clone or an unzipped download is its own folder.
+here="$(cd "$(dirname "$0")" && pwd)"
+if [ -n "${CLAW_HOME:-}" ]; then
+  target="$CLAW_HOME"
+elif [ -f "$here/installed.json" ]; then
+  case "$(uname -s)" in
+    Darwin) target="$HOME/Library/Application Support/cunningclaw" ;;
+    *) case "${XDG_DATA_HOME:-}" in /*) target="$XDG_DATA_HOME/cunningclaw" ;; *) target="$HOME/.local/share/cunningclaw" ;; esac ;;
+  esac
+else
+  target="$here"
+fi
+mkdir -p "$target"
+cd "$target"
 
 MODEL="${1:-base.en}"
 case "$MODEL" in

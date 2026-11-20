@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
-import { ROOT, DATA_DIR } from "./config.js";
+import { ROOT, DATA_DIR, HOME_ROOT } from "./config.js";
 
 /**
  * Paths the model must not read or write, even via the dedicated file tools.
@@ -104,6 +104,8 @@ const SENSITIVE_PREFIXES = [
   // unfenced — code_job_report is the fenced way to read them.
   path.join(DATA_DIR, "foreman", "jobs"),
   path.join(ROOT, ".env"),
+  // An installed claw keeps its keys in the per-user folder (src/home-root.ts).
+  path.join(HOME_ROOT, ".env"),
   // The cookie jar IS the logged-in Gmail and WhatsApp session.
   PROFILE_DIR,
 ].map((p) => p.replace(/\\/g, "/").toLowerCase());
