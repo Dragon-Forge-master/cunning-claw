@@ -106,7 +106,7 @@ const SENSITIVE_PREFIXES = [
   path.join(ROOT, ".env"),
   // An installed claw keeps its keys in the per-user folder (src/home-root.ts).
   path.join(HOME_ROOT, ".env"),
-  // The cookie jar IS the logged-in Gmail and WhatsApp session.
+  // The cookie jar IS the logged-in Gmail, Outlook and WhatsApp session.
   PROFILE_DIR,
 ].map((p) => p.replace(/\\/g, "/").toLowerCase());
 

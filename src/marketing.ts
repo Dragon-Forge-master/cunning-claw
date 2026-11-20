@@ -75,7 +75,7 @@ export function registerPath(home: string = os.homedir()): string {
 }
 
 /**
- * Above this many recipients, a Gmail send is treated as marketing whatever the
+ * Above this many recipients, a mailbox send (Gmail or Outlook) is treated as marketing whatever the
  * model said about it. Bcc'ing the whole customer list from the shop's own
  * mailbox is the classic small-business breach, and it is the one a model
  * marking its own homework would wave through. Only the operator moves this.
@@ -611,7 +611,8 @@ export function guardMcpCall(
 }
 
 /**
- * The check on Gmail's send_email. Marketing if the operator or model says so,
+ * The check on send_email, in Gmail's words; guardMailboxSend below is the
+ * same check for whichever mailbox is configured. Marketing if the operator or model says so,
  * or if it goes to more than the bulk threshold. Anything else is
  * correspondence and passes untouched — a reply to a customer, even one about
  * unsubscribing them, even to someone who has opted out of marketing, is not
@@ -628,10 +629,42 @@ export function guardGmailSend(
   rows: readonly ConsentRow[],
   opts: { threshold: number; where: string },
 ): Guard {
+  return guardMailboxSend(preview, marked, rows, { ...opts, mailbox: "Gmail" });
+}
+
+/**
+ * The same check for any mailbox the email tools drive — Gmail or Outlook.
+ *
+ * Outlook adds one thing Gmail's compose window never needed: a recipient can
+ * show as a name with no address in sight (a contact, a colleague from the
+ * directory). Counting only addresses would let a send to fifty such names
+ * pass as correspondence under a threshold of five, and would check consent
+ * for the few that showed an address while the rest went unexamined. So the
+ * count is whichever is larger — addresses, or recipients on the lines — and
+ * a marketing send with any recipient the register cannot see is refused.
+ */
+export function guardMailboxSend(
+  preview: { to: string; subject: string; body: string; recipientCount?: number },
+  marked: boolean | undefined,
+  rows: readonly ConsentRow[],
+  opts: { threshold: number; where: string; mailbox: "Gmail" | "Outlook" },
+): Guard {
   const recips = addressesIn(preview.to);
-  if (marked !== true && recips.length <= opts.threshold) return { verdict: "pass" };
+  const counted = Math.max(recips.length, Math.floor(Number(preview.recipientCount) || 0));
+  if (marked !== true && counted <= opts.threshold) return { verdict: "pass" };
   if (!recips.length) {
     return { verdict: "refuse", message: "Refused: this is marked as marketing but no recipient address is visible in the compose window." };
+  }
+  if (counted > recips.length) {
+    const hidden = counted - recips.length;
+    return {
+      verdict: "refuse",
+      message:
+        `Refused: ${hidden} of ${counted} recipients show a name but no address in the compose window, so the consent ` +
+        `register cannot check them. ` +
+        (marked === true ? "" : `More than ${opts.threshold} recipients is treated as a marketing send. `) +
+        `Nothing was sent. Redraft with the addresses marketing_audience returns, typed as addresses. ${registerHint(opts.where)}`,
+    };
   }
   const v = checkConsent(recips, rows);
   if (v.refused.length) {
@@ -651,8 +684,12 @@ export function guardGmailSend(
     input: preview,
     title: `Send this marketing email — ${n} ${n === 1 ? "recipient" : "recipients"} (${basisSummary(v)}); unsubscribe route present`,
     note:
-      "Every recipient was checked against the consent register. Gmail is a personal mailbox: bulk marketing " +
-      "from it runs into its sending limits and its spam reputation — a mailing service is the proper road.",
+      opts.mailbox === "Gmail"
+        ? "Every recipient was checked against the consent register. Gmail is a personal mailbox: bulk marketing " +
+          "from it runs into its sending limits and its spam reputation — a mailing service is the proper road."
+        : "Every recipient was checked against the consent register. Outlook is a mailbox, not a mailing service: bulk " +
+          "marketing from it runs into Microsoft's sending limits and the business domain's spam reputation — a mailing " +
+          "service is the proper road.",
   };
 }
 

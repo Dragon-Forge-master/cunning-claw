@@ -64,6 +64,25 @@ test("with no query it lists the whole catalogue by category and says what is co
   for (const c of MCP_CATALOGUE.filter((x) => x.popular)) assert.ok(g.includes(c.label), `${c.label} missing`);
 });
 
+test("asked about Outlook, the guide answers about the mailbox — not 'nothing in the catalogue'", () => {
+  // "How do I connect Outlook?" used to be told it might work as a custom MCP
+  // server, when the answer is one sign-in in the claw's own Chrome.
+  const facts = { configured: "Gmail (mail.google.com)", provider: "gmail" as const, profileDir: "~/.config/cunningclaw/chrome" };
+  for (const q of ["outlook", "Office 365", "my hotmail", "Microsoft 365 email"]) {
+    const g = connectorGuide(q, [], undefined, facts);
+    assert.match(g, /^MAIL GUIDE — Outlook on the web/, q);
+    assert.match(g, /no key to make and no app to register/);
+    assert.match(g, /"email": \{ "provider": "outlook", "outlook": "work" \}/, "Gmail is configured, so it says how to choose Outlook");
+    assert.match(g, /profile ~\/\.config\/cunningclaw\/chrome/);
+    assert.match(g, /Sending always stops for your approval, and so does delete/);
+  }
+  const chosen = connectorGuide("outlook", [], undefined, { ...facts, configured: "Outlook on the web — work", provider: "outlook" });
+  assert.doesNotMatch(chosen, /Choose Outlook once/, "already chosen: straight to signing in");
+  assert.match(chosen, /^1\. Sign in once/m);
+  assert.match(connectorGuide("gmail", [], undefined, facts), /^MAIL GUIDE — Gmail/);
+  assert.match(connectorGuide(undefined, []), /Email \(Gmail or Outlook\) is not a connector/);
+});
+
 test("the same state gives the same text, so the loop guard can still see a repeat", () => {
   const s = [{ id: "slack", status: "connected", tools: 3 }];
   assert.equal(connectorGuide("slack", s), connectorGuide("slack", s));

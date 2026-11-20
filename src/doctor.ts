@@ -19,6 +19,7 @@ import { pocketDoctorLine } from "./pocket-host.js";
 import { sandboxDoctor } from "./sandbox.js";
 import { foremanDoctor } from "./foreman.js";
 import { DOCUMENT_TOOLS } from "./documents.js";
+import { describeMailChoice, resolveMailProvider, type EmailConfig } from "./mail-provider.js";
 
 const execFileAsync = promisify(execFile);
 import { detect, piperMissing } from "./voice.js";
@@ -398,6 +399,7 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
   } else {
     out.push(row("chrome", "warn", false, missing("google-chrome")));
   }
+  out.push(emailCheck());
 
   // read_document. None is essential: the built-in reader opens Word, Excel,
   // PowerPoint and OpenDocument with nothing installed. These add PDFs and OCR.
@@ -517,6 +519,25 @@ export async function runDoctor(): Promise<DoctorCheck[]> {
  * webcam, which is off by default — so a phone line that could not hear a
  * voice note had nothing in the doctor saying why.
  */
+/**
+ * Which mailbox the email tools open, and the one step a fresh install still
+ * owes it: signing in once in the claw's own Chrome. The doctor cannot see a
+ * sign-in — that lives in Chrome's cookies, which nothing here reads — so it
+ * says what to do rather than claiming it is done. A bad email setting is a
+ * warning with the fix: the tools refuse it, and better to hear it here.
+ */
+export function emailCheck(cfg: EmailConfig = config.email): DoctorCheck {
+  const r = resolveMailProvider(undefined, cfg);
+  if (!r.ok) return row("email", "warn", false, `Email: ${r.message} The setting is "email" in claw.config.json.`);
+  const guide = r.choice.provider === "outlook" ? "outlook" : "gmail";
+  return row(
+    "email",
+    "ok",
+    false,
+    `Email: ${describeMailChoice(r.choice)}, in Cunning Claw's own Chrome — sign in there once (connector_guide "${guide}" has the steps)`,
+  );
+}
+
 export async function voiceNotesCheck(root = HOME_ROOT): Promise<DoctorCheck> {
   const ffmpeg = await hasBin("ffmpeg");
   const ears = await detectEars(earsSettings(), root);

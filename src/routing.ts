@@ -68,6 +68,10 @@ export function isUntrustedToolName(name: string): boolean {
  */
 const REACHES_OUT = [
   /email|inbox|gmail|mail\b/i,
+  // Outlook mail is read by the same check_email, and "check Outlook" or
+  // "anything in Office 365?" names no mail word at all. "Outlook" also means
+  // a forecast, which only ever routes a turn up to the trusted brain.
+  /\boutlook\b|\bhotmail\b|\blive\.com\b|\b(?:office|microsoft) ?365\b|\bm365\b|\bo365\b|\bexchange online\b|\bowa\b/i,
   /whatsapp|\bwa web\b/i,
   /browse|website|web ?page|url|https?:|search|look up|google/i,
   /screenshot|read the (page|screen)|what.*on (my |the )?screen/i,
