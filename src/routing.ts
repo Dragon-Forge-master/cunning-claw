@@ -31,6 +31,9 @@ export const UNTRUSTED_TOOLS = new Set([
   // The site's "ask the forge" wall is a public form: anyone on the internet
   // writes the cards it lists, and a card can be written to the claw.
   "site_wall",
+  // A receipt is printed by the shop. Its supplier line is anyone's words,
+  // and every receipt tool hands it back — the listing and the fix included.
+  "receipt_file", "receipts", "receipt_fix",
 ]);
 
 /**
@@ -75,6 +78,9 @@ const REACHES_OUT = [
   /\[file attached:|\.(pdf|docx?|xlsx?|pptx?|od[tsp])\b|\b(pdf|attachment)s?\b/i,
   // The site's wall: "what's on the wall?", "any new cards?", "ask the forge".
   /\b(?:the|site|forge|website)(?:'s)? wall\b|\bask the forge\b|\b(?:wall|pending|new) cards?\b/i,
+  // "File this receipt", "export my receipts": the receipt tools read
+  // what shops printed, mid-turn, after the brain is chosen.
+  /\breceipts?\b/i,
 ];
 
 function hasRecordedContent(text: string): boolean {

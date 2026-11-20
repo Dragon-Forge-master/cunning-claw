@@ -1,9 +1,24 @@
-import { addressed, config } from "./config.js";
+import fs from "node:fs";
+import path from "node:path";
+import { addressed, config, DATA_DIR } from "./config.js";
 import { groupSafeText, redact } from "./redact.js";
 import type { AgentEvents } from "./agent.js";
 import { runTurn } from "./agent.js";
 import { systemStatusText } from "./tools.js";
 import { applyBrainCommand, catalogStatus, formatCatalog } from "./brain.js";
+import { detectEars, listen, type EarsState, type ListenResult } from "./ears.js";
+import { piperMissing, synthesise } from "./voice.js";
+import {
+  describeVoiceReplies, execBytes, hearingGap, loadVoiceReplies, oggToWav, parseVoiceCommand, pcmToOgg,
+  saveVoiceReplies, speakingGap, voiceNoteSettings, wantsVoiceReply, type ExecBytes, type VoiceReplies,
+} from "./voice-notes.js";
+import {
+  applyFix, deskFile, filedMessage, fileReceipt, fixedMessage, parseFixCommand, parseFixText,
+  receiptMaxBytes, receiptsRoot, type ReadReceipt,
+} from "./receipts.js";
+import { deskDir } from "./visitor-log.js";
+import { hasBin } from "./platform.js";
+import { collapseHome } from "./paths.js";
 
 const API = "https://api.telegram.org";
 
@@ -30,7 +45,50 @@ const defaultIO: TelegramIO = {
   log: (line) => console.log(`  ${line}`),
 };
 
+/**
+ * The machine's half of a voice note or a photo, in one seam beside the
+ * network's: ffmpeg, whisper, Piper, the vision reader, the turn itself and
+ * where things are kept. The tests stand in every one, so voice notes and
+ * receipts are tested end to end with no token, no ffmpeg and no model.
+ */
+export interface TelegramMedia {
+  exec: ExecBytes;
+  hasBin(bin: string): Promise<boolean>;
+  ears(): Promise<EarsState>;
+  transcribe(wav: Buffer): Promise<ListenResult>;
+  /** Why Piper cannot make a voice note, or null. */
+  piperGap(): string | null;
+  synthesise(text: string, maxChars: number): Promise<{ pcm: Buffer; rate: number }>;
+  /** Undefined: the configured vision brain (src/receipts.ts). */
+  readReceipt?: ReadReceipt;
+  runTurn(text: string, events: AgentEvents, opts: { kind: "user" }): Promise<string | null>;
+  /** Where /voice keeps its choice. */
+  dataDir: string;
+  receiptsRoot: string;
+  /** The Desk's Receipts page, or null to leave the Desk alone. */
+  receiptsDesk: string | null;
+  /** Where a photo that is not (yet) a receipt lands — the paperclip's folder. */
+  uploadsDir: string;
+}
+
+function defaultMedia(): TelegramMedia {
+  return {
+    exec: execBytes,
+    hasBin,
+    ears: () => detectEars(),
+    transcribe: (wav) => listen(wav),
+    piperGap: piperMissing,
+    synthesise,
+    runTurn: (text, events, opts) => runTurn(text, events, opts),
+    dataDir: DATA_DIR,
+    receiptsRoot: receiptsRoot(),
+    receiptsDesk: deskFile(),
+    uploadsDir: path.join(deskDir(), "uploads"),
+  };
+}
+
 let io: TelegramIO = defaultIO;
+let media: TelegramMedia = defaultMedia();
 let botToken: string | null = null;
 let allowed = new Set<string>();
 // The people who may give orders, by Telegram USER id — see operatorIds.
@@ -91,7 +149,13 @@ export function telegramStatus() {
   return {
     enabled: Boolean(botToken && allowed.size),
     chats: [...allowed].map(maskChatId),
+    voiceReplies: voiceReplyMode(),
   };
+}
+
+/** /voice's stored choice wins over config; config over the default ("spoken"). */
+export function voiceReplyMode(): VoiceReplies {
+  return voiceNoteSettings(config.telegram, loadVoiceReplies(media.dataDir)).replies;
 }
 
 /** Telegram's own refusal, with its error code kept so a 409 can be told apart. */
@@ -118,10 +182,13 @@ export function pollTimeoutMs(pollSeconds: number): number {
 }
 
 async function api(token: string, method: string, body?: unknown, timeoutMs = REQUEST_TIMEOUT_MS) {
+  // A voice note is an upload, so sendVoice goes as multipart; fetch sets
+  // the boundary itself when it is handed a FormData and no Content-Type.
+  const form = body instanceof FormData;
   const res = await io.fetch(`${API}/bot${token}/${method}`, {
     method: body ? "POST" : "GET",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
+    headers: body && !form ? { "Content-Type": "application/json" } : undefined,
+    body: form ? body : body ? JSON.stringify(body) : undefined,
     signal: io.timeout(timeoutMs),
   });
   // A proxy's HTML error page is not JSON; say what came back instead of
@@ -447,14 +514,18 @@ export function armTelegram(
   allow: Set<string>,
   resolve: ResolveApproval | null,
   withIO: TelegramIO = defaultIO,
+  withMedia: Partial<TelegramMedia> = {},
 ): void {
   io = withIO;
+  media = { ...defaultMedia(), ...withMedia };
   botToken = token;
   allowed = token ? allow : new Set();
   operators = token ? operatorIds(allow) : new Set();
   resolveApproval = token ? resolve : null;
   approvalMsgs.clear();
   liveCards.clear();
+  lastFiled.clear();
+  gapsSaid.clear();
 }
 
 export function startTelegram(
@@ -541,11 +612,241 @@ export async function handleCallback(cb: any): Promise<void> {
   }
 }
 
+// --- Voice notes and photos --------------------------------------------------
+
+/** The receipt last filed in each chat, so "fix that: …" knows which one. */
+const lastFiled = new Map<string, { id: string; at: number }>();
+/** "That" stops meaning the last receipt after this long; an explicit R-0007 never does. */
+export const FIX_THAT_WINDOW_MS = 30 * 60_000;
+/** A missing piece is said once per process, not under every reply. */
+const gapsSaid = new Set<string>();
+
+/** A caption that says what the photo is. */
+export const RECEIPT_CAPTION = /\b(receipts?|reciepts?|till slips?|expenses?)\b/i;
+
+/** Telegram's voice note, or an audio file that is plainly one (OGG/Opus). */
+function voiceOf(msg: any): { file_id: string; duration: number; file_size: number } | null {
+  const v = msg?.voice ?? (/^audio\/ogg\b/i.test(String(msg?.audio?.mime_type ?? "")) ? msg.audio : null);
+  if (!v?.file_id) return null;
+  return { file_id: String(v.file_id), duration: Number(v.duration) || 0, file_size: Number(v.file_size) || 0 };
+}
+
+/**
+ * The photo to fetch: the largest size Telegram offers that fits the cap, or
+ * an image sent "as a file" (uncompressed — the better read of a till slip).
+ */
+export function photoOf(msg: any, maxBytes: number): { file_id: string; file_size: number } | "too-large" | null {
+  if (Array.isArray(msg?.photo) && msg.photo.length) {
+    const sizes = [...msg.photo].filter((p: any) => p?.file_id).sort((a: any, b: any) => (a.width * a.height || 0) - (b.width * b.height || 0));
+    const fit = sizes.filter((p: any) => !(Number(p.file_size) > maxBytes)).pop();
+    return fit ? { file_id: String(fit.file_id), file_size: Number(fit.file_size) || 0 } : "too-large";
+  }
+  const d = msg?.document;
+  if (d?.file_id && /^image\/(jpeg|png)$/i.test(String(d.mime_type ?? ""))) {
+    return Number(d.file_size) > maxBytes ? "too-large" : { file_id: String(d.file_id), file_size: Number(d.file_size) || 0 };
+  }
+  return null;
+}
+
+/** Telegram's own file paths look like "voice/file_12.oga"; anything else is refused, not fetched. */
+const FILE_PATH = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+){0,3}$/;
+
+/**
+ * getFile, then the bytes, capped twice: Telegram's stated size before the
+ * download and the bytes that actually arrived after it. The token is in the
+ * download URL, so no error here ever repeats the URL.
+ */
+async function downloadFile(fileId: string, maxBytes: number): Promise<Buffer> {
+  const f = await api(botToken!, "getFile", { file_id: fileId });
+  const fp = String(f?.file_path ?? "");
+  if (!FILE_PATH.test(fp) || fp.includes("..")) throw new Error("Telegram gave back an unexpected file path");
+  if (Number(f?.file_size) > maxBytes) throw new Error(`the file is larger than the ${Math.round(maxBytes / 1e6)} MB cap`);
+  const res = await io.fetch(`${API}/file/bot${botToken}/${fp}`, { signal: io.timeout(60_000) });
+  if (!res.ok) throw new Error(`the download answered HTTP ${res.status}`);
+  if (Number(res.headers.get("content-length")) > maxBytes) throw new Error(`the file is larger than the ${Math.round(maxBytes / 1e6)} MB cap`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length > maxBytes) throw new Error(`the file is larger than the ${Math.round(maxBytes / 1e6)} MB cap`);
+  return buf;
+}
+
+function errText(err: unknown): string {
+  return String((err as any)?.message ?? err).slice(0, 300);
+}
+
+/** Say a missing piece once; after that the text reply alone is the answer. */
+async function sayGapOnce(chatId: string, line: string): Promise<void> {
+  if (gapsSaid.has(line)) return;
+  gapsSaid.add(line);
+  await send(chatId, line);
+}
+
+async function sendVoice(chatId: string, ogg: Buffer): Promise<void> {
+  const form = new FormData();
+  form.append("chat_id", String(chatId));
+  form.append("voice", new Blob([new Uint8Array(ogg)], { type: "audio/ogg" }), "reply.ogg");
+  await api(botToken!, "sendVoice", form, 60_000);
+}
+
+/**
+ * A reply: the text, always and first, then — if the setting wants it — the
+ * same words as a voice note. The voice is made from the text exactly as it
+ * was sent, redacted and (in a group) with the machine taken out, so the
+ * audio can never say what the text was cleaned of.
+ */
+async function deliverReply(chatId: string, reply: string | null, spoke: boolean): Promise<void> {
+  if (reply === null) {
+    await send(chatId, `Still working on the previous request, ${addressed()}.`);
+    return;
+  }
+  if (!reply.trim() || reply.trim() === "HEARTBEAT_OK") return;
+  await send(chatId, reply);
+  if (!wantsVoiceReply(voiceReplyMode(), spoke)) return;
+  const gap = speakingGap(await media.hasBin("ffmpeg"), media.piperGap());
+  if (gap) return sayGapOnce(chatId, `(No voice reply: ${gap}. The text above is the whole answer.)`);
+  try {
+    const { pcm, rate } = await media.synthesise(outboundText(reply, isGroupChat(chatId)), voiceNoteSettings().maxChars);
+    await sendVoice(chatId, await pcmToOgg(media.exec, pcm, rate));
+  } catch (err) {
+    io.log(`Telegram: voice reply not sent — ${reason(err)}`);
+    await sayGapOnce(chatId, `(No voice reply: ${errText(err)}. The text above is the whole answer.)`);
+  }
+}
+
+/**
+ * A voice note from an operator: fetched, converted, heard on this machine,
+ * shown back, and run as if typed. Never an answer to an approval — while a
+ * card is waiting nothing is even downloaded, so a misheard "yes" cannot
+ * become an EXECUTE; and a turn that is parked on one refuses new work anyway.
+ */
+async function handleVoice(chatId: string, note: { file_id: string; duration: number; file_size: number }, events: AgentEvents): Promise<void> {
+  if (liveCards.size) {
+    await send(chatId, "🎙 An approval is waiting on the card above. I don't take voice notes while one is open, " +
+      "so a misheard word can never answer it — press EXECUTE or DENY, then speak again.");
+    return;
+  }
+  const s = voiceNoteSettings(config.telegram, loadVoiceReplies(media.dataDir));
+  if (note.duration > s.maxSeconds) {
+    await send(chatId, `🎙 That voice note is ${note.duration}s; I take up to ${s.maxSeconds}s. Say it in shorter pieces, or type it.`);
+    return;
+  }
+  if (note.file_size > s.maxBytes) {
+    await send(chatId, `🎙 That voice note is larger than the ${Math.round(s.maxBytes / 1e6)} MB cap. Say it in shorter pieces, or type it.`);
+    return;
+  }
+  const gap = hearingGap(await media.hasBin("ffmpeg"), await media.ears());
+  if (gap) {
+    await send(chatId, `🎙 I can't hear voice notes on this machine yet: ${gap}. Type it for now.`);
+    return;
+  }
+  let heard: ListenResult;
+  try {
+    const ogg = await downloadFile(note.file_id, s.maxBytes);
+    const wav = await oggToWav(media.exec, ogg, s.maxSeconds);
+    heard = await media.transcribe(wav);
+  } catch (err) {
+    io.log(`Telegram: voice note not heard — ${reason(err)}`);
+    await send(chatId, `🎙 I couldn't hear that voice note: ${errText(err)}.`);
+    return;
+  }
+  const words = heard.text.trim();
+  if (heard.silent || !words) {
+    await send(chatId, "🎙 I couldn't make out any words in that voice note. Try again closer to the phone, or type it.");
+    return;
+  }
+  // Shown back before the turn, so a mishearing is seen before it is acted on.
+  await send(chatId, `🎙 heard: ${words}`);
+  await deliverReply(chatId, await media.runTurn(words, events, { kind: "user" }), true);
+}
+
+/** "receipt — lunch with the client" → "lunch with the client": the operator's own note. */
+function captionNote(caption: string): string {
+  return caption.replace(RECEIPT_CAPTION, "").replace(/^[\s:,.–—-]+|[\s:,.–—-]+$/g, "");
+}
+
+function stampName(at: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${at.getFullYear()}-${p(at.getMonth() + 1)}-${p(at.getDate())}-${p(at.getHours())}${p(at.getMinutes())}${p(at.getSeconds())}`;
+}
+
+/**
+ * A photo. Captioned as a receipt, it is filed straight away — no turn, so
+ * nothing printed on the slip is ever put to the model as part of a
+ * conversation it can be steered by. Otherwise it lands in the Desk's uploads
+ * folder, as the paperclip's files do, and the turn decides what it is.
+ */
+async function handlePhoto(chatId: string, msg: any, events: AgentEvents): Promise<void> {
+  const max = receiptMaxBytes();
+  const pick = photoOf(msg, max);
+  if (!pick) return;
+  if (pick === "too-large") {
+    await send(chatId, `That image is larger than the ${Math.round(max / 1e6)} MB cap. Send it as a photo rather than a file.`);
+    return;
+  }
+  const caption = String(msg?.caption ?? "").trim();
+  let bytes: Buffer;
+  try {
+    bytes = await downloadFile(pick.file_id, max);
+  } catch (err) {
+    await send(chatId, `I couldn't fetch that image from Telegram: ${errText(err)}.`);
+    return;
+  }
+  if (RECEIPT_CAPTION.test(caption)) {
+    try {
+      const filed = await fileReceipt({
+        bytes,
+        note: captionNote(caption),
+        source: "telegram",
+        root: media.receiptsRoot,
+        desk: media.receiptsDesk,
+        read: media.readReceipt,
+      });
+      lastFiled.set(chatId, { id: filed.receipt.id, at: io.now() });
+      await send(chatId, filedMessage(filed));
+    } catch (err) {
+      await send(chatId, `🧾 Not filed: ${errText(err)}.`);
+    }
+    return;
+  }
+  const at = new Date(io.now());
+  const ext = bytes[0] === 0x89 ? "png" : "jpg";
+  fs.mkdirSync(media.uploadsDir, { recursive: true });
+  let file = path.join(media.uploadsDir, `telegram-photo-${stampName(at)}.${ext}`);
+  for (let n = 2; fs.existsSync(file); n++) file = path.join(media.uploadsDir, `telegram-photo-${stampName(at)}-${n}.${ext}`);
+  fs.writeFileSync(file, bytes, { mode: 0o600 });
+  const ask = caption || "(a photo sent from Telegram with no caption — if it is a receipt, file it with receipt_file)";
+  await deliverReply(chatId, await media.runTurn(`[file attached: ${collapseHome(file)}] ${ask}`, events, { kind: "user" }), false);
+}
+
+/** "fix that: total £12.40" — the operator's own words, applied without a model in between. */
+async function handleFix(chatId: string, text: string): Promise<boolean> {
+  const fix = parseFixCommand(text);
+  if (!fix) return false;
+  const last = lastFiled.get(chatId);
+  const id = fix.id ?? (last && io.now() - last.at < FIX_THAT_WINDOW_MS ? last.id : undefined);
+  // "fix that: …" with no receipt in view is some other job; let the turn have it.
+  if (!id) return false;
+  const changes = parseFixText(fix.body);
+  if (typeof changes === "string") {
+    await send(chatId, `✏ Not changed: ${changes}.`);
+    return true;
+  }
+  const out = applyFix(id, changes, { root: media.receiptsRoot, desk: media.receiptsDesk });
+  if ("error" in out) {
+    await send(chatId, `✏ Not changed: ${out.error}.`);
+    return true;
+  }
+  lastFiled.set(chatId, { id, at: io.now() });
+  await send(chatId, fixedMessage(out.receipt, out.changed));
+  return true;
+}
+
 export async function handleMessage(msg: any, events: AgentEvents): Promise<void> {
   const chatId = String(msg?.chat?.id ?? "");
   const fromId = String(msg?.from?.id ?? chatId);
   const text = String(msg?.text ?? "").trim();
-  if (!chatId || !text) return;
+  const voice = voiceOf(msg);
+  const hasImage = Array.isArray(msg?.photo) || Boolean(msg?.document);
+  if (!chatId || (!text && !voice && !hasImage)) return;
   const group = isGroupChat(chatId);
 
   // /whoami works from unknown chats so the operator can learn their id. In a
@@ -569,6 +870,15 @@ export async function handleMessage(msg: any, events: AgentEvents): Promise<void
     return;
   }
 
+  // Past the same two checks as text, and not before: a stranger's voice
+  // note or photo is never downloaded, let alone heard or read.
+  if (voice) return handleVoice(chatId, voice, events);
+  if (hasImage) {
+    if (photoOf(msg, Number.POSITIVE_INFINITY)) return handlePhoto(chatId, msg, events);
+    await send(chatId, "I take photos (receipts) and voice notes here. Other files go through the HUD's paperclip.");
+    return;
+  }
+
   if (group && text === "/status") {
     await send(chatId, `I don't share machine details in a group, ${addressed()}. Ask me for /status in a private chat.`);
     return;
@@ -581,11 +891,29 @@ export async function handleMessage(msg: any, events: AgentEvents): Promise<void
         "/help — this\n" +
         "/status — machine + brains\n" +
         "/brain — list / pin a model (same tools)\n" +
+        "/voice — reply in voice: off / when I speak / always\n" +
         "/whoami — this chat id\n\n" +
-        "Anything else is a turn. Risky tools still need EXECUTE on this chat or the HUD.",
+        "A voice note is heard on the machine and run as if typed. A photo captioned \"receipt\" is filed; " +
+        "\"fix that: total £12.40\" corrects it.\n" +
+        "Anything else is a turn. Risky tools still need EXECUTE on this chat or the HUD — never a voice note.",
     );
     return;
   }
+
+  const voiceCmd = parseVoiceCommand(text);
+  if (voiceCmd) {
+    if (voiceCmd === "bad") {
+      await send(chatId, "Say /voice off, /voice when I speak, or /voice always.");
+      return;
+    }
+    if (voiceCmd !== "show") saveVoiceReplies(media.dataDir, voiceCmd);
+    const gap = speakingGap(await media.hasBin("ffmpeg"), media.piperGap());
+    await send(chatId, `Voice replies: ${describeVoiceReplies(voiceReplyMode())}.` +
+      (gap && voiceReplyMode() !== "off" ? `\nRight now they will come back as text only: ${gap}.` : ""));
+    return;
+  }
+
+  if (await handleFix(chatId, text)) return;
 
   if (text === "/status") {
     const body = await systemStatusText();
@@ -605,12 +933,5 @@ export async function handleMessage(msg: any, events: AgentEvents): Promise<void
     return;
   }
 
-  const reply = await runTurn(text, events, { kind: "user" });
-  if (reply === null) {
-    await send(chatId, `Still working on the previous request, ${addressed()}.`);
-    return;
-  }
-  if (reply.trim() && reply.trim() !== "HEARTBEAT_OK") {
-    await send(chatId, reply);
-  }
+  await deliverReply(chatId, await media.runTurn(text, events, { kind: "user" }), false);
 }

@@ -41,6 +41,28 @@ export function captionRequest(
   mediaType: "image/jpeg" | "image/png",
   env: NodeJS.ProcessEnv = process.env,
 ): { url: string; init: RequestInit } {
+  return visionRequest(spec, bytes, mediaType, { system: VISITOR_PROMPT, prompt: "Caption this doorbell still.", maxTokens: 80 }, env);
+}
+
+/** What one vision call asks: the policy, the request line, and how long the answer may be. */
+export interface VisionAsk {
+  system: string;
+  prompt: string;
+  maxTokens: number;
+}
+
+/**
+ * The HTTP request for one image put to a vision brain. Shared by the
+ * doorbell caption and the receipt reader (src/receipts.ts): the provider
+ * shapes are the same, only the policy in the system prompt differs.
+ */
+export function visionRequest(
+  spec: BrainSpec,
+  bytes: Buffer,
+  mediaType: "image/jpeg" | "image/png",
+  ask: VisionAsk,
+  env: NodeJS.ProcessEnv = process.env,
+): { url: string; init: RequestInit } {
   const b64 = bytes.toString("base64");
   if (spec.provider === "openai") {
     const ep = openAiEndpoint(spec);
@@ -53,13 +75,13 @@ export function captionRequest(
         headers: { ...(key ? { Authorization: `Bearer ${key}` } : {}), "Content-Type": "application/json" },
         body: JSON.stringify({
           model: ep.model,
-          max_tokens: 80,
+          max_tokens: ask.maxTokens,
           messages: [
-            { role: "system", content: VISITOR_PROMPT },
+            { role: "system", content: ask.system },
             {
               role: "user",
               content: [
-                { type: "text", text: "Caption this doorbell still." },
+                { type: "text", text: ask.prompt },
                 { type: "image_url", image_url: { url: `data:${mediaType};base64,${b64}` } },
               ],
             },
@@ -77,13 +99,13 @@ export function captionRequest(
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
       body: JSON.stringify({
         model: spec.model,
-        max_tokens: 80,
-        system: VISITOR_PROMPT,
+        max_tokens: ask.maxTokens,
+        system: ask.system,
         messages: [{
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
-            { type: "text", text: "Caption this doorbell still." },
+            { type: "text", text: ask.prompt },
           ],
         }],
       }),

@@ -564,6 +564,86 @@ export async function sample(opts: { model?: string; voiceName?: string; text: s
   }
 }
 
+/**
+ * Why Piper cannot make a voice note, or null when it can. Only Piper: a
+ * voice note is a file, and spd-say, say and SAPI speak to the sound card
+ * with no file to send. Exact, because it is told to the operator as is.
+ */
+export function piperMissing(where: PiperAt = {}): string | null {
+  if (!fs.existsSync(where.bin ?? PIPER_BIN)) return `Piper is not installed — ${host() === "win32" ? "voice notes back need Piper (see setup-voice.sh)" : "run ./setup-voice.sh"}`;
+  if (!(where.model === undefined ? resolveModel() : where.model)) return `the Piper voice ${config.voice.piper.model} is missing — run ./setup-voice.sh`;
+  return null;
+}
+
+/** Where Piper and its voice are; the install's own unless a test says otherwise. */
+export interface PiperAt { bin?: string; model?: string | null }
+
+export const SYNTH_TIMEOUT_MS = 60_000;
+/** Ten minutes of 22 kHz speech; nothing sane is longer, and the buffer stays bounded. */
+const MAX_SYNTH_BYTES = 30_000_000;
+
+/**
+ * Words to raw s16le mono PCM, for a Telegram voice note rather than the
+ * speakers. The same Piper and the same voice settings as speak(), so the
+ * phone hears the butler the room hears; but none of speak()'s state is
+ * touched — this is not audible here, so the HUD's mic must not pause for it
+ * and a reply being read aloud must not be cut off by it.
+ */
+export function synthesise(text: string, maxChars = 1200, where: PiperAt = {}): Promise<{ pcm: Buffer; rate: number }> {
+  return new Promise((resolve, reject) => {
+    const why = piperMissing(where);
+    if (why) return reject(new Error(why));
+    const model = (where.model === undefined ? resolveModel() : where.model)!;
+    const clean = cleanForSpeech(text).slice(0, Math.max(1, maxChars));
+    if (!clean) return reject(new Error("nothing to say aloud once the markup was taken out"));
+    const piper = config.voice.piper;
+    const synth = spawnProc(
+      where.bin ?? PIPER_BIN,
+      [
+        "-m", model,
+        "--output-raw",
+        "--length-scale", String(piper.lengthScale),
+        "--noise-scale", String(piper.noiseScale),
+        "--noise-w-scale", String(piper.noiseWScale),
+        "--sentence-silence", String(piper.sentenceSilence),
+        "--volume", String(piper.volume),
+      ],
+      { stdio: ["pipe", "pipe", "ignore"] },
+    );
+    const chunks: Buffer[] = [];
+    let size = 0;
+    let done = false;
+    const finish = (fn: () => void) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      fn();
+    };
+    const timer = setTimeout(() => {
+      try { synth.kill("SIGKILL"); } catch { /* gone */ }
+      finish(() => reject(new Error(`Piper took longer than ${SYNTH_TIMEOUT_MS / 1000}s`)));
+    }, SYNTH_TIMEOUT_MS);
+    synth.stdin?.on("error", () => {});
+    synth.stdout?.on("data", (c: Buffer) => {
+      size += c.length;
+      if (size > MAX_SYNTH_BYTES) {
+        try { synth.kill("SIGKILL"); } catch { /* gone */ }
+        return finish(() => reject(new Error("Piper produced more audio than a voice note can carry")));
+      }
+      chunks.push(c);
+    });
+    synth.on("error", (err) => finish(() => reject(new Error(`Piper could not start: ${err.message}`))));
+    synth.on("close", (code) => {
+      const pcm = Buffer.concat(chunks);
+      if (code !== 0 || !pcm.length) {
+        return finish(() => reject(new Error("Piper produced no audio — check the model file and ./setup-voice.sh")));
+      }
+      finish(() => resolve({ pcm, rate: piper.sampleRate }));
+    });
+    synth.stdin?.end(clean);
+  });
+}
+
 /** Piper voice models present on disk. */
 export function listPiperVoices(): string[] {
   const dir = path.join(ROOT, "voices");

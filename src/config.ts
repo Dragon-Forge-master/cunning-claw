@@ -261,8 +261,28 @@ export interface ClawConfig {
    * run; these say whether *this* claw may — a second claw (film studio, QA)
    * shares .env and must be able to decline the bot without editing secrets.
    */
-  telegram?: { enabled?: boolean };
+  telegram?: {
+    enabled?: boolean;
+    /**
+     * Voice notes back (src/voice-notes.ts): "off", "spoken" — only when the
+     * operator's own message was a voice note, the default — or "always".
+     * The text is sent every time; the voice is in addition, never instead.
+     * /voice on the phone changes it, and that choice is kept in the data dir.
+     */
+    voiceReplies?: "off" | "spoken" | "always";
+    /** Longer voice notes are refused before they are downloaded. Default 120 s. */
+    voiceMaxSeconds?: number;
+    /** Larger voice notes are refused before they are downloaded. Default 2 MB. */
+    voiceMaxBytes?: number;
+    /** The most of a reply read aloud; the text always carries all of it. Default 1200. */
+    voiceMaxChars?: number;
+  };
   discord?: { enabled?: boolean };
+  /**
+   * Receipts (src/receipts.ts): photos read into a ledger under DATA_DIR/receipts.
+   * visionBrain defaults to the first trusted brain, then the default brain.
+   */
+  receipts?: { visionBrain?: string; maxBytes?: number };
   /**
    * ntfy pushes — outbound only, no account. The topic and any access token
    * are secrets and live in .env under the names given here; on public
