@@ -31,7 +31,7 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: "Publish a GitHub Release with this tag, e.g. v0.3.0 (empty = build and test only)"
+        description: "Publish a GitHub Release with this tag, e.g. v0.5.2 or 0.5.2 (empty = build and test only)"
         required: false
         default: ""
 
@@ -402,6 +402,9 @@ jobs:
           # Through env, never ${{ }} inside the script: an input is text someone typed.
           TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.release }}
         run: |
+          # Typed by hand in the Run workflow box: "0.5.2" means v0.5.2. A whole
+          # build once failed here, every installer tested, for want of the v.
+          case "$TAG" in [0-9]*) TAG="v$TAG" ;; esac
           case "$TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "Not a version tag: $TAG"; exit 1 ;; esac
           # The tag must name the version that was built, or the downloads and the release disagree.
           built="v$(ls cunningclaw-*-linux-x64.tar.gz | sed -E 's/^cunningclaw-(.*)-linux-x64\.tar\.gz$/\1/')"
