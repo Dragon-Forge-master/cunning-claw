@@ -20,11 +20,12 @@ before the rebrand.
 
 ## Notes
 
-- **The two films are not in git, and nor is the demo's poster.** `index.html`
-  plays `brand-film.mp4` and `cunningclaw-demo-2.mp4` from this folder, the
-  second with `poster-demo-2.png` as its poster, but none of the three is
-  committed (they are large and change often). Whoever runs
-  `wrangler pages deploy` must have all three in `site/` on that machine
+- **The films are not in git, and nor are their posters.** `index.html` plays
+  `brand-film.mp4`, `cunningclaw-demo-2.mp4`, `cunningclaw-bank-details.mp4` and
+  `cunningclaw-lovable.mp4` from this folder, the last three with
+  `poster-demo-2.png`, `poster-bank-details.png` and `poster-lovable.png`, but
+  none of the seven is committed (they are large and change often). Whoever
+  runs `wrangler pages deploy` must have all seven in `site/` on that machine
   first, or the players show a black box. `social-demo-2.jpg` (1200×675) is
   made alongside them for sharing the film; the page does not use it.
 - Scripts live in their own files (`holo.js`, `wall.js`). `_headers` sets a CSP with no
@@ -48,6 +49,14 @@ before the rebrand.
   ffmpeg and encoded two-pass at about 1.7 Mbit/s. If it ever needs to be
   smaller, lower the bitrate rather than drop to 720p — the text in the frames
   is what suffers first.
+- `cunningclaw-bank-details.mp4` is 76.1 s, 8.7 MB, and `cunningclaw-lovable.mp4`
+  is 159.9 s, 25.4 MB (two-pass at 1.1 Mbit/s to fit under the 25 MiB limit);
+  both 1920×1080 H.264 with the same voice and music as the demo. Each is real
+  runs of the claw recorded with Playwright, cut and captioned the same way.
+  The supplier page in the first is a fake served on the recording machine;
+  the second's retakes (Google's free tier stopping a turn, a read-only GitHub
+  token) are described in the page's note and were not filmed. Its live demo is
+  volt-vale-electrical.lovable.app, on the founder's Lovable account.
 - The numbers on the page (11 brains, 75 tools, 95 connectors, 37 skills, 717 tests, 2 dependencies) are
   real. Update them here when they change, or don't state them. Count them:
   brains from `claw.config.json` (the catalogue less `managed`, which is not live until the relay is), tools with `grep -c '^    name: "' src/tools.ts`,
