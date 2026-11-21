@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8">
+<title>Cunning Claw 0.5 — share image</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../v0.3/kit.css">
+<style>
+  /* 1600×900, the og:image of cunningclaw.com (site/social-0.5.png). The 0.3
+     card's frame with 0.5's news, each line something v0.5.1 does today; the
+     phone line says "Android first" because no iPhone build exists. Link
+     previews are often shown at a third of this size, so nothing is under
+     19px. Render: node docs/launch/v0.5/render.mjs */
+  body{width:1600px;height:900px}
+  .card{width:1600px;height:900px;--glow-x:78%;--glow-y:40%;--glow-w:1100px;--glow-h:700px}
+  .left{position:absolute;left:96px;top:92px;width:740px}
+  .brand{font-size:22px}
+  .brand img{width:64px;height:64px}
+  .tag{margin-top:46px;font-size:20px;padding:6px 14px}
+  h1{font-size:84px;line-height:1.02;margin-top:26px}
+  .sub{margin-top:26px;font-size:26px;line-height:1.5;color:var(--dim);max-width:680px}
+  .foot{position:absolute;left:96px;right:96px;bottom:66px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:19px;letter-spacing:.14em;color:var(--dim)}
+  .foot b{color:var(--gold);font-weight:500}
+  .foot .url{color:var(--cyan)}
+  .list{position:absolute;right:96px;top:96px;width:580px;border:1px solid var(--deep);background:rgba(14,24,38,.82)}
+  .list div{display:flex;gap:18px;align-items:baseline;padding:15px 26px;border-top:1px solid rgba(26,139,160,.35);font-size:22px}
+  .list div:first-child{border-top:0}
+  .list span{font-family:var(--mono);color:var(--cyan);font-size:17px;min-width:34px}
+</style></head>
+<body>
+<div class="card frame">
+  <div class="left">
+    <div class="brand"><img src="../../assets/forge-mark-cyan.svg" alt="">CUNNING CLAW</div>
+    <div class="tag">NEW IN 0.5</div>
+    <h1>Safer hands. <em>In your pocket.</em></h1>
+    <p class="sub">The AI assistant that runs on your own computer, teaches you to work it safely, and answers to your phone's lock.</p>
+  </div>
+  <div class="list">
+    <div><span>01</span>Lessons in working an AI agent safely</div>
+    <div><span>02</span>His own phone app, Android first</div>
+    <div><span>03</span>Hands coding jobs to Claude Code</div>
+    <div><span>04</span>Hears Telegram voice notes locally</div>
+    <div><span>05</span>Reads receipts into a VAT ledger</div>
+    <div><span>06</span>Lights and heating via Home Assistant</div>
+    <div><span>07</span>Outlook as well as Gmail</div>
+    <div><span>08</span>Real installers for Windows, Mac, Linux</div>
+    <div><span>09</span>Still asks before anything that matters</div>
+  </div>
+  <div class="foot"><span>OPEN SOURCE · BUILT IN CARDIFF · <b>NO CRYPTO TOKEN, EVER</b></span><span class="url">CUNNINGCLAW.COM</span></div>
+</div>
+</body></html>

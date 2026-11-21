@@ -57,13 +57,17 @@ before the rebrand.
   the second's retakes (Google's free tier stopping a turn, a read-only GitHub
   token) are described in the page's note and were not filmed. Its live demo is
   volt-vale-electrical.lovable.app, on the founder's Lovable account.
-- The numbers on the page (11 brains, 75 tools, 95 connectors, 37 skills, 717 tests, 2 dependencies) are
-  real. Update them here when they change, or don't state them. Count them:
+- The numbers on the page (11 brains, 83 tools, 95 connectors, 37 skills, 1011 tests, 2 dependencies) are
+  real, counted at v0.5.1, the version the downloads give; move them on with each release. Update them here when they change, or don't state them. Count them:
   brains from `claw.config.json` (the catalogue less `managed`, which is not live until the relay is), tools with `grep -c '^    name: "' src/tools.ts`,
   tests from what `npm test` reports, connectors from `MCP_CATALOGUE.length` in
   `src/mcp-catalog.ts`, skills with `ls workspace/skills/*/SKILL.md`.
 - `hud.png`, `connect.png`, `skills.png`, `board.png` and `desk.png` are real captures of the HUD at rest on a fresh install (no keys, no
-  Telegram). Re-shoot them from a clean data dir, never from a personal one.
+  Telegram). Re-shoot them from a clean data dir, never from a personal one, and under a
+  clean HOME too: connectors live in ~/.config/cunningclaw/mcp.json, so a claw run on a
+  machine that has another claw shows that claw's connectors. hud, connect, skills and desk
+  were shot from v0.5.1 that way on 21 November; board.png is older, because Open-Meteo's
+  daily limit for the shared address had run out that day and the weather box showed an error.
 - Fonts come from Google Fonts; `_headers` allows exactly those two hosts for
   styles and fonts, and `challenges.cloudflare.com` for scripts and frames —
   Turnstile, the wall's spam check, and nothing else.
