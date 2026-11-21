@@ -382,7 +382,13 @@ function quiet(cmd: string, args: string[]): string {
 const hasScript = (() => {
   try { return !!quiet("sh", ["-c", "command -v script"]); } catch { return false; }
 })();
-const needsPty = unixOnly || (hasScript ? false : "needs script(1) for a terminal");
+// The Linux launchers ship only to Linux, and these drive them through
+// util-linux's `script -qec`: macOS's BSD script takes other arguments and
+// printed nothing, and its /var is a link to /private/var that the launcher's
+// own-path check never meets on Linux. Four of these failed every macOS CI run
+// from the .deb commit on; they test Linux behaviour, so they run on Linux.
+const linuxOnly = process.platform === "linux" ? false : "the Linux launchers, run on Linux";
+const needsPty = linuxOnly || (hasScript ? false : "needs script(1) for a terminal");
 
 /** A folder holding only the commands a launcher needs, so no real terminal on this machine is found. */
 function onlyTools(dir: string, extra: Record<string, string> = {}): string {
@@ -531,7 +537,7 @@ test("no terminal to open: it runs without a window, and says so on the desktop 
   }
 });
 
-test("the download's Cunning Claw.sh and the .deb's cunningclaw open a terminal on themselves when double-clicked", { skip: unixOnly }, async () => {
+test("the download's Cunning Claw.sh and the .deb's cunningclaw open a terminal on themselves when double-clicked", { skip: linuxOnly }, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "claw-sh-"));
   try {
     const folder = path.join(dir, "cunningclaw-1.2.3-linux-x64");
