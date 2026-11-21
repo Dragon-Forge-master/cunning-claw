@@ -59,6 +59,24 @@ export class FakeRelayNet {
     this.queue = this.queue.then(() => new Promise<void>((r) => setImmediate(r))).then(fn).catch(() => {});
   }
 
+  /**
+   * Settles until `cond` holds, or fails naming `what` after `ms`. For an
+   * assertion that something ARRIVES: the sealing and opening run on Node's
+   * thread pool, which the fake cannot see, so under a loaded test run a fixed
+   * number of settle rounds could end before a frame was even sealed (a full
+   * `npm test` failed this way; a busy pool reproduces it every time). An
+   * assertion that something does NOT happen keeps using settle().
+   */
+  async until(cond: () => boolean, what: string, ms = 5000): Promise<void> {
+    const end = Date.now() + ms;
+    for (;;) {
+      await this.settle(5);
+      if (cond()) return;
+      if (Date.now() > end) throw new Error(`timed out waiting for ${what}`);
+      await new Promise((r) => setTimeout(r, 5));
+    }
+  }
+
   /** Resolves once everything sent so far has been delivered and handled. */
   async settle(rounds = 30): Promise<void> {
     for (let i = 0; i < rounds; i++) {

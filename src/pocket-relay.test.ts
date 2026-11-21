@@ -238,8 +238,7 @@ test("relay: talk, the event stream, and an approval with a fresh assertion boun
     assert.deepEqual(r.chats, ["Book the van in for Tuesday"]);
     assert.equal((await ph.api("GET", "/history")).json.turns[0].text, "earlier");
     r.pocket.onEvent("approval_request", { id: "ap-1", summary: "Run: rm -rf ./build", detail: "in ~/projects/site" });
-    await r.net.settle();
-    assert.match(events.join(""), /event: approval_request\ndata: .*ap-1/);
+    await r.net.until(() => /event: approval_request\ndata: .*ap-1/.test(events.join("")), "the card on the phone's event stream");
     // An assertion from another origin (the tailnet's, a phishing page's) is refused.
     for (const origin of [`https://${TAILNET}`, "https://cunningclaw.com.evil.example"]) {
       const bad = await assertion(ph, "approve", { approvalId: "ap-1" }, { origin });
