@@ -33,8 +33,11 @@ before the rebrand.
 
 - `_headers` sets CSP, `X-Frame-Options: DENY` and `nosniff`. Pages applies it
   automatically; other hosts will ignore it, so re-do those headers if you move.
-- `cunningclaw-demo-2.mp4` is 86.9 s, 1920×1080 H.264 (yuv420p, faststart, no
-  sound) and 18.2 MB; Pages refuses any file over 25 MiB. It is one real run:
+- `cunningclaw-demo-2.mp4` is 86.9 s, 1920×1080 H.264 (yuv420p, faststart)
+  with a mono AAC track at about 160 kbit/s, and 20.1 MB; Pages refuses any
+  file over 25 MiB. The narration is the founder's own voice, an AI copy made
+  with ElevenLabs from their own recording; the music is Cunning Claw's own,
+  composed in code, and ducks under the voice. It is one real run:
   the request typed into the HUD on the Google brain, the approval card,
   EXECUTE, Claude Code building a site for Blawd a Mêl (a fictional Cardiff
   bakery-café) through the foreman, and the foreman's report, all from one
