@@ -231,12 +231,23 @@ function addMsg(role, text) {
   // coexist — and so "copy" grabs the words, never the button glyphs.
   const span = document.createElement("span");
   span.className = "msg-text";
-  span.textContent = text;
+  // The claw's words are drawn (md-lite.js: bold, code, bullets, built node
+  // by node, never as HTML); the operator's are shown exactly as typed.
+  if (role === "cunningclaw") drawReply(span, text);
+  else span.textContent = text;
   div.appendChild(span);
   if (role === "cunningclaw") attachMsgTools(div, span);
   chatLog.appendChild(div);
   chatLog.scrollTop = chatLog.scrollHeight;
   return span;
+}
+
+/** The raw text behind each drawn reply, for the next streamed delta. */
+const rawReply = new WeakMap();
+function drawReply(span, text) {
+  rawReply.set(span, text);
+  if (window.MdLite) window.MdLite.render(span, text);
+  else span.textContent = text;
 }
 
 function attachMsgTools(div, span) {
@@ -981,7 +992,9 @@ es.addEventListener("turn_start", (e) => {
 es.addEventListener("text", (e) => {
   const { delta } = sseData(e);
   if (!currentBubble) currentBubble = addMsg("cunningclaw", "");
-  currentBubble.textContent += delta;
+  // Redrawn whole from the raw text on every delta: a "**" that opens in one
+  // delta and closes in the next is only bold once both have arrived.
+  drawReply(currentBubble, (rawReply.get(currentBubble) ?? "") + delta);
   chatLog.scrollTop = chatLog.scrollHeight;
 });
 

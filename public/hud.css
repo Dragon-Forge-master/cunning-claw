@@ -179,6 +179,10 @@ main { display: flex; flex: 1; gap: 14px; min-height: 0; position: relative; }
 .msg { max-width: 92%; padding: 8px 12px; font-size: 13px; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
 .msg.user { align-self: flex-end; border: 1px solid var(--cyan-dim); color: var(--cyan); background: rgba(53,214,237,0.06); }
 .msg.cunningclaw { align-self: flex-start; border-left: 2px solid var(--cyan); background: rgba(53,214,237,0.04); }
+/* md-lite.js: what the claw's **bold**, `code` and # headings mean, drawn. */
+.msg.cunningclaw .msg-text strong { color: #eaf6fb; font-weight: 700; }
+.msg.cunningclaw .msg-text code { font-family: inherit; color: var(--cyan); background: rgba(53,214,237,0.08); border-radius: 3px; padding: 0 0.25em; }
+.msg.cunningclaw .msg-text .md-h { color: var(--cyan); letter-spacing: 0.02em; }
 .msg.system { align-self: center; color: var(--amber); font-size: 11px; border: none; }
 
 .action-chip {
