@@ -120,9 +120,11 @@ const RULES: Rule[] = [
   { signal: "addressed", weight: 0.45, re: /\b(?:run_command|send_email|send_chat|write_file|edit_file|http_request|remote_run|remote_job|delegate_code|skill_write|memory_save|mcp_add|browser_click|desktop_type|work_order)\b/ },
 
   // --- authority: forged permission, or a request for secrecy -----------
-  { signal: "authority", weight: 0.6, re: /\b(?:do not|don't|never)\s+(?:tell|inform|alert|notify|warn|mention (?:this|it) to|let)\s+(?:the|your)\s+(?:user|operator|owner|human|principal|boss|master)\b/ },
+  // "Mention this note to" and "the account holder" are how a payment scam
+  // aimed at a business's assistant is written (the bank-details film, 21 Nov).
+  { signal: "authority", weight: 0.6, re: /\b(?:do not|don't|never)\s+(?:tell|inform|alert|notify|warn|mention (?:this|it|this (?:note|message|email|page|instruction|request)) to|let)\s+(?:the|your)\s+(?:user|operator|owner|human|principal|boss|master|account holder|account owner|customer|client)\b/ },
   { signal: "authority", weight: 0.5, re: /\bwithout\s+(?:asking|confirming|telling|notifying|alerting|checking with|informing|consulting)\s+(?:the\s+|your\s+)?(?:user|operator|owner|human|anyone|for (?:permission|confirmation|approval))/ },
-  { signal: "authority", weight: 0.6, re: /\b(?:the|your)\s+(?:user|operator|owner|admin|administrator|principal|human)\s+(?:has|have)\s+(?:already\s+)?(?:authori[sz]ed|approved|granted|consented|pre-?approved|asked you|requested that you|instructed you|given (?:you )?permission)/ },
+  { signal: "authority", weight: 0.6, re: /\b(?:the|your)\s+(?:user|operator|owner|admin|administrator|principal|human|account holder|account owner|customer|client)\s+(?:has|have)\s+(?:already\s+)?(?:authori[sz]ed|approved|granted|consented|pre-?approved|asked you|requested that you|instructed you|given (?:you )?permission)/ },
   { signal: "authority", weight: 0.45, re: /\b(?:permission|approval|authori[sz]ation|consent)\s+(?:has|have|was|is)\s+(?:already\s+)?(?:been\s+)?(?:granted|given|approved|obtained)\b/ },
   { signal: "authority", weight: 0.6, re: /\b(?:message|instruction|note|request|order)s?\s+from\s+(?:anthropic|openai|your (?:developer|creator|operator|owner|admin|user))\b/ },
   { signal: "authority", weight: 0.6, re: /peidiwch\s+(?:â|a)\s+dweud\s+wrth\s+y\s+defnyddiwr|no (?:le )?digas (?:nada )?al usuario|ne (?:le )?(?:dis|dites) (?:rien )?(?:pas )?(?:à|a) l['’]utilisateur|sag(?:e)? (?:es )?dem (?:benutzer|nutzer) nicht|不要告诉用户/ },
@@ -157,6 +159,8 @@ const RULES: Rule[] = [
   { signal: "tool-bait", weight: 0.3, re: /\b(?:send|write|draft|compose)\s+(?:an?\s+)?(?:e-?mail|message|whatsapp|text|dm)\s+to\b/ },
   // Not "forward this email to a friend": every newsletter footer says it.
   { signal: "tool-bait", weight: 0.4, re: /\bforward\s+(?:all|every|each|any|the last \d+|these)\b[^.!?\n]{0,25}?\b(?:e-?mails?|messages|mail|inbox|files|documents|contacts|conversations?|chats?|attachments|contracts|invoices)\b[^.!?\n]{0,40}?\bto\b/ },
+  // "Email copies of the last three invoices to …" — the verb is the noun.
+  { signal: "tool-bait", weight: 0.4, re: /\be-?mail\s+(?:over\s+)?(?:copies|a copy|all|every|each|these|those|the)\b[^.!?\n]{0,30}?\b(?:invoices?|statements?|contracts?|files|documents|attachments|passwords?|receipts|payslips|records|bank details)\b[^.!?\n]{0,40}?\bto\b/ },
   { signal: "tool-bait", weight: 0.3, re: /\b(?:transfer|wire|send|pay)\s+(?:the\s+)?(?:sum\s+of\s+)?(?:[£$€]\s?\d|\d[\d,.]*\s?(?:gbp|usd|eur|btc|eth|pounds|dollars)\b|(?:all\s+)?(?:the\s+|your\s+)?(?:funds|money|balance|bitcoin|crypto)\b)/ },
   { signal: "tool-bait", weight: 0.35, re: /\b(?:curl|wget|iwr|invoke-webrequest|irm)\b[^\n|]{0,200}\|\s*(?:sudo\s+)?(?:ba|z|da)?sh\b|\biex\s*\(|powershell(?:\.exe)?\s+-(?:e|enc|encodedcommand)\b|base64\s+(?:-d|--decode)[^\n]{0,40}\|\s*(?:ba)?sh\b/ },
   { signal: "tool-bait", weight: 0.3, re: /\b(?:delete|remove|wipe|erase)\s+(?:all\s+)?(?:the\s+|your\s+|my\s+)?(?:files|emails|inbox|repository|repo|database|backups?|home directory)\b|\brm\s+-rf\s+[~/]/ },
