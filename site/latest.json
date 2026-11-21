@@ -1,23 +1,27 @@
 {
-  "version": "0.5.1",
-  "date": "2026-11-20",
+  "version": "0.5.2",
+  "date": "2026-11-21",
   "security": false,
   "summary": [
-    "Real installers for Windows, Mac and Linux. Your keys, settings and memory live in your own folder, apart from the app.",
-    "Outlook on the web, for Microsoft 365 work accounts and Outlook.com, through the same email tools as Gmail.",
-    "The HUD shows which version is running, and says \"updated\" the first time you open it after an update."
+    "Pair your phone by scanning a QR code, no Tailscale needed: end-to-end encrypted through our relay, which cannot read it.",
+    "A .deb for Ubuntu and Debian, and a Linux double-click no longer flashes its window shut.",
+    "His replies show bold, bullets and code properly, and a plain reading font joins the Aa menu.",
+    "The scanner now catches the wording of the \"our bank details have changed\" scam.",
+    "Fixes: Gemini 3 on the Google direct brain, the Cloudflare connector, and a clearer message when the port is taken."
   ],
-  "notes": "https://github.com/Dragon-Forge-master/cunning-claw/releases/tag/v0.5.1",
+  "notes": "https://github.com/Dragon-Forge-master/cunning-claw/releases/tag/v0.5.2",
   "downloads": {
-    "nsis-win-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-Setup-0.5.1.exe",
-    "dmg-darwin-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-0.5.1-mac-arm64.dmg",
-    "dmg-darwin-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-0.5.1-mac-x64.dmg",
-    "appimage-linux-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-0.5.1-linux-x86_64.AppImage",
-    "appimage-linux-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/Cunning-Claw-0.5.1-linux-aarch64.AppImage",
-    "archive-win-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/cunningclaw-0.5.1-win-x64.zip",
-    "archive-darwin-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/cunningclaw-0.5.1-darwin-arm64.zip",
-    "archive-darwin-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/cunningclaw-0.5.1-darwin-x64.zip",
-    "archive-linux-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/cunningclaw-0.5.1-linux-x64.tar.gz",
-    "archive-linux-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.1/cunningclaw-0.5.1-linux-arm64.tar.gz"
+    "nsis-win-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-Setup-0.5.2.exe",
+    "dmg-darwin-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-0.5.2-mac-arm64.dmg",
+    "dmg-darwin-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-0.5.2-mac-x64.dmg",
+    "appimage-linux-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-0.5.2-linux-x86_64.AppImage",
+    "appimage-linux-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-0.5.2-linux-aarch64.AppImage",
+    "deb-linux-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw_0.5.2_amd64.deb",
+    "deb-linux-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw_0.5.2_arm64.deb",
+    "archive-win-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw-0.5.2-win-x64.zip",
+    "archive-darwin-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw-0.5.2-darwin-arm64.zip",
+    "archive-darwin-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw-0.5.2-darwin-x64.zip",
+    "archive-linux-x64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw-0.5.2-linux-x64.tar.gz",
+    "archive-linux-arm64": "https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw-0.5.2-linux-arm64.tar.gz"
   }
 }

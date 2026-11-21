@@ -57,8 +57,8 @@ before the rebrand.
   the second's retakes (Google's free tier stopping a turn, a read-only GitHub
   token) are described in the page's note and were not filmed. Its live demo is
   volt-vale-electrical.lovable.app, on the founder's Lovable account.
-- The numbers on the page (11 brains, 83 tools, 95 connectors, 37 skills, 1011 tests, 2 dependencies) are
-  real, counted at v0.5.1, the version the downloads give; move them on with each release. Update them here when they change, or don't state them. Count them:
+- The numbers on the page (11 brains, 83 tools, 95 connectors, 37 skills, 1111 tests, 2 dependencies) are
+  real, counted at v0.5.2, the version the downloads give; move them on with each release. Update them here when they change, or don't state them. Count them:
   brains from `claw.config.json` (the catalogue less `managed`, which is not live until the relay is), tools with `grep -c '^    name: "' src/tools.ts`,
   tests from what `npm test` reports, connectors from `MCP_CATALOGUE.length` in
   `src/mcp-catalog.ts`, skills with `ls workspace/skills/*/SKILL.md`.
