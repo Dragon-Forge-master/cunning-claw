@@ -210,7 +210,10 @@ export const MCP_CATALOGUE: CatalogueEntry[] = [
   http("railway", "Railway", "Deploy and manage services", "Ship", "https://mcp.railway.com/mcp"),
   http("render", "Render", "Services, deploys, logs", "Ship", "https://mcp.render.com/mcp"),
   http("squarespace", "Squarespace", "Sites, pages, domains", "Ship", "https://mcp.squarespace.com/mcp"),
-  http("cloudflare", "Cloudflare", "Workers, storage, bindings", "Ship", "https://bindings.mcp.cloudflare.com/mcp"),
+  // Cloudflare's whole API in two tools (search, execute). The bindings-only
+  // server this used to point at is deprecated, and could not reach DNS, Pages
+  // or anything past Workers storage.
+  http("cloudflare", "Cloudflare", "The whole Cloudflare API: DNS, Workers, Pages, R2", "Ship", "https://mcp.cloudflare.com/mcp"),
   http("netlify", "Netlify", "Sites, deploys, forms", "Ship", "https://netlify-mcp.netlify.app/mcp"),
   http("godaddy", "GoDaddy", "Domain search and availability", "Ship", "https://api.godaddy.com/v1/domains/mcp"),
   http("wordpress-com", "WordPress.com", "WordPress.com sites", "Ship", "https://public-api.wordpress.com/wpcom/v2/mcp/v1"),

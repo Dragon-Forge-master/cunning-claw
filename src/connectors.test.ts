@@ -56,6 +56,7 @@ test("the catalogue uses vendor Streamable HTTP URLs, not invented ones", () => 
   assert.equal(catalogueById("slack")?.entry.url, "https://mcp.slack.com/mcp");
   assert.equal(catalogueById("hubspot")?.entry.url, "https://mcp.hubspot.com/anthropic");
   assert.equal(catalogueById("zapier")?.entry.url, "https://mcp.zapier.com/api/v1/connect");
+  assert.equal(catalogueById("cloudflare")?.entry.url, "https://mcp.cloudflare.com/mcp");
   assert.equal(catalogueById("square")?.entry.type, "sse");
   assert.equal(catalogueById("xero")?.entry.command, "npx");
   assert.ok(catalogueById("xero")?.entry.args?.some((a) => a.includes("@xeroapi/xero-mcp-server")));
