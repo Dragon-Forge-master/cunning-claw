@@ -12,7 +12,8 @@
     "doctor": "tsx src/doctor.ts",
     "update": "git pull && npm install",
     "bundle": "node scripts/bundle.mjs",
-    "site:pocket": "node scripts/site-pocket.mjs"
+    "site:pocket": "node scripts/site-pocket.mjs",
+    "site:seo": "node scripts/site-seo.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

@@ -16,7 +16,7 @@
       { t: "npm · cunningclaw", s: "the name, held", u: "https://www.npmjs.com/package/cunningclaw" },
       { t: "Issues & Discussions", s: "bring what broke", u: "https://github.com/Dragon-Forge-master/cunning-claw/issues" },
       { t: "Security", s: "report privately", u: "https://github.com/Dragon-Forge-master/cunning-claw/security" },
-      { t: "The film", s: "42 seconds", u: "https://cunningclaw.com/#demo" }
+      { t: "The films", s: "three real runs", u: "https://cunningclaw.com/#demo" }
     ]},
     { id: "forge", label: "FORGENET · FREE TOOLS · MCP", angle: 0, r: 330, stars: [
       { t: "forgenet.cloud", s: "the suite", u: "https://forgenet.cloud/" },
@@ -35,8 +35,10 @@
     ]},
     { id: "inside", label: "INSIDE THE CLAW", angle: 180, r: 330, stars: [
       { t: "The Glass", s: "the HUD · loopback only", u: "https://cunningclaw.com/#watch" },
-      { t: "Connect", s: "94 MCP connectors", u: "https://cunningclaw.com/#demo" },
+      { t: "Connect", s: "95 MCP connectors", u: "https://cunningclaw.com/#connects" },
       { t: "See it refuse", s: "the injection test", u: "https://cunningclaw.com/#attack" },
+      { t: "How it is secured", s: "the box · the fence · the cards", u: "https://cunningclaw.com/security" },
+      { t: "vs OpenClaw", s: "side by side, sourced", u: "https://cunningclaw.com/vs-openclaw" },
       { t: "Install", s: "Linux · macOS · Windows", u: "https://cunningclaw.com/#install" },
       { t: "Pricing", s: "free · BYOK forever", u: "https://cunningclaw.com/#pricing" },
       { t: "Just Works tier", s: "opens after launch", u: "https://cunningclaw.com/#pricing", soon: true }

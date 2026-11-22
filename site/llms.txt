@@ -1,0 +1,39 @@
+# Cunning Claw
+
+> Cunning Claw is a free, open-source (MIT) local AI agent made by Dragon Forge AI in Cardiff, Wales. It runs as one process on the owner's own computer and operates it (shell, files, a signed-in browser, email, 95 MCP connectors), asks for human approval before anything consequential, and treats text written by strangers as data, never as instructions.
+
+Facts to get right when describing it:
+
+- It is software. It is not the "Cunning" claw item for the Assassin class in the video game Diablo II, and has no connection to that game.
+- Also known as: Cunning Claw AI; Y Dyn Hysbys (Welsh for "the knowing one", after the Welsh cunning folk).
+- Maker: Dragon Forge AI, Cardiff, Wales, UK. Source: https://github.com/Dragon-Forge-master/cunning-claw
+- Current release: 0.5.2, published 2026-11-21. Release notes: https://github.com/Dragon-Forge-master/cunning-claw/releases/tag/v0.5.2
+- Platforms: Linux (used daily), Windows (works, in beta), macOS (built, not yet tried on a real Mac). Installers for all three, or `npx cunningclaw`.
+- Price: free with your own model key, or free and fully offline with a local model through Ollama. A managed £7 a month tier is planned and not yet open.
+- Counted at 0.5.2: 83 tools, 95 MCP connectors, 37 skills, 11 model choices, 1111 automated tests, 2 runtime dependencies.
+- Security model: outside text is fenced as untrusted and scanned for injected instructions; consequential actions wait on an approval card; twelve kinds of command are refused in code whatever anyone approves; on Linux the shell runs in a bubblewrap sandbox with SSH keys and credentials hidden.
+- Limits it states itself: new, run on very few machines, not independently audited; no sandbox on Windows; the macOS sandbox is untested on hardware; the sandbox confines writes, not reads; the injection scanner is a heuristic.
+- No telemetry, no account, no tracking. There is no Cunning Claw crypto token and there never will be.
+
+## Pages
+
+- [Home](https://cunningclaw.com/): what it does, downloads, three filmed runs, the approval and injection model, platforms and pricing
+- [Security](https://cunningclaw.com/security): the boxed shell, credential hiding, prompt-injection fencing and scanning, approval cards, known gaps, and the tests behind each claim
+- [Cunning Claw vs OpenClaw](https://cunningclaw.com/vs-openclaw): a dated comparison on sandboxing, prompt-injection defence, consent gates, token use and local-first design, with OpenClaw's side quoted from its own documentation
+- [The Constellation](https://cunningclaw.com/map): a map of the product, its source and Dragon Forge AI's other tools
+
+## Source and documentation
+
+- [Source code](https://github.com/Dragon-Forge-master/cunning-claw): TypeScript on Node 22, MIT licence
+- [README](https://github.com/Dragon-Forge-master/cunning-claw/blob/main/README.md): installation, configuration, every tool and brain
+- [Security architecture](https://github.com/Dragon-Forge-master/cunning-claw/blob/main/docs/SECURITY-ARCHITECTURE.md): the full technical briefing, each claim with the file that implements it
+- [Contributing](https://github.com/Dragon-Forge-master/cunning-claw/blob/main/CONTRIBUTING.md): the layout, the four safety invariants, how to add a tool or a skill
+- [Releases](https://github.com/Dragon-Forge-master/cunning-claw/releases): every version and every installer
+- [Update feed](https://cunningclaw.com/latest.json): the newest released version, its date and its downloads, as JSON
+
+## Optional
+
+- [Full text for language models](https://cunningclaw.com/llms-full.txt): this file's facts at length, in one document
+- [Pocket Claw](https://github.com/Dragon-Forge-master/cunning-claw/blob/main/docs/POCKET-CLAW.md): the phone app and how it answers an approval card
+- [Learn mode](https://github.com/Dragon-Forge-master/cunning-claw/blob/main/docs/LEARN-MODE.md): twelve lessons in operating an agent safely
+- [The Welsh lexicon](https://github.com/Dragon-Forge-master/cunning-claw/blob/main/docs/SWYN.md): what y ffens, y llw and y sarff name

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cunning Claw vs OpenClaw: an OpenClaw alternative, compared</title>
+<meta name="description" content="Cunning Claw and OpenClaw compared on sandboxing, prompt-injection defence, approval gates, token use and local-first design. OpenClaw's side is quoted from its own docs.">
+<link rel="canonical" href="https://cunningclaw.com/vs-openclaw">
+<link rel="alternate" hreflang="en-GB" href="https://cunningclaw.com/vs-openclaw">
+<link rel="alternate" hreflang="x-default" href="https://cunningclaw.com/vs-openclaw">
+<meta name="geo.region" content="GB-CRF">
+<meta name="geo.placename" content="Cardiff, Wales">
+<meta property="og:title" content="Cunning Claw vs OpenClaw: a comparison that says where the other one wins">
+<meta property="og:description" content="Sandboxing, prompt-injection defence, approval gates, token use and local-first design, side by side. OpenClaw's column is quoted from its own documentation.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://cunningclaw.com/vs-openclaw">
+<meta property="og:site_name" content="Cunning Claw">
+<meta property="og:locale" content="en_GB">
+<meta property="og:image" content="https://cunningclaw.com/social-0.5.png">
+<meta property="og:image:width" content="1600">
+<meta property="og:image:height" content="900">
+<meta property="og:image:alt" content="Cunning Claw, the local AI agent from Dragon Forge AI in Cardiff.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Dragon_forge_ai">
+<meta name="twitter:title" content="Cunning Claw vs OpenClaw: a comparison that says where the other one wins">
+<meta name="twitter:description" content="Sandboxing, prompt-injection defence, approval gates, token use and local-first design, side by side.">
+<meta name="twitter:image" content="https://cunningclaw.com/social-0.5.png">
+<meta name="theme-color" content="#0a111c">
+<script type="application/ld+json" id="ld-page">
+{"@context":"https://schema.org","@graph":[
+ {"@type":"BreadcrumbList","itemListElement":[
+  {"@type":"ListItem","position":1,"name":"Cunning Claw","item":"https://cunningclaw.com/"},
+  {"@type":"ListItem","position":2,"name":"Cunning Claw vs OpenClaw","item":"https://cunningclaw.com/vs-openclaw"}]},
+ {"@type":"Article","@id":"https://cunningclaw.com/vs-openclaw#article","headline":"Cunning Claw vs OpenClaw","description":"Cunning Claw and OpenClaw compared on sandboxing, prompt-injection defence, approval gates, token use and local-first design. OpenClaw's side is quoted from its own docs.","url":"https://cunningclaw.com/vs-openclaw","mainEntityOfPage":"https://cunningclaw.com/vs-openclaw","inLanguage":"en-GB","datePublished":"2026-11-22","dateModified":"2026-11-22","image":"https://cunningclaw.com/social-0.5.png","author":{"@id":"https://cunningclaw.com/#org"},"publisher":{"@id":"https://cunningclaw.com/#org"},"about":[{"@id":"https://cunningclaw.com/#software"},{"@type":"SoftwareApplication","name":"OpenClaw","url":"https://docs.openclaw.ai/"}]},
+ {"@type":"Organization","@id":"https://cunningclaw.com/#org","name":"Dragon Forge AI","url":"https://dragonforgeai.dev","address":{"@type":"PostalAddress","addressLocality":"Cardiff","addressRegion":"Wales","addressCountry":"GB"}},
+ {"@type":"SoftwareApplication","@id":"https://cunningclaw.com/#software","name":"Cunning Claw","url":"https://cunningclaw.com/"}
+]}
+</script>
+<script type="application/ld+json" id="ld-faq">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+ {"@type":"Question","name":"Is Cunning Claw a secure alternative to OpenClaw?","acceptedAnswer":{"@type":"Answer","text":"It is an alternative with safer defaults for one person on one computer: approval cards on from the first start, and on Linux a boxed shell with your keys hidden. \"Secure\" needs a qualifier. Cunning Claw is new, has run on very few machines, has no sandbox on Windows and has not been independently audited. A carefully hardened OpenClaw can be locked down further than a stock Cunning Claw."}},
+ {"@type":"Question","name":"Is Cunning Claw a fork of OpenClaw?","acceptedAnswer":{"@type":"Answer","text":"No. It is a separate codebase written by Dragon Forge AI in Cardiff: one TypeScript process with two runtime dependencies, under the MIT licence. The two projects are not affiliated."}},
+ {"@type":"Question","name":"Does OpenClaw have a sandbox?","acceptedAnswer":{"@type":"Answer","text":"Yes. Its documentation describes a sandbox that is off by default and, once enabled, runs tool execution in a container (Docker by default) with no network unless you allow it. This page links the OpenClaw pages each statement was read from on 22 November 2026."}},
+ {"@type":"Question","name":"Which one uses fewer tokens?","acceptedAnswer":{"@type":"Answer","text":"On this point they are level. Both avoid sending every tool's schema with every message: Cunning Claw loads connector tools on demand, and OpenClaw's Tool Search defers tool schemas. Cunning Claw's own test with 150 connector tools cut the tool lists sent with a message by three quarters, from about 61,900 tokens to about 15,100; we have not measured OpenClaw."}},
+ {"@type":"Question","name":"Can Cunning Claw be used from WhatsApp or Slack like OpenClaw?","acceptedAnswer":{"@type":"Answer","text":"Not in the same way. Cunning Claw can read and draft WhatsApp messages for you in its own browser, and connects to Slack as a tool, but the lines you command it from are its own window, Telegram, Discord and its phone app. OpenClaw's purpose is to be reachable from many chat apps."}},
+ {"@type":"Question","name":"Which is easier to install for someone who is not a developer?","acceptedAnswer":{"@type":"Answer","text":"Cunning Claw has double-click installers for Windows, macOS and Linux and a setup page that walks you through a free key. The installers are not code-signed yet, so Windows and macOS warn you once. We have not tested OpenClaw's installation and make no claim about it."}}
+]}
+</script>
+<link rel="icon" type="image/svg+xml" href="mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="page.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="home" href="/"><img src="forge-mark-cyan.svg" alt="" width="1126" height="1044">CUNNING CLAW</a>
+    <nav aria-label="Site">
+      <a href="/security">SECURITY</a>
+      <a href="/vs-openclaw" aria-current="page">VS OPENCLAW</a>
+      <a href="/#get">DOWNLOAD</a>
+      <a href="https://github.com/Dragon-Forge-master/cunning-claw">SOURCE</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="head">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">CUNNING CLAW</a> / VS OPENCLAW</p>
+    <h1>Cunning Claw vs OpenClaw: <em>what is on before you configure anything.</em></h1>
+    <p class="lede">Both are open-source AI agents you run yourself, and both take prompt injection seriously. They differ in shape and in defaults. OpenClaw is a gateway that reaches you across many chat apps, with a sandbox and approvals you switch on. Cunning Claw is one assistant on one computer, with the approval cards on from the first start and, on Linux, a boxed shell that hides your keys.</p>
+    <p class="asof">Cunning Claw's column describes version 0.5.2. <b>OpenClaw's column is taken from its own documentation at docs.openclaw.ai, read on 22 November 2026</b>, and each cell links the page it came from. OpenClaw moves quickly; if a cell has gone stale, <a href="https://github.com/Dragon-Forge-master/cunning-claw/issues">open an issue</a> and it will be corrected. OpenClaw is a separate project with no connection to Cunning Claw or Dragon Forge AI.</p>
+  </div>
+</div>
+
+<section id="short">
+  <div class="wrap">
+    <div class="eyebrow">The short answer</div>
+    <h2>Pick by <em>what you want switched on for you.</em></h2>
+    <div class="layers">
+      <div class="layer"><h3>CHOOSE OPENCLAW IF</h3><p>You want to message your agent from Slack, Signal, iMessage, Teams, Matrix or WhatsApp; you are comfortable with Docker and want a container sandbox with no network by default; you want the project with by far the larger body of documentation; or you run several agents and need per-agent policy.</p></div>
+      <div class="layer"><h3>CHOOSE CUNNING CLAW IF</h3><p>You want one assistant on your own computer that asks before anything consequential without your configuring it; you want your SSH keys and sign-ins hidden from its shell out of the box; you would rather double-click an installer than run a container; or you are not a developer and want the cards explained in plain words.</p></div>
+    </div>
+    <p class="note"><b>Cunning Claw is the newer and smaller of the two.</b> It has run on very few machines and has not been independently audited. Weigh that with everything below.</p>
+  </div>
+</section>
+
+<section id="table">
+  <div class="wrap">
+    <div class="eyebrow">Side by side</div>
+    <h2>Five questions, <em>two honest answers each.</em></h2>
+    <div class="tablewrap">
+      <table class="vs">
+        <thead><tr><th scope="col">Question</th><th scope="col">Cunning Claw 0.5.2</th><th scope="col">OpenClaw, per its docs</th></tr></thead>
+        <tbody>
+          <tr id="sandboxing">
+            <th scope="row">Sandboxing</th>
+            <td><strong>On by default on Linux, shell only.</strong> Shell commands run inside bubblewrap and can write only to the folders you allow. The same rules are built for macOS <code>sandbox-exec</code> but not yet run on a real Mac. On Windows there is no sandbox, and every result says so. The network is on inside the box unless you turn it off. <a href="/security#boxed-shell">How the box works</a>.</td>
+            <td><strong>Off by default; broader and stricter when on.</strong> <q>Sandboxing is off by default.</q> Enabled, tool execution (exec, read, write, edit and more) moves into a container: Docker by default, with Podman, SSH, OpenShell and Crabbox backends. <q>By default, local container sandboxes run with no network.</q> Its docs call it <q>not a perfect security boundary</q>.
+              <span class="src">Read at <a href="https://docs.openclaw.ai/gateway/sandboxing">gateway/sandboxing</a>, <a href="https://docs.openclaw.ai/gateway/sandboxing/what-gets-sandboxed">what-gets-sandboxed</a>, <a href="https://docs.openclaw.ai/gateway/sandboxing/images-and-setup">images-and-setup</a></span>
+              <span class="verdict">AHEAD ONCE ENABLED: MORE TOOLS BOXED, NO NETWORK</span></td>
+          </tr>
+          <tr id="credentials">
+            <th scope="row">Keys and credentials</th>
+            <td><strong>Hidden from the box by default.</strong> A boxed command sees empty stand-ins for <code>~/.ssh</code>, <code>~/.gnupg</code>, cloud and git credentials, the keyring and your browsers' profiles; credentials are stripped from its environment; the ssh and GnuPG agent sockets are hidden. Your other files stay readable. <a href="/security#credentials">The full list</a>.</td>
+            <td><strong>A matter of what you mount.</strong> With the sandbox on, a container sees the workspace access and binds you configure. Its guidance: <q>keep secrets out of the agent's reachable filesystem</q>. With the sandbox off, exec runs on the gateway host.
+              <span class="src">Read at <a href="https://docs.openclaw.ai/gateway/security/prompt-injection">gateway/security/prompt-injection</a>, <a href="https://docs.openclaw.ai/gateway/sandboxing/docker-backend">docker-backend</a></span></td>
+          </tr>
+          <tr id="prompt-injection">
+            <th scope="row">Prompt-injection defence</th>
+            <td><strong>A fence, a scanner and an alarm.</strong> Outside text is fenced as untrusted with its own fence tags stripped (<i lang="cy">y ffens</i>). A scanner that is not the model scores every tool result on thirteen signals and removes invisible Unicode. A hit suspends pre-approved plans and rewords every approval card for that turn. Turns that have read outside text are pinned to a model you trust. Heuristic, open source, evadable by design. <a href="/security#y-ffens">Details</a>.</td>
+            <td><strong>Wrapping, sanitising and advice.</strong> External content is wrapped in <code>EXTERNAL_UNTRUSTED_CONTENT</code> boundary markers, and chat-template tokens are stripped from it. The docs advise the strongest model tier for any agent with tools, a read-only <q>reader agent</q> to summarise untrusted content, and an optional plugin hook to screen what is sent to the model. They treat model choice as <q>your first and cheapest layer</q>.
+              <span class="src">Read at <a href="https://docs.openclaw.ai/gateway/security/prompt-injection">gateway/security/prompt-injection</a></span></td>
+          </tr>
+          <tr id="consent">
+            <th scope="row">Consent gates</th>
+            <td><strong>Cards on from the first start.</strong> Commands off your auto-approve list, every send, and connector tools that are not plain reads stop for a yes (<i lang="cy">y llw</i>). No answer in three minutes is a no. Under the cards, twelve kinds of command are refused whatever the config, a plan or an approval says. There is no automatic reviewer: a person answers. <a href="/security#y-llw">Details</a>.</td>
+            <td><strong>Capable, and yours to turn on.</strong> Exec approvals combine an allowlist with an ask policy of <code>off</code>, <code>on-miss</code> or <code>always</code>, and an unanswered prompt is denied. The documented default for a gateway host is security <code>full</code> with ask <code>off</code>. The recommended mode for coding agents is <code>auto</code>, where an automatic reviewer allows, denies or escalates commands that miss the allowlist.
+              <span class="src">Read at <a href="https://docs.openclaw.ai/tools/exec-approvals">tools/exec-approvals</a>, <a href="https://docs.openclaw.ai/tools/permission-modes">tools/permission-modes</a></span>
+              <span class="verdict">AHEAD ON FLEXIBILITY: ALLOWLISTS AND AN AUTO-REVIEWER</span></td>
+          </tr>
+          <tr id="tokens">
+            <th scope="row">Token efficiency</th>
+            <td><strong>Connector tools load on demand.</strong> Built-in tools always go; the schemas of MCP connector tools go only when you name the service, the model asks for them, or one was just used. The rest are a short roster. In the project's own test with 150 connector tools, the tool lists sent with a message fell from about 61,900 tokens to about 15,100, a cut of three quarters (<code>src/tool-diet.test.ts</code>). Installs with eight or fewer connector tools send them all.</td>
+            <td><strong>Tool Search does the same job.</strong> It <q>defers tool schemas while keeping the policy-approved capabilities available</q>, giving the model a bounded directory plus search, describe and call controls, and is used automatically for embedded runs unless you turn it off.
+              <span class="src">Read at <a href="https://docs.openclaw.ai/tools/tool-search">tools/tool-search</a></span>
+              <span class="verdict">A DRAW: BOTH DEFER TOOL SCHEMAS</span></td>
+          </tr>
+          <tr id="local-first">
+            <th scope="row">Local-first</th>
+            <td><strong>One process on your computer.</strong> The HUD binds to <code>127.0.0.1</code> and every request must name this claw, which blocks DNS rebinding. No account, no telemetry, no tracking. Your conversation goes to the model you chose; with a local model through Ollama, nothing leaves the machine. Two runtime dependencies.</td>
+            <td><strong>Self-hosted too.</strong> <q>On a regular host install the Gateway binds to loopback</q>, unknown senders get a pairing code, and group access is allowlisted. It also runs local models through Ollama. Its docs note that container images default to an exposed bind and should be paired with authentication.
+              <span class="src">Read at <a href="https://docs.openclaw.ai/gateway/security">gateway/security</a>, <a href="https://docs.openclaw.ai/providers/ollama">providers/ollama</a></span></td>
+          </tr>
+          <tr id="reach">
+            <th scope="row">Where you talk to it</th>
+            <td>Its own window in your browser, Telegram, Discord, a phone app (Pocket Claw, Android first, driven in an emulated phone so far) and ntfy for push alerts.</td>
+            <td><q>Discord, Google Chat, iMessage, Matrix, Microsoft Teams, Signal, Slack, Telegram, WhatsApp, Zalo, and more.</q>
+              <span class="src">Read at <a href="https://docs.openclaw.ai/llms.txt">docs.openclaw.ai/llms.txt</a></span>
+              <span class="verdict">AHEAD: FAR MORE CHANNELS</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Scroll the table sideways on a phone. Quotation marks mean OpenClaw's own words; everything else in its column is a summary of the linked page.</p>
+  </div>
+</section>
+
+<section id="defaults">
+  <div class="wrap">
+    <div class="eyebrow">Why defaults are the comparison</div>
+    <h2>A safeguard nobody switched on <em>protects nobody.</em></h2>
+    <p class="lede">Read feature for feature, OpenClaw has more: more sandbox backends, more of its tools inside the sandbox, an allowlist language, an automatic reviewer, per-agent policy. A person who works through its hardening pages ends up with a tighter machine than a stock Cunning Claw, particularly on network egress.</p>
+    <p class="lede">Cunning Claw was built for the person who will not read those pages. The first time it wants to run a command outside the safe list, send a message or publish something, a card appears and waits. On Linux its shell is boxed and your keys are hidden without a line of config. Config can add to the list of refused commands and can never take from it. That is the whole argument: fewer knobs, set to safe.</p>
+    <p class="lede">Neither project claims to have solved prompt injection, and you should distrust any that does. OpenClaw's docs say model choice is a mitigation and hard enforcement is for <q>anything whose potential damage you would not accept on a bad day</q>. Ours say the approval card is the boundary and it only works if you read it.</p>
+  </div>
+</section>
+
+<section id="questions">
+  <div class="wrap">
+    <div class="eyebrow">Straight answers</div>
+    <h2>What people ask <em>when choosing between them.</em></h2>
+    <dl class="faq">
+      <div><dt>Is Cunning Claw a secure alternative to OpenClaw?</dt><dd>It is an alternative with safer defaults for one person on one computer: approval cards on from the first start, and on Linux a boxed shell with your keys hidden. "Secure" needs a qualifier. Cunning Claw is new, has run on very few machines, has no sandbox on Windows and has not been independently audited. A carefully hardened OpenClaw can be locked down further than a stock Cunning Claw.</dd></div>
+      <div><dt>Is Cunning Claw a fork of OpenClaw?</dt><dd>No. It is a separate codebase written by Dragon Forge AI in Cardiff: one TypeScript process with two runtime dependencies, under the MIT licence. The two projects are not affiliated.</dd></div>
+      <div><dt>Does OpenClaw have a sandbox?</dt><dd>Yes. Its documentation describes a sandbox that is off by default and, once enabled, runs tool execution in a container (Docker by default) with no network unless you allow it. This page links the OpenClaw pages each statement was read from on 22 November 2026.</dd></div>
+      <div><dt>Which one uses fewer tokens?</dt><dd>On this point they are level. Both avoid sending every tool's schema with every message: Cunning Claw loads connector tools on demand, and OpenClaw's Tool Search defers tool schemas. Cunning Claw's own test with 150 connector tools cut the tool lists sent with a message by three quarters, from about 61,900 tokens to about 15,100; we have not measured OpenClaw.</dd></div>
+      <div><dt>Can Cunning Claw be used from WhatsApp or Slack like OpenClaw?</dt><dd>Not in the same way. Cunning Claw can read and draft WhatsApp messages for you in its own browser, and connects to Slack as a tool, but the lines you command it from are its own window, Telegram, Discord and its phone app. OpenClaw's purpose is to be reachable from many chat apps.</dd></div>
+      <div><dt>Which is easier to install for someone who is not a developer?</dt><dd>Cunning Claw has double-click installers for Windows, macOS and Linux and a setup page that walks you through a free key. The installers are not code-signed yet, so Windows and macOS warn you once. We have not tested OpenClaw's installation and make no claim about it.</dd></div>
+    </dl>
+    <div class="next">
+      <a class="btn" href="/#get">DOWNLOAD CUNNING CLAW 0.5.2</a>
+      <a class="btn ghost" href="/security">HOW IT IS SECURED</a>
+      <a class="btn ghost" href="https://docs.openclaw.ai/">OPENCLAW'S DOCS</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="mono"><a href="/">HOME</a> · <a href="/security">SECURITY</a> · <a href="/vs-openclaw">VS OPENCLAW</a> · <a href="/map">THE CONSTELLATION</a></p>
+    <p class="mono"><a href="https://github.com/Dragon-Forge-master/cunning-claw">github.com/Dragon-Forge-master/cunning-claw</a> · <a href="https://x.com/Dragon_forge_ai">@Dragon_forge_ai</a></p>
+    <p class="mono">DRAGON FORGE AI · CARDIFF, WALES</p>
+    <p class="doctrine">YN LLEOL YN GYNTAF · CANIATÂD DYNOL PAN FO CANLYNIADAU</p>
+    <p>Local-first when privacy matters · Human approval when consequences matter</p>
+  </div>
+</footer>
+
+</body>
+</html>

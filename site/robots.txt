@@ -1,4 +1,9 @@
+# cunningclaw.com is open to every crawler, search and AI alike.
+# A plain-text summary written for language models is at /llms.txt
+# (the long form at /llms-full.txt), after llmstxt.org.
 User-agent: *
 Allow: /
+# The wall's API answers JSON to the page's own script; nothing there is a page.
+Disallow: /api/
 
 Sitemap: https://cunningclaw.com/sitemap.xml

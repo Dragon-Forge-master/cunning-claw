@@ -1,0 +1,120 @@
+/* The reading pages (security.html, vs-openclaw.html): one stylesheet between
+   them, so a change of palette or type is one edit, not one per page.
+   Tokens are docs/BRAND.md verbatim and every shared class (eyebrow, lede,
+   note, term, attack, layers, floor, rules, faq, tablewrap, footer) is copied
+   from index.html's own block so the pages read as the same site. What is new
+   here is small: the bar across the top, a headline set in the display face
+   (on the home page the h1 is the wordmark; here the wordmark is the bar), and
+   a comparison table that says where each claim was read. */
+:root{
+  --ink:#0a111c; --ink2:#0e1826; --cyan:#35d6ed; --ice:#7ff0ff; --deep:#1a8ba0;
+  --red:#e0442e; --gold:#f5a623; --text:#dfe9f2; --dim:#8496a8;
+  --line:rgba(26,139,160,.28); --line2:rgba(26,139,160,.14);
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+  --measure:65ch;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;color-scheme:dark;overflow-x:clip}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--ink);color:var(--text);font-family:var(--body);font-size:1.0625rem;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--cyan);text-decoration-thickness:1px;text-underline-offset:.18em}
+a:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+img{max-width:100%;height:auto;display:block}
+.wrap{max-width:1120px;margin:0 auto;padding:0 clamp(20px,4vw,40px)}
+section{padding:clamp(56px,8vw,96px) 0;border-top:1px solid var(--line2)}
+strong{font-weight:600;color:#fff}
+code{font-family:var(--mono);color:var(--cyan);font-size:.88em}
+
+/* the bar: the Forge Claw at a size with clean edges (no glow below 64px,
+   docs/BRAND.md rule 6), the wordmark in mono, and the few doors that matter */
+.bar{border-bottom:1px solid var(--line2);background:var(--ink)}
+.bar .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px 24px;flex-wrap:wrap;padding-top:14px;padding-bottom:14px}
+.bar .home{display:flex;align-items:center;gap:12px;text-decoration:none;font-family:var(--mono);font-weight:600;letter-spacing:.18em;font-size:.86rem;color:var(--cyan)}
+.bar .home img{width:40px;height:auto}
+.bar nav{display:flex;gap:6px 20px;flex-wrap:wrap;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em}
+.bar nav a{color:var(--dim);text-decoration:none;padding:6px 0}
+.bar nav a:hover,.bar nav a[aria-current="page"]{color:var(--cyan)}
+
+/* the head of a reading page */
+.head{padding:clamp(48px,7vw,88px) 0 clamp(40px,6vw,64px);background:radial-gradient(ellipse 60% 70% at 30% 0%,#0f2236 0%,var(--ink) 70%)}
+.crumbs{font-family:var(--mono);font-size:.68rem;letter-spacing:.14em;color:var(--dim);margin-bottom:26px}
+.crumbs a{color:var(--dim)}
+.crumbs a:hover{color:var(--cyan)}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(2.1rem,5.2vw,3.5rem);line-height:1.08;letter-spacing:-.015em;text-wrap:balance;max-width:20ch}
+h1 em{font-style:italic;color:var(--cyan)}
+.head .lede{margin-top:24px;font-size:1.15rem}
+.asof{font-family:var(--mono);color:var(--dim);font-size:.72rem;letter-spacing:.08em;margin-top:22px;max-width:var(--measure)}
+.asof b{color:var(--gold);font-weight:500}
+
+/* type scale, as index.html */
+.eyebrow{font-family:var(--mono);color:var(--deep);letter-spacing:.28em;font-size:.68rem;text-transform:uppercase;margin-bottom:22px}
+h2{font-family:var(--display);font-weight:600;font-size:clamp(1.9rem,4.2vw,2.9rem);line-height:1.12;letter-spacing:-.01em;color:var(--text);text-wrap:balance;max-width:24ch;margin-bottom:22px}
+h2 em{font-style:italic;color:var(--cyan)}
+h3{font-family:var(--display);font-weight:600;font-size:1.3rem;line-height:1.25;margin:34px 0 10px;text-wrap:balance;max-width:var(--measure)}
+.lede{max-width:var(--measure);font-size:1.0625rem}
+.lede+.lede,p+p.lede{margin-top:16px}
+.note{color:var(--dim);font-size:.9rem;margin-top:16px;max-width:var(--measure)}
+.note b{color:var(--gold);font-weight:500}
+
+/* exhibits, as index.html */
+.term{font-family:var(--mono);background:#050a12;border:1px solid var(--line);padding:22px 24px;font-size:.86rem;line-height:1.75;overflow-x:auto;white-space:pre;color:var(--text);margin-top:26px}
+.term .k{color:var(--cyan)}.term .d{color:var(--dim)}.term .q{color:var(--gold)}
+.attack{border:1px solid var(--red);margin:28px 0;background:rgba(224,68,46,.05);max-width:var(--measure)}
+.attack .h{font-family:var(--mono);background:rgba(224,68,46,.16);color:var(--red);padding:9px 18px;font-size:.68rem;letter-spacing:.16em}
+.attack pre{font-family:var(--mono);padding:20px 18px;white-space:pre-wrap;color:#f0b7ac;font-size:.86rem;line-height:1.6}
+.reply{border-left:3px solid var(--cyan);padding:8px 0 8px 26px;margin:28px 0;font-family:var(--display);font-size:clamp(1.15rem,2.2vw,1.45rem);line-height:1.35;max-width:var(--measure);font-weight:600}
+.reply small{display:block;font-family:var(--mono);color:var(--dim);font-size:.68rem;margin-top:14px;letter-spacing:.16em;font-weight:400}
+
+.layers{display:grid;grid-template-columns:repeat(2,1fr);margin-top:36px;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.layer{padding:26px 26px 28px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.layer h3{font-family:var(--mono);color:var(--cyan);font-size:.78rem;letter-spacing:.16em;font-weight:600;margin:0 0 10px;display:flex;justify-content:space-between;gap:12px;align-items:baseline;max-width:none}
+.layer h3 i{font-style:italic;color:var(--dim);font-weight:400;letter-spacing:.02em;text-transform:none;font-family:var(--display);font-size:.95rem}
+.layer p{font-size:.95rem;color:var(--text)}
+
+.floor{list-style:none;columns:2;column-gap:40px;margin-top:26px;max-width:900px}
+.floor li{break-inside:avoid;padding:8px 0 8px 28px;border-top:1px solid var(--line2);position:relative;font-size:.95rem}
+.floor li::before{content:"×";color:var(--dim);position:absolute;left:4px;font-family:var(--mono);font-weight:600}
+.floor code{color:var(--text)}
+.rules{list-style:none;margin-top:22px;max-width:var(--measure)}
+.rules li{padding:8px 0 8px 28px;border-top:1px solid var(--line2);position:relative;font-size:.95rem}
+.rules li::before{content:"—";color:var(--deep);position:absolute;left:2px;font-family:var(--mono)}
+ol.steps{margin:22px 0 0 1.3em;max-width:var(--measure)}
+ol.steps li{padding:6px 0 6px 6px;font-size:.98rem}
+ol.steps li::marker{font-family:var(--mono);color:var(--cyan);font-size:.86rem}
+
+.faq{display:grid;grid-template-columns:repeat(2,1fr);gap:0 48px;margin-top:30px}
+.faq div{padding:20px 0;border-top:1px solid var(--line2)}
+.faq dt{font-family:var(--display);font-weight:600;font-size:1.2rem;margin-bottom:8px;text-wrap:balance}
+.faq dd{font-size:.95rem;color:var(--text)}
+
+.tablewrap{overflow-x:auto;margin-top:28px}
+table{width:100%;border-collapse:collapse;font-size:.92rem;min-width:560px}
+th,td{text-align:left;padding:14px 14px;border-bottom:1px solid var(--line2);vertical-align:top}
+thead th{font-family:var(--mono);color:var(--dim);font-weight:400;letter-spacing:.1em;font-size:.66rem;text-transform:uppercase}
+/* the comparison: the question in mono down the side, the two answers level,
+   and under each of the other project's answers the page it was read on */
+table.vs{min-width:760px}
+table.vs tbody th{font-family:var(--mono);color:var(--cyan);font-weight:600;font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;width:17%}
+table.vs td{width:41.5%}
+table.vs .src{display:block;margin-top:8px;font-family:var(--mono);font-size:.7rem;letter-spacing:.04em;color:var(--dim)}
+table.vs .src a{color:var(--dim)}
+table.vs .src a:hover{color:var(--cyan)}
+table.vs q{font-style:italic}
+.verdict{display:block;margin-top:8px;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;color:var(--gold)}
+
+.next{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
+.btn{font-family:var(--mono);border:1px solid var(--cyan);color:var(--cyan);padding:13px 26px;text-decoration:none;letter-spacing:.14em;font-size:.76rem;transition:background .2s,border-color .2s,color .2s}
+.btn:hover{background:rgba(53,214,237,.1)}
+.btn.ghost{border-color:var(--deep);color:var(--dim)}
+.btn.ghost:hover{border-color:var(--cyan);color:var(--cyan)}
+
+footer{padding:64px 0 80px;text-align:center;color:var(--dim);font-size:.9rem;border-top:1px solid var(--line2)}
+footer .mono{font-family:var(--mono);font-size:.74rem;letter-spacing:.12em}
+footer .mono+.mono{margin-top:14px}
+.doctrine{margin-top:18px;font-family:var(--mono);color:var(--cyan);letter-spacing:.14em;font-size:.7rem;opacity:.8}
+.doctrine+p{margin-top:6px;font-size:.84rem}
+
+@media (max-width:820px){.faq{grid-template-columns:1fr}.floor{columns:1}}
+@media (max-width:620px){.layers{grid-template-columns:1fr}.bar nav{font-size:.68rem;gap:4px 16px}}

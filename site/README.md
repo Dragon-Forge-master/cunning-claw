@@ -1,7 +1,9 @@
 # Landing page
 
-Static, with no build step and no framework — the whole page is `index.html`,
-and the video sits beside it. The one dynamic part is the forge wall, a Pages
+Static, with no build step and no framework — the home page is `index.html`,
+and the video sits beside it. Two reading pages sit beside it, `security.html`
+(served at `/security`) and `vs-openclaw.html` (`/vs-openclaw`), sharing one
+stylesheet, `page.css`. The one dynamic part is the forge wall, a Pages
 Function in plain JS (below).
 
 ## Deploy
@@ -72,6 +74,36 @@ before the rebrand.
   styles and fonts, and `challenges.cloudflare.com` for scripts and frames —
   Turnstile, the wall's spam check, and nothing else.
 
+## What search engines and language models are told
+
+Titles, descriptions, canonical links and share tags are in each page's head.
+The rest is held to the page and the feed by `src/site-seo.test.ts`:
+
+- **Structured data.** The home page carries `WebSite`, `Organization` and
+  `SoftwareApplication` (with `softwareVersion`, the repository in `sameAs`,
+  and a `disambiguatingDescription` that tells the product from the Diablo II
+  item of the same name). Each page with a `<dl class="faq">` carries a
+  `FAQPage` block. **Never edit that block by hand:** change the visible
+  question or answer, then run `npm run site:seo`, which writes the JSON-LD
+  from the page's own words and the version from `latest.json`. No rating or
+  review is declared, because there are none.
+- **`llms.txt` and `llms-full.txt`** (llmstxt.org): the product in plain
+  Markdown for language models. Their "Current release" line is stamped by the
+  same script. The counts in them (tools, connectors, skills, tests) are the
+  ones in the note above; move them together.
+- **`sitemap.xml`** lists every page; the test fails if a page is missing from
+  it or it names one that does not exist. Set `lastmod` to the day a page's
+  words changed.
+- **`vs-openclaw.html`** quotes OpenClaw's own documentation, and says the day
+  it was read. Every row about OpenClaw links the page it came from, and a
+  phrase in quotation marks is theirs word for word. Re-read those pages
+  before each release and move the date, or correct the cell; a stale
+  comparison is a false one.
+- **A new page** needs: one `h1`, `lang="en-GB"`, a title of 20 to 60
+  characters naming Cunning Claw, a description of 70 to 175, a canonical
+  link, the share tags, a line in `sitemap.xml` and in `llms.txt`, and an entry
+  in the test's `PAGES`. No inline script: the CSP refuses it.
+
 ## The update feed
 
 `latest.json` is the file every claw that said yes to the update check
@@ -91,13 +123,16 @@ means no light, never a wrong one.
    problem — it turns the light red-amber and tells the phones so), the
    summary, the `notes` link to the release, and every download link with the
    new version in it.
-3. `npm test`. `src/site-latest.test.ts` checks the file passes the claw's own
+3. `npm run site:seo`, which moves the version in the home page's structured
+   data and in `llms.txt` and `llms-full.txt` to the feed's; then bring the
+   counts and the version named in the pages' own words up to date by hand.
+4. `npm test`. `src/site-latest.test.ts` checks the file passes the claw's own
    validation, that each download is the asset `scripts/bundle.mjs` names, and
    that its version is **never newer than package.json's**. It may lag (the
    version is bumped while the next release is being prepared, and the feed
    still names the last published one, whose files exist) but a feed ahead of
    the code would announce a release whose downloads are links to nothing.
-4. Deploy (above). Until then no claw has heard.
+5. Deploy (above). Until then no claw has heard.
 
 ## Pocket Claw at /pocket/
 

@@ -11,6 +11,23 @@
   Cache-Control: public, max-age=3600
   Content-Type: application/json; charset=utf-8
 
+# Written for language models (llmstxt.org). They hold a Welsh line with a
+# circumflex and a middle dot, so the charset is said out loud rather than
+# left to whatever a fetcher guesses for text/plain.
+/llms.txt
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=3600
+/llms-full.txt
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=3600
+
+# Uploaded with the site because the deploy is the whole folder, and neither
+# is a page: a search result for the deploy notes helps nobody.
+/README.md
+  X-Robots-Tag: noindex
+/wrangler.toml
+  X-Robots-Tag: noindex
+
 # Pocket Claw, the phone app (site/pocket/, copied from public/pocket/ by
 # `npm run site:pocket`). Its own policy, stricter than the homepage's: its
 # own files and nothing else, no inline anything, no fonts or Turnstile, and
@@ -24,3 +41,6 @@
   Referrer-Policy: no-referrer
   Permissions-Policy: camera=(self), microphone=(self), geolocation=()
   Cross-Origin-Opener-Policy: same-origin
+  # An app shell, not a page to land on from a search: it has no words for a
+  # stranger, and the home page's own section is what should be found.
+  X-Robots-Tag: noindex

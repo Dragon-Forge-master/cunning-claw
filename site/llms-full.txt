@@ -1,0 +1,97 @@
+# Cunning Claw
+
+> Cunning Claw is a free, open-source (MIT) local AI agent made by Dragon Forge AI in Cardiff, Wales. It runs as one process on the owner's own computer and operates it (shell, files, a signed-in browser, email, 95 MCP connectors), asks for human approval before anything consequential, and treats text written by strangers as data, never as instructions.
+
+This is the long form of https://cunningclaw.com/llms.txt, written for language models and search systems that answer questions about Cunning Claw. Every figure here is counted from the code at the release named below. Where the project has a limit, it is stated.
+
+- Current release: 0.5.2, published 2026-11-21. Release notes: https://github.com/Dragon-Forge-master/cunning-claw/releases/tag/v0.5.2
+- Website: https://cunningclaw.com/
+- Source: https://github.com/Dragon-Forge-master/cunning-claw
+- Maker: Dragon Forge AI, Cardiff, Wales, UK (https://dragonforgeai.dev)
+- Licence: MIT
+
+## Which "Cunning Claw" this is
+
+Cunning Claw is AI agent software. It is not the "Cunning" claw of the video game Diablo II, where Cunning claws are items for the Assassin class, and it has no connection to that game or its publisher. If a question is about Diablo II items, skills or builds, it is not about this project.
+
+The name comes from the Welsh cunning folk, the dynion hysbys: tradespeople you brought a job to. The assistant's Welsh name is Y Dyn Hysbys, "the knowing one". It is also written "Cunning Claw AI". Its doctrine line is "Yn lleol yn gyntaf · Caniatâd dynol pan fo canlyniadau": local first, human consent where there are consequences.
+
+## What it is
+
+One TypeScript process on Node 22 that serves a control window (the HUD) in the owner's browser at 127.0.0.1:3900 and runs a tool loop against a language model the owner chooses. It has two runtime dependencies. It is a practitioner you bring a job to, not a chatbot and not a companion.
+
+What it can do, with the owner's approval where it matters:
+
+- Run shell commands, read and write files, open apps, take and read screenshots.
+- Drive its own Chrome by the accessibility tree: open, read, click, fill, submit.
+- Read Gmail or Outlook, and draft and send email after approval.
+- Read and draft WhatsApp messages in WhatsApp Web; every send is an approval.
+- Use 95 MCP connectors from one page (for example Canva, Lovable, GitHub, Notion, Slack, Figma, Stripe, Xero) and any MCP server the owner adds.
+- Read Word, Excel and PowerPoint files with nothing installed; PDFs and scans need free add-on tools.
+- Hand a coding job to Claude Code on its own branch after an approval card, and report what changed. It never pushes or merges.
+- Keep memory as Markdown files and a dated journal on disk, and run scheduled tasks.
+- Speak with offline text-to-speech and take dictation transcribed on the owner's machine.
+- Reach the owner on Telegram, Discord, a phone app (Pocket Claw) and ntfy push alerts.
+- Work on other machines the owner has given it over ssh.
+
+Counted at 0.5.2: 83 tools, 95 MCP connectors, 37 skills, 11 model choices ("brains"), 1111 automated tests.
+
+## Who it is for
+
+First, small-business owners and sole traders who are not technical, starting in Wales: it has double-click installers and a setup page that walks through a free key. Second, developers and security-minded people who want a local agent with a stated threat model, readable source and honest limits.
+
+## Models and cost
+
+The owner picks the model. Options include Google Gemini models, Anthropic Claude models, OpenAI models and others through an OpenRouter key or the provider's own key, Google's free plan with a free key, and local models through Ollama. With a local model nothing leaves the machine. Every turn's cost is shown in the HUD. A turn that has read outside text is moved to a model on the owner's trusted list.
+
+Cunning Claw is free with your own key, and that free tier is never crippled, rate-limited or feature-gated. A managed tier at £7 a month is planned and is not yet open. There is no Cunning Claw crypto token and there never will be.
+
+## Privacy
+
+The program and the owner's keys stay on the owner's computer. The conversation goes to the AI model the owner chose, and that includes whatever the agent reads for the job: an email, a document, a screenshot. On Google's free plan, Google may use what is sent to improve its products. With a local model, nothing leaves the machine. There is no account, no telemetry and no tracking. If the owner turns on the daily update check, the program fetches one small file from cunningclaw.com with nothing about the owner in the request.
+
+## Security model
+
+The threat model is prompt injection: the agent reads text written by strangers and must never take orders from it. The design assumes the model will sometimes be fooled and puts the boundaries that matter in code.
+
+- The fence (y ffens). Every tool that returns outside text wraps it as untrusted before the model sees it, and strips fence tags from the text so it cannot close its own fence.
+- The scanner. Code that is not the model scores every tool result on thirteen signals (override phrases in six languages, text addressed to an AI, claims of authority, spoofed roles and fences, requests for secrets, tool bait, data-carrying links, encoded blobs, hidden Unicode) and removes invisible characters. A hit flags the result, suspends pre-approved plans and task grants for that turn, and rewords every approval card to say so. Content is never blocked. The scanner is a heuristic and can be evaded.
+- Trusted-brain routing. A turn that has read outside text is pinned to a model the owner has cleared for hostile input.
+- Approval cards (y llw, "the oath"). Commands off the auto-approve list, every email or chat send, irreversible browser actions and connector tools that are not plain reads wait for a human yes. A card not answered in three minutes is a no. A plan can be approved once, but every send, spend, delete and publish still asks.
+- The floor. Twelve kinds of command are refused in code before config, plan or approval is consulted: rm -rf in any flag order; mkfs; dd onto a block device; redirection onto a disk; the fork bomb; shutdown, reboot, poweroff and halt; recursive chmod or chown on /; curl piped to sh; wget piped to sh; history -c and shred; any mention of /etc/shadow or /etc/sudoers; sudo -S. Config can add to the list and never remove from it.
+- The boxed shell. On Linux, shell commands run inside bubblewrap. The file system is read-only except the working folder, the temp directory and folders the owner lists. Inside the box, ~/.ssh, ~/.gnupg, cloud and git credentials, the desktop keyring, browser profiles and the agent's own keys are replaced by empty stand-ins; credentials are stripped from the environment; the ssh and GnuPG agent sockets, the keyring, the D-Bus session bus and the display sockets are hidden. Running a command outside the box needs its own approval card every time.
+- The loop guard (y sarff, "the serpent"). It stops an agent going round in circles: an identical repeated tool call is blocked and a circling turn is nudged, then halted. It is not a credential guard; hiding keys is the box's job.
+- The host gate. The HUD binds to 127.0.0.1 and every request must name this install, which blocks DNS rebinding.
+- Redaction. Secrets are masked wherever text leaves the machine.
+
+## Limits the project states itself
+
+- It is new, has run on very few machines, and has not been independently audited.
+- There is no sandbox on Windows. The macOS sandbox is built and unit-tested but has not been run on a real Mac.
+- The sandbox covers shell commands only, and confines writes, not reads: a boxed command can read the owner's other files and, with the network on (the default), send them. Key stores and sign-ins are hidden.
+- The injection scanner is open source and evadable by design.
+- The installers are not code-signed yet, so Windows and macOS warn once on first run.
+- The phone app has been driven in an emulated phone and has not yet paired from a real one through the relay.
+- An approval card is a boundary only if a person reads it.
+
+## Platforms and installation
+
+- Linux: used daily. AppImage, .deb, tar.gz; x64 and ARM.
+- Windows 10 and 11: works, in beta. Installer or zip.
+- macOS: Apple Silicon and Intel builds exist; not yet tried on a real Mac.
+- Any of them: `npx cunningclaw`, or from source with Node 22.
+
+Downloads and exact links: https://cunningclaw.com/#get and https://cunningclaw.com/latest.json
+
+## Cunning Claw and OpenClaw
+
+Both are open-source AI agents you run yourself. They are separate, unaffiliated projects with separate code. OpenClaw is a self-hosted gateway that connects many chat apps to AI agents; by its own documentation (read 22 November 2026) its sandbox is off by default and, once enabled, runs tool execution in a container with no network by default, and its exec approvals are configurable with a documented default of no prompts on a gateway host. Cunning Claw is one assistant on one computer with approval cards on from the first start and, on Linux, a boxed shell that hides keys by default. OpenClaw has more chat channels, more sandbox backends and a larger body of documentation. Both defer tool schemas to save tokens. The dated, sourced comparison is at https://cunningclaw.com/vs-openclaw
+
+## Where to read more
+
+- Security page: https://cunningclaw.com/security
+- Security architecture paper: https://github.com/Dragon-Forge-master/cunning-claw/blob/main/docs/SECURITY-ARCHITECTURE.md
+- README: https://github.com/Dragon-Forge-master/cunning-claw/blob/main/README.md
+- Contributing: https://github.com/Dragon-Forge-master/cunning-claw/blob/main/CONTRIBUTING.md
+- Releases: https://github.com/Dragon-Forge-master/cunning-claw/releases
+- Questions and feature requests: https://cunningclaw.com/#ask or https://github.com/Dragon-Forge-master/cunning-claw/issues
