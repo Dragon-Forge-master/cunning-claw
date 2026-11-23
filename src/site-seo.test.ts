@@ -308,6 +308,16 @@ test("seo: the pages lead to each other, and no link on them or on the map point
   }
 });
 
+test("seo: a page that shows an address or a mailto link tells Cloudflare not to rewrite it", () => {
+  // Found on the live site, 23 November 2026: with scripts off the practice card read "To: [email protected]".
+  for (const rel of [...Object.keys(PAGES), "404.html"]) {
+    const html = site(rel).replace(/<script[\s\S]*?<\/script>/g, "").replace(/<!--(?!\/?email_off)[\s\S]*?-->/g, "");
+    const shielded = html.replace(/<!--email_off-->[\s\S]*?<!--\/email_off-->/g, "");
+    assert.doesNotMatch(shielded, /[\w.+-]+@[\w-]+\.[\w.-]+|href="mailto:/, `${rel}: an address or mailto link outside <!--email_off-->`);
+  }
+  assert.match(site("index.html"), /<!--email_off-->[\s\S]*sian@hafodtimber\.example[\s\S]*<!--\/email_off-->/);
+});
+
 test("seo: the comparison says where each statement about the other project was read, and when", () => {
   const html = site("vs-openclaw.html");
   const rows = [...html.matchAll(/<tr id="[^"]+">([\s\S]*?)<\/tr>/g)].map((m) => m[1]);

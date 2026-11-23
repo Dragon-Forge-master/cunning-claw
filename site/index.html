@@ -86,6 +86,12 @@
 </header>
 
 <main id="main">
+<!-- Cloudflare's email obfuscation rewrites anything shaped like an address
+     into "[email protected]" and a script that puts it back. The addresses on
+     this page are made up, the practice card's whole lesson is reading the To
+     line, and with scripts off the "send the link" buttons led to a Cloudflare
+     page. The two comments below switch the rewriting off for this page. -->
+<!--email_off-->
 
 <!-- 1. Hero: what he is, the one button, and the gate you can press. -->
 <section class="hero" id="top" data-band="machine" aria-labelledby="hero-h">
@@ -713,6 +719,7 @@ npm run dev   <span class="c">→ http://127.0.0.1:3900</span></pre>
   </div>
 </section>
 
+<!--/email_off-->
 </main>
 
 <footer class="foot">
