@@ -7,7 +7,7 @@
 //
 //   - The FAQPage structured data. Google's rule, and plain honesty, is that
 //     it says what the page says. So it is never written by hand: this script
-//     reads each page's own <dl class="faq"> and writes the JSON-LD from it.
+//     reads each page's own <div class="faq"> and writes the JSON-LD from it.
 //   - The version in the SoftwareApplication structured data, and the link to
 //     its release notes. Both come from site/latest.json, the same feed the
 //     claws read, so the page cannot announce a version the downloads lack.
@@ -16,7 +16,7 @@
 // src/site-seo.test.ts fails if any of the three differs from this output,
 // which is the same bargain scripts/site-pocket.mjs makes for the phone app.
 // No parser is pulled in: the pages are ours, and the few shapes read here
-// (one dl, one div per question) are checked by that test.
+// (one list, one <details> per question) are checked by that test.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const SITE = path.join(ROOT, "site");
 /** Pages whose questions are published as FAQPage data. */
-export const FAQ_PAGES = ["index.html", "security.html", "vs-openclaw.html"];
+export const FAQ_PAGES = ["index.html", "security.html", "vs-openclaw.html", "install.html"];
 export const LLMS_FILES = ["llms.txt", "llms-full.txt"];
 
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rarr: "→", hellip: "…", mdash: "—", ndash: "–" };
@@ -42,15 +42,23 @@ export function textOf(html) {
     .trim();
 }
 
-/** Each question and answer in the page's <dl class="faq">, as the reader sees them. */
+/**
+ * Each question and answer in the page's <div class="faq">, as the reader sees
+ * them. A question is a <details> whose <summary> holds an <h3>; the answer is
+ * everything after the summary. An answer folded shut is still on the page,
+ * which is all the structured data may repeat.
+ */
 export function faqPairs(html) {
-  const lists = [...html.matchAll(/<dl class="faq">([\s\S]*?)<\/dl>/g)];
-  if (lists.length !== 1) throw new Error(`site-seo: expected one <dl class="faq">, found ${lists.length}`);
-  const pairs = [...lists[0][1].matchAll(/<div><dt>([\s\S]*?)<\/dt><dd>([\s\S]*?)<\/dd><\/div>/g)]
+  const starts = [...html.matchAll(/<div class="faq">/g)];
+  if (starts.length !== 1) throw new Error(`site-seo: expected one <div class="faq">, found ${starts.length}`);
+  const from = starts[0].index + starts[0][0].length;
+  // Answers are paragraphs, never a nested div, so the list ends at the first closing div.
+  const region = html.slice(from, html.indexOf("</div>", from));
+  const pairs = [...region.matchAll(/<details(?: open)?>\s*<summary><h3>([\s\S]*?)<\/h3><\/summary>([\s\S]*?)<\/details>/g)]
     .map((m) => ({ question: textOf(m[1]), answer: textOf(m[2]) }));
   // A question written in some other shape would silently go missing from the data.
-  const asked = (lists[0][1].match(/<dt>/g) || []).length;
-  if (pairs.length !== asked) throw new Error(`site-seo: ${asked} questions on the page but ${pairs.length} read; keep each as <div><dt>…</dt><dd>…</dd></div>`);
+  const asked = (region.match(/<summary>/g) || []).length;
+  if (!pairs.length || pairs.length !== asked) throw new Error(`site-seo: ${asked} questions on the page but ${pairs.length} read; keep each as <details><summary><h3>…</h3></summary><p>…</p></details>`);
   return pairs;
 }
 

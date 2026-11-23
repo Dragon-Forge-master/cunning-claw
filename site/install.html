@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install Cunning Claw on Windows, Mac or Linux: set-up guide</title>
+<meta name="description" content="Install the Cunning Claw AI agent: double-click installers for Windows, Mac and Linux, a free Google key or a local model, what each AI model costs, and what is untried.">
+<link rel="canonical" href="https://cunningclaw.com/install">
+<link rel="alternate" hreflang="en-GB" href="https://cunningclaw.com/install">
+<link rel="alternate" hreflang="x-default" href="https://cunningclaw.com/install">
+<meta name="geo.region" content="GB-CRF">
+<meta name="geo.placename" content="Cardiff, Wales">
+<meta property="og:title" content="Get Cunning Claw set up on Windows, Mac or Linux">
+<meta property="og:description" content="A double-click installer, a free key or a local model, and twelve practice lessons. Every file, every price, and what has not been tried yet.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://cunningclaw.com/install">
+<meta property="og:site_name" content="Cunning Claw">
+<meta property="og:locale" content="en_GB">
+<meta property="og:image" content="https://cunningclaw.com/social-0.5.png">
+<meta property="og:image:width" content="1600">
+<meta property="og:image:height" content="900">
+<meta property="og:image:alt" content="Cunning Claw, the local AI agent from Dragon Forge AI in Cardiff.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Dragon_forge_ai">
+<meta name="twitter:title" content="Get Cunning Claw set up on Windows, Mac or Linux">
+<meta name="twitter:description" content="A double-click installer, a free key or a local model, and twelve practice lessons. Every file, every price, and what has not been tried yet.">
+<meta name="twitter:image" content="https://cunningclaw.com/social-0.5.png">
+<meta name="theme-color" content="#05080f">
+<script type="application/ld+json" id="ld-page">
+{"@context":"https://schema.org","@graph":[
+ {"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Cunning Claw","item":"https://cunningclaw.com/"},{"@type":"ListItem","position":2,"name":"Get set up","item":"https://cunningclaw.com/install"}]},
+ {"@type":"WebPage","@id":"https://cunningclaw.com/install#page","headline":"Get set up on Windows, Mac or Linux.","name":"Install Cunning Claw on Windows, Mac or Linux: set-up guide","description":"Install the Cunning Claw AI agent: double-click installers for Windows, Mac and Linux, a free Google key or a local model, what each AI model costs, and what is untried.","url":"https://cunningclaw.com/install","mainEntityOfPage":"https://cunningclaw.com/install","inLanguage":"en-GB","datePublished":"2026-11-23","dateModified":"2026-11-23","image":"https://cunningclaw.com/social-0.5.png","author":{"@id":"https://cunningclaw.com/#org"},"publisher":{"@id":"https://cunningclaw.com/#org"},"about":[{"@id":"https://cunningclaw.com/#software"}],"isPartOf":{"@id":"https://cunningclaw.com/#website"}},
+ {"@type":"Organization","@id":"https://cunningclaw.com/#org","name":"Dragon Forge AI","url":"https://dragonforgeai.dev","address":{"@type":"PostalAddress","addressLocality":"Cardiff","addressRegion":"Wales","addressCountry":"GB"}},
+ {"@type":"SoftwareApplication","@id":"https://cunningclaw.com/#software","name":"Cunning Claw","url":"https://cunningclaw.com/"}
+]}
+</script>
+<script type="application/ld+json" id="ld-faq">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+ {"@type":"Question","name":"Do I need to be technical to install Cunning Claw?","acceptedAnswer":{"@type":"Answer","text":"Less than you might think, and it is new. A double-click installer, then a setup page in your browser that walks you through a free Google key. A window stays open while he runs. Windows and macOS will warn you once, because the installers are not code-signed yet."}},
+ {"@type":"Question","name":"Can I run it without paying anything?","acceptedAnswer":{"@type":"Answer","text":"Yes. The software is free and open source, and stays free. For the AI he thinks with, start on Google's free plan with a free key, or run a local model through Ollama and pay nothing. On Google's free plan, Google may use what you send to improve its products."}},
+ {"@type":"Question","name":"Why does Windows or macOS warn me about the installer?","acceptedAnswer":{"@type":"Answer","text":"Because the installers are not code-signed yet. On Windows press More info, then Run anyway. On a Mac open System Settings, Privacy & Security, and choose Open Anyway. Each installer was installed and started on GitHub's own Windows, Mac and Linux machines before it was published."}},
+ {"@type":"Question","name":"Does Cunning Claw work on a Mac?","acceptedAnswer":{"@type":"Answer","text":"There are builds for Apple Silicon and Intel Macs, and each was installed and started on GitHub's Mac machines. Nobody on the project has yet run it on a real Mac, and its sandbox is untested on that hardware. If you try it, tell us what happens."}},
+ {"@type":"Question","name":"Does my computer have to be on?","acceptedAnswer":{"@type":"Answer","text":"Yes. He runs on your computer and works while it is on. A phone can reach him and answer his cards, but the work happens at home."}},
+ {"@type":"Question","name":"How do I update?","acceptedAnswer":{"@type":"Answer","text":"Install the new version over the old one. Your keys, settings and memory live in your own folder and are left alone."}}
+]}
+</script>
+<link rel="icon" type="image/svg+xml" href="mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<link rel="stylesheet" href="site.css">
+<link rel="stylesheet" href="page.css">
+<script src="home.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar">
+  <div class="wrap bar-in">
+    <a class="wordmark" href="/" aria-label="Cunning Claw, home">CUNNING CLAW</a>
+    <nav class="nav" aria-label="Site">
+      <a href="/#watch">Films</a>
+      <a href="/features">Everything he does</a>
+      <a href="/security">Safety</a>
+      <a href="/install" aria-current="page">Get set up</a>
+      <a href="/about">About</a>
+    </nav>
+    <details class="menu">
+      <summary>Menu</summary>
+      <nav aria-label="Site, in the menu">
+        <a href="/#watch">Films</a>
+        <a href="/features">Everything he does</a>
+        <a href="/security">Safety</a>
+        <a href="/install" aria-current="page">Get set up</a>
+        <a href="/about">About</a>
+        <a href="/#get">Download</a>
+      </nav>
+    </details>
+    <a class="btn btn-fill btn-compact bar-dl" href="/#get">Download</a>
+  </div>
+</header>
+
+<main id="main" class="doc">
+<section class="doc-head" data-band="machine">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">Cunning Claw</a> / Get set up</p>
+    <h1>Get set up on <em>Windows, Mac or Linux.</em></h1>
+    <p class="lede">Three steps: download and double-click, give him an AI model to think with, and approve what he asks. Version 0.5.2 is the current release, and it is free.</p>
+  </div>
+</section>
+
+<section id="download" data-band="human" data-tone="2">
+  <div class="wrap">
+    <header class="head">
+      <p class="label">Step one · <span data-rel="version">version 0.5.2</span> · free</p>
+      <h2>Download and double-click.</h2>
+      <p class="lede">Pick your computer and run the installer. No terminal. Your keys, settings and memory live in your own folder, so updating later is just installing the new version over the old one.</p>
+    </header>
+    <div class="dls">
+      <p class="label dls-other">Other computers</p>
+      <a class="dl" data-os="windows" data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-Setup-0.5.2.exe"><span class="dl-name">Download for Windows</span><span class="dl-meta">Windows 10 and 11 · in beta · <span data-rel="size">26 MB</span></span></a>
+      <a class="dl" data-os="mac" data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-0.5.2-mac-arm64.dmg"><span class="dl-name">Download for Mac, Apple Silicon</span><span class="dl-meta">M1 and later · <span data-rel="size">50 MB</span></span></a>
+      <a class="dl" data-os="mac" data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-0.5.2-mac-x64.dmg"><span class="dl-name">Download for Mac, Intel</span><span class="dl-meta">Older Macs · <span data-rel="size">52 MB</span></span></a>
+      <a class="dl" data-os="linux" data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-0.5.2-linux-x86_64.AppImage"><span class="dl-name">Download for Linux</span><span class="dl-meta">AppImage · one file · <span data-rel="size">46 MB</span></span></a>
+      <p class="small detect" hidden>We picked this from what your browser says about your computer. Nothing was sent anywhere. Wrong? All four are here.</p>
+    </div>
+    <div class="prose">
+      <h3 id="first-run">The first time you open it</h3>
+      <p>The installers are not code-signed yet, so your computer will ask once whether you trust them.</p>
+      <ul class="rules">
+        <li><strong>Windows</strong> shows a blue warning. Press <b>More info</b>, then <b>Run anyway</b>. Windows has had some hours of real use and is in beta.</li>
+        <li><strong>On a Mac</strong>, the first time, macOS will ask you to confirm: open System Settings, Privacy &amp; Security, and choose <b>Open Anyway</b> (on older versions of macOS, right-click the app and choose <b>Open</b>). Apple Silicon is M1 and later; Intel is older Macs. Not yet tried on a real Mac.</li>
+        <li><strong>Linux, AppImage:</strong> right-click the file, <b>Properties → Allow executing as program</b>, then double-click it.</li>
+        <li><strong>Ubuntu or Debian:</strong> take the <a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw_0.5.2_amd64.deb">.deb</a> (33 MB) instead and install it with <code>sudo apt install ./cunningclaw_0.5.2_amd64.deb</code>.</li>
+      </ul>
+      <div class="note">
+        <p class="label">Tried, and not yet tried</p>
+        <p>Each installer was installed and started on GitHub's own Windows, Mac and Linux machines before it was published. The Intel Mac and ARM Linux builds are the same app, not yet tried on that hardware. Day to day he runs on Linux; Windows has had some hours and is in beta; a real Mac has had none yet.</p>
+      </div>
+      <h3 id="files">Every file in this release</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th scope="col">For</th><th scope="col">File</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Windows 10 and 11, installer</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-Setup-0.5.2.exe">Cunning-Claw-Setup-0.5.2.exe</a></td></tr>
+            <tr><th scope="row">Mac, Apple Silicon (M1 and later)</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-0.5.2-mac-arm64.dmg">Cunning-Claw-0.5.2-mac-arm64.dmg</a></td></tr>
+            <tr><th scope="row">Mac, Intel (older Macs)</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-0.5.2-mac-x64.dmg">Cunning-Claw-0.5.2-mac-x64.dmg</a></td></tr>
+            <tr><th scope="row">Linux, AppImage</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-0.5.2-linux-x86_64.AppImage">Cunning-Claw-0.5.2-linux-x86_64.AppImage</a></td></tr>
+            <tr><th scope="row">Linux on ARM, AppImage</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/Cunning-Claw-0.5.2-linux-aarch64.AppImage">Cunning-Claw-0.5.2-linux-aarch64.AppImage</a></td></tr>
+            <tr><th scope="row">Ubuntu and Debian, .deb</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw_0.5.2_amd64.deb">cunningclaw_0.5.2_amd64.deb</a></td></tr>
+            <tr><th scope="row">Ubuntu and Debian on ARM, .deb</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw_0.5.2_arm64.deb">cunningclaw_0.5.2_arm64.deb</a></td></tr>
+            <tr><th scope="row">Windows, zip (no installer)</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw-0.5.2-win-x64.zip">cunningclaw-0.5.2-win-x64.zip</a></td></tr>
+            <tr><th scope="row">Mac, Apple Silicon, zip</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw-0.5.2-darwin-arm64.zip">cunningclaw-0.5.2-darwin-arm64.zip</a></td></tr>
+            <tr><th scope="row">Mac, Intel, zip</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw-0.5.2-darwin-x64.zip">cunningclaw-0.5.2-darwin-x64.zip</a></td></tr>
+            <tr><th scope="row">Linux, tar.gz</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw-0.5.2-linux-x64.tar.gz">cunningclaw-0.5.2-linux-x64.tar.gz</a></td></tr>
+            <tr><th scope="row">Linux on ARM, tar.gz</th><td><a data-rel="href" href="https://github.com/Dragon-Forge-master/cunning-claw/releases/download/v0.5.2/cunningclaw-0.5.2-linux-arm64.tar.gz">cunningclaw-0.5.2-linux-arm64.tar.gz</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><a class="more" href="https://github.com/Dragon-Forge-master/cunning-claw/releases">Every version, on the Releases page</a></p>
+    </div>
+  </div>
+</section>
+
+<section id="key" data-band="human">
+  <div class="wrap">
+    <header class="head">
+      <p class="label">Step two</p>
+      <h2>Give him something to think with.</h2>
+      <p class="lede">He needs an AI model. When he first starts, your browser opens on a setup page that walks you through it.</p>
+    </header>
+    <ul class="cards three">
+      <li><p class="label">Free</p><h3>A free Google key</h3><p>Any Google account, about two minutes, no card. The setup page takes you through it one step at a time.</p><div class="note"><p>On Google's free plan, Google may use what you send to improve its products, and there are daily limits.</p></div></li>
+      <li><p class="label">Free · private</p><h3>A local model</h3><p>Run a model on your own computer with Ollama and nothing leaves the machine at all.</p><div class="note"><p>Slower and less clever than the hosted models.</p></div></li>
+      <li><p class="label">Pay as you go</p><h3>Your own key</h3><p>One key from OpenRouter, or straight from Google, OpenAI or Anthropic if you already have one. Paste it into his Keys page. Your key, your rates.</p><div class="note"><p>Every reply's cost is shown on screen.</p></div></li>
+    </ul>
+    <div class="prose">
+      <h3 id="brains">Prices, one by one</h3>
+      <p>These are the models in his picker and what each costs, in US dollars per million input tokens through one OpenRouter key. A quick answer on a cheap one is a fraction of a cent. A turn that has read a stranger's words is moved to a capable model, and he tells you when that happens.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th scope="col">In the picker</th><th scope="col">Cost</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Lite</th><td>$0.10</td></tr>
+            <tr><th scope="row">Flash-Lite</th><td>$0.25</td></tr>
+            <tr><th scope="row">Flash</th><td>$0.83</td></tr>
+            <tr><th scope="row">Pro</th><td>$1.25</td></tr>
+            <tr><th scope="row">Haiku</th><td>$0.10</td></tr>
+            <tr><th scope="row">Nano</th><td>$0.10</td></tr>
+            <tr><th scope="row">DeepSeek</th><td>$0.26</td></tr>
+            <tr><th scope="row">Google direct</th><td>Free plan, within Google's daily limits</td></tr>
+            <tr><th scope="row">Local</th><td>Free, and offline</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Providers change their prices; the figure that counts is the one shown under each reply. Any of these can be swapped in a line of config.</p>
+    </div>
+  </div>
+</section>
+
+<section id="learn" data-band="human" data-tone="2">
+  <div class="wrap">
+    <header class="head">
+      <p class="label">Step three</p>
+      <h2>Approve what he asks.</h2>
+    </header>
+    <div class="prose">
+      <p>Start in Learn mode: twelve short lessons, with practice cards where nothing real will happen. You learn to read an approval card, to spot an email that tries to give orders, and what leaves your machine.</p>
+      <p>Then give him a small job. Anything that sends, spends, publishes or deletes stops and shows you a card first. <a href="/security#y-llw">How the cards work</a></p>
+      <h3 id="phone">Add your phone, if you want</h3>
+      <p>Pocket Claw is his own phone app, Android first. Pair it by scanning a QR code on his screen: your phone reaches home through our end-to-end encrypted relay, or through Tailscale, your own private network. Telegram and Discord work as a second line too, and ntfy sends a push alert with no account.</p>
+      <div class="note">
+        <p class="label">Not yet tried</p>
+        <p>Pocket Claw has been driven in an emulated phone so far; no real phone has paired through the relay yet. It needs him running on your computer first.</p>
+      </div>
+      <h3 id="updating">Updating</h3>
+      <p>Install the new version over the old one. Your keys, settings and memory are in your own folder and are left alone. If you switch on the update light, he fetches one small file a day from this site to see whether there is a newer version, with nothing about you in the request.</p>
+    </div>
+  </div>
+</section>
+
+<section id="platforms" data-band="human">
+  <div class="wrap">
+    <header class="head">
+      <p class="label">Platforms</p>
+      <h2>Linux every day. Windows works. Mac is next.</h2>
+    </header>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th scope="col"></th><th scope="col">Linux</th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Commands, files, browser, email, connectors</th><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+          <tr><th scope="row">Screenshots</th><td><code>gnome-screenshot</code> or <code>ffmpeg</code></td><td><code>screencapture</code></td><td>PowerShell</td></tr>
+          <tr><th scope="row">Windows and keystrokes</th><td><code>wmctrl</code>, <code>xdotool</code></td><td><code>osascript</code></td><td>PowerShell SendKeys</td></tr>
+          <tr><th scope="row">Voice</th><td>Piper, offline</td><td>Piper, or <code>say</code></td><td>Piper, or Windows SAPI</td></tr>
+          <tr><th scope="row">Boxed shell</th><td>bubblewrap</td><td><code>sandbox-exec</code>: built, not yet run on a Mac</td><td>Not yet</td></tr>
+          <tr><th scope="row">Dictation on your own machine</th><td>whisper.cpp</td><td>whisper.cpp</td><td>Through the browser, and it says so</td></tr>
+          <tr><th scope="row">Webcam glance</th><td>Yes</td><td>Yes</td><td>Not yet</td></tr>
+          <tr><th scope="row">Hours on real hardware</th><td>Daily</td><td>None yet</td><td>Some: beta</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose">
+      <div class="note">
+        <p class="label">The honest row</p>
+        <p>It is new, and it has been run on very few machines. The fastest way to make it good is people finding what is wrong with it. <a href="https://github.com/Dragon-Forge-master/cunning-claw/issues">Open an issue</a>; it will be read.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="source" data-band="human" data-tone="2">
+  <div class="wrap split">
+    <header class="head main">
+      <p class="label">For developers</p>
+      <h2>From source, or one command.</h2>
+      <p class="lede">One TypeScript process on Node 22, with two runtime dependencies. It binds to your own machine only, behind a token, and your keys stay in <code>.env</code>.</p>
+    </header>
+    <div class="dev margin">
+      <p class="label">From source</p>
+<pre class="code"><span class="c"># Linux, macOS or Windows · Node 22+</span>
+git clone https://github.com/Dragon-Forge-master/cunning-claw.git
+cd cunning-claw &amp;&amp; ./install.sh
+<span class="c"># then</span>
+npm run dev   <span class="c">→ http://127.0.0.1:3900</span>
+<span class="c"># what is missing, and the fix</span>
+npm run doctor</pre>
+      <p class="small">Or <code>npx cunningclaw</code>. <span data-rel="tests">1111 tests</span>, run on every change. <a href="https://github.com/Dragon-Forge-master/cunning-claw">The repository on GitHub</a></p>
+    </div>
+  </div>
+</section>
+
+<section id="answers" data-band="human">
+  <div class="wrap">
+    <header class="head">
+      <p class="label">Before you ask</p>
+      <h2>Setting up: straight answers.</h2>
+    </header>
+    <div class="faq">
+      <details open>
+        <summary><h3>Do I need to be technical to install Cunning Claw?</h3></summary>
+        <p>Less than you might think, and it is new. A double-click installer, then a setup page in your browser that walks you through a free Google key. A window stays open while he runs. Windows and macOS will warn you once, because the installers are not code-signed yet.</p>
+      </details>
+      <details>
+        <summary><h3>Can I run it without paying anything?</h3></summary>
+        <p>Yes. The software is free and open source, and stays free. For the AI he thinks with, start on Google's free plan with a free key, or run a local model through Ollama and pay nothing. On Google's free plan, Google may use what you send to improve its products.</p>
+      </details>
+      <details>
+        <summary><h3>Why does Windows or macOS warn me about the installer?</h3></summary>
+        <p>Because the installers are not code-signed yet. On Windows press More info, then Run anyway. On a Mac open System Settings, Privacy &amp; Security, and choose Open Anyway. Each installer was installed and started on GitHub's own Windows, Mac and Linux machines before it was published.</p>
+      </details>
+      <details>
+        <summary><h3>Does Cunning Claw work on a Mac?</h3></summary>
+        <p>There are builds for Apple Silicon and Intel Macs, and each was installed and started on GitHub's Mac machines. Nobody on the project has yet run it on a real Mac, and its sandbox is untested on that hardware. If you try it, tell us what happens.</p>
+      </details>
+      <details>
+        <summary><h3>Does my computer have to be on?</h3></summary>
+        <p>Yes. He runs on your computer and works while it is on. A phone can reach him and answer his cards, but the work happens at home.</p>
+      </details>
+      <details>
+        <summary><h3>How do I update?</h3></summary>
+        <p>Install the new version over the old one. Your keys, settings and memory live in your own folder and are left alone.</p>
+      </details>
+    </div>
+    <p class="next">
+      <a class="btn btn-fill" href="#download">Back to the downloads</a>
+      <a class="btn btn-line" href="/features">Everything he does</a>
+      <a class="btn btn-line" href="/security">How he keeps you safe</a>
+    </p>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <ul class="foot-links">
+      <li><a href="https://github.com/Dragon-Forge-master/cunning-claw">Source on GitHub</a></li>
+      <li><a href="https://x.com/Dragon_forge_ai">Dragon Forge on X</a></li>
+      <li><a href="/map">The constellation map</a></li>
+      <li><a href="/security">How he keeps you safe</a></li>
+      <li><a href="/features">Everything he does</a></li>
+      <li><a href="/vs-openclaw">Compared with OpenClaw</a></li>
+      <li><a href="/install">Get set up</a></li>
+      <li><a href="/about">About</a></li>
+    </ul>
+    <p class="label foot-sig">Dragon Forge AI · Cardiff, Wales 🏴󠁧󠁢󠁷󠁬󠁳󠁿</p>
+  </div>
+</footer>
+
+</body>
+</html>

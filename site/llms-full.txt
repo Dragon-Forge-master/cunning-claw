@@ -89,6 +89,9 @@ Both are open-source AI agents you run yourself. They are separate, unaffiliated
 
 ## Where to read more
 
+- Everything it does, with all 95 connectors by name: https://cunningclaw.com/features
+- Set-up guide, prices and platform support: https://cunningclaw.com/install
+- About the name and the makers: https://cunningclaw.com/about
 - Security page: https://cunningclaw.com/security
 - Security architecture paper: https://github.com/Dragon-Forge-master/cunning-claw/blob/main/docs/SECURITY-ARCHITECTURE.md
 - README: https://github.com/Dragon-Forge-master/cunning-claw/blob/main/README.md

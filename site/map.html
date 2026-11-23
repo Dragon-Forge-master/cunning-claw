@@ -15,46 +15,47 @@
 <meta property="og:locale" content="en_GB"><meta property="og:site_name" content="Cunning Claw"><meta property="og:image" content="https://cunningclaw.com/social-0.5.png"><meta property="og:image:alt" content="Cunning Claw, the local AI agent from Dragon Forge AI in Cardiff.">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content="@Dragon_forge_ai">
 <meta name="twitter:title" content="The Constellation — every door in the Cunning Claw world"><meta name="twitter:description" content="A living map of the product, its source, the free Forgenet tools and Dragon Forge AI."><meta name="twitter:image" content="https://cunningclaw.com/social-0.5.png">
-<meta name="theme-color" content="#0a111c">
+<meta name="theme-color" content="#05080f">
 <link rel="icon" type="image/svg+xml" href="mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-:root{--ink:#0a111c;--cyan:#35d6ed;--ice:#7ff0ff;--deep:#1a8ba0;--red:#e0442e;--gold:#f5a623;--text:#dfe9f2;--dim:#8496a8;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;--display:"Fraunces",Georgia,serif}
+/* The names are the first theme's; the values are the site's (site.css, theme D): forge orange on near-black navy. */
+:root{--ink:#05080f;--cyan:#f26a13;--ice:#fb923c;--deep:#b4500f;--red:#e0442e;--gold:#f59e0b;--text:#f8fafc;--dim:#94a3b8;--mono:"JetBrains Mono",ui-monospace,Menlo,monospace;--display:"Manrope",system-ui,sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
 html{color-scheme:dark;overflow-x:clip}
 body{background:var(--ink);color:var(--text);font-family:var(--mono);min-height:100vh;overflow-x:hidden}
 .neb{position:fixed;inset:-10%;z-index:0;pointer-events:none;background:
-  radial-gradient(38% 45% at 25% 35%,rgba(26,139,160,.26),transparent 70%),
-  radial-gradient(30% 40% at 78% 70%,rgba(53,214,237,.14),transparent 70%);filter:blur(30px)}
+  radial-gradient(38% 45% at 25% 35%,rgba(180,80,15,.26),transparent 70%),
+  radial-gradient(30% 40% at 78% 70%,rgba(242,106,19,.14),transparent 70%);filter:blur(30px)}
 .grid{position:fixed;inset:0;z-index:0;pointer-events:none;background:
-  linear-gradient(rgba(53,214,237,.045) 1px,transparent 1px) 0 0/48px 48px,
-  linear-gradient(90deg,rgba(53,214,237,.045) 1px,transparent 1px) 0 0/48px 48px;
+  linear-gradient(rgba(242,106,19,.045) 1px,transparent 1px) 0 0/48px 48px,
+  linear-gradient(90deg,rgba(242,106,19,.045) 1px,transparent 1px) 0 0/48px 48px;
   mask:radial-gradient(ellipse at 50% 45%,#000 35%,transparent 80%)}
 @media (prefers-reduced-motion:no-preference){.neb{animation:drift 50s ease-in-out infinite alternate}@keyframes drift{from{transform:translate3d(-2%,0,0)}to{transform:translate3d(2%,-3%,0) scale(1.06)}}}
 header{position:relative;z-index:2;text-align:center;padding:36px 20px 0}
 header a.home{color:var(--cyan);text-decoration:none;letter-spacing:.24em;font-size:.72rem}
-h1{font-family:var(--display);font-weight:600;font-size:clamp(1.7rem,4vw,2.6rem);margin-top:14px;letter-spacing:-.01em}
-h1 em{font-style:italic;color:var(--cyan)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(1.7rem,4vw,2.6rem);margin-top:14px;letter-spacing:-.01em}
+h1 em{font-style:normal;color:var(--cyan)}
 .lede{color:var(--dim);font-size:.9rem;max-width:56ch;margin:12px auto 0;line-height:1.6}
 .stage{position:relative;z-index:1;width:min(1180px,100%);margin:0 auto;padding:10px 12px 40px}
 svg{width:100%;height:auto;display:block;overflow:visible}
-.link{fill:none;stroke:rgba(53,214,237,.28);stroke-width:1.2}
-.link.spine{stroke:rgba(53,214,237,.5);stroke-width:1.6}
+.link{fill:none;stroke:rgba(242,106,19,.28);stroke-width:1.2}
+.link.spine{stroke:rgba(242,106,19,.5);stroke-width:1.6}
 .node{cursor:pointer;text-decoration:none}
-.node circle{fill:#0e1826;stroke:var(--deep);stroke-width:1.4;transition:stroke .25s,filter .25s}
+.node circle{fill:#090e1a;stroke:var(--deep);stroke-width:1.4;transition:stroke .25s,filter .25s}
 .node.hub circle{stroke:var(--cyan);stroke-width:2}
-.node text,.glabel{paint-order:stroke;stroke:#0a111c;stroke-width:5px;stroke-linejoin:round}
+.node text,.glabel{paint-order:stroke;stroke:#05080f;stroke-width:5px;stroke-linejoin:round}
 .node text{fill:var(--text);font-family:var(--mono);font-size:12.5px;letter-spacing:.06em}
 .node .sub{fill:var(--dim);font-size:10px;letter-spacing:.1em}
 .node.hub text{fill:var(--cyan);font-weight:600;font-size:13px;letter-spacing:.2em}
-.node:hover circle,.node:focus-visible circle{stroke:var(--ice);filter:drop-shadow(0 0 12px rgba(53,214,237,.7))}
+.node:hover circle,.node:focus-visible circle{stroke:var(--ice);filter:drop-shadow(0 0 12px rgba(242,106,19,.7))}
 .node:hover text{fill:#fff}
 .node:focus-visible{outline:none}
 .node.soon circle{stroke-dasharray:4 4;stroke:var(--dim)}
 .node.soon text{fill:var(--dim)}
-.core{filter:drop-shadow(0 0 26px rgba(53,214,237,.55))}
-.ring{fill:none;stroke:rgba(53,214,237,.12);stroke-width:1}
+.core{filter:drop-shadow(0 0 26px rgba(242,106,19,.55))}
+.ring{fill:none;stroke:rgba(242,106,19,.12);stroke-width:1}
 .glabel{fill:var(--deep);font-family:var(--mono);font-size:10.5px;letter-spacing:.3em}
 @media (prefers-reduced-motion:no-preference){
   .orbit{transform-origin:600px 520px;animation:sway 26s ease-in-out infinite alternate}

@@ -17,9 +17,12 @@ Facts to get right when describing it:
 
 ## Pages
 
-- [Home](https://cunningclaw.com/): what it does, downloads, three filmed runs, the approval and injection model, platforms and pricing
+- [Home](https://cunningclaw.com/): what it is, a practice approval card, three filmed runs, a small business's week, the safety model, downloads and pricing
+- [Everything he does](https://cunningclaw.com/features): every tool, all 95 connectors by name, a week of jobs in full, and what arrived in version 0.5
+- [Get set up](https://cunningclaw.com/install): installers for Windows, Mac and Linux, first-run steps, what each AI model costs, platform support, from source
 - [Security](https://cunningclaw.com/security): the boxed shell, credential hiding, prompt-injection fencing and scanning, approval cards, known gaps, and the tests behind each claim
 - [Cunning Claw vs OpenClaw](https://cunningclaw.com/vs-openclaw): a dated comparison on sandboxing, prompt-injection defence, consent gates, token use and local-first design, with OpenClaw's side quoted from its own documentation
+- [About](https://cunningclaw.com/about): where the name comes from, who makes it, the doctrine and how to get in touch
 - [The Constellation](https://cunningclaw.com/map): a map of the product, its source and Dragon Forge AI's other tools
 
 ## Source and documentation

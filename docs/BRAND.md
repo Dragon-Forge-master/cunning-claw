@@ -55,6 +55,26 @@ triskele's glyph `▟█▙` stands in.
 | Dim | `#8496a8` | secondary text |
 | Parchment | `#f2ede3` | light-ground contexts (print, stamps) — mono mark only |
 
+### The website wears the forge's colours
+
+Founder's ruling, 22 November 2026: cunningclaw.com is set in Dragon Forge
+AI's own palette, the one on dragonforgeai.dev, so the product's site and its
+maker's read as one house. The table above still governs the product itself
+(the HUD, the terminal, the phone app, the mark) and anything printed.
+
+| Token | Hex | Use on the site |
+|---|---|---|
+| Ground | `#05080f` / `#090e1a` | near-black navy, and the raised tone |
+| Forge orange | `#f26a13` (lift `#fb923c`) | the one action colour: buttons, links, the headline's second line |
+| Amber | `#f59e0b` | honest notes only |
+| Text | `#f8fafc` / dim `#94a3b8` | body and secondary text |
+
+Faces on the site: **Manrope** for words and headlines (800 for display),
+**JetBrains Mono** for labels and code. Button text is dark on orange; white
+on that orange is 3.5:1, under the 4.5:1 the site holds itself to. Cyan
+survives on the site only where the product itself is shown: the practice
+card, the screenshots, the mark. The tokens live in `site/site.css`.
+
 The brand is **dark-first**: ink ground, cyan light. On light/print grounds,
 use the mono mark in ink — like a maker's stamp — never the gradient.
 

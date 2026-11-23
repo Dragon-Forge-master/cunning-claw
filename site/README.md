@@ -1,10 +1,33 @@
-# Landing page
+# The website
 
-Static, with no build step and no framework — the home page is `index.html`,
-and the video sits beside it. Two reading pages sit beside it, `security.html`
-(served at `/security`) and `vs-openclaw.html` (`/vs-openclaw`), sharing one
-stylesheet, `page.css`. The one dynamic part is the forge wall, a Pages
-Function in plain JS (below).
+Static, with no build step and no framework. Seven pages, each a plain `.html`
+file that Pages serves without the extension:
+
+| File | Address | What it is |
+|---|---|---|
+| `index.html` | `/` | The home page: the practice card, the films, a week, safety, downloads, cost, the wall |
+| `features.html` | `/features` | The full week, every tool, all 95 connectors by name, new in 0.5 |
+| `install.html` | `/install` | Every download, first-run steps, model prices, platforms, from source |
+| `security.html` | `/security` | The box, the fence, the cards, the floor, the known gaps |
+| `vs-openclaw.html` | `/vs-openclaw` | The comparison, sourced and dated |
+| `about.html` | `/about` | The name, the makers, the doctrine, how to get in touch |
+| `map.html` | `/map` | The constellation |
+
+`404.html` is what Pages serves for an address that does not exist. Without
+it, Pages answers every unknown address with the home page and a 200.
+
+`site.css` is the whole site's stylesheet: every colour and face is a token in
+its `:root`, and the theme in force is the last `:root` block in the file
+(theme D, Dragon Forge's own orange on near-black navy, with Manrope and
+JetBrains Mono; `docs/BRAND.md` records the ruling). `page.css` adds what the
+five pages of prose need and names no colour of its own. `home.js` runs the
+practice card, the downloads that know your computer, and the films; with
+scripts off every page is complete. The one dynamic part is the forge wall, a
+Pages Function in plain JS (below).
+
+The five pages of prose share one bar and one footer, byte for byte;
+`src/site-seo.test.ts` fails if one drifts, so change all five (and `404.html`)
+together.
 
 ## Deploy
 
@@ -22,15 +45,15 @@ before the rebrand.
 
 ## Notes
 
-- **The films are not in git, and nor are their posters.** `index.html` plays
-  `brand-film.mp4`, `cunningclaw-demo-2.mp4`, `cunningclaw-bank-details.mp4` and
-  `cunningclaw-lovable.mp4` from this folder, the last three with
-  `poster-demo-2.png`, `poster-bank-details.png` and `poster-lovable.png`, but
-  none of the seven is committed (they are large and change often). Whoever
-  runs `wrangler pages deploy` must have all seven in `site/` on that machine
-  first, or the players show a black box. `social-demo-2.jpg` (1200×675) is
-  made alongside them for sharing the film; the page does not use it.
-- Scripts live in their own files (`holo.js`, `wall.js`). `_headers` sets a CSP with no
+- **The three films are not in git.** `index.html` plays
+  `cunningclaw-bank-details.mp4`, `cunningclaw-demo-2.mp4` and
+  `cunningclaw-lovable.mp4` from this folder (they are large; `.gitignore`
+  holds `site/*.mp4`). Whoever runs `wrangler pages deploy` must have all
+  three in `site/` on that machine first, or the players show their poster and
+  play nothing. Their posters (`poster-*-1200.webp`, composed title cards) and
+  captions (`*.vtt`) are small and are committed. No film is fetched until
+  the visitor presses play (`preload="none"`).
+- Scripts live in their own files (`home.js`, `wall.js`). `_headers` sets a CSP with no
   `script-src`, so `default-src 'self'` applies and an inline `<script>` is
   silently refused by the browser — it will look fine locally and be dead live.
 
@@ -64,8 +87,8 @@ before the rebrand.
   brains from `claw.config.json` (the catalogue less `managed`, which is not live until the relay is), tools with `grep -c '^    name: "' src/tools.ts`,
   tests from what `npm test` reports, connectors from `MCP_CATALOGUE.length` in
   `src/mcp-catalog.ts`, skills with `ls workspace/skills/*/SKILL.md`.
-- `hud.png`, `connect.png`, `skills.png`, `board.png` and `desk.png` are real captures of the HUD at rest on a fresh install (no keys, no
-  Telegram). Re-shoot them from a clean data dir, never from a personal one, and under a
+- `hud.png`, `connect.png`, `skills.png` and `desk.png`, shown on `/features`, are real captures of the HUD at rest on a fresh install (no keys, no
+  Telegram), in the product's own cyan; `board.png` is kept but no page shows it. Re-shoot them from a clean data dir, never from a personal one, and under a
   clean HOME too: connectors live in ~/.config/cunningclaw/mcp.json, so a claw run on a
   machine that has another claw shows that claw's connectors. hud, connect, skills and desk
   were shot from v0.5.1 that way on 21 November; board.png is older, because Open-Meteo's
@@ -82,7 +105,8 @@ The rest is held to the page and the feed by `src/site-seo.test.ts`:
 - **Structured data.** The home page carries `WebSite`, `Organization` and
   `SoftwareApplication` (with `softwareVersion`, the repository in `sameAs`,
   and a `disambiguatingDescription` that tells the product from the Diablo II
-  item of the same name). Each page with a `<dl class="faq">` carries a
+  item of the same name). Each page with a `<div class="faq">` (questions as
+  `<details>`, the question in an `<h3>` inside the `<summary>`) carries a
   `FAQPage` block. **Never edit that block by hand:** change the visible
   question or answer, then run `npm run site:seo`, which writes the JSON-LD
   from the page's own words and the version from `latest.json`. No rating or
@@ -99,10 +123,16 @@ The rest is held to the page and the feed by `src/site-seo.test.ts`:
   phrase in quotation marks is theirs word for word. Re-read those pages
   before each release and move the date, or correct the cell; a stale
   comparison is a false one.
+- **The home page's one `h1`** holds the name and what it is ("Cunning Claw ·
+  a free local AI agent for your own computer") as the small line above the
+  headline, so the heading a search engine reads is not only a slogan.
+- **`/features` lists every connector** in `MCP_CATALOGUE` by name, and the
+  test fails when the catalogue gains one the page lacks.
 - **A new page** needs: one `h1`, `lang="en-GB"`, a title of 20 to 60
   characters naming Cunning Claw, a description of 70 to 175, a canonical
-  link, the share tags, a line in `sitemap.xml` and in `llms.txt`, and an entry
-  in the test's `PAGES`. No inline script: the CSP refuses it.
+  link, the share tags, the shared bar and footer, a line in `sitemap.xml` and
+  in `llms.txt`, and an entry in the test's `PAGES`. No inline script, handler
+  or `style` attribute: the CSP refuses the first two and the test all three.
 
 ## The update feed
 
@@ -124,8 +154,12 @@ means no light, never a wrong one.
    summary, the `notes` link to the release, and every download link with the
    new version in it.
 3. `npm run site:seo`, which moves the version in the home page's structured
-   data and in `llms.txt` and `llms-full.txt` to the feed's; then bring the
-   counts and the version named in the pages' own words up to date by hand.
+   data and in `llms.txt` and `llms-full.txt` to the feed's. Then, by hand:
+   every element marked `data-rel` (`grep -n 'data-rel' site/*.html` — the
+   version, each download link, each size, the test count), the file table and
+   the `.deb` command on `install.html`, and the counts in the pages' own
+   words. The test in the next step fails on any version marker or download
+   link that is not the feed's.
 4. `npm test`. `src/site-latest.test.ts` checks the file passes the claw's own
    validation, that each download is the asset `scripts/bundle.mjs` names, and
    that its version is **never newer than package.json's**. It may lag (the
@@ -145,8 +179,8 @@ from that output. `_headers` gives `/pocket/*` its own strict policy, with the
 homepage's detached first: the app's own files only, and `connect-src` for
 the relay's host and nothing else. `functions/pocket/share.js` answers a
 shared file that arrives before the service worker is installed by sending
-the phone back to the app, unread. The homepage links here only as "coming
-soon" until the relay is deployed (`relay/pocket/README.md`).
+the phone back to the app, unread. `_headers` marks it `noindex`: it is an app
+shell, and the words about it are on the home page and `/features`.
 
 ## The forge wall
 

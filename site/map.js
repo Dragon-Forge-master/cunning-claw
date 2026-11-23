@@ -12,6 +12,7 @@
   var ARMS = [
     { id: "product", label: "THE CLAW", angle: -90, r: 300, stars: [
       { t: "cunningclaw.com", s: "the front door", u: "https://cunningclaw.com/" },
+      { t: "About", s: "the name · the makers", u: "https://cunningclaw.com/about" },
       { t: "Source", s: "GitHub · open source", u: "https://github.com/Dragon-Forge-master/cunning-claw" },
       { t: "npm · cunningclaw", s: "the name, held", u: "https://www.npmjs.com/package/cunningclaw" },
       { t: "Issues & Discussions", s: "bring what broke", u: "https://github.com/Dragon-Forge-master/cunning-claw/issues" },
@@ -34,12 +35,12 @@
       { t: "GitHub · Dragon-Forge-master", s: "the account", u: "https://github.com/Dragon-Forge-master" }
     ]},
     { id: "inside", label: "INSIDE THE CLAW", angle: 180, r: 330, stars: [
-      { t: "The Glass", s: "the HUD · loopback only", u: "https://cunningclaw.com/#watch" },
-      { t: "Connect", s: "95 MCP connectors", u: "https://cunningclaw.com/#connects" },
+      { t: "The Glass", s: "his window · your machine only", u: "https://cunningclaw.com/features#rooms" },
       { t: "See it refuse", s: "the injection test", u: "https://cunningclaw.com/#attack" },
+      { t: "Everything he does", s: "tools · 95 connectors · a week", u: "https://cunningclaw.com/features" },
       { t: "How it is secured", s: "the box · the fence · the cards", u: "https://cunningclaw.com/security" },
       { t: "vs OpenClaw", s: "side by side, sourced", u: "https://cunningclaw.com/vs-openclaw" },
-      { t: "Install", s: "Linux · macOS · Windows", u: "https://cunningclaw.com/#install" },
+      { t: "Get set up", s: "Windows · Mac · Linux", u: "https://cunningclaw.com/install" },
       { t: "Pricing", s: "free · BYOK forever", u: "https://cunningclaw.com/#pricing" },
       { t: "Just Works tier", s: "opens after launch", u: "https://cunningclaw.com/#pricing", soon: true }
     ]}
@@ -95,7 +96,7 @@
     if (vertical) { ly += arm.angle === -90 ? -16 : 26; }
     else { lx += arm.angle === 0 ? 14 : -14; ly -= 14; anchor = arm.angle === 0 ? "start" : "end"; }
     el("text", { class: "glabel", x: lx, y: ly, "text-anchor": anchor }, g).textContent = arm.label;
-    el("circle", { class: "pulse", cx: hubP.x, cy: hubP.y, r: 4, fill: "#35d6ed" }, g);
+    el("circle", { class: "pulse", cx: hubP.x, cy: hubP.y, r: 4, fill: "#f26a13" }, g);
   });
 
   // the core: the mark, glowing
