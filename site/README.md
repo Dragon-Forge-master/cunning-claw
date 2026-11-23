@@ -45,11 +45,11 @@ before the rebrand.
 
 ## Notes
 
-- **The three films are not in git.** `index.html` plays
-  `cunningclaw-bank-details.mp4`, `cunningclaw-demo-2.mp4` and
-  `cunningclaw-lovable.mp4` from this folder (they are large; `.gitignore`
-  holds `site/*.mp4`). Whoever runs `wrangler pages deploy` must have all
-  three in `site/` on that machine first, or the players show their poster and
+- **The four films are not in git.** `index.html` plays
+  `cunningclaw-bank-details.mp4`, `cunningclaw-demo-2.mp4`,
+  `cunningclaw-lovable.mp4` and `cunningclaw-business.mp4` from this folder
+  (they are large; `.gitignore` holds `site/*.mp4`). Whoever runs
+  `wrangler pages deploy` must have all four in `site/` on that machine first, or the players show their poster and
   play nothing. Their posters (`poster-*-1200.webp`, composed title cards) and
   captions (`*.vtt`) are small and are committed. No film is fetched until
   the visitor presses play (`preload="none"`).
@@ -93,6 +93,12 @@ before the rebrand.
   machine that has another claw shows that claw's connectors. hud, connect, skills and desk
   were shot from v0.5.1 that way on 21 November; board.png is older, because Open-Meteo's
   daily limit for the shared address had run out that day and the weather box showed an error.
+- `cunningclaw-business.mp4` is 146.5 s, 1920×1080, 25.0 MB (23.9 MiB, under
+  the 25 MiB limit): five real requests in one conversation on Gemini 3.8
+  Flash via OpenRouter, recorded with Playwright, then the built site and the
+  PDFs. Its first attempt was discarded because the recording machine ran the
+  claw as root, whose home folder the sensitive-path floor refuses
+  (`/root/` in `src/paths.ts`); the retake ran with an ordinary home folder.
 - Fonts come from Google Fonts; `_headers` allows exactly those two hosts for
   styles and fonts, and `challenges.cloudflare.com` for scripts and frames —
   Turnstile, the wall's spam check, and nothing else.

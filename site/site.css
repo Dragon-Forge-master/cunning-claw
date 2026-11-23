@@ -237,7 +237,8 @@ h1 em{display:block;font-style:italic;color:var(--b-action)}
 /* ---------- 2. Films ---------- */
 .films{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0 24px}
 .films>.head{grid-column:1/-1}
-.film{grid-column:span 6;min-width:0;margin-top:56px}
+/* Three films under the lead one: a row of three on a wide screen, one to a row below that. */
+.film{grid-column:span 4;min-width:0;margin-top:56px}
 .film-lead{grid-column:1/-1;margin-top:0}
 /* Wide screens: the lead poster starts the band, with the heading and its caption beside it. */
 @supports (grid-template-columns:subgrid){
@@ -538,7 +539,7 @@ html[data-os="phone"] .firstrun:not(.is-open) li,html[data-os="other"] .firstrun
 
 /* ---------- Under 1040: one column; notes drop beneath their claims ---------- */
 @media (max-width:1039px){
-  .hero-copy,.practice,.proof-claims,.proof-note,.specimen,.exhibit-side,.connects-copy,.directory,.answers-head,.faq,.split>.main,.split>.margin,.film-lead .film-frame,.film-lead figcaption{grid-column:1/-1}
+  .hero-copy,.practice,.proof-claims,.proof-note,.specimen,.exhibit-side,.connects-copy,.directory,.answers-head,.faq,.split>.main,.split>.margin,.film,.film-lead .film-frame,.film-lead figcaption{grid-column:1/-1}
   .practice{margin-top:48px;max-width:560px}
   .proof-note{margin-top:12px}
   .film-lead figcaption{padding-top:20px}
