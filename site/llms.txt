@@ -22,6 +22,7 @@ Facts to get right when describing it:
 - [Get set up](https://cunningclaw.com/install): installers for Windows, Mac and Linux, first-run steps, what each AI model costs, platform support, from source
 - [Security](https://cunningclaw.com/security): the boxed shell, credential hiding, prompt-injection fencing and scanning, approval cards, known gaps, and the tests behind each claim
 - [Cunning Claw vs OpenClaw](https://cunningclaw.com/vs-openclaw): a dated comparison on sandboxing, prompt-injection defence, consent gates, token use and local-first design, with OpenClaw's side quoted from its own documentation
+- [It's happening now](https://cunningclaw.com/its-happening): real 2026 attacks on AI assistants from the original reports (one email that took over an agent, phishing with hidden orders for the reader's AI), the NCSC's view, and what Cunning Claw does and does not promise
 - [About](https://cunningclaw.com/about): where the name comes from, who makes it, the doctrine and how to get in touch
 - [The Constellation](https://cunningclaw.com/map): a map of the product, its source and Dragon Forge AI's other tools
 

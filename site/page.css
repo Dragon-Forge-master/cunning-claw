@@ -26,6 +26,8 @@
 .prose>h3{margin-top:40px}
 .prose>.note,.prose>.term,.prose>.tablewrap,.prose>.alert{margin-top:28px}
 .doc .head+.prose{margin-top:-8px}
+/* Prose that follows a set of cards in the same section needs room to breathe. */
+.cards+.prose{margin-top:40px}
 .doc code{font-size:.9em;color:var(--b-text);background:var(--b-tint);padding:.08em .32em;border-radius:4px;overflow-wrap:anywhere}
 .doc pre code{background:none;padding:0}
 .doc q{font-style:italic}

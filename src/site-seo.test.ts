@@ -32,11 +32,12 @@ const PAGES: Record<string, string> = {
   "install.html": "https://cunningclaw.com/install",
   "security.html": "https://cunningclaw.com/security",
   "vs-openclaw.html": "https://cunningclaw.com/vs-openclaw",
+  "its-happening.html": "https://cunningclaw.com/its-happening",
   "about.html": "https://cunningclaw.com/about",
   "map.html": "https://cunningclaw.com/map",
 };
 /** The pages of prose, which share one bar, one footer and two stylesheets. */
-const READING = ["features.html", "install.html", "security.html", "vs-openclaw.html", "about.html"];
+const READING = ["features.html", "install.html", "security.html", "vs-openclaw.html", "about.html", "its-happening.html"];
 
 const meta = (html: string, attr: "name" | "property", key: string) =>
   (html.match(new RegExp(`<meta ${attr}="${key}" content="([^"]*)"`)) || [])[1];
