@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-29",
+  "updated": "2026-11-24",
   "note": "Curated field map, not an exhaustive crawl of every GitHub toy named Cunning Claw. Stars drift; the architecture notes do not.",
   "systems": [
     {
@@ -7,15 +7,15 @@
       "name": "OpenClaw",
       "url": "https://github.com/openclaw/openclaw",
       "class": "always-on messaging daemon",
-      "take": "Workspace files (SOUL.md, HEARTBEAT.md, USER.md), skills folders, heartbeat that stays quiet when idle, one messenger (Telegram), named brains with a cheap heartbeat model and fallbacks — not a sub-agent org chart. Since launch it has grown into the giant of the field: dozens of chat channels, native phone apps and a large community marketplace of add-ons. Reach is its strength.",
-      "refuse": "Curl-pipe installers, unauthenticated internet exposure, kitchen-sink plugin sprawl, defaulting every thought to Opus. Chasing its reach channel by channel: win on trust instead — watched on the glass, cards before consequences, honest about what was done."
+      "take": "Workspace files (SOUL.md, HEARTBEAT.md, USER.md), skills folders, heartbeat that stays quiet when idle, one messenger (Telegram), named brains with a cheap heartbeat model and fallbacks — not a sub-agent org chart. Since launch it has grown into the giant of the field: dozens of chat channels, native phone apps and a large community marketplace of add-ons. Reach is its strength. By its first birthday (24 Nov 2026) it reported 395K GitHub stars, a foundation, an enterprise edition (29 Sept) and a release every day or two.",
+      "refuse": "Curl-pipe installers, unauthenticated internet exposure, kitchen-sink plugin sprawl, defaulting every thought to Opus. Chasing its reach channel by channel: win on trust instead — watched on the glass, cards before consequences, honest about what was done. Its defaults still run commands without asking and leave the sandbox off; safety is a hardening guide the owner has to follow. That gap is still our ground."
     },
     {
       "id": "hermes-agent",
       "name": "Hermes Agent",
       "url": "https://github.com/NousResearch/hermes-agent",
       "class": "self-improving agent runtime",
-      "take": "agentskills.io SKILL.md, skills born from experience, MEMORY.md/USER.md, provider-agnostic brain, scheduled automations. Its real edge is skills that get better with use. Taken 29 Sept as skill lessons: one approved, dated line per lesson beside the skill, per machine, never rewriting the SKILL.md itself.",
+      "take": "agentskills.io SKILL.md, skills born from experience, MEMORY.md/USER.md, provider-agnostic brain, scheduled automations. Its real edge is skills that get better with use. Taken 29 Sept as skill lessons: one approved, dated line per lesson beside the skill, per machine, never rewriting the SKILL.md itself. By November it had grown into a product too: Hermes Desktop in the Microsoft Store, Microsoft Teams, an Azure enterprise edition, a hosted cloud agent on its paid plans, and a guided first-run chat on a free model (v0.22, Oct).",
       "refuse": "Becoming a framework you assemble instead of an assistant you live with. No HUD, no machine-control soul. Rewriting instructions silently after every task: a skill is read back as orders, so each change passes an approval card."
     },
     {
@@ -113,6 +113,30 @@
       "class": "screen-driving framework (2023)",
       "take": "One of the first full computer-use loops: look at the screen, move the mouse, type.",
       "refuse": "Pixels first. Accessibility refs and real tools beat guessing coordinates, and a model driving the mouse needs cards before consequences."
+    },
+    {
+      "id": "linger",
+      "name": "Linger (Simplex AI)",
+      "url": "https://github.com/simplexai-labs/linger",
+      "class": "local-first personal agent on local models",
+      "take": "Open-sourced 19 Nov 2026: a personal agent that runs open models such as Qwen on a home PC, keeps its memory on the device, no token fees; macOS, Windows, Linux. The nearest new neighbour to our local-first pitch. Seen in one news report only; check the repo before quoting it.",
+      "refuse": "Judging it before it has been run. Watch what it does about strangers' text and consequences; local models alone are not safety."
+    },
+    {
+      "id": "qwenpaw",
+      "name": "QwenPaw (AgentScope)",
+      "url": "https://github.com/agentscope-ai/QwenPaw",
+      "class": "personal assistant, local or cloud, many chat apps",
+      "take": "Easy install on your own machine or a server, several chat apps, extensible; v2.3.0 on 11 Nov 2026. Shows the Qwen ecosystem now ships its own OpenClaw-shaped assistant.",
+      "refuse": "Chat-app reach as the product. Same answer as OpenClaw: win on trust."
+    },
+    {
+      "id": "big-desktop-agents",
+      "name": "The big companies' desktop agents",
+      "url": "https://support.claude.com/en/articles/12138966-release-notes",
+      "class": "cloud assistants with computer use",
+      "take": "By November 2026 Anthropic (computer use, Team and Enterprise beta 20 Nov), Google (Gemini desktop app on macOS, paid) and OpenAI (ChatGPT desktop) all drive the user's screen. Polished and everywhere: the field now expects an assistant to act, not just chat.",
+      "refuse": "One vendor's brain, their account, their cloud. Our answer is your machine, your choice of brain, and cards before consequences."
     }
   ]
 }

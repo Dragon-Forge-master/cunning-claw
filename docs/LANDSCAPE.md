@@ -1,6 +1,6 @@
 # Field map — Cunning Claw-class systems
 
-Last survey: **29 September 2026** (first: 24 August). This is a living brief for the Dragon Forge CUNNING CLAW, not a Wikipedia of every GitHub repo named Cunning Claw.
+Last survey: **24 November 2026** (first: 24 August; previous: 29 September). This is a living brief for the Dragon Forge CUNNING CLAW, not a Wikipedia of every GitHub repo named Cunning Claw.
 
 There are hundreds of student butler-assistant clones (the Iron-Man-inspired kind). Almost none of them are assistants. The field that actually matters in 2026 is small:
 
@@ -19,6 +19,14 @@ There are hundreds of student butler-assistant clones (the Iron-Man-inspired kin
 | **Jan / LocalAI** | Local models | BYO brain later | Chat UIs and inference servers |
 | **Python butler-assistant toys** | Cultural memory | Voice, presence, the name | Wikipedia-and-weather demos |
 | **Earlier internal prototypes** | Our own lineage | Local-first, Welsh doctrine, allowlisted HTTP | Do not dissolve the butler into the distro |
+
+## What changed, 29 September to 24 November 2026
+
+- **OpenClaw turned one** (first commit November 2025) and is bigger than ever: about 395K GitHub stars, a foundation since February, an enterprise edition since 29 September, and a release every day or two. Third-party guides still describe its defaults as commands without approval and the sandbox off. Safety remains a hardening guide for the owner to follow: our ground has not moved.
+- **Hermes Agent became a product**, not just a kit: Hermes Desktop in the Microsoft Store, Teams, an Azure enterprise edition (18 Nov), a hosted cloud agent on every paid plan (27 Oct), and a guided first-run chat on a free model (v0.22, 13 Oct). The "framework, not product" line above is now out of date for it.
+- **New local-first neighbours:** Linger (Simplex AI, open-sourced 19 Nov: local Qwen models, memory on the device, unsigned macOS build, like ours) and QwenPaw (AgentScope, v2.3.0 on 11 Nov). Neither has been run here yet.
+- **The big companies now drive the screen:** Anthropic (computer use beta for Team and Enterprise, 20 Nov), Google (Gemini desktop on macOS, paid), OpenAI (ChatGPT desktop). An assistant that acts is now expected, which helps the pitch and raises the bar.
+- **Prompt injection is no longer theoretical.** Reported this autumn: a single encoded email taking over a Manus session holding the user's Gmail token (Salt Labs, October), and phishing emails carrying hidden instructions aimed at the recipient's AI assistant (Barracuda, October). This is film 1's attack, in the wild. Check the primary disclosures before quoting either on the site.
 
 ## Reviews, distilled
 
