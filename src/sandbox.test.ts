@@ -397,6 +397,55 @@ test("the label says secrets are hidden, and a missing-key failure is explained 
   assert.match(why, /sandbox\.reveal/);
 });
 
+// gpg-agent's ssh support puts SSH_AUTH_SOCK at /run/user/<uid>/gnupg/S.gpg-agent.ssh,
+// inside a folder the box already hides. Mounting /dev/null over the socket
+// after the folder was made an empty read-only tmpfs made bwrap fail with
+// "Can't create file ... Read-only file system", so on such a machine every
+// boxed command failed and the model asked to run outside the box instead.
+// Found by the operator's own claw on their laptop, 24 November 2026.
+test("a secret inside a hidden folder is not mounted again: the folder already covers it", () => {
+  const run = "/run/user/1000";
+  const h = planHidden({
+    defaults: [`${run}/gnupg/S.gpg-agent.ssh`, `${run}/gnupg`, `${run}/gnupg/private`, `${run}/bus`],
+    extra: [], reveal: [], own: [], home: HOME,
+    real: (p) => p,
+    isDir: (p) => p === `${run}/gnupg` || p === `${run}/gnupg/private`,
+  });
+  assert.ok(h.dirs.includes(`${run}/gnupg`));
+  assert.ok(!h.files.includes(`${run}/gnupg/S.gpg-agent.ssh`), "the socket is covered by its folder, listed before it or after");
+  assert.ok(!h.dirs.includes(`${run}/gnupg/private`), "so is a folder inside it");
+  assert.ok(h.files.includes(`${run}/bus`), "a secret elsewhere is still hidden on its own");
+});
+
+test("bubblewrap really starts when a hidden socket sits inside a hidden folder, and neither is readable", { skip: live.engine !== "bwrap" ? `no usable bubblewrap: ${live.why}` : false }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "claw-nest-"));
+  try {
+    const gnupg = path.join(dir, "gnupg");
+    fs.mkdirSync(gnupg);
+    const sock = path.join(gnupg, "S.gpg-agent.ssh");
+    fs.writeFileSync(sock, "SYNTHETIC-AGENT-0000");
+    const hidden = planHidden({
+      defaults: [sock, gnupg], extra: [], reveal: [], own: [], home: HOME,
+      real: (p) => (fs.existsSync(p) ? p : null),
+      isDir: (p) => fs.statSync(p).isDirectory(),
+    });
+    let out: string;
+    try {
+      const r = await execFileAsync("bwrap", bwrapArgs({
+        writable: [], readOnly: [], network: false, shell: "/bin/sh", hidden,
+        command: `ls -A ${gnupg}; cat ${sock} 2>&1; echo ran`,
+      }));
+      out = r.stdout + r.stderr;
+    } catch (err: any) {
+      out = `FAILED ${err.stdout ?? ""}${err.stderr ?? ""}`;
+    }
+    assert.match(out, /ran/, `the box must start: ${out}`);
+    assert.doesNotMatch(out, /SYNTHETIC-AGENT/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("bubblewrap really hides a key: cat fails inside the box and the secret never appears", { skip: live.engine !== "bwrap" ? `no usable bubblewrap: ${live.why}` : false }, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "claw-hide-"));
   try {

@@ -265,7 +265,13 @@ export function planHidden(o: {
     const list = o.isDir(r) ? dirs : files;
     if (!list.includes(r)) list.push(r);
   }
-  return { dirs, files, skipped };
+  // A folder hidden as an empty read-only tmpfs already covers everything in
+  // it, and bwrap cannot create a mount point inside one: gpg-agent's ssh
+  // socket (/run/user/<uid>/gnupg/S.gpg-agent.ssh, the usual SSH_AUTH_SOCK
+  // where gpg-agent serves ssh) failed every boxed command. Drop what a hidden
+  // folder covers, whichever order the two were listed in.
+  const covered = (p: string) => dirs.some((d) => d !== p && inside(p, d));
+  return { dirs: dirs.filter((d) => !covered(d)), files: files.filter((f) => !covered(f)), skipped };
 }
 
 export interface WriteSet {
