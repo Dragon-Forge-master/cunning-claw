@@ -237,8 +237,8 @@ h1 em{display:block;font-style:italic;color:var(--b-action)}
 /* ---------- 2. Films ---------- */
 .films{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0 24px}
 .films>.head{grid-column:1/-1}
-/* Three films under the lead one: a row of three on a wide screen, one to a row below that. */
-.film{grid-column:span 4;min-width:0;margin-top:56px}
+/* Four films under the lead one: two to a row on a wide screen (three to a row left the fifth alone on a line), one to a row below that. */
+.film{grid-column:span 6;min-width:0;margin-top:56px}
 .film-lead{grid-column:1/-1;margin-top:0}
 /* Wide screens: the lead poster starts the band, with the heading and its caption beside it. */
 @supports (grid-template-columns:subgrid){

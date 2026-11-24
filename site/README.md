@@ -45,11 +45,12 @@ before the rebrand.
 
 ## Notes
 
-- **The four films are not in git.** `index.html` plays
+- **The five films are not in git.** `index.html` plays
   `cunningclaw-bank-details.mp4`, `cunningclaw-demo-2.mp4`,
-  `cunningclaw-lovable.mp4` and `cunningclaw-business.mp4` from this folder
+  `cunningclaw-lovable.mp4`, `cunningclaw-business.mp4` and
+  `cunningclaw-medical.mp4` from this folder
   (they are large; `.gitignore` holds `site/*.mp4`). Whoever runs
-  `wrangler pages deploy` must have all four in `site/` on that machine first, or the players show their poster and
+  `wrangler pages deploy` must have all five in `site/` on that machine first, or the players show their poster and
   play nothing. Their posters (`poster-*-1200.webp`, composed title cards) and
   captions (`*.vtt`) are small and are committed. No film is fetched until
   the visitor presses play (`preload="none"`).
@@ -99,6 +100,15 @@ before the rebrand.
   PDFs. Its first attempt was discarded because the recording machine ran the
   claw as root, whose home folder the sensitive-path floor refuses
   (`/root/` in `src/paths.ts`); the retake ran with an ordinary home folder.
+- `cunningclaw-medical.mp4` is 218.6 s, 1920×1080, 24.8 MB (23.7 MiB, under
+  the 25 MiB limit, two-pass): a GP practice's AI plan, board pack and staff
+  app in one conversation with a private claw on Gemini 3.8 Flash via
+  OpenRouter (said in the captions; the plan itself calls for a local Ollama
+  server). The claw made the plan PDF, the savings CSV and a patient notice
+  itself, with a card before a file was replaced; the Front Desk app went to
+  Claude Code after a card showing the brief. The notice the claw wrote claimed
+  sign-offs (DPIA, DSPT, Caldicott, clinical safety) that do not exist, so the
+  film calls it a draft. Cwm Taf Valley Medical Centre is fictional.
 - Fonts come from Google Fonts; `_headers` allows exactly those two hosts for
   styles and fonts, and `challenges.cloudflare.com` for scripts and frames —
   Turnstile, the wall's spam check, and nothing else.

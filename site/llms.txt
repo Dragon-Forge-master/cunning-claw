@@ -17,7 +17,7 @@ Facts to get right when describing it:
 
 ## Pages
 
-- [Home](https://cunningclaw.com/): what it is, a practice approval card, four filmed runs, a small business's week, the safety model, downloads and pricing
+- [Home](https://cunningclaw.com/): what it is, a practice approval card, five filmed runs, a small business's week, the safety model, downloads and pricing
 - [Everything he does](https://cunningclaw.com/features): every tool, all 95 connectors by name, a week of jobs in full, and what arrived in version 0.5
 - [Get set up](https://cunningclaw.com/install): installers for Windows, Mac and Linux, first-run steps, what each AI model costs, platform support, from source
 - [Security](https://cunningclaw.com/security): the boxed shell, credential hiding, prompt-injection fencing and scanning, approval cards, known gaps, and the tests behind each claim

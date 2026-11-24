@@ -1,0 +1,97 @@
+WEBVTT
+
+1
+00:00:00.600 --> 00:00:07.209
+A medical centre wants to use AI. Here's the plan — made in one conversation with Cunning Claw.
+
+2
+00:00:07.459 --> 00:00:16.941
+Cwm Taf Valley is made up: nine GPs, eighteen thousand patients, and a daily pile of calls, letters and requests.
+
+3
+00:00:17.191 --> 00:00:24.662
+The practice manager asks for a plan: the Claw on every PC, and one AI server in the building.
+
+4
+00:00:24.912 --> 00:00:27.499
+He answers in about twenty seconds.
+
+5
+00:00:29.090 --> 00:00:35.699
+Each role, the hard rules, three phases — and the saving, written out as a sum.
+
+6
+00:00:36.190 --> 00:00:47.344
+Every desk gets a helper, and every helper has a line it never crosses. It never judges how urgent something is. It never suggests a diagnosis.
+
+7
+00:00:48.490 --> 00:00:59.723
+The saving: sixty-two staff hours a week — about eighty-six thousand pounds a year. An estimate, not a promise. Every figure is there to check.
+
+8
+00:00:59.973 --> 00:01:12.799
+Then the rails: no clinical decisions, a person approves everything, and the paperwork first — DPIA, DSPT, clinical safety, Caldicott.
+
+9
+00:01:13.049 --> 00:01:19.971
+A rollout in three phases — admin first, GPs last — each one gated on its checks.
+
+10
+00:01:21.690 --> 00:01:25.817
+Next, the board pack. He's asked to make it himself.
+
+11
+00:01:27.590 --> 00:01:34.669
+He writes the plan, the spreadsheet and a notice for patients — and checks the sums before he saves them.
+
+12
+00:01:36.340 --> 00:01:42.453
+Replacing a file can't be undone. So he stops, and asks. Yes.
+
+13
+00:01:48.410 --> 00:01:51.101
+The board plan, as a PDF.
+
+14
+00:01:54.310 --> 00:02:00.423
+The savings as a spreadsheet, each assumption in its own column, so the board can change them.
+
+15
+00:02:00.810 --> 00:02:09.718
+And a one-page notice for patients: a person always decides. It's a draft — it goes up once the sign-offs are real.
+
+16
+00:02:09.968 --> 00:02:16.969
+Some of it the Claw makes himself. The app, he hands to Claude Code — and asks you first.
+
+17
+00:02:19.610 --> 00:02:32.932
+Here's how it fits together. Every PC runs the Claw. The AI runs on a server in the building. Patient data stays inside — and anything that would leave waits for a person.
+
+18
+00:02:33.182 --> 00:02:38.825
+Now the app: a Front Desk prototype for reception, with made-up requests.
+
+19
+00:02:40.710 --> 00:02:47.711
+The card shows the brief, word for word, and what Claude Code may and may not do. Yes.
+
+20
+00:02:49.410 --> 00:02:56.411
+Claude Code builds it on its own branch, in under a minute. It never merges. You review it.
+
+21
+00:02:57.240 --> 00:03:00.714
+The Claw reports back, and opens the preview.
+
+22
+00:03:02.740 --> 00:03:09.271
+Every request flows the same way. The AI suggests. A person decides.
+
+23
+00:03:13.940 --> 00:03:23.579
+A receptionist accepts one suggestion, and changes another. Nothing happens until someone clicks — and every decision goes in the log.
+
+24
+00:03:28.940 --> 00:03:36.829
+Local-first. Asks first. Cunning Claw — free and open source, on your own computer.
