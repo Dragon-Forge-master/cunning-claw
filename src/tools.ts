@@ -38,6 +38,7 @@ import { describeMailChoice, emailActionAsks, normaliseEmailAction, resolveMailP
 import { exportPdf } from "./export-pdf.js";
 import { siteWallTool } from "./wall.js";
 import * as receipts from "./receipts.js";
+import { answersPrompt, bypassFlag, bypassRefusal, leavesInstructionPending, notePending, relayCard, takePending, type Keystrokes } from "./agent-prompt.js";
 import { foreman } from "./foreman.js";
 import { jobs as jobRegistry, jobsText } from "./jobs.js";
 import { loadLessons, loadProgress, progressSummary } from "./learn-format.js";
@@ -1220,10 +1221,16 @@ export const toolDefinitions: Anthropic.Tool[] = [
     description:
       "Send keystrokes to the focused window, e.g. 'ctrl+s', 'alt+Tab', 'Return'. " +
       "Space-separate a sequence. Pass window to focus a named window first and refuse to fire " +
-      "blind if it cannot be found; the result reports which window actually had focus. Requires user approval.",
+      "blind if it cannot be found; the result reports which window actually had focus. Requires user approval. " +
+      "Keys that could answer another AI's prompt in a terminal (Claude Code, Codex…) always go to the operator " +
+      "on a card: pass asking with what it is asking, word for word.",
     input_schema: {
       type: "object",
-      properties: { keys: { type: "string" }, window: { type: "string" } },
+      properties: {
+        keys: { type: "string" },
+        window: { type: "string" },
+        asking: { type: "string", description: "When answering another AI's prompt: what it asks, as on screen" },
+      },
       required: ["keys"],
       additionalProperties: false,
     },
@@ -1233,10 +1240,16 @@ export const toolDefinitions: Anthropic.Tool[] = [
     description:
       "Type text into whatever window currently has focus. Pass window to focus a named window " +
       "first — it refuses to type blind if that window cannot be found, and the result reports " +
-      "where the text landed. Requires user approval.",
+      "where the text landed. Requires user approval. You may type instructions into another AI's terminal " +
+      "(Claude Code, Codex…); a short reply that could answer its prompt always goes to the operator on a card: " +
+      "pass asking with what it is asking, word for word.",
     input_schema: {
       type: "object",
-      properties: { text: { type: "string" }, window: { type: "string" } },
+      properties: {
+        text: { type: "string" },
+        window: { type: "string" },
+        asking: { type: "string", description: "When answering another AI's prompt: what it asks, as on screen" },
+      },
       required: ["text"],
       additionalProperties: false,
     },
@@ -1616,16 +1629,62 @@ async function gate(
  * verification, or honesty. A task grant covered the shell calls, so the oath
  * never fired. Keystroke and click injection is a message-send in disguise:
  * it gets the camera's rule — a human hand, every single time, no grant and
- * no work order riding over it.
+ * no work order riding over it. tmux send-keys and screen's stuff type into a
+ * terminal the same way, which is how a claw would answer another AI's
+ * prompt from the shell (src/agent-prompt.ts, 24 Nov), so they count too.
  */
 export const SYNTHETIC_INPUT_RE =
-  /\b(?:xdotool\s+(?:[^|;&]*\b)?(?:type|key|click)\b|ydotool\s+(?:type|key|click)\b|wtype\b|dotool\b|import\s+pyautogui|pyautogui\.|keyboard\.(?:write|press|send)|osascript\b[^|;&]*keystroke)/i;
+  /\b(?:xdotool\s+(?:[^|;&]*\b)?(?:type|key|click)\b|ydotool\s+(?:type|key|click)\b|wtype\b|dotool\b|import\s+pyautogui|pyautogui\.|keyboard\.(?:write|press|send)|osascript\b[^|;&]*keystroke|tmux\s+(?:[^|;&]*\s)?send-keys\b|tmux\s+(?:[^|;&]*\s)?send\b|screen\s+[^|;&]*-X\s+stuff\b)/i;
+
+/** The desktop's keyboard, injectable so a test can stand in for the screen and see what would have been typed. */
+type Keyboard = Pick<typeof desktop, "agentTarget" | "pressKeys" | "typeOnDesktop">;
+const realKeyboard: Keyboard = { agentTarget: desktop.agentTarget, pressKeys: desktop.pressKeys, typeOnDesktop: desktop.typeOnDesktop };
+let keyboard: Keyboard = realKeyboard;
+export function setKeyboardForTests(k: Keyboard | null): void {
+  keyboard = k ?? realKeyboard;
+}
+
+/**
+ * Keystrokes into another AI's terminal (src/agent-prompt.ts). Instructions
+ * pass to the ordinary card or grant; anything that could answer its prompt
+ * goes to the operator on its own card, every time, with no grant or work
+ * order riding over it, the same rule as synthetic input through the shell.
+ * A flag that removes the other AI's prompts is refused outright.
+ */
+async function relayToOperator(
+  k: Keystrokes,
+  input: { window?: string; asking?: string },
+  ctx: ToolContext,
+): Promise<{ stop?: string; asked: boolean }> {
+  if (k.kind === "text") {
+    const flag = bypassFlag(k.text);
+    if (flag) return { stop: bypassRefusal(flag), asked: false };
+  }
+  const target = await keyboard.agentTarget(input.window);
+  if (target.error) return { stop: target.error, asked: false };
+  if (!target.agent) return { asked: false };
+  const key = target.title ?? input.window ?? "";
+  if (!answersPrompt(k, takePending(key))) {
+    if (leavesInstructionPending(k)) notePending(key);
+    return { asked: false };
+  }
+  const card = relayCard({
+    agent: target.agent,
+    window: target.title,
+    send: k.kind === "keys" ? k.keys : JSON.stringify(k.text),
+    asking: input.asking,
+  });
+  const ok = await ctx.requestApproval(card.summary, card.detail);
+  return ok ? { asked: true } : { stop: card.declined, asked: true };
+}
 
 async function runCommand(input: { command: string; cwd?: string; unsandboxed?: boolean }, ctx: ToolContext): Promise<string> {
   const verdict = classifyCommand(input.command);
   if (verdict === "deny") {
     return FLOOR_REFUSAL;
   }
+  const bypass = bypassFlag(input.command);
+  if (bypass) return bypassRefusal(bypass);
   // Resolved before any card, so the card can say where the command may write
   // and a doomed directory is reported without the operator approving it first.
   const cwd = resolveCommandCwd(input.cwd);
@@ -2922,20 +2981,24 @@ export async function executeTool(name: string, input: any, ctx: ToolContext): P
       case "list_windows": return await desktop.listWindows();
       case "focus_window": return await desktop.focusWindow(input.name);
       case "press_keys": {
-        if (!taskGrantActive()) {
+        const relay = await relayToOperator({ kind: "keys", keys: String(input.keys) }, input, ctx);
+        if (relay.stop) return relay.stop;
+        if (!relay.asked && !taskGrantActive()) {
           const where = input.window ? ` → window "${input.window}"` : "";
           const ok = await ctx.requestApproval("Send keystrokes to the desktop", `${input.keys}${where}`);
           if (!ok) return "The user declined the keystrokes.";
         }
-        return await desktop.pressKeys(input.keys, input.window);
+        return await keyboard.pressKeys(input.keys, input.window);
       }
       case "type_on_desktop": {
-        if (!taskGrantActive()) {
+        const relay = await relayToOperator({ kind: "text", text: String(input.text) }, input, ctx);
+        if (relay.stop) return relay.stop;
+        if (!relay.asked && !taskGrantActive()) {
           const where = input.window ? ` → window "${input.window}"` : "";
           const ok = await ctx.requestApproval("Type into the focused window", `${input.text}${where}`);
           if (!ok) return "The user declined the input.";
         }
-        return await desktop.typeOnDesktop(input.text, input.window);
+        return await keyboard.typeOnDesktop(input.text, input.window);
       }
       case "notify": {
         const out: string[] = [];

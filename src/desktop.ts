@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { config } from "./config.js";
 import * as win from "./windows.js";
 import { hasBin, host, missing, unsupportedDesktop } from "./platform.js";
+import { agentFromTitle, agentInTree, type Proc } from "./agent-prompt.js";
 import type { ToolResultContent } from "./tools.js";
 
 const execFileAsync = promisify(execFile);
@@ -540,6 +541,46 @@ async function aimWindow(window?: string): Promise<{ error?: string }> {
 async function landedIn(): Promise<string> {
   const active = await activeWindowName();
   return active ? ` — focus: ${active.slice(0, 60)}` : "";
+}
+
+/** Every process on a Linux machine, read from /proc. Unreadable entries are skipped. */
+function linuxProcs(): Proc[] {
+  const out: Proc[] = [];
+  for (const d of fs.readdirSync("/proc")) {
+    if (!/^\d+$/.test(d)) continue;
+    try {
+      const stat = fs.readFileSync(`/proc/${d}/stat`, "utf-8");
+      // "pid (comm) state ppid …" — comm may hold spaces and brackets, so split on the last ")".
+      const close = stat.lastIndexOf(")");
+      const comm = stat.slice(stat.indexOf("(") + 1, close);
+      const ppid = Number(stat.slice(close + 2).split(" ")[1]);
+      const argv = fs.readFileSync(`/proc/${d}/cmdline`, "utf-8").split("\0").filter(Boolean);
+      out.push({ pid: Number(d), ppid, comm, argv });
+    } catch { /* gone, or not ours */ }
+  }
+  return out;
+}
+
+/**
+ * Which coding agent, if any, the keystrokes are about to reach. Aims at the
+ * named window first, exactly as the send will, then reads the focused
+ * window's title and, on Linux, every process under it. Where neither can be
+ * read (Windows; macOS reports only the app's name) the title is all there
+ * is, so an agent there is caught only when its window's title names it.
+ */
+export async function agentTarget(window?: string): Promise<{ agent: string | null; title: string | null; error?: string }> {
+  if (host() === "other") return { agent: null, title: null };
+  const aim = await aimWindow(window);
+  if (aim.error) return { agent: null, title: null, error: aim.error };
+  const title = await activeWindowName();
+  const byTitle = agentFromTitle(title);
+  if (byTitle || host() !== "linux" || !(await hasBin("xdotool"))) return { agent: byTitle, title };
+  try {
+    const { stdout } = await execFileAsync("xdotool", ["getactivewindow", "getwindowpid"], { timeout: 5000 });
+    const pid = Number(stdout.trim());
+    if (pid > 0) return { agent: agentInTree(pid, linuxProcs()), title };
+  } catch { /* no pid on this window */ }
+  return { agent: null, title };
 }
 
 export async function pressKeys(keys: string, window?: string): Promise<string> {

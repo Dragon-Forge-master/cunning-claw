@@ -600,6 +600,47 @@ the operator's file permissions. Every rule above was tested against a
 stand-in CLI, and the argv once against the real one; no real coding job has
 yet been run end to end.
 
+### 5.3a Driving another AI in a terminal: instructions yes, answers no
+
+The foreman is the sanctioned way to hand work to Claude Code. The operator
+also asked their claw to drive Claude Code directly, typing into its terminal
+window, and liked it. On 24 November that driving went one step too far: when
+Claude Code stopped at a permission prompt, the claw typed `1` and Return
+itself, and an "Allow for this task" grant earlier in the turn meant no card
+fired. It had also run `claude -p … --dangerously-skip-permissions`.
+
+`src/agent-prompt.ts` keeps the driving and takes away that step:
+
+- **Which window.** Before `press_keys` or `type_on_desktop` sends anything, the
+  claw aims at the target exactly as the send will and asks whether a coding
+  agent is there: by the window's title (Claude Code's ✳ and spinner titles
+  included) and, on Linux, by every process under the window. *Tests: a
+  terminal running Claude Code is found by its title or by what runs under it.*
+- **Instructions pass; answers ask.** Text that reads as an instruction goes
+  through the ordinary card or grant, and so does the one Return that sends an
+  instruction the claw has just typed into that window. A short reply (`1`,
+  `y`, `yes`) or keys that pick, confirm or cycle (digits, arrows, Return,
+  shift+Tab) go to the operator on their own card, **every time**: no task
+  grant or work order covers them, and the card reaches the phone lines like
+  any other. On approval the claw sends exactly the keys on the card. *Tests:
+  under a task grant, an answer to Claude Code's prompt still asks the
+  operator, and a no types nothing; instructions and the Return that sends
+  them flow.*
+- **No skip-permissions.** `--dangerously-skip-permissions`, its
+  `--allow-` form, `--permission-mode bypassPermissions`, Codex's
+  `--dangerously-bypass-approvals-and-sandbox` and Gemini's `--yolo` are
+  refused in `run_command` and in typed text, before any card. *Test: the
+  skip-permissions flags are refused by shell and by typing, before any card.*
+- **The shell route.** `tmux send-keys` and `screen -X stuff` type into a
+  terminal too, so they join the synthetic-input rule: a card every time.
+
+**Limits.** Detection is a heuristic. On Windows, and on macOS where only the
+app's name is readable, an agent is found only when its window title names
+it. A renamed binary, or a terminal title that hides the agent, is not
+caught. The classification of "answer" is by shape: a long sentence typed at
+a prompt counts as an instruction. The claw's description of what is being
+asked is its own reading, and the card says so.
+
 ### 5.4 Voice notes and receipts: two more ways in
 
 Both arrive through Telegram's allowlisted operator chat, and receipts through

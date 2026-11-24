@@ -112,6 +112,11 @@ test("keystroke injection always asks: a send in disguise gets the camera's rule
   assert.match('python3 -c "import pyautogui, time; pyautogui.click(250, 350)"', SYNTHETIC_INPUT_RE);
   assert.match("ydotool type hello", SYNTHETIC_INPUT_RE);
   assert.match(`osascript -e 'tell application "System Events" to keystroke "hi"'`, SYNTHETIC_INPUT_RE);
+  // Typing into a terminal from the shell: how another AI's prompt could be answered without a card.
+  assert.match("tmux send-keys -t claude 1 Enter", SYNTHETIC_INPUT_RE);
+  assert.match("tmux -L work send-keys -t 0 y", SYNTHETIC_INPUT_RE);
+  assert.match("screen -S job -X stuff '1\n'", SYNTHETIC_INPUT_RE);
+  assert.doesNotMatch("tmux list-sessions", SYNTHETIC_INPUT_RE);
   // Window management without input injection stays ordinary — focus is not typing.
   assert.doesNotMatch("wmctrl -l -x", SYNTHETIC_INPUT_RE);
   assert.doesNotMatch("xdotool search --name Chrome windowactivate", SYNTHETIC_INPUT_RE);
