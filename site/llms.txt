@@ -34,6 +34,7 @@ Facts to get right when describing it:
 - [Contributing](https://github.com/Dragon-Forge-master/cunning-claw/blob/main/CONTRIBUTING.md): the layout, the four safety invariants, how to add a tool or a skill
 - [Releases](https://github.com/Dragon-Forge-master/cunning-claw/releases): every version and every installer
 - [Update feed](https://cunningclaw.com/latest.json): the newest released version, its date and its downloads, as JSON
+- [Films](https://www.youtube.com/@DragonForge-Ai): five narrated runs of Cunning Claw on Dragon Forge AI's YouTube channel
 
 ## Optional
 
