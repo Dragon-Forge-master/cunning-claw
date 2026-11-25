@@ -1855,7 +1855,12 @@ function sayTone() {
 $("say-toggle")?.classList.toggle("active", sayEnabled);
 $("say-toggle")?.addEventListener("click", (e) => {
   if (!sayEnabled && ears.engine !== "whisper") {
-    addMsg("system", "SAY needs the local ears (whisper on this machine): the code must not be heard by a cloud service.");
+    // Say how to get them, not only that they are missing: the owner met this
+    // message three times on 25 November 2026 before anyone named the script.
+    // ears.detail carries the platform's own fix (earsFix in src/ears.ts).
+    addMsg("system", "SAY needs the local ears (whisper on this machine): what you say must not be heard by a cloud service."
+      + (ears.detail ? ` ${String(ears.detail).replace(/[.\s]*$/, "")}.` : " Run ./setup-ears.sh in the claw's folder.")
+      + " Then restart the claw and reload this page.");
     return;
   }
   sayEnabled = !sayEnabled;

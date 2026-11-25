@@ -64,7 +64,7 @@ export const KEY_ROSTER: KeySpec[] = [
   { name: "CLAW_SAY_PASSPHRASE", label: "Voice approval passphrase", applies: "live", hideTail: true,
     refuse: (v) => usablePassphrase(v) ? null
       : "Pick something of four letters or more that is not a plain yes, and does not start with no or stop.",
-    hint: "With SAY on, the claw reads each approval card out loud and saying this phrase approves it, so you need not look. Pick something you would not say by chance, such as “crack on, Claw”. Anyone in earshot who knows it can use it while a card is waiting, so do not say it on a call, and change it if it has been overheard. One card at a time: with two waiting, say the words on the card." },
+    hint: "With SAY on, the claw reads each approval card out loud and saying this phrase approves it, so you need not look. Pick something you would not say by chance, such as “crack on, Claw”. Anyone in earshot who knows it can use it while a card is waiting, so do not say it on a call, and change it if it has been overheard. One card at a time: with two waiting, say the words on the card. SAY needs the local ears (whisper on this machine): if the SAY switch refuses, it says how to install them." },
 ];
 
 const rosterByName = new Map(KEY_ROSTER.map((k) => [k.name, k]));
