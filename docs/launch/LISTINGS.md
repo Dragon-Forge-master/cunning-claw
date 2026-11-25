@@ -13,13 +13,13 @@ means the pull request or page was read back and matched what was sent.
 | [msb-msb/awesome-local-ai](https://github.com/msb-msb/awesome-local-ai) | [PR #103](https://github.com/msb-msb/awesome-local-ai/pull/103), User Interfaces → Desktop Applications, at the end | 25 Nov 2026 | Open, checked |
 | [danielrosehill/Local-AI-Agent-Resources](https://github.com/danielrosehill/Local-AI-Agent-Resources) | [PR #11](https://github.com/danielrosehill/Local-AI-Agent-Resources/pull/11), 6. Desktop GUIs & Cowork Clones, alphabetical | 25 Nov 2026 | Open, checked |
 | [e2b-dev/awesome-ai-agents](https://github.com/e2b-dev/awesome-ai-agents) | Their Google form (sent twice; the second adds the X account) | 25 Nov 2026 | Awaiting review |
+| [ollama/ollama](https://github.com/ollama/ollama) Community Integrations | [PR #19901](https://github.com/ollama/ollama/pull/19901), Chat Interfaces → Desktop, at the end after Perfect Memory AI | 25 Nov 2026 | Open, checked |
 | GitHub topics on our own repo | `gh repo edit --add-topic`: ai-agent, ai-assistant, local-first, ollama, prompt-injection, desktop-agent, mcp-client (with the earlier ones, 15 in all) | 25 Nov 2026 | Done, checked |
 
 ## Next: worth doing now
 
 | Where | How | Notes |
 | --- | --- | --- |
-| [Ollama's Community Integrations](https://github.com/ollama/ollama) | Pull request to the README, as it invites | Cunning Claw runs fully offline on Ollama. Chat Interfaces → Desktop, at the end (the list is not alphabetical). Ollama's CONTRIBUTING wants `<area>: <description>` titles: "README: add Cunning Claw to desktop integrations". |
 | [Glama MCP clients](https://glama.ai/mcp/clients) | Their own submit form, if it has one | Linked from awesome-mcp-clients as the most up-to-date list. |
 | [OpenAlternative](https://openalternative.co/submit) | Submit form | Lists open-source alternatives to proprietary tools: here, to cloud agents such as Manus. Check it is free before submitting. |
 | [AlternativeTo](https://alternativeto.net) | Add an app (needs an account) | List as an alternative to OpenClaw, Hermes Agent and Manus. |
