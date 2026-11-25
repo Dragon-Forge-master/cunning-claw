@@ -23,9 +23,24 @@ import path from "node:path";
 
 export const FONTS = ["standard", "plain", "dyslexic"] as const;
 export type HudFont = (typeof FONTS)[number];
-export type HudPrefs = { font: HudFont };
+/**
+ * How fast the claw speaks, as a multiple of the voice as configured. Asked
+ * for on 25 November 2026: once approval cards are read aloud, a voice that
+ * dawdles is a voice in the way. One number for every engine (src/voice.ts
+ * turns it into each engine's own setting), in tenths so the HUD's button can
+ * step through it.
+ */
+export const VOICE_SPEED_MIN = 0.7;
+export const VOICE_SPEED_MAX = 1.6;
+export function normaliseVoiceSpeed(raw: unknown): number | null {
+  const n = typeof raw === "number" ? raw : NaN;
+  if (!Number.isFinite(n) || n < VOICE_SPEED_MIN - 1e-9 || n > VOICE_SPEED_MAX + 1e-9) return null;
+  return Math.round(n * 10) / 10;
+}
 
-export const DEFAULT_PREFS: HudPrefs = { font: "standard" };
+export type HudPrefs = { font: HudFont; voiceSpeed: number };
+
+export const DEFAULT_PREFS: HudPrefs = { font: "standard", voiceSpeed: 1 };
 
 const FILE = "hud-prefs.json";
 
@@ -33,7 +48,7 @@ const FILE = "hud-prefs.json";
 export function normalisePrefs(raw: unknown): HudPrefs {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const font = FONTS.includes(r.font as HudFont) ? (r.font as HudFont) : DEFAULT_PREFS.font;
-  return { font };
+  return { font, voiceSpeed: normaliseVoiceSpeed(r.voiceSpeed) ?? DEFAULT_PREFS.voiceSpeed };
 }
 
 export function loadPrefs(dir: string): HudPrefs {
@@ -50,6 +65,8 @@ export function savePrefs(dir: string, update: unknown): HudPrefs {
   const u = (update && typeof update === "object" ? update : {}) as Record<string, unknown>;
   const next: HudPrefs = { ...current };
   if (FONTS.includes(u.font as HudFont)) next.font = u.font as HudFont;
+  const speed = normaliseVoiceSpeed(u.voiceSpeed);
+  if (speed !== null) next.voiceSpeed = speed;
   fs.mkdirSync(dir, { recursive: true });
   const tmp = path.join(dir, FILE + ".tmp");
   fs.writeFileSync(tmp, JSON.stringify(next, null, 2) + "\n");

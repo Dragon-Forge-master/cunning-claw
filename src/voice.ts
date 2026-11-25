@@ -7,6 +7,36 @@ import { hasBin, host, missing, POWERSHELL, psArgs } from "./platform.js";
 import * as win from "./windows.js";
 
 let enabled = config.voice.enabled;
+
+/**
+ * The operator's speed: 1 is the voice as configured, 1.3 a third faster.
+ * Set by the server from the HUD's preferences (src/hud-prefs.ts); this file
+ * imports nothing upward. Each engine has its own idea of speed, so the one
+ * number is turned into each engine's setting here, and nowhere else.
+ */
+let speed = 1;
+export function setSpeed(x: number): void {
+  speed = Number.isFinite(x) ? Math.min(1.6, Math.max(0.7, x)) : 1;
+}
+export function getSpeed(): number {
+  return speed;
+}
+/** Piper's length scale is time per phoneme: smaller is faster. */
+export function piperLengthScale(base: number, sp = speed): number {
+  return Math.round((base / sp) * 1000) / 1000;
+}
+/** speech-dispatcher's rate runs -100..100 around the voice's normal pace. */
+export function spdRate(base: number, sp = speed): number {
+  return Math.max(-100, Math.min(100, Math.round(base + (sp - 1) * 100)));
+}
+/** macOS `say` takes words a minute; 175 is its usual pace. */
+export function sayRate(sp = speed): number {
+  return Math.round(175 * sp);
+}
+/** Windows speech takes -10..10. */
+export function sapiRate(sp = speed): number {
+  return Math.max(-10, Math.min(10, Math.round((sp - 1) * 10)));
+}
 /** Every process in the current speech pipeline (synth + playback). */
 let active: ChildProcess[] = [];
 
@@ -376,7 +406,7 @@ function speakWithPiperStream(text: string, model: string, player: string): void
     [
       "-m", model,
       "--output-raw",
-      "--length-scale", String(piper.lengthScale),
+      "--length-scale", String(piperLengthScale(piper.lengthScale)),
       "--noise-scale", String(piper.noiseScale),
       "--noise-w-scale", String(piper.noiseWScale),
       "--sentence-silence", String(piper.sentenceSilence),
@@ -417,7 +447,7 @@ function speakWithPiperFile(text: string, model: string, player: string): void {
     [
       "-m", model,
       "--output-raw",
-      "--length-scale", String(piper.lengthScale),
+      "--length-scale", String(piperLengthScale(piper.lengthScale)),
       "--noise-scale", String(piper.noiseScale),
       "--noise-w-scale", String(piper.noiseWScale),
       "--sentence-silence", String(piper.sentenceSilence),
@@ -467,7 +497,7 @@ function speakWithPiper(text: string, model: string, player: string): void {
 
 function speakWithSpd(text: string): void {
   const s = config.voice.spd;
-  const args = ["-l", s.language, "-r", String(s.rate), "-p", String(s.pitch), "-i", String(s.volume)];
+  const args = ["-l", s.language, "-r", String(spdRate(s.rate)), "-p", String(s.pitch), "-i", String(s.volume)];
   if (s.voiceName) args.push("-y", s.voiceName);
   // -w keeps spd-say alive until the words have been spoken. Without it the
   // client hands the text to speech-dispatcher and exits at once, so the
@@ -482,7 +512,7 @@ function speakWithSpd(text: string): void {
 }
 
 function speakWithSay(text: string, voice = sayVoice()): void {
-  const child = spawnProc("say", ["-v", voice, "--", text], { stdio: "ignore" });
+  const child = spawnProc("say", ["-v", voice, "-r", String(sayRate()), "--", text], { stdio: "ignore" });
   swallow(child);
   child.on("error", (err) => {
     console.error(`Voice: say failed: ${err.message}`);
@@ -533,7 +563,7 @@ function speakWithSapi(text: string): void {
     POWERSHELL,
     psArgs(
       "Add-Type -AssemblyName System.Speech;" +
-      `$s=New-Object System.Speech.Synthesis.SpeechSynthesizer;$s.Speak(${win.psQuote(text)});`,
+      `$s=New-Object System.Speech.Synthesis.SpeechSynthesizer;$s.Rate=${sapiRate()};$s.Speak(${win.psQuote(text)});`,
     ),
     { stdio: "ignore" },
   );
@@ -611,7 +641,7 @@ export function synthesise(text: string, maxChars = 1200, where: PiperAt = {}): 
       [
         "-m", model,
         "--output-raw",
-        "--length-scale", String(piper.lengthScale),
+        "--length-scale", String(piperLengthScale(piper.lengthScale)),
         "--noise-scale", String(piper.noiseScale),
         "--noise-w-scale", String(piper.noiseWScale),
         "--sentence-silence", String(piper.sentenceSilence),

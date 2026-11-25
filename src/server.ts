@@ -972,8 +972,11 @@ app.get("/api/hud-prefs", (_req, res) => {
 });
 
 app.post("/api/hud-prefs", (req, res) => {
-  res.json(savePrefs(DATA_DIR, req.body));
+  const prefs = savePrefs(DATA_DIR, req.body);
+  voice.setSpeed(prefs.voiceSpeed);   // the next thing he says is at the new pace
+  res.json(prefs);
 });
+voice.setSpeed(loadPrefs(DATA_DIR).voiceSpeed);
 
 // --- Ears: the mic, transcribed on this machine (src/ears.ts) ---------------
 // Behind requireAuth and its Origin check like the rest of /api. The body is

@@ -22,8 +22,7 @@ import {
   speak,
   synthesise,
   wrapPcmToWav,
-  type SpeakingState,
-} from "./voice.js";
+  type SpeakingState, piperLengthScale, sapiRate, sayRate, setSpeed, spdRate } from "./voice.js";
 import { config } from "./config.js";
 
 test("WAV wrapper is a real RIFF header over the PCM payload", () => {
@@ -290,6 +289,33 @@ test("when SAY hears no usable answer, the claw says so out loud: the operator m
   await tick();
   const said = speakers().at(-1)!.args.join(" ");
   assert.ok(/I didn't catch that, \w+\. The card is still waiting\./.test(said), said);
+});
+
+test("one speed for every engine: faster shortens Piper, raises spd-say, say and SAPI, and 1 changes nothing", async () => {
+  // Asked for on 25 November 2026. Fails with spdRate() taken out of
+  // speakWithSpd (the last assertion), or the mappings changed.
+  assert.equal(piperLengthScale(0.92, 1), 0.92);
+  assert.ok(piperLengthScale(0.92, 1.4) < 0.92, "a smaller length scale is faster speech");
+  assert.equal(spdRate(-10, 1), -10);
+  assert.equal(spdRate(-10, 1.4), 30);
+  assert.equal(spdRate(-10, 0.7), -40);
+  assert.equal(spdRate(80, 1.6), 100, "held inside speech-dispatcher's range");
+  assert.equal(sayRate(1), 175);
+  assert.equal(sayRate(1.2), 210);
+  assert.equal(sapiRate(1), 0);
+  assert.equal(sapiRate(1.6), 6);
+  try {
+    useEngine({ engine: "spd-say", detail: "default" });
+    setSpeed(1.4);
+    react("timer_fired", { label: "the MOT" });
+    await tick();
+    const args = speakers().at(-1)!.args;
+    assert.equal(args[args.indexOf("-r") + 1], String(spdRate(config.voice.spd.rate, 1.4)), args.join(" "));
+    setSpeed(99);
+    assert.equal(spdRate(0), 60, "an absurd speed is held to the top of the range");
+  } finally {
+    setSpeed(1);
+  }
 });
 
 test("a heartbeat queued behind a reply is dropped when the operator stops the voice", async () => {

@@ -329,6 +329,10 @@ function speechText(text) {
 }
 // speech-clean:end
 
+// The operator's pace, 1 = as configured; set from the install's prefs below
+// (the voice-speed button). Declared here because speak() reads it.
+let voiceSpeed = 1;
+
 function speak(text, { after = false } = {}) {
   // When the server has a real TTS engine it speaks for us — don't double up.
   if (serverVoiceAvailable) return;
@@ -340,7 +344,7 @@ function speak(text, { after = false } = {}) {
   const clean = speechText(text);
   const utter = new SpeechSynthesisUtterance(clean);
   if (cunningclawVoice) utter.voice = cunningclawVoice;
-  utter.rate = 1.05;
+  utter.rate = Math.min(2, 1.05 * voiceSpeed);
   utter.pitch = 0.9;
   // The browser's own voice reaches the mic just as the server's does.
   // Chrome ends a cancelled utterance with "error" (interrupted), not "end".
@@ -1782,6 +1786,38 @@ $("attach-input")?.addEventListener("change", async (e) => {
   } catch (err) {
     addMsg("system", `⚠ Upload failed: ${err.message}`);
   }
+});
+
+// How fast he speaks: one number for every engine, kept with the install's
+// other reading preferences (src/hud-prefs.ts) so it follows the claw into
+// any browser. The button steps through the speeds and says a line at each.
+const VOICE_SPEEDS = [0.8, 1, 1.2, 1.4, 1.6];
+function paintVoiceSpeed() {
+  const b = $("voice-speed");
+  if (b) b.textContent = `${voiceSpeed.toFixed(1)}×`;
+}
+fetch("/api/hud-prefs").then((r) => (r.ok ? r.json() : null)).then((p) => {
+  if (p && typeof p.voiceSpeed === "number") { voiceSpeed = p.voiceSpeed; paintVoiceSpeed(); }
+}).catch(() => { /* stays at 1.0 */ });
+$("voice-speed")?.addEventListener("click", async () => {
+  const i = VOICE_SPEEDS.findIndex((s) => Math.abs(s - voiceSpeed) < 0.05);
+  const next = VOICE_SPEEDS[(i + 1) % VOICE_SPEEDS.length];
+  const saved = await fetch("/api/hud-prefs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ voiceSpeed: next }),
+  }).then((r) => r.json()).catch(() => null);
+  if (!saved || typeof saved.voiceSpeed !== "number") return addMsg("system", "⚠ The voice speed could not be saved.");
+  voiceSpeed = saved.voiceSpeed;
+  paintVoiceSpeed();
+  const line = `This is how fast I speak now, ${sir()}.`;
+  if (serverVoiceAvailable) {
+    fetch("/api/voice/sample", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: line }),
+    }).catch(() => {});
+  } else speak(line);
 });
 
 $("tts-toggle").addEventListener("click", async (e) => {
