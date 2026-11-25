@@ -218,6 +218,23 @@ code, as they could press the button. Transcription can mishear, which costs a
 denial, never an approval. Nothing but the operator's own setting stops SAY
 listening while a card is up.
 
+*Without looking: a passphrase.* A code on the screen is no help to an
+operator who is not looking at it, so the owner may set `CLAW_SAY_PASSPHRASE`
+in `.env`. The claw then reads each real card's summary aloud (never its code)
+and "approve" with the passphrase answers it. The passphrase is read from the
+environment when a card is answered and goes nowhere else: not in a broadcast,
+a phone card, the model's context or a sandboxed command's environment
+(`sandboxEnv` drops any name containing PASSPHRASE). With more than one real
+card waiting it answers none and says so, because it cannot say which; the
+card's own two words still work. The passphrase alone, without an approval
+word, is not an answer, and one shorter than four letters or made of answer
+words is ignored. A wrong one denies, as a wrong code does. *Tests: the
+passphrase block in src/approvals.test.ts; src/voice.test.ts for the card read
+aloud.* **Limits:** unlike the code, the passphrase does not change. Anyone
+who hears the owner say it once can say it later, if they are within earshot
+of the microphone while a card is up; change it if it has been overheard, and
+choose words not spoken in videos or chat.
+
 ### 3.3 The sandbox
 
 Model alignment is a statistical property; namespaces are a kernel one. Since

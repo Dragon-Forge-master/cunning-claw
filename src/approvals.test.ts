@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createApprovals, defusePracticeClaim, normaliseSpoken, PRACTICE_CLAIM_REMOVED, PRACTICE_LABEL, SPOKEN_WORDS, type PracticeDecision } from "./approvals.js";
+import { createApprovals, defusePracticeClaim, normaliseSpoken, PRACTICE_CLAIM_REMOVED, PRACTICE_LABEL, SPOKEN_WORDS, usablePassphrase, type PracticeDecision } from "./approvals.js";
 
 /** A registry with every outlet recorded and a timer the test fires by hand. */
 function rig() {
@@ -125,7 +125,7 @@ test("a new instruction denies every pending card; leaving practice clears only 
 
 // --- Answering by voice: a code only the HUD's card shows (SPOKEN_WORDS) ---
 
-function voiceRig(draws: number[] = [0, 23, 5, 6]) {
+function voiceRig(draws: number[] = [0, 23, 5, 6], passphrase: string | null = null) {
   const events: { event: string; data: any }[] = [];
   const phoneCards: { id: string; summary: string; detail: string }[] = [];
   const alerts: string[] = [];
@@ -137,6 +137,7 @@ function voiceRig(draws: number[] = [0, 23, 5, 6]) {
     timeoutMs: () => 180_000,
     grantForTask: () => {},
     randomInt: () => draws[i++ % draws.length],
+    passphrase: () => passphrase,
     setTimer: () => 0,
     clearTimer: () => {},
   });
@@ -206,4 +207,56 @@ test("the spoken words are short and plain, and the code space is wide enough th
   assert.ok(SPOKEN_WORDS.length >= 64);
   for (const w of SPOKEN_WORDS) assert.match(w, /^[a-z]{4,10}$/, w);
   assert.equal(normaliseSpoken("  Approve, Amber-Falcon!  "), "approve amber falcon");
+});
+
+// --- Answering by voice without looking: the operator's own passphrase ---
+// The code on the card is no use to an operator on another screen, so with
+// CLAW_SAY_PASSPHRASE set, "approve <passphrase>" answers the one card that
+// was read aloud. Each test fails with the passphrase branch taken out of
+// settleSpoken (the first two), or with the count check removed (the third).
+
+test("approve and the passphrase approve the one pending card; the passphrase never leaves the registry", async () => {
+  const r = voiceRig(undefined, "Bara Brith");
+  const card = r.approvals.request("Send this email", "To: elin@example");
+  const sent = lastRequest(r.events);
+  assert.equal(sent.byPassphrase, true, "the HUD and the voice are told a passphrase answers");
+  assert.deepEqual(r.approvals.settleSpoken("Okay, approve. Bara brith."), { outcome: "approved", id: sent.id });
+  assert.equal(await card, true);
+  const everything = JSON.stringify([r.events, r.phoneCards, r.alerts]).toLowerCase();
+  assert.ok(!everything.includes("bara"), "not in a broadcast, a phone card or an alert");
+});
+
+test("the passphrase alone is not an answer, and a wrong one is a refusal", async () => {
+  const r = voiceRig(undefined, "bara brith");
+  const card = r.approvals.request("Pay invoice 1142", "£1,240 to Caffi Bach");
+  assert.deepEqual(r.approvals.settleSpoken("bara brith"), { outcome: "not-an-answer" }, "overheard, it approves nothing");
+  assert.equal(r.approvals.pendingCount(), 1);
+  assert.equal(r.approvals.settleSpoken("approve welsh cakes").outcome, "wrong-code");
+  assert.equal(await card, false);
+});
+
+test("with two cards waiting the passphrase cannot say which, so it answers neither", async () => {
+  const r = voiceRig(undefined, "bara brith");
+  const a = r.approvals.request("Send this email", "To: elin@example");
+  const b = r.approvals.request("Delete ./build", "rm -r ./build");
+  assert.deepEqual(r.approvals.settleSpoken("approve bara brith"), { outcome: "ambiguous", count: 2 });
+  assert.equal(r.approvals.pendingCount(), 2, "nothing approved, nothing denied");
+  assert.equal(r.approvals.settleSpoken(`approve ${lastRequest(r.events).spoken}`).outcome, "approved", "the card's own words still work");
+  assert.equal(await b, true);
+  r.approvals.cancelAll();
+  assert.equal(await a, false);
+});
+
+test("a passphrase too short, or made of answer words, is ignored rather than trusted", () => {
+  assert.equal(usablePassphrase("cat"), null);
+  assert.equal(usablePassphrase("yes"), null);
+  assert.equal(usablePassphrase("approve it"), null);
+  assert.equal(usablePassphrase("no way"), null);
+  assert.equal(usablePassphrase(""), null);
+  assert.equal(usablePassphrase(undefined), null);
+  assert.equal(usablePassphrase("  Bara-Brith! "), "bara brith");
+  const r = voiceRig(undefined, "yes");
+  void r.approvals.request("Send", "To: x@example");
+  assert.equal(lastRequest(r.events).byPassphrase, false, "the card does not offer what will not work");
+  r.approvals.cancelAll();
 });

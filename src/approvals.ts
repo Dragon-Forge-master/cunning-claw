@@ -58,6 +58,12 @@ export interface ApprovalDeps {
   now?: () => number;
   /** For the spoken code; crypto.randomInt by default, a test passes its own. */
   randomInt?: (max: number) => number;
+  /**
+   * The operator's own spoken passphrase, if they set one (CLAW_SAY_PASSPHRASE
+   * in .env), read at each use. Never broadcast, never spoken, never in the
+   * model's context; see settleSpoken.
+   */
+  passphrase?: () => string | null | undefined;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (t: unknown) => void;
 }
@@ -92,6 +98,16 @@ interface Pending {
  *
  * Words are short, common and unlike each other when heard, so local speech
  * recognition gets them right; 64 of them make 4,032 ordered pairs.
+ *
+ * The passphrase, added because a code on the glass still means looking at
+ * the glass: the operator may set one word or phrase of their own. Then the
+ * claw reads the card aloud and "approve <passphrase>" approves it, eyes
+ * elsewhere. It is a PIN said out loud: anyone in the room who hears it could
+ * use it, which the operator is told when they set it. So it approves only
+ * when exactly one real card is waiting (two waiting is "ambiguous": the code
+ * picks one), it needs the approval word in front (the passphrase said in
+ * passing is not an answer), and the same one-try rule holds: an approval
+ * word with neither the passphrase nor a code denies.
  */
 export const SPOKEN_WORDS = [
   "amber", "anchor", "apple", "arrow", "badger", "banjo", "basket", "beacon",
@@ -109,6 +125,17 @@ const FILLER = "(?:(?:ok|okay|right|so|um|uh|er|erm|well|yeah) )*";
 const APPROVE_WORDS = new RegExp(`^${FILLER}(?:approve|approved|yes|allow|execute|go ahead|confirm)\\b`);
 const DENY_WORDS = new RegExp(`^${FILLER}(?:deny|denied|no|nope|cancel|refuse|reject|stop|don't)\\b`);
 
+/**
+ * A passphrase worth having: at least four letters, and not itself an answer
+ * word, which would make "approve" plus the word mean nothing more than "yes".
+ */
+export function usablePassphrase(raw: string | null | undefined): string | null {
+  const p = normaliseSpoken(raw ?? "");
+  if (p.replace(/ /g, "").length < 4) return null;
+  if (APPROVE_WORDS.test(p) || DENY_WORDS.test(p)) return null;
+  return p;
+}
+
 /** Lower case, letters and spaces only, so "Approve, Amber-Falcon." reads as "approve amber falcon". */
 export function normaliseSpoken(text: string): string {
   return String(text ?? "").toLowerCase().replace(/['’]/g, "'").replace(/[^a-z' ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -119,6 +146,7 @@ export type SpokenOutcome =
   | { outcome: "denied"; count: number }
   | { outcome: "wrong-code"; count: number }
   | { outcome: "not-an-answer" }
+  | { outcome: "ambiguous"; count: number }
   | { outcome: "nothing-pending" };
 
 /**
@@ -181,7 +209,10 @@ export function createApprovals(deps: ApprovalDeps) {
       pending.set(id, { practice: false, spoken, finish });
       // The code rides on the HUD's card and nowhere else: not to the phone
       // lines, not to ntfy, and the model never sees this event.
-      deps.broadcast("approval_request", { id, summary: s, detail: d, spoken: spoken.join(" ") });
+      // byPassphrase says one is set (a yes/no, never the phrase), so the
+      // claw reads the card aloud for an operator who is not looking.
+      const byPassphrase = usablePassphrase(deps.passphrase?.()) !== null;
+      deps.broadcast("approval_request", { id, summary: s, detail: d, spoken: spoken.join(" "), byPassphrase });
       for (const p of deps.phones) void p.sendCard(id, s, d);
       deps.alert.send(id, s);
     });
@@ -241,7 +272,15 @@ export function createApprovals(deps: ApprovalDeps) {
     if (!APPROVE_WORDS.test(heard)) return { outcome: "not-an-answer" };
     const words = ` ${heard} `;
     const match = real.find(([, p]) => words.includes(` ${p.spoken![0]} ${p.spoken![1]} `));
-    if (!match) return { outcome: "wrong-code", count: denyRealByVoice() };
+    if (!match) {
+      const phrase = usablePassphrase(deps.passphrase?.());
+      if (phrase && words.includes(` ${phrase} `)) {
+        if (real.length !== 1) return { outcome: "ambiguous", count: real.length };
+        real[0][1].finish(true, "voice");
+        return { outcome: "approved", id: real[0][0] };
+      }
+      return { outcome: "wrong-code", count: denyRealByVoice() };
+    }
     match[1].finish(true, "voice");
     return { outcome: "approved", id: match[0] };
   }

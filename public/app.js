@@ -1259,7 +1259,7 @@ es.addEventListener("timer_fired", (e) => {
 });
 
 es.addEventListener("approval_request", (e) => {
-  const { id, summary, detail, practice, label, spoken } = sseData(e);
+  const { id, summary, detail, practice, label, spoken, byPassphrase } = sseData(e);
   const card = document.createElement("div");
   card.className = "approval-card";
   card.id = `approval-${id}`;
@@ -1278,7 +1278,7 @@ es.addEventListener("approval_request", (e) => {
   if (practice !== true && typeof spoken === "string" && spoken) {
     const say = document.createElement("div");
     say.className = "say";
-    say.append("Or say: “approve ");
+    say.append(byPassphrase === true ? "Or say: “approve” and your passphrase, or “approve " : "Or say: “approve ");
     const b = document.createElement("b");
     b.textContent = spoken;
     say.append(b, "”");
@@ -1302,7 +1302,14 @@ es.addEventListener("approval_request", (e) => {
     card.querySelector(".ttl").firstChild.textContent = "PRACTICE CARD — ";
   }
   $("approval-area").appendChild(card);
-  if (practice !== true) speak(`Requesting authorisation, ${sir()}.`);
+  // Mirrors src/voice.ts: with a passphrase set, the card is read aloud for
+  // an operator who is not looking (its summary only; never the code).
+  if (practice !== true) {
+    const said = String(summary || "").trim().slice(0, 160);
+    speak(byPassphrase === true && said
+      ? `Authorisation, ${sir()}: ${said}. Say approve and your passphrase, or deny.`
+      : `Requesting authorisation, ${sir()}.`);
+  }
   if (practice !== true && spoken && sayEnabled) void listenForAnswer(id);
 });
 
@@ -1808,7 +1815,7 @@ $("say-toggle")?.addEventListener("click", (e) => {
   e.currentTarget.classList.toggle("active", sayEnabled);
   try { localStorage.setItem("claw.say", sayEnabled ? "1" : "0"); } catch { /* storage off */ }
   addMsg("system", sayEnabled
-    ? "SAY is on: when a card appears, say “approve” and the two words on it, or “deny”."
+    ? "SAY is on: when a card appears, say “approve” and your passphrase (if you set one) or the two words on the card, or “deny”."
     : "SAY is off: answer cards with the buttons, or from your phone.");
 });
 

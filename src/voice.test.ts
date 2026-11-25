@@ -266,6 +266,23 @@ test("the approval chime and a reminder address the operator as chosen at setup,
   }
 });
 
+test("with a passphrase set, the card is read aloud so it can be answered from another room", async () => {
+  // Fails with the byPassphrase branch taken out of react(): the operator
+  // hears only "Requesting authorisation" and has to look after all.
+  const saved = config.persona.addressUserAs;
+  try {
+    config.persona.addressUserAs = "madam";
+    useEngine({ engine: "spd-say", detail: "default" });
+    react("approval_request", { id: "a2", summary: "Send this email to Elin", byPassphrase: true, spoken: "amber falcon" });
+    await tick();
+    const said = speakers().at(-1)!.args.join(" ");
+    assert.ok(said.includes("Authorisation, madam: Send this email to Elin. Say approve and your passphrase, or deny."), said);
+    assert.ok(!said.includes("amber"), "the card's code is never spoken: it is the one thing the room must not hear");
+  } finally {
+    config.persona.addressUserAs = saved;
+  }
+});
+
 test("a heartbeat queued behind a reply is dropped when the operator stops the voice", async () => {
   useEngine({ engine: "spd-say", detail: "default" });
   react("turn_start", { kind: "user" });

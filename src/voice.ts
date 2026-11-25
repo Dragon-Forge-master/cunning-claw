@@ -268,7 +268,15 @@ export function react(event: string, data: unknown): void {
       else void speak(d.text);
     }
   } else if (event === "timer_fired") void speak(`${addressed(true)}, a reminder: ${String(d.label ?? "")}`);
-  else if (event === "approval_request") void speak(`Requesting authorisation, ${addressed()}.`);
+  else if (event === "approval_request") {
+    // With a passphrase set the operator may not be looking, so the card is
+    // read aloud: its summary only (already redacted), never the code or the
+    // passphrase, and the HUD's ears are deaf while the claw speaks.
+    const summary = typeof d.summary === "string" ? d.summary.trim().slice(0, 160) : "";
+    if (d.byPassphrase === true && summary && d.practice !== true) {
+      void speak(`Authorisation, ${addressed()}: ${summary}. Say approve and your passphrase, or deny.`);
+    } else void speak(`Requesting authorisation, ${addressed()}.`);
+  }
   else if (event === "agent_error" && typeof d.message === "string" && d.message) void speak(d.message);
   else if (event === "preview" && d.action === "open") void speak(`Preview on the glass, ${addressed()}.`);
   // heartbeat_ok is silent on purpose — OpenClaw-style.

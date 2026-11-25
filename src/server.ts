@@ -261,6 +261,9 @@ app.get("/api/events", (req, res) => {
 // to which phone, the timeout, and the practice cards Learn mode raises.
 const approvals = createApprovals({
   broadcast,
+  // The operator's spoken passphrase for SAY, from .env; read at each use so
+  // a change in .env needs no restart of this registry. Never broadcast.
+  passphrase: () => process.env.CLAW_SAY_PASSPHRASE ?? null,
   phones: [
     { sendCard: sendApprovalCard, settled: approvalSettled },
     { sendCard: sendDiscordCard, settled: discordSettled },
@@ -306,6 +309,8 @@ app.post("/api/approve/spoken", (req, res) => {
     broadcast("notice", { message: `That code did not match, ${addressed()}. ${result.count} card(s) denied, to be safe.` });
   } else if (result.outcome === "denied") {
     broadcast("notice", { message: `Denied by voice, ${addressed()}.` });
+  } else if (result.outcome === "ambiguous") {
+    broadcast("notice", { message: `${result.count} cards are waiting, ${addressed()}, so the passphrase cannot say which. Say "approve" and the two words on the card you mean.` });
   }
   res.json(result);
 });
