@@ -64,6 +64,12 @@ export interface ApprovalDeps {
    * model's context; see settleSpoken.
    */
   passphrase?: () => string | null | undefined;
+  /**
+   * Is a HUD listening for SAY right now? Without it the claw would invite a
+   * spoken answer nobody can hear, which is how the passphrase first failed
+   * in use: read aloud, answered, and no microphone open.
+   */
+  listening?: () => boolean;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (t: unknown) => void;
 }
@@ -72,8 +78,8 @@ interface Pending {
   practice: boolean;
   /** The two words that approve this card by voice. Real cards only. */
   spoken?: [string, string];
-  /** False when the card's own text contains the passphrase: then only the code answers it. */
-  byPassphrase?: boolean;
+  /** True when the card's own text contains the passphrase: then only the code answers it. */
+  holdsPhrase?: boolean;
   finish(approved: boolean, by: SettledBy, scope?: "task"): void;
 }
 
@@ -235,8 +241,11 @@ export function createApprovals(deps: ApprovalDeps) {
       // not looking. Not if the card's own text holds the phrase: it is read
       // aloud, and outside text can steer what it says.
       const phrase = usablePassphrase(deps.passphrase?.());
-      const byPassphrase = phrase !== null && !` ${phraseForm(`${s} ${d}`)} `.includes(` ${phrase} `);
-      pending.set(id, { practice: false, spoken, byPassphrase, finish });
+      const holdsPhrase = phrase !== null && ` ${phraseForm(`${s} ${d}`)} `.includes(` ${phrase} `);
+      // Invited only while a HUD is listening; the passphrase itself still
+      // answers if SAY is switched on after the card went up.
+      const byPassphrase = phrase !== null && !holdsPhrase && (deps.listening?.() ?? true);
+      pending.set(id, { practice: false, spoken, holdsPhrase, finish });
       // The code rides on the HUD's card and nowhere else: not to the phone
       // lines, not to ntfy, and the model never sees this event.
       deps.broadcast("approval_request", { id, summary: s, detail: d, spoken: spoken.join(" "), byPassphrase, passphraseSet: phrase !== null });
@@ -300,7 +309,7 @@ export function createApprovals(deps: ApprovalDeps) {
       if (real.length !== 1) return { outcome: "ambiguous", count: real.length };
       // The phrase is in this card's own text: it cannot answer it. Not a
       // denial either; the operator is told to use the code.
-      if (!real[0][1].byPassphrase) return { outcome: "code-only", id: real[0][0] };
+      if (real[0][1].holdsPhrase) return { outcome: "code-only", id: real[0][0] };
       real[0][1].finish(true, "voice");
       return { outcome: "approved", id: real[0][0] };
     }

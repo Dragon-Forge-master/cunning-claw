@@ -277,6 +277,7 @@ export function react(event: string, data: unknown): void {
       void speak(`Authorisation, ${addressed()}: ${summary}. Say your passphrase, or deny.`);
     } else void speak(`Requesting authorisation, ${addressed()}.`);
   }
+  else if (event === "say_missed") void speak(`I didn't catch that, ${addressed()}. The card is still waiting.`);
   else if (event === "agent_error" && typeof d.message === "string" && d.message) void speak(d.message);
   else if (event === "preview" && d.action === "open") void speak(`Preview on the glass, ${addressed()}.`);
   // heartbeat_ok is silent on purpose — OpenClaw-style.

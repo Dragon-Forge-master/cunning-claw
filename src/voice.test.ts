@@ -283,6 +283,15 @@ test("with a passphrase set, the card is read aloud so it can be answered from a
   }
 });
 
+test("when SAY hears no usable answer, the claw says so out loud: the operator may not be looking", async () => {
+  // Fails with the say_missed line taken out of react().
+  useEngine({ engine: "spd-say", detail: "default" });
+  react("say_missed", {});
+  await tick();
+  const said = speakers().at(-1)!.args.join(" ");
+  assert.ok(/I didn't catch that, \w+\. The card is still waiting\./.test(said), said);
+});
+
 test("a heartbeat queued behind a reply is dropped when the operator stops the voice", async () => {
   useEngine({ engine: "spd-say", detail: "default" });
   react("turn_start", { kind: "user" });

@@ -775,6 +775,7 @@ function setEars(next) {
   if (!next || typeof next.engine !== "string") return;
   ears = next;
   paintEars();
+  sayPing();   // the ears decide whether SAY can listen at all
 }
 
 const earsReady = (async () => {
@@ -1251,6 +1252,13 @@ es.addEventListener("speaking", (e) => {
 });
 es.onopen = () => { sseConnected = true; paintConnection(); };
 es.onerror = () => { sseConnected = false; paintConnection(); };
+
+// SAY heard nothing it could use (POST /api/say/missed): the server's voice
+// says so; this is the fallback for a claw with no voice of its own.
+es.addEventListener("say_missed", () => {
+  addMsg("system", "SAY did not catch an answer. The card is still waiting.");
+  speak(`I didn't catch that, ${sir()}. The card is still waiting.`);
+});
 
 es.addEventListener("timer_fired", (e) => {
   const { label } = sseData(e);
@@ -1815,6 +1823,35 @@ $("wake-toggle").addEventListener("click", (e) => {
  */
 let sayEnabled = false;
 try { sayEnabled = localStorage.getItem("claw.say") === "1"; } catch { /* storage off */ }
+// Tell the server whether this HUD will hear an answer, so the claw invites
+// one only when it will. Repeated while on: a closed tab lapses by itself.
+function sayPing() {
+  const on = sayEnabled && ears.engine === "whisper";
+  fetch("/api/say/listening", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ on }),
+  }).catch(() => {});
+}
+setInterval(() => { if (sayEnabled && ears.engine === "whisper") sayPing(); }, 30000);
+
+/** Two short notes: the mic is open. For an operator who is not looking. */
+function sayTone() {
+  try {
+    const ac = new AudioContext();
+    const g = ac.createGain();
+    g.gain.value = 0.06;
+    g.connect(ac.destination);
+    [660, 880].forEach((f, i) => {
+      const o = ac.createOscillator();
+      o.frequency.value = f;
+      o.connect(g);
+      o.start(ac.currentTime + i * 0.12);
+      o.stop(ac.currentTime + i * 0.12 + 0.1);
+    });
+    setTimeout(() => ac.close().catch(() => {}), 600);
+  } catch { /* no audio: the card's line still lights */ }
+}
 $("say-toggle")?.classList.toggle("active", sayEnabled);
 $("say-toggle")?.addEventListener("click", (e) => {
   if (!sayEnabled && ears.engine !== "whisper") {
@@ -1824,6 +1861,7 @@ $("say-toggle")?.addEventListener("click", (e) => {
   sayEnabled = !sayEnabled;
   e.currentTarget.classList.toggle("active", sayEnabled);
   try { localStorage.setItem("claw.say", sayEnabled ? "1" : "0"); } catch { /* storage off */ }
+  sayPing();
   if (!sayEnabled) return addMsg("system", "SAY is off: answer cards with the buttons, or from your phone.");
   // Set or not is all the Keys roster reports; the phrase itself never comes back.
   fetch("/api/keys").then((r) => r.json()).catch(() => []).then((keys) => {
@@ -1884,6 +1922,10 @@ async function listenForAnswer(id) {
   const until = Date.now() + 90000;
   // Let "requesting authorisation" finish first; the clip skips the claw's voice anyway.
   while (mustNotHear() && Date.now() < until) await new Promise((r) => setTimeout(r, 200));
+  if (!onGlass()) return;
+  // The tone plays before the clip opens, so the mic never records it.
+  sayTone();
+  await new Promise((r) => setTimeout(r, 350));
   for (let tries = 0; tries < 4 && onGlass() && Date.now() < until; tries++) {
     if (localRecording()) return;   // the operator is dictating: the buttons will do
     const say = onGlass()?.querySelector(".say");
@@ -1903,6 +1945,8 @@ async function listenForAnswer(id) {
     // listening: the card's two words still answer it.
     if (res.outcome && !["not-an-answer", "ambiguous", "code-only"].includes(res.outcome)) return;
   }
+  // Out of tries with the card still up: say so, out loud, once.
+  if (onGlass() && !localRecording()) fetch("/api/say/missed", { method: "POST" }).catch(() => {});
 }
 
 $("stop-btn")?.addEventListener("click", async () => {

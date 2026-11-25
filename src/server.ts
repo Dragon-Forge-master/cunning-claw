@@ -264,6 +264,7 @@ const approvals = createApprovals({
   // The operator's spoken passphrase for SAY, from .env; read at each use so
   // a change in .env needs no restart of this registry. Never broadcast.
   passphrase: () => process.env.CLAW_SAY_PASSPHRASE ?? null,
+  listening: () => sayListening(),
   phones: [
     { sendCard: sendApprovalCard, settled: approvalSettled },
     { sendCard: sendDiscordCard, settled: discordSettled },
@@ -302,6 +303,24 @@ function cancelPendingApprovals(reason: string): number {
 // /pocket/ alone), and only a code shown on the HUD's card can approve; see
 // settleSpoken in src/approvals.ts. Not an instruction, so it does not cancel
 // pending cards the way a chat message does.
+// SAY's microphone lives in the HUD, so the HUD says when it is listening
+// (on load, on the switch, and every 30 s while on). A HUD closed without
+// saying goodbye lapses after 90 s rather than staying "listening" for ever.
+let sayHeardFrom = 0;
+function sayListening(now = Date.now()): boolean {
+  return now - sayHeardFrom < 90_000;
+}
+app.post("/api/say/listening", (req, res) => {
+  sayHeardFrom = req.body?.on === true ? Date.now() : 0;
+  res.json({ listening: sayListening() });
+});
+app.post("/api/say/missed", (_req, res) => {
+  // The HUD tried and heard no answer it could use; the operator, who may
+  // not be looking, is told out loud (voice.ts) that the card still waits.
+  broadcast("say_missed", {});
+  res.json({ ok: true });
+});
+
 app.post("/api/approve/spoken", (req, res) => {
   const text = String(req.body?.text ?? "").slice(0, 200);
   const result = approvals.settleSpoken(text);

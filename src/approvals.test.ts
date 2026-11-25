@@ -125,7 +125,7 @@ test("a new instruction denies every pending card; leaving practice clears only 
 
 // --- Answering by voice: a code only the HUD's card shows (SPOKEN_WORDS) ---
 
-function voiceRig(draws: number[] = [0, 23, 5, 6], passphrase: string | null = null) {
+function voiceRig(draws: number[] = [0, 23, 5, 6], passphrase: string | null = null, listening = true) {
   const events: { event: string; data: any }[] = [];
   const phoneCards: { id: string; summary: string; detail: string }[] = [];
   const alerts: string[] = [];
@@ -138,6 +138,7 @@ function voiceRig(draws: number[] = [0, 23, 5, 6], passphrase: string | null = n
     grantForTask: () => {},
     randomInt: () => draws[i++ % draws.length],
     passphrase: () => passphrase,
+    listening: () => listening,
     setTimer: () => 0,
     clearTimer: () => {},
   });
@@ -280,4 +281,18 @@ test("a passphrase too short, a bare yes, or one starting with a refusal is igno
   assert.equal(lastRequest(r.events).byPassphrase, false, "the card does not offer what will not work");
   assert.equal(lastRequest(r.events).passphraseSet, false, "so the HUD offers the link to set one");
   assert.equal(r.approvals.settleSpoken("yes").outcome, "wrong-code", "and a bare yes is still a refusal");
+});
+
+test("the claw invites the passphrase only while a HUD is listening, and it still works if SAY comes on later", async () => {
+  // Field report, 25 November 2026: the card was read aloud ("Say your
+  // passphrase"), the owner answered, and no microphone was open. Fails with
+  // listening() taken out of byPassphrase.
+  const r = voiceRig(undefined, "crack on", false);
+  const card = r.approvals.request("Run npm install", "in ~/site");
+  const sent = lastRequest(r.events);
+  assert.equal(sent.byPassphrase, false, "nobody is listening: the claw must not ask for a spoken answer");
+  assert.equal(sent.passphraseSet, true, "and the card does not offer to set one");
+  assert.deepEqual(r.approvals.settleSpoken("crack on"), { outcome: "approved", id: sent.id },
+    "SAY switched on after the card went up still answers it");
+  assert.equal(await card, true);
 });
