@@ -276,7 +276,7 @@ test("with a passphrase set, the card is read aloud so it can be answered from a
     react("approval_request", { id: "a2", summary: "Send this email to Elin", byPassphrase: true, spoken: "amber falcon" });
     await tick();
     const said = speakers().at(-1)!.args.join(" ");
-    assert.ok(said.includes("Authorisation, madam: Send this email to Elin. Say approve and your passphrase, or deny."), said);
+    assert.ok(said.includes("Authorisation, madam: Send this email to Elin. Say your passphrase, or deny."), said);
     assert.ok(!said.includes("amber"), "the card's code is never spoken: it is the one thing the room must not hear");
   } finally {
     config.persona.addressUserAs = saved;

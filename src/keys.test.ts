@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { KEY_ROSTER, cleanValue, upsertEnvLine, removeEnvLine, setKey } from "./keys.js";
+import { KEY_ROSTER, cleanValue, upsertEnvLine, removeEnvLine, setKey, listKeys } from "./keys.js";
 
 test("only roster names can be written — this is never a set-any-env endpoint", () => {
   for (const name of ["PATH", "LD_PRELOAD", "NODE_OPTIONS", "CLAW_TOKEN", "HOME"]) {
@@ -57,4 +57,24 @@ test("a pasted key is checked with the provider for free before it is kept", asy
   const offline = (async () => { throw new TypeError("fetch failed"); }) as unknown as typeof fetch;
   assert.equal((await checkKey("OPENROUTER_API_KEY", "sk-or-x", offline)).status, "unchecked");
   assert.equal((await checkKey("GITHUB_TOKEN", "ghp_x", answer(200))).status, "unchecked", "only the two brain keys are probed");
+});
+
+test("the voice passphrase is set from the Keys page, never shown back, and refused before writing if it would not work", () => {
+  // The HUD's card links here (/keys#CLAW_SAY_PASSPHRASE). Fails with hideTail
+  // or the refuse check taken off the roster entry.
+  const saved = process.env.CLAW_SAY_PASSPHRASE;
+  try {
+    process.env.CLAW_SAY_PASSPHRASE = "crack on claw";
+    const row = listKeys().find((k) => k.name === "CLAW_SAY_PASSPHRASE")!;
+    assert.equal(row.set, true);
+    assert.equal(row.tail, "", "not even the last four letters: on a short phrase that is half of it");
+    assert.equal(row.applies, "live");
+    for (const bad of ["yes", "cat", "no thanks"]) {
+      const out = setKey("CLAW_SAY_PASSPHRASE", bad);
+      assert.equal(out.ok, false, bad);
+    }
+    assert.equal(process.env.CLAW_SAY_PASSPHRASE, "crack on claw", "a refused phrase changes nothing");
+  } finally {
+    if (saved === undefined) delete process.env.CLAW_SAY_PASSPHRASE; else process.env.CLAW_SAY_PASSPHRASE = saved;
+  }
 });

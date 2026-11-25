@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { HOME_ROOT } from "./config.js";
+import { usablePassphrase } from "./approvals.js";
 
 /**
  * The Keys page's engine — the easy-secrets place.
@@ -27,6 +28,10 @@ export interface KeySpec {
   hint: string;
   /** "live" applies the moment it is saved; "restart" needs the claw relit. */
   applies: "live" | "restart";
+  /** Not even the last four characters on the glass: a short phrase would be half given away. */
+  hideTail?: boolean;
+  /** Refuse a value that would not work, with the reason. */
+  refuse?: (value: string) => string | null;
 }
 
 export const KEY_ROSTER: KeySpec[] = [
@@ -56,6 +61,10 @@ export const KEY_ROSTER: KeySpec[] = [
     hint: "Unlocks the Forgenet design suite connector. Starts fgn_." },
   { name: "RESEND_API_KEY", label: "Resend API key", applies: "live",
     hint: "Optional — the Resend connector signs in through the browser. A key from resend.com/api-keys (starts re_) is for a claw with no browser to hand." },
+  { name: "CLAW_SAY_PASSPHRASE", label: "Voice approval passphrase", applies: "live", hideTail: true,
+    refuse: (v) => usablePassphrase(v) ? null
+      : "Pick something of four letters or more that is not a plain yes, and does not start with no or stop.",
+    hint: "With SAY on, the claw reads each approval card out loud and saying this phrase approves it, so you need not look. Pick something you would not say by chance, such as “crack on, Claw”. Anyone in earshot who knows it can use it while a card is waiting, so do not say it on a call, and change it if it has been overheard. One card at a time: with two waiting, say the words on the card." },
 ];
 
 const rosterByName = new Map(KEY_ROSTER.map((k) => [k.name, k]));
@@ -97,7 +106,7 @@ export function listKeys(): Array<KeySpec & { set: boolean; tail: string }> {
     return {
       ...spec,
       set: looksReal,
-      tail: looksReal ? v.slice(-4) : "",
+      tail: looksReal && !spec.hideTail ? v.slice(-4) : "",
     };
   });
 }
@@ -107,6 +116,8 @@ export function setKey(name: string, rawValue: string): { ok: boolean; message: 
   if (!spec) return { ok: false, message: "That name is not on the key roster." };
   const cleaned = cleanValue(rawValue);
   if (!cleaned.ok) return { ok: false, message: cleaned.why };
+  const refused = spec.refuse?.(cleaned.value);
+  if (refused) return { ok: false, message: refused };
 
   const p = envPath();
   const existing = fs.existsSync(p) ? fs.readFileSync(p, "utf-8") : "";

@@ -311,6 +311,9 @@ app.post("/api/approve/spoken", (req, res) => {
     broadcast("notice", { message: `Denied by voice, ${addressed()}.` });
   } else if (result.outcome === "ambiguous") {
     broadcast("notice", { message: `${result.count} cards are waiting, ${addressed()}, so the passphrase cannot say which. Say "approve" and the two words on the card you mean.` });
+  } else if (result.outcome === "code-only") {
+    // The card's own text holds the passphrase (approvals.ts says why).
+    broadcast("notice", { message: `That card's own words contain your passphrase, ${addressed()}, so it cannot answer it. Say "approve" and the two words on the card.` });
   }
   res.json(result);
 });

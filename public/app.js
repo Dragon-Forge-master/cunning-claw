@@ -1259,7 +1259,7 @@ es.addEventListener("timer_fired", (e) => {
 });
 
 es.addEventListener("approval_request", (e) => {
-  const { id, summary, detail, practice, label, spoken, byPassphrase } = sseData(e);
+  const { id, summary, detail, practice, label, spoken, byPassphrase, passphraseSet } = sseData(e);
   const card = document.createElement("div");
   card.className = "approval-card";
   card.id = `approval-${id}`;
@@ -1278,10 +1278,20 @@ es.addEventListener("approval_request", (e) => {
   if (practice !== true && typeof spoken === "string" && spoken) {
     const say = document.createElement("div");
     say.className = "say";
-    say.append(byPassphrase === true ? "Or say: “approve” and your passphrase, or “approve " : "Or say: “approve ");
+    say.append(byPassphrase === true ? "Or say your passphrase, or “approve " : "Or say: “approve ");
     const b = document.createElement("b");
     b.textContent = spoken;
     say.append(b, "”");
+    // The way to answer without looking: one link to where it is set.
+    if (passphraseSet !== true) {
+      const set = document.createElement("a");
+      set.href = "/keys#CLAW_SAY_PASSPHRASE";
+      set.target = "_blank";
+      set.rel = "noopener";
+      set.className = "say-set";
+      set.textContent = "Set a passphrase to answer without looking";
+      say.append(" · ", set);
+    }
     card.querySelector("pre").after(say);
   }
   card.querySelector(".yes").onclick = () => resolveApproval(id, true);
@@ -1307,7 +1317,7 @@ es.addEventListener("approval_request", (e) => {
   if (practice !== true) {
     const said = String(summary || "").trim().slice(0, 160);
     speak(byPassphrase === true && said
-      ? `Authorisation, ${sir()}: ${said}. Say approve and your passphrase, or deny.`
+      ? `Authorisation, ${sir()}: ${said}. Say your passphrase, or deny.`
       : `Requesting authorisation, ${sir()}.`);
   }
   if (practice !== true && spoken && sayEnabled) void listenForAnswer(id);
@@ -1814,9 +1824,14 @@ $("say-toggle")?.addEventListener("click", (e) => {
   sayEnabled = !sayEnabled;
   e.currentTarget.classList.toggle("active", sayEnabled);
   try { localStorage.setItem("claw.say", sayEnabled ? "1" : "0"); } catch { /* storage off */ }
-  addMsg("system", sayEnabled
-    ? "SAY is on: when a card appears, say “approve” and your passphrase (if you set one) or the two words on the card, or “deny”."
-    : "SAY is off: answer cards with the buttons, or from your phone.");
+  if (!sayEnabled) return addMsg("system", "SAY is off: answer cards with the buttons, or from your phone.");
+  // Set or not is all the Keys roster reports; the phrase itself never comes back.
+  fetch("/api/keys").then((r) => r.json()).catch(() => []).then((keys) => {
+    const set = Array.isArray(keys) && keys.some((k) => k.name === "CLAW_SAY_PASSPHRASE" && k.set);
+    addMsg("system", set
+      ? "SAY is on: when a card appears I read it out. Say your passphrase to approve, or “deny”."
+      : "SAY is on: say “approve” and the two words on the card, or “deny”. To answer without looking, set a passphrase: KEYS (top right) → Voice approval passphrase.");
+  });
 });
 
 /** One clip from the mic, ended by the voice detector, transcribed on this machine. "" if nothing was said. */
@@ -1884,7 +1899,9 @@ async function listenForAnswer(id) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: heard }),
     }).then((r) => r.json()).catch(() => ({}));
-    if (res.outcome && res.outcome !== "not-an-answer") return;   // settled, refused, or nothing left
+    // Settled, refused, or nothing left. "ambiguous" and "code-only" keep
+    // listening: the card's two words still answer it.
+    if (res.outcome && !["not-an-answer", "ambiguous", "code-only"].includes(res.outcome)) return;
   }
 }
 

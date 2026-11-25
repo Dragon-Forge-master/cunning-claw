@@ -72,6 +72,8 @@ interface Pending {
   practice: boolean;
   /** The two words that approve this card by voice. Real cards only. */
   spoken?: [string, string];
+  /** False when the card's own text contains the passphrase: then only the code answers it. */
+  byPassphrase?: boolean;
   finish(approved: boolean, by: SettledBy, scope?: "task"): void;
 }
 
@@ -100,14 +102,19 @@ interface Pending {
  * recognition gets them right; 64 of them make 4,032 ordered pairs.
  *
  * The passphrase, added because a code on the glass still means looking at
- * the glass: the operator may set one word or phrase of their own. Then the
- * claw reads the card aloud and "approve <passphrase>" approves it, eyes
- * elsewhere. It is a PIN said out loud: anyone in the room who hears it could
- * use it, which the operator is told when they set it. So it approves only
- * when exactly one real card is waiting (two waiting is "ambiguous": the code
- * picks one), it needs the approval word in front (the passphrase said in
- * passing is not an answer), and the same one-try rule holds: an approval
- * word with neither the passphrase nor a code denies.
+ * the glass: the operator may set a phrase of their own ("crack on", say) on
+ * the Keys page. Then the claw reads the card aloud and saying the phrase
+ * approves it, eyes elsewhere. It is a PIN said out loud: anyone in earshot
+ * who knows it could use it, which the Keys page says. So:
+ *   - it must be the whole of what was heard ("I'll crack on later" is not
+ *     an answer), allowing only a filler or "approve" in front and "please"
+ *     after;
+ *   - it approves only when exactly one real card is waiting (two waiting is
+ *     "ambiguous": the code picks one);
+ *   - a card whose own text contains the phrase cannot be answered by it.
+ *     The claw reads summaries aloud and outside text can steer a summary, so
+ *     a page could otherwise make the claw say a common phrase to itself;
+ *   - "approve" with neither the phrase nor a code still denies everything.
  */
 export const SPOKEN_WORDS = [
   "amber", "anchor", "apple", "arrow", "badger", "banjo", "basket", "beacon",
@@ -125,15 +132,31 @@ const FILLER = "(?:(?:ok|okay|right|so|um|uh|er|erm|well|yeah) )*";
 const APPROVE_WORDS = new RegExp(`^${FILLER}(?:approve|approved|yes|allow|execute|go ahead|confirm)\\b`);
 const DENY_WORDS = new RegExp(`^${FILLER}(?:deny|denied|no|nope|cancel|refuse|reject|stop|don't)\\b`);
 
+const BARE_YES = /^(?:approve|approved|yes|yeah|yep|allow|execute|confirm|ok|okay|sure)$/;
+
+/** Apostrophes go too, so "Let's go." heard matches "lets go" typed. */
+function phraseForm(text: string): string {
+  return normaliseSpoken(String(text ?? "").replace(/\[[^\]]*\]|\([^)]*\)/g, " ")).replace(/'/g, "");
+}
+
 /**
- * A passphrase worth having: at least four letters, and not itself an answer
- * word, which would make "approve" plus the word mean nothing more than "yes".
+ * A passphrase worth having: at least four letters, not a bare "yes" (which
+ * anything could say), and not starting with a refusal, so "no" and "stop"
+ * always mean no.
  */
 export function usablePassphrase(raw: string | null | undefined): string | null {
-  const p = normaliseSpoken(raw ?? "");
+  const p = phraseForm(raw ?? "");
   if (p.replace(/ /g, "").length < 4) return null;
-  if (APPROVE_WORDS.test(p) || DENY_WORDS.test(p)) return null;
+  if (BARE_YES.test(p) || DENY_WORDS.test(p)) return null;
   return p;
+}
+
+/** Is the whole of what was heard the passphrase? A filler or "approve" before, "please" after. */
+export function saidPassphrase(text: string, phrase: string): boolean {
+  let h = phraseForm(text).replace(new RegExp(`^${FILLER}`), "").replace(/ (?:please|thanks|thank you)$/, "");
+  if (h === phrase) return true;
+  h = h.replace(/^(?:approve|approved|yes) /, "");
+  return h === phrase;
 }
 
 /** Lower case, letters and spaces only, so "Approve, Amber-Falcon." reads as "approve amber falcon". */
@@ -147,6 +170,7 @@ export type SpokenOutcome =
   | { outcome: "wrong-code"; count: number }
   | { outcome: "not-an-answer" }
   | { outcome: "ambiguous"; count: number }
+  | { outcome: "code-only"; id: string }
   | { outcome: "nothing-pending" };
 
 /**
@@ -206,13 +230,16 @@ export function createApprovals(deps: ApprovalDeps) {
       };
       timer = setTimer(() => finish(false, "timeout"), deps.timeoutMs());
       const spoken = drawCode();
-      pending.set(id, { practice: false, spoken, finish });
+      // byPassphrase says the passphrase may answer this card (a yes/no,
+      // never the phrase), so the claw reads it aloud for an operator who is
+      // not looking. Not if the card's own text holds the phrase: it is read
+      // aloud, and outside text can steer what it says.
+      const phrase = usablePassphrase(deps.passphrase?.());
+      const byPassphrase = phrase !== null && !` ${phraseForm(`${s} ${d}`)} `.includes(` ${phrase} `);
+      pending.set(id, { practice: false, spoken, byPassphrase, finish });
       // The code rides on the HUD's card and nowhere else: not to the phone
       // lines, not to ntfy, and the model never sees this event.
-      // byPassphrase says one is set (a yes/no, never the phrase), so the
-      // claw reads the card aloud for an operator who is not looking.
-      const byPassphrase = usablePassphrase(deps.passphrase?.()) !== null;
-      deps.broadcast("approval_request", { id, summary: s, detail: d, spoken: spoken.join(" "), byPassphrase });
+      deps.broadcast("approval_request", { id, summary: s, detail: d, spoken: spoken.join(" "), byPassphrase, passphraseSet: phrase !== null });
       for (const p of deps.phones) void p.sendCard(id, s, d);
       deps.alert.send(id, s);
     });
@@ -268,19 +295,20 @@ export function createApprovals(deps: ApprovalDeps) {
     const heard = normaliseSpoken(text);
     const real = [...pending.entries()].filter(([, p]) => !p.practice && p.spoken);
     if (real.length === 0) return { outcome: "nothing-pending" };
+    const phrase = usablePassphrase(deps.passphrase?.());
+    if (phrase && saidPassphrase(text, phrase)) {
+      if (real.length !== 1) return { outcome: "ambiguous", count: real.length };
+      // The phrase is in this card's own text: it cannot answer it. Not a
+      // denial either; the operator is told to use the code.
+      if (!real[0][1].byPassphrase) return { outcome: "code-only", id: real[0][0] };
+      real[0][1].finish(true, "voice");
+      return { outcome: "approved", id: real[0][0] };
+    }
     if (DENY_WORDS.test(heard)) return { outcome: "denied", count: denyRealByVoice() };
     if (!APPROVE_WORDS.test(heard)) return { outcome: "not-an-answer" };
     const words = ` ${heard} `;
     const match = real.find(([, p]) => words.includes(` ${p.spoken![0]} ${p.spoken![1]} `));
-    if (!match) {
-      const phrase = usablePassphrase(deps.passphrase?.());
-      if (phrase && words.includes(` ${phrase} `)) {
-        if (real.length !== 1) return { outcome: "ambiguous", count: real.length };
-        real[0][1].finish(true, "voice");
-        return { outcome: "approved", id: real[0][0] };
-      }
-      return { outcome: "wrong-code", count: denyRealByVoice() };
-    }
+    if (!match) return { outcome: "wrong-code", count: denyRealByVoice() };
     match[1].finish(true, "voice");
     return { outcome: "approved", id: match[0] };
   }

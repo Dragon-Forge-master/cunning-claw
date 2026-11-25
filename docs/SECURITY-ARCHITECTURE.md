@@ -219,21 +219,27 @@ denial, never an approval. Nothing but the operator's own setting stops SAY
 listening while a card is up.
 
 *Without looking: a passphrase.* A code on the screen is no help to an
-operator who is not looking at it, so the owner may set `CLAW_SAY_PASSPHRASE`
-in `.env`. The claw then reads each real card's summary aloud (never its code)
-and "approve" with the passphrase answers it. The passphrase is read from the
-environment when a card is answered and goes nowhere else: not in a broadcast,
-a phone card, the model's context or a sandboxed command's environment
-(`sandboxEnv` drops any name containing PASSPHRASE). With more than one real
-card waiting it answers none and says so, because it cannot say which; the
-card's own two words still work. The passphrase alone, without an approval
-word, is not an answer, and one shorter than four letters or made of answer
-words is ignored. A wrong one denies, as a wrong code does. *Tests: the
-passphrase block in src/approvals.test.ts; src/voice.test.ts for the card read
-aloud.* **Limits:** unlike the code, the passphrase does not change. Anyone
-who hears the owner say it once can say it later, if they are within earshot
-of the microphone while a card is up; change it if it has been overheard, and
-choose words not spoken in videos or chat.
+operator who is not looking at it, so the owner may set a phrase of their own
+("crack on, Claw") on the Keys page, where the HUD's card links when none is
+set. It is stored as `CLAW_SAY_PASSPHRASE` in `.env` and never shown back, not
+even its last four letters. The claw then reads each real card's summary aloud
+(never its code), and saying the phrase approves it. The phrase goes nowhere
+but the check: not in a broadcast, a phone card, the model's context or a
+sandboxed command's environment (`sandboxEnv` drops any name containing
+PASSPHRASE). It must be the whole of what was heard, allowing a filler or
+"approve" before and "please" after, so the phrase said in passing is not an
+answer. With more than one real card waiting it answers none and says so; the
+card's own two words still work. A card whose own text contains the phrase
+cannot be answered by it: summaries are read aloud and outside text can steer
+them, so a page could otherwise have the claw say a common phrase to its own
+microphone. The Keys page refuses a phrase under four letters, a bare "yes",
+or one starting with "no" or "stop", so a refusal is always easy to say.
+*Tests: the passphrase block in src/approvals.test.ts; src/voice.test.ts for
+the card read aloud; src/keys.test.ts for the Keys page.* **Limits:** unlike
+the code, the phrase does not change, and the owner chooses how guessable it
+is. Anyone within earshot of the microphone while a card is up, a person or a
+television, who says it, approves that card. Choose words not said by chance,
+change them if overheard, and turn SAY off when others are about.
 
 ### 3.3 The sandbox
 

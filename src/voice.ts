@@ -274,7 +274,7 @@ export function react(event: string, data: unknown): void {
     // passphrase, and the HUD's ears are deaf while the claw speaks.
     const summary = typeof d.summary === "string" ? d.summary.trim().slice(0, 160) : "";
     if (d.byPassphrase === true && summary && d.practice !== true) {
-      void speak(`Authorisation, ${addressed()}: ${summary}. Say approve and your passphrase, or deny.`);
+      void speak(`Authorisation, ${addressed()}: ${summary}. Say your passphrase, or deny.`);
     } else void speak(`Requesting authorisation, ${addressed()}.`);
   }
   else if (event === "agent_error" && typeof d.message === "string" && d.message) void speak(d.message);
