@@ -607,3 +607,13 @@ test("doctor: says whether the website serves this claw's own phone app, file by
   assert.match(changed.text, /e2e\.js/);
   assert.equal(await siteAppDoctorLine(null, dir, serve()), null);
 });
+
+test("the relay's room secret, and everything else under data/, can never be committed", () => {
+  // Found on the owner's machine, 25 November 2026: data/pocket/relay.json
+  // (this module's secret) and three other files showed as untracked, because
+  // .gitignore named data/'s files one by one and these were never added.
+  // Fails with the "data/" line taken out of .gitignore.
+  // Read from the file, not asked of git: an unzipped download has no git.
+  const ignore = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), "..", ".gitignore"), "utf-8");
+  assert.match(ignore, /^data\/$/m, "the whole folder, not a list of the files someone remembered");
+});

@@ -9,6 +9,12 @@ voices/*.onnx
 # whisper.cpp build and models (./setup-ears.sh)
 .whisper/
 models/*.bin
+# Everything the claw writes about its owner lives in data/ and none of it is
+# ever tracked: the folder is ignored whole, so a file a later version starts
+# writing (memory-vectors.json and pocket/relay.json, with the relay's room
+# secret, were found untracked on 25 November 2026) cannot be committed by an
+# unthinking "git add -A". The named lines below are kept as the record.
+data/
 data/ears/
 data/history.json
 data/history-archive/
