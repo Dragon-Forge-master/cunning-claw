@@ -405,6 +405,10 @@ html[data-os="phone"] .firstrun:not(.is-open) li,html[data-os="other"] .firstrun
 .code{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.9375rem;line-height:1.6;color:var(--b-text);border-left:2px solid var(--b-rule-strong);padding-left:14px}
 .code .c{color:var(--b-dim)}
 .dev .small{margin-top:16px;color:var(--b-dim)}
+/* The two ways in, one under the other (classes, not style attributes: the CSP refuses those) */
+.dev .small.lead-in{margin-top:0;margin-bottom:12px}
+.dev .small.then{margin-top:16px;margin-bottom:8px}
+.dev .label.then{margin-top:20px}
 
 /* ---------- 7. Cost: a tariff ---------- */
 .tariff{border-top:4px double var(--b-rule-strong)}
