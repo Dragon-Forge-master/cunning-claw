@@ -13,14 +13,13 @@ means the pull request or page was read back and matched what was sent.
 | [msb-msb/awesome-local-ai](https://github.com/msb-msb/awesome-local-ai) | [PR #103](https://github.com/msb-msb/awesome-local-ai/pull/103), User Interfaces → Desktop Applications, at the end | 25 Nov 2026 | Open, checked |
 | [danielrosehill/Local-AI-Agent-Resources](https://github.com/danielrosehill/Local-AI-Agent-Resources) | [PR #11](https://github.com/danielrosehill/Local-AI-Agent-Resources/pull/11), 6. Desktop GUIs & Cowork Clones, alphabetical | 25 Nov 2026 | Open, checked |
 | [e2b-dev/awesome-ai-agents](https://github.com/e2b-dev/awesome-ai-agents) | Their Google form (sent twice; the second adds the X account) | 25 Nov 2026 | Awaiting review |
+| GitHub topics on our own repo | `gh repo edit --add-topic`: ai-agent, ai-assistant, local-first, ollama, prompt-injection, desktop-agent, mcp-client (with the earlier ones, 15 in all) | 25 Nov 2026 | Done, checked |
 
 ## Next: worth doing now
 
 | Where | How | Notes |
 | --- | --- | --- |
-| [MCP's own clients page](https://modelcontextprotocol.io/clients) | Pull request to the MCP docs, as the page invites | The official list of apps that support MCP. Read its contributing notes and the feature table it asks for first. |
-| [Ollama's Community Integrations](https://github.com/ollama/ollama) | Pull request to the README, as it invites | Cunning Claw runs fully offline on Ollama. The README's layout has changed over time; edit the current main. |
-| GitHub topics on our own repo | `gh repo edit --add-topic …` | Free and instant: ai-agent, mcp-client, local-first, ollama, desktop-agent, prompt-injection. Helps GitHub search. |
+| [Ollama's Community Integrations](https://github.com/ollama/ollama) | Pull request to the README, as it invites | Cunning Claw runs fully offline on Ollama. Chat Interfaces → Desktop, at the end (the list is not alphabetical). Ollama's CONTRIBUTING wants `<area>: <description>` titles: "README: add Cunning Claw to desktop integrations". |
 | [Glama MCP clients](https://glama.ai/mcp/clients) | Their own submit form, if it has one | Linked from awesome-mcp-clients as the most up-to-date list. |
 | [OpenAlternative](https://openalternative.co/submit) | Submit form | Lists open-source alternatives to proprietary tools: here, to cloud agents such as Manus. Check it is free before submitting. |
 | [AlternativeTo](https://alternativeto.net) | Add an app (needs an account) | List as an alternative to OpenClaw, Hermes Agent and Manus. |
@@ -33,6 +32,7 @@ means the pull request or page was read back and matched what was sent.
 | Product Hunt, Hacker News (Show HN), Reddit (r/LocalLLaMA, r/selfhosted) | After the Windows signing certificate | First impressions: a wave of new users should not meet "Unknown publisher". |
 
 ## Not for us
+- **MCP's own clients page** (modelcontextprotocol.io/clients), for now: its repository takes pull requests from members of the modelcontextprotocol organisation only (others raise an issue first, and must disclose AI help), and on 25 November the clients address returned the docs home page, so the list may have moved. Look again later.
 
 - **awesome-selfhosted**: server software only, and its rules forbid entries prepared with AI.
 - **Paid "AI directory" listings and submission services**: many charge to list; a free open-source tool gains little from them.
