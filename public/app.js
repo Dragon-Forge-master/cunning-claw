@@ -1259,7 +1259,7 @@ es.addEventListener("timer_fired", (e) => {
 });
 
 es.addEventListener("approval_request", (e) => {
-  const { id, summary, detail, practice, label } = sseData(e);
+  const { id, summary, detail, practice, label, spoken } = sseData(e);
   const card = document.createElement("div");
   card.className = "approval-card";
   card.id = `approval-${id}`;
@@ -1273,6 +1273,17 @@ es.addEventListener("approval_request", (e) => {
     </div>`;
   card.querySelector(".ttl-what").textContent = summary;   // text, so & and < are safe
   card.querySelector("pre").textContent = detail;
+  // The spoken code (src/approvals.ts): two words shown here and nowhere else,
+  // never read aloud, so nothing the microphone can hear can know them.
+  if (practice !== true && typeof spoken === "string" && spoken) {
+    const say = document.createElement("div");
+    say.className = "say";
+    say.append("Or say: “approve ");
+    const b = document.createElement("b");
+    b.textContent = spoken;
+    say.append(b, "”");
+    card.querySelector("pre").after(say);
+  }
   card.querySelector(".yes").onclick = () => resolveApproval(id, true);
   // Covers the fiddly navigation for the rest of this errand. Never covers a
   // send, a payment or a delete — those ask every time.
@@ -1292,6 +1303,7 @@ es.addEventListener("approval_request", (e) => {
   }
   $("approval-area").appendChild(card);
   if (practice !== true) speak(`Requesting authorisation, ${sir()}.`);
+  if (practice !== true && spoken && sayEnabled) void listenForAnswer(id);
 });
 
 es.addEventListener("approval_resolved", (e) => {
@@ -1771,6 +1783,103 @@ $("wake-toggle").addEventListener("click", (e) => {
   if (wakeEnabled) startWakeLoop();
   else wakeRecognizer?.stop();
 });
+
+// ---------------------------------------------------------------------------
+// SAY: answering a card by voice, for an operator on another screen
+// ---------------------------------------------------------------------------
+/**
+ * With SAY on, a real card opens the local ears for the answer: "approve"
+ * and the two words on the card, or "deny". The server holds the code and
+ * judges it (POST /api/approve/spoken); this page only records, transcribes
+ * on this machine, and passes the words on. A wrong code or a bare "yes"
+ * denies, so a voice in the room cannot approve. Local ears only: the
+ * browser's recogniser would send the room to a cloud service, and the code
+ * with it.
+ */
+let sayEnabled = false;
+try { sayEnabled = localStorage.getItem("claw.say") === "1"; } catch { /* storage off */ }
+$("say-toggle")?.classList.toggle("active", sayEnabled);
+$("say-toggle")?.addEventListener("click", (e) => {
+  if (!sayEnabled && ears.engine !== "whisper") {
+    addMsg("system", "SAY needs the local ears (whisper on this machine): the code must not be heard by a cloud service.");
+    return;
+  }
+  sayEnabled = !sayEnabled;
+  e.currentTarget.classList.toggle("active", sayEnabled);
+  try { localStorage.setItem("claw.say", sayEnabled ? "1" : "0"); } catch { /* storage off */ }
+  addMsg("system", sayEnabled
+    ? "SAY is on: when a card appears, say “approve” and the two words on it, or “deny”."
+    : "SAY is off: answer cards with the buttons, or from your phone.");
+});
+
+/** One clip from the mic, ended by the voice detector, transcribed on this machine. "" if nothing was said. */
+async function hearOneAnswer() {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  });
+  const ac = new AudioContext();
+  await ac.resume();
+  const source = ac.createMediaStreamSource(stream);
+  const chunks = [];
+  const vad = createVad({ noSpeechMs: 20000, maxMs: 15000 });
+  const rate = ac.sampleRate;
+  let node = null;
+  const verdict = await new Promise((resolve) => {
+    openTap(ac, source, (f32) => {
+      if (mustNotHear()) return;   // the claw's own voice is never recorded
+      chunks.push(f32);
+      const v = vad.feed(frameRms(f32), (f32.length / rate) * 1000);
+      if (v === "end" || v === "none") resolve(v);
+    }).then((n) => {
+      node = n;
+      const mute = ac.createGain();
+      mute.gain.value = 0;
+      n.connect(mute);
+      mute.connect(ac.destination);
+    });
+  });
+  try { node && node.disconnect(); } catch { /* gone */ }
+  try { source.disconnect(); } catch { /* gone */ }
+  for (const t of stream.getTracks()) t.stop();
+  ac.close().catch(() => {});
+  if (verdict !== "end" || chunks.length === 0) return "";
+  let total = 0;
+  for (const c of chunks) total += c.length;
+  const all = new Float32Array(total);
+  let off = 0;
+  for (const c of chunks) { all.set(c, off); off += c.length; }
+  const wav = encodeWav16(downsampleTo16k(all, rate), EARS_RATE);
+  const res = await fetch("/api/listen", { method: "POST", headers: { "Content-Type": "audio/wav" }, body: wav });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`);
+  return String(out.text || "").trim();
+}
+
+/** Listen for this card's answer: a few tries while it is still on the glass, never over a dictation. */
+async function listenForAnswer(id) {
+  if (ears.engine !== "whisper") return;
+  const onGlass = () => document.getElementById(`approval-${id}`);
+  const until = Date.now() + 90000;
+  // Let "requesting authorisation" finish first; the clip skips the claw's voice anyway.
+  while (mustNotHear() && Date.now() < until) await new Promise((r) => setTimeout(r, 200));
+  for (let tries = 0; tries < 4 && onGlass() && Date.now() < until; tries++) {
+    if (localRecording()) return;   // the operator is dictating: the buttons will do
+    const say = onGlass()?.querySelector(".say");
+    say?.classList.add("listening");
+    let heard = "";
+    try { heard = await hearOneAnswer(); } catch (err) {
+      addMsg("system", `⚠ SAY could not listen: ${err && err.message ? err.message : err}`);
+      return;
+    } finally { say?.classList.remove("listening"); }
+    if (!heard || isOwnEcho(heard, lastSpoken) || !onGlass()) continue;
+    const res = await fetch("/api/approve/spoken", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: heard }),
+    }).then((r) => r.json()).catch(() => ({}));
+    if (res.outcome && res.outcome !== "not-an-answer") return;   // settled, refused, or nothing left
+  }
+}
 
 $("stop-btn")?.addEventListener("click", async () => {
   const r = await fetch("/api/cancel", { method: "POST" }).then((x) => x.json()).catch(() => ({}));

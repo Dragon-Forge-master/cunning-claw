@@ -199,6 +199,25 @@ was created public because the card never said so).
 The card is a real boundary only if the operator reads it. That is a human
 dependency, and no code removes it.
 
+**Answering by voice (SAY).** An operator on another screen can answer a card
+out loud. A spoken "yes" is the easiest approval to forge (anyone in the room,
+a video, a clip on a page the claw opened, the claw's own voice), so it is not
+enough. Each real card carries two words drawn fresh from 64
+(`SPOKEN_WORDS`, 4,032 ordered pairs), shown on the HUD's card and nowhere
+else: not sent to Telegram, Discord or ntfy, cut from Pocket's stream, never
+read aloud, never in the model's context. "Approve" with that card's two
+words approves that card, once. An approval word with the wrong words, or
+none, denies every pending real card, so a guess gets one try and a forged
+"yes" is a refusal. "Deny" or "no" denies without a code. Practice cards
+cannot be answered by voice. The HUD listens only with the local ears
+(whisper on the machine), records nothing while the claw speaks, and sends
+the transcript to `/api/approve/spoken`, which only the HUD can reach. *Tests:
+src/approvals.test.ts, the voice block; src/pocket-relay.test.ts for the
+phone's stream.* **Limits:** anyone who can see the HUD's screen can read the
+code, as they could press the button. Transcription can mishear, which costs a
+denial, never an approval. Nothing but the operator's own setting stops SAY
+listening while a card is up.
+
 ### 3.3 The sandbox
 
 Model alignment is a statistical property; namespaces are a kernel one. Since

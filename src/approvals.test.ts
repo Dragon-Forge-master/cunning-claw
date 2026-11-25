@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createApprovals, defusePracticeClaim, PRACTICE_CLAIM_REMOVED, PRACTICE_LABEL, type PracticeDecision } from "./approvals.js";
+import { createApprovals, defusePracticeClaim, normaliseSpoken, PRACTICE_CLAIM_REMOVED, PRACTICE_LABEL, SPOKEN_WORDS, type PracticeDecision } from "./approvals.js";
 
 /** A registry with every outlet recorded and a timer the test fires by hand. */
 function rig() {
@@ -121,4 +121,89 @@ test("a new instruction denies every pending card; leaving practice clears only 
   assert.equal(r.approvals.pendingCount(), 1, "the real card is untouched by leaving practice");
   assert.equal(r.approvals.cancelAll(), 1);
   assert.equal(await real, false);
+});
+
+// --- Answering by voice: a code only the HUD's card shows (SPOKEN_WORDS) ---
+
+function voiceRig(draws: number[] = [0, 23, 5, 6]) {
+  const events: { event: string; data: any }[] = [];
+  const phoneCards: { id: string; summary: string; detail: string }[] = [];
+  const alerts: string[] = [];
+  let i = 0;
+  const approvals = createApprovals({
+    broadcast: (event, data) => events.push({ event, data }),
+    phones: [{ sendCard: (id, summary, detail) => { phoneCards.push({ id, summary, detail }); }, settled: () => {} }],
+    alert: { send: (_id, summary) => alerts.push(summary), settled: () => {} },
+    timeoutMs: () => 180_000,
+    grantForTask: () => {},
+    randomInt: () => draws[i++ % draws.length],
+    setTimer: () => 0,
+    clearTimer: () => {},
+  });
+  return { approvals, events, phoneCards, alerts };
+}
+
+test("each real card carries a fresh two-word code on the HUD's card, and nowhere else", async () => {
+  const r = voiceRig();
+  void r.approvals.request("Send this email", "To: elin@example");
+  const card = lastRequest(r.events);
+  assert.equal(card.spoken, `${SPOKEN_WORDS[0]} ${SPOKEN_WORDS[24]}`, "two different words (the second draw skips the first)");
+  assert.equal(r.phoneCards.length, 1);
+  assert.ok(!JSON.stringify(r.phoneCards).includes(SPOKEN_WORDS[24]), "the phone lines never get the code");
+  assert.ok(!r.alerts.join("").includes(SPOKEN_WORDS[24]), "nor does ntfy");
+  void r.approvals.request("Run npm install", "in ~/site");
+  const second = lastRequest(r.events);
+  assert.notEqual(second.spoken, card.spoken, "a new card, a new code");
+  void r.approvals.requestPractice("Send", "To: x@example");
+  assert.equal(lastRequest(r.events).spoken, undefined, "a practice card has no code: it is answered on the HUD's buttons");
+  assert.equal(new Set(SPOKEN_WORDS).size, SPOKEN_WORDS.length, "no word twice in the list");
+});
+
+test("the right code approves that card and no other, once; the wording may vary as speech does", async () => {
+  const r = voiceRig();
+  const first = r.approvals.request("Send this email", "To: elin@example");
+  const firstCard = lastRequest(r.events);
+  const second = r.approvals.request("Run npm install", "in ~/site");
+  const secondCard = lastRequest(r.events);
+  const out = r.approvals.settleSpoken(`Okay, Approve ${secondCard.spoken.replace(" ", ", ")}.`);
+  assert.deepEqual(out, { outcome: "approved", id: secondCard.id });
+  assert.equal(await second, true);
+  assert.equal(r.approvals.pendingCount(), 1, "the other card is still waiting");
+  assert.deepEqual(r.approvals.settleSpoken(`approve ${secondCard.spoken}`), { outcome: "wrong-code", count: 1 },
+    "a used code is spent: saying it again is a wrong code, which denies what is left");
+  assert.equal(await first, false);
+  assert.ok(firstCard.spoken);
+});
+
+test("a spoken yes with no code, or the wrong code, denies every pending real card: a forgery is a refusal", async () => {
+  for (const heard of ["Yes.", "yes please", "approve", "go ahead and do it", "approve tiger tiger"]) {
+    const r = voiceRig();
+    const a = r.approvals.request("Pay invoice 1142", "£1,240 to Caffi Bach");
+    const b = r.approvals.request("Delete ./build", "rm -r ./build");
+    assert.equal(r.approvals.settleSpoken(heard).outcome, "wrong-code", heard);
+    assert.equal(await a, false, heard);
+    assert.equal(await b, false, heard);
+  }
+});
+
+test("deny needs no code; talk that is not an answer changes nothing; practice cards are never touched", async () => {
+  const r = voiceRig();
+  const practice = r.approvals.requestPractice("Send", "To: x@example");
+  const practiceId = lastRequest(r.events).id;
+  assert.deepEqual(r.approvals.settleSpoken("deny"), { outcome: "nothing-pending" }, "only real cards are answered by voice");
+  const real = r.approvals.request("Send this email", "To: elin@example");
+  assert.deepEqual(r.approvals.settleSpoken("what's the weather like in Cardiff"), { outcome: "not-an-answer" });
+  assert.equal(r.approvals.pendingCount(), 2);
+  assert.deepEqual(r.approvals.settleSpoken("No, don't send it."), { outcome: "denied", count: 1 });
+  assert.equal(await real, false);
+  assert.equal(r.approvals.pendingCount(), 1, "the practice card is still on the HUD's buttons");
+  assert.equal(r.approvals.isPractice(practiceId), true);
+  r.approvals.cancelPractice();
+  assert.equal(await practice, false);
+});
+
+test("the spoken words are short and plain, and the code space is wide enough that one guess is a long shot", () => {
+  assert.ok(SPOKEN_WORDS.length >= 64);
+  for (const w of SPOKEN_WORDS) assert.match(w, /^[a-z]{4,10}$/, w);
+  assert.equal(normaliseSpoken("  Approve, Amber-Falcon!  "), "approve amber falcon");
 });

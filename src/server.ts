@@ -294,6 +294,22 @@ function cancelPendingApprovals(reason: string): number {
   return n;
 }
 
+// An answer to a card, heard by the HUD's microphone and transcribed on this
+// machine (src/ears.ts). Only the HUD reaches /api (the host gate gives Pocket
+// /pocket/ alone), and only a code shown on the HUD's card can approve; see
+// settleSpoken in src/approvals.ts. Not an instruction, so it does not cancel
+// pending cards the way a chat message does.
+app.post("/api/approve/spoken", (req, res) => {
+  const text = String(req.body?.text ?? "").slice(0, 200);
+  const result = approvals.settleSpoken(text);
+  if (result.outcome === "wrong-code") {
+    broadcast("notice", { message: `That code did not match, ${addressed()}. ${result.count} card(s) denied, to be safe.` });
+  } else if (result.outcome === "denied") {
+    broadcast("notice", { message: `Denied by voice, ${addressed()}.` });
+  }
+  res.json(result);
+});
+
 app.post("/api/approve", (req, res) => {
   // "approve for this task" widens scope until the turn ends, on a real card
   // only, and never covers an irreversible action (approvals.ts, consequence.ts).

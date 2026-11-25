@@ -237,8 +237,10 @@ test("relay: talk, the event stream, and an approval with a fresh assertion boun
     assert.equal((await ph.api("POST", "/chat", { message: "Book the van in for Tuesday" })).status, 200);
     assert.deepEqual(r.chats, ["Book the van in for Tuesday"]);
     assert.equal((await ph.api("GET", "/history")).json.turns[0].text, "earlier");
-    r.pocket.onEvent("approval_request", { id: "ap-1", summary: "Run: rm -rf ./build", detail: "in ~/projects/site" });
+    r.pocket.onEvent("approval_request", { id: "ap-1", summary: "Run: rm -rf ./build", detail: "in ~/projects/site", spoken: "amber falcon" });
     await r.net.until(() => /event: approval_request\ndata: .*ap-1/.test(events.join("")), "the card on the phone's event stream");
+    // The spoken code belongs to the HUD's glass alone (src/approvals.ts); the phone answers with a passkey.
+    assert.ok(!events.join("").includes("amber falcon"), "the HUD's spoken code is not on the phone's stream");
     // An assertion from another origin (the tailnet's, a phishing page's) is refused.
     for (const origin of [`https://${TAILNET}`, "https://cunningclaw.com.evil.example"]) {
       const bad = await assertion(ph, "approve", { approvalId: "ap-1" }, { origin });

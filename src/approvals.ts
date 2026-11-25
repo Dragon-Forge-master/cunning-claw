@@ -31,7 +31,7 @@ export const PRACTICE_LABEL = "PRACTICE · nothing real will happen";
 /** What replaces a practice claim found inside a real card's text. */
 export const PRACTICE_CLAIM_REMOVED = "[text claiming this is practice was removed — this card is REAL]";
 
-export type SettledBy = "hud" | "phone" | "timeout" | "cancel";
+export type SettledBy = "hud" | "phone" | "voice" | "timeout" | "cancel";
 
 export interface PracticeDecision {
   approved: boolean;
@@ -56,14 +56,70 @@ export interface ApprovalDeps {
   /** "Allow for this task" on a real card. Never called for a practice card. */
   grantForTask(): void;
   now?: () => number;
+  /** For the spoken code; crypto.randomInt by default, a test passes its own. */
+  randomInt?: (max: number) => number;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (t: unknown) => void;
 }
 
 interface Pending {
   practice: boolean;
+  /** The two words that approve this card by voice. Real cards only. */
+  spoken?: [string, string];
   finish(approved: boolean, by: SettledBy, scope?: "task"): void;
 }
+
+/**
+ * Answering a card by voice, for an operator on another screen.
+ *
+ * A spoken "yes" is the easiest approval there is to forge: anyone in the
+ * room, a video or a radio, an audio clip on a page the claw opened, or the
+ * claw's own voice could say it. So a spoken approval must name a code that
+ * exists only on the operator's glass: two words drawn fresh for each real
+ * card, shown on the card and never spoken, sent to a phone line, put in the
+ * model's context or written to the journal. The listener that hears it
+ * cannot know it.
+ *
+ * - "approve <the two words>" approves that card and no other, once.
+ * - An approval word with the wrong words, or none ("yes" on its own),
+ *   denies every pending real card: a guess gets one try, and a forged "yes"
+ *   is a refusal, never a consent.
+ * - "deny", "no", "cancel" deny every pending real card. Refusing is always
+ *   safe, so it needs no code.
+ * - Anything else is not an answer and changes nothing.
+ * - Practice cards carry no code and cannot be answered by voice: Learn mode
+ *   teaches reading the card, and its cards stay on the HUD's buttons.
+ *
+ * Words are short, common and unlike each other when heard, so local speech
+ * recognition gets them right; 64 of them make 4,032 ordered pairs.
+ */
+export const SPOKEN_WORDS = [
+  "amber", "anchor", "apple", "arrow", "badger", "banjo", "basket", "beacon",
+  "bishop", "blossom", "bucket", "cabin", "camel", "candle", "carpet", "castle",
+  "cherry", "cobalt", "copper", "cricket", "daisy", "dolphin", "dragon", "eagle",
+  "falcon", "feather", "forest", "garden", "ginger", "glacier", "hammer", "harbour",
+  "hazel", "island", "jacket", "jigsaw", "kettle", "ladder", "lemon", "lighthouse",
+  "magnet", "maple", "marble", "meadow", "mitten", "orange", "otter", "panda",
+  "parrot", "pebble", "pepper", "pillow", "planet", "pocket", "puffin", "rabbit",
+  "raven", "river", "rocket", "saddle", "salmon", "thistle", "tiger", "violin",
+] as const;
+
+/** Speech recognition often starts with a filler; it is allowed before the answer word, nothing else is. */
+const FILLER = "(?:(?:ok|okay|right|so|um|uh|er|erm|well|yeah) )*";
+const APPROVE_WORDS = new RegExp(`^${FILLER}(?:approve|approved|yes|allow|execute|go ahead|confirm)\\b`);
+const DENY_WORDS = new RegExp(`^${FILLER}(?:deny|denied|no|nope|cancel|refuse|reject|stop|don't)\\b`);
+
+/** Lower case, letters and spaces only, so "Approve, Amber-Falcon." reads as "approve amber falcon". */
+export function normaliseSpoken(text: string): string {
+  return String(text ?? "").toLowerCase().replace(/['’]/g, "'").replace(/[^a-z' ]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+export type SpokenOutcome =
+  | { outcome: "approved"; id: string }
+  | { outcome: "denied"; count: number }
+  | { outcome: "wrong-code"; count: number }
+  | { outcome: "not-an-answer" }
+  | { outcome: "nothing-pending" };
 
 /**
  * Strip format characters (zero-width joiners, Unicode tags, bidi controls)
@@ -90,6 +146,14 @@ export function defusePracticeClaim(text: string): string {
 export function createApprovals(deps: ApprovalDeps) {
   const pending = new Map<string, Pending>();
   const now = deps.now ?? (() => Date.now());
+  const randomInt = deps.randomInt ?? ((max: number) => crypto.randomInt(max));
+  /** Two different words, fresh for each card. */
+  function drawCode(): [string, string] {
+    const a = randomInt(SPOKEN_WORDS.length);
+    let b = randomInt(SPOKEN_WORDS.length - 1);
+    if (b >= a) b++;
+    return [SPOKEN_WORDS[a], SPOKEN_WORDS[b]];
+  }
   const setTimer = deps.setTimer ?? ((fn: () => void, ms: number) => setTimeout(fn, ms));
   const clearTimer = deps.clearTimer ?? ((t: unknown) => clearTimeout(t as NodeJS.Timeout));
 
@@ -113,8 +177,11 @@ export function createApprovals(deps: ApprovalDeps) {
         resolve(approved);
       };
       timer = setTimer(() => finish(false, "timeout"), deps.timeoutMs());
-      pending.set(id, { practice: false, finish });
-      deps.broadcast("approval_request", { id, summary: s, detail: d });
+      const spoken = drawCode();
+      pending.set(id, { practice: false, spoken, finish });
+      // The code rides on the HUD's card and nowhere else: not to the phone
+      // lines, not to ntfy, and the model never sees this event.
+      deps.broadcast("approval_request", { id, summary: s, detail: d, spoken: spoken.join(" ") });
       for (const p of deps.phones) void p.sendCard(id, s, d);
       deps.alert.send(id, s);
     });
@@ -158,6 +225,27 @@ export function createApprovals(deps: ApprovalDeps) {
     return true;
   }
 
+  /** Every pending real card, denied, by voice. Practice cards stay on their buttons. */
+  function denyRealByVoice(): number {
+    const ids = [...pending.entries()].filter(([, p]) => !p.practice).map(([id]) => id);
+    for (const id of ids) pending.get(id)?.finish(false, "voice");
+    return ids.length;
+  }
+
+  /** An answer heard by the HUD's microphone (the rules are above SPOKEN_WORDS). */
+  function settleSpoken(text: string): SpokenOutcome {
+    const heard = normaliseSpoken(text);
+    const real = [...pending.entries()].filter(([, p]) => !p.practice && p.spoken);
+    if (real.length === 0) return { outcome: "nothing-pending" };
+    if (DENY_WORDS.test(heard)) return { outcome: "denied", count: denyRealByVoice() };
+    if (!APPROVE_WORDS.test(heard)) return { outcome: "not-an-answer" };
+    const words = ` ${heard} `;
+    const match = real.find(([, p]) => words.includes(` ${p.spoken![0]} ${p.spoken![1]} `));
+    if (!match) return { outcome: "wrong-code", count: denyRealByVoice() };
+    match[1].finish(true, "voice");
+    return { outcome: "approved", id: match[0] };
+  }
+
   /** A new instruction from the operator denies everything pending, practice included. */
   function cancelAll(): number {
     const ids = [...pending.keys()];
@@ -176,6 +264,7 @@ export function createApprovals(deps: ApprovalDeps) {
     request,
     requestPractice,
     settle,
+    settleSpoken,
     cancelAll,
     cancelPractice,
     isPractice: (id: string) => pending.get(id)?.practice === true,

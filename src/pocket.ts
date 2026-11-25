@@ -573,6 +573,10 @@ export function createPocket(deps: PocketDeps) {
     if (!LOCKED_EVENTS.has(event) && !UNLOCKED_EVENTS.has(event)) return;
     let payload = data;
     if (event === "tool_start") payload = { name: data?.name };
+    // The spoken code is for the HUD's glass alone (src/approvals.ts): the
+    // phone answers with a WebAuthn assertion, and a code on the phone's
+    // stream is one more place a listener could learn it.
+    if (event === "approval_request") payload = { id: data?.id, summary: data?.summary, detail: data?.detail };
     // The registry's own view of a job, cut to what the phone shows; the
     // result pointer and timestamps stay home.
     if (event === "job") {
