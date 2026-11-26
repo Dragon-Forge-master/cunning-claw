@@ -330,3 +330,39 @@ test("seo: the comparison says where each statement about the other project was 
   assert.match(textOf(html), /read on \d{1,2} \w+ 20\d\d/, "the date the other project's documentation was read");
   assert.match(textOf(html), /not been independently audited/, "our own limit, on the page that compares");
 });
+
+test("share: every page offers itself to Facebook, X, LinkedIn and WhatsApp with its own address and its own 1200 by 630 card", () => {
+  // Asked for on 26 November 2026: every page shared the "New in 0.5" card,
+  // in a shape Facebook crops, and no page had a way to share it. Fails with
+  // a page's share row removed, pointed at another page, or its card missing.
+  const cards = new Set<string>();
+  for (const rel of ["index.html", "security.html", "features.html", "install.html", "its-happening.html", "vs-openclaw.html", "about.html"]) {
+    const html = site(rel);
+    const url = (html.match(/<link rel="canonical" href="([^"]*)"/) || [])[1]!;
+    const enc = encodeURIComponent(url);
+    for (const start of [
+      `https://www.facebook.com/sharer/sharer.php?u=${enc}"`,
+      `&amp;url=${enc}&amp;via=Dragon_forge_ai"`,
+      `https://www.linkedin.com/sharing/share-offsite/?url=${enc}"`,
+    ]) assert.ok(html.includes(start), `${rel}: no share link ending ${start}`);
+    const wa = [...html.matchAll(/href="https:\/\/wa\.me\/\?text=([^"]*)"/g)].map((m) => m[1]);
+    assert.ok(wa.some((t) => t.endsWith(enc)), `${rel}: WhatsApp shares this page's own address`);
+    assert.match(html, /data-share-url="https:\/\/cunningclaw\.com\//, `${rel}: the share sheet is told the address`);
+    assert.match(html, /<script src="share\.js" defer><\/script>/, `${rel}: share.js is loaded, as a file`);
+    const image = meta(html, "property", "og:image")!;
+    assert.match(image, /^https:\/\/cunningclaw\.com\/share-[a-z-]+\.png$/, `${rel}: a share card of its own`);
+    assert.ok(!cards.has(image), `${rel}: a share card used by another page`);
+    cards.add(image);
+    assert.equal(meta(html, "name", "twitter:image"), image, `${rel}: X shows the same card`);
+    // Facebook's shape. Read from the PNG's own header, not from what the page claims.
+    const png = fs.readFileSync(path.join(root, "site", image.slice("https://cunningclaw.com/".length)));
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 630], `${rel}: ${image} is not 1200 by 630`);
+    assert.equal(meta(html, "property", "og:image:width"), "1200", `${rel}: declared width`);
+    assert.equal(meta(html, "property", "og:image:height"), "630", `${rel}: declared height`);
+  }
+  // Each film shares its own copy on the channel.
+  const home = site("index.html");
+  for (const id of ["dbJOGBXfbt0", "4VI3drUByFs", "07bYENIWxno", "qbb16i1YPGo", "Dd4xfaeFs2A"]) {
+    assert.ok(home.includes(`sharer.php?u=${encodeURIComponent(`https://youtu.be/${id}`)}`), `the home page does not share film ${id}`);
+  }
+});

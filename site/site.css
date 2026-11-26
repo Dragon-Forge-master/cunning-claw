@@ -363,6 +363,11 @@ html.js .specimen:not(.is-open) .planted{display:none}
 .send .small{color:var(--b-dim)}
 .send-or{margin-top:32px}
 .copied{font-size:1rem;color:var(--b-dim)}
+/* Share: a row of ordinary links at the foot of each page, and a line under each film */
+.share-band{padding:48px 0;border-top:1px solid var(--b-rule)}
+.share-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+.share-note{margin-top:14px;color:var(--b-dim);max-width:60ch}
+.film-share{margin-top:14px;color:var(--b-dim)}
 .dls{display:flex;flex-wrap:wrap;gap:16px}
 .dls-other{display:none;order:-1;flex:0 0 100%;margin-top:16px}
 .dl{flex:1 1 240px;display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:84px;padding:14px 20px;border:1px solid var(--b-action);border-radius:var(--radius);text-decoration:none;transition:background-color .15s,border-color .15s}
